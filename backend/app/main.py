@@ -1,0 +1,66 @@
+import uvicorn
+from fastapi import FastAPI
+from contextlib import asynccontextmanager
+from app.core.config import settings
+from fastapi.middleware.cors import CORSMiddleware
+from app.modules.auth.auth_api import router as auth_router
+from app.modules.warehouse.warehouse_zone.warehouse_api import router as warehouse_router
+from app.modules.warehouse.location_map.location_api import router as location_router
+from app.modules.warehouse.item.item_api import router as item_router
+from app.modules.warehouse.item_stock.item_stock_api import router as item_stock_router
+from app.modules.warehouse.transaction_history.history_api import router as transaction_router
+from app.modules.warehouse.unit.unit_api import router as unit_router
+from app.core.logger import setup_logger
+
+logger = setup_logger(
+    name="main",
+    log_level="INFO",
+    service_name=settings.app_name,
+    log_dir="logs/main"
+)
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # start app
+    logger.info("Starting app")
+    yield
+    # stop app
+    logger.info("Stopping app")
+
+app = FastAPI(
+    title=settings.app_name,
+    debug=settings.debug,
+    version="0.1.0",
+    lifespan=lifespan
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # FE development URL
+    allow_credentials=False,
+    allow_methods=["*"],   # allow all methods
+    allow_headers=["*"],   # allow all headers
+    max_age=3600,
+)
+
+app.include_router(auth_router, prefix="/api/v1")
+app.include_router(warehouse_router, prefix="/api/v1")
+app.include_router(location_router, prefix="/api/v1")
+app.include_router(item_router, prefix="/api/v1")
+app.include_router(item_stock_router, prefix="/api/v1")
+app.include_router(transaction_router, prefix="/api/v1")
+app.include_router(unit_router, prefix="/api/v1")
+
+@app.get("/")
+async def root():
+    """Health check endpoint."""
+    return {
+        "message": "VCC Warehouse Management System API",
+        "status": "running"
+    }
+
+
+@app.get("/health")
+async def health():
+    """Health check endpoint."""
+    return {"status": "healthy"}

@@ -1,0 +1,81 @@
+from sqlalchemy import (
+    Column, Integer, String, Text, DateTime, ForeignKey, Numeric, func, JSON
+)
+from sqlalchemy.orm import relationship
+from sqlalchemy.dialects.postgresql import JSONB
+from app.core.database import Base
+
+
+class OutboundOrder(Base):
+    """Inbound order header."""
+    
+    __tablename__ = "outbound_order"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    order_code = Column(String(50), unique=True, nullable=False, index=True)
+    status = Column(String(20), default="initialize", nullable=False, index=True)
+    note = Column(Text)
+    created_by_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    warehouse_id = Column(Integer, ForeignKey("warehouse.id"), nullable=False, index=True)
+    details = Column(
+        JSON().with_variant(JSONB, "postgresql"),
+        nullable=False,
+        default=dict,
+        server_default="{}",
+    )
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    
+    created_by = relationship("User", foreign_keys=[created_by_id], lazy="joined")
+    warehouse = relationship("Warehouse", foreign_keys=[warehouse_id], lazy="joined")
+
+
+class OutboundOrderDetail(Base):
+    """Inbound order detail line items."""
+
+    __tablename__ = "outbound_order_detail"
+
+    id = Column(Integer, primary_key=True, index=True)
+    outbound_order_id = Column(
+        Integer,
+        ForeignKey("outbound_order.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    item_id = Column(Integer, ForeignKey("item.id"), nullable=False)
+    quantity = Column(Integer, nullable=False, default=0)
+    unit = Column(String(50), nullable=False)
+    status = Column(String(20), default="initialize", nullable=False, index=True)
+    detail_type = Column(String(50), nullable=False, index=True)
+
+    details = Column(
+        JSON().with_variant(JSONB, "postgresql"),
+        nullable=False,
+        default=dict,
+        server_default="{}",
+    )
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    outbound_order = relationship("OutboundOrder", foreign_keys=[outbound_order_id], lazy="joined")
+    item = relationship("Item", foreign_keys=[item_id], lazy="joined")
+
+class OutboundOrderAllocation(Base):
+    """Outbound order allocation."""
+
+    __tablename__ = "outbound_order_allocation"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    outbound_order_detail_id = Column(Integer, ForeignKey("outbound_order_detail.id"), nullable=False, index=True)
+    item_stock_id = Column(Integer, ForeignKey("item_stock.id"), nullable=False, index=True)
+    quantity = Column(Integer, nullable=False, default=0)
+    status = Column(String(20), default="initialize", nullable=False, index=True)
+    from_location_id = Column(Integer, ForeignKey("location.id"), nullable=False, index=True)
+    to_location_id = Column(Integer, ForeignKey("location.id"), nullable=False, index=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    outbound_order_detail = relationship("OutboundOrderDetail", foreign_keys=[outbound_order_detail_id], lazy="joined")
+    item_stock = relationship("ItemStock", foreign_keys=[item_stock_id], lazy="joined")
+    from_location = relationship("Location", foreign_keys=[from_location_id], lazy="joined")
+    to_location = relationship("Location", foreign_keys=[to_location_id], lazy="joined")

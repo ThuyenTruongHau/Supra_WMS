@@ -1,0 +1,41 @@
+"""Item model for warehouse inventory."""
+
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, JSON, String, Text, func, select
+from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.orm import relationship
+from sqlalchemy.orm import column_property
+
+from app.core.database import Base
+from app.modules.warehouse.item_stock.item_stock_model import ItemStock
+
+
+class Item(Base):
+    """Item master data - represents physical items in warehouse."""
+
+    __tablename__ = "item"
+
+    id = Column(Integer, primary_key=True, index=True)
+    sku = Column(String(50), unique=True, nullable=False, index=True)
+    name = Column(String(255), nullable=False)
+    description = Column(Text)
+    base_unit = Column(String(20), nullable=False)
+    is_active = Column(Boolean, default=True, nullable=False)
+    warehouse_id = Column(Integer, ForeignKey("warehouse.id"), nullable=False, index=True)
+    details = Column(
+        JSON().with_variant(JSONB, "postgresql"),
+        nullable=False,
+        default=dict,
+        server_default="{}",
+    )
+    supplier = Column(String(50), nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    warehouse = relationship("Warehouse", lazy="joined")
+
+    quantity = column_property(
+        select(func.coalesce(func.sum(ItemStock.quantity), 0))
+        .where(ItemStock.item_id == id, ItemStock.is_active.is_(True))
+        .correlate_except(ItemStock)
+        .scalar_subquery()
+    )

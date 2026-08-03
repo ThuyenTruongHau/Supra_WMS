@@ -1,0 +1,233 @@
+"""Unit and ItemUnit service."""
+
+from typing import Optional
+
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session
+
+from app.modules.warehouse.item.item_model import Item
+from app.modules.warehouse.unit.unit_model import ItemUnit, Unit
+from app.modules.warehouse.unit.unit_schema import (
+    ItemUnitCreate,
+    ItemUnitListResponse,
+    ItemUnitResponse,
+    ItemUnitUpdate,
+    UnitCreate,
+    UnitListResponse,
+    UnitResponse,
+    UnitUpdate,
+)
+
+
+# --- Unit ---
+
+def list_units(
+    db: Session,
+    page: int = 1,
+    page_size: int = 20,
+    q: Optional[str] = None,
+) -> UnitListResponse:
+    query = db.query(Unit)
+    if q:
+        like = f"%{q.strip()}%"
+        query = query.filter(Unit.name.ilike(like))
+    total = query.count()
+    items = (
+        query.order_by(Unit.id)
+        .offset((page - 1) * page_size)
+        .limit(page_size)
+        .all()
+    )
+    return UnitListResponse(
+        items=[UnitResponse.model_validate(u) for u in items],
+        total=total,
+        page=page,
+        page_size=page_size,
+    )
+
+
+def get_unit_by_id(db: Session, unit_id: int) -> Optional[Unit]:
+    return db.query(Unit).filter(Unit.id == unit_id).first()
+
+
+def create_unit(db: Session, body: UnitCreate) -> Unit:
+    name = body.name.strip()
+    if db.query(Unit).filter(Unit.name == name).first():
+        raise ValueError("Unit name already exists")
+    unit = Unit(name=name, description=body.description)
+    try:
+        db.add(unit)
+        db.commit()
+        db.refresh(unit)
+    except IntegrityError as e:
+        db.rollback()
+        raise ValueError(f"Database conflict: {e.orig}") from e
+    return unit
+
+
+def update_unit(db: Session, unit_id: int, body: UnitUpdate) -> Optional[Unit]:
+    unit = get_unit_by_id(db, unit_id)
+    if not unit:
+        return None
+    data = body.model_dump(exclude_unset=True)
+    if "name" in data:
+        name = data["name"].strip()
+        existing = (
+            db.query(Unit)
+            .filter(Unit.name == name, Unit.id != unit_id)
+            .first()
+        )
+        if existing:
+            raise ValueError("Unit name already exists")
+        unit.name = name
+    if "description" in data:
+        unit.description = data["description"]
+    try:
+        db.commit()
+        db.refresh(unit)
+    except IntegrityError as e:
+        db.rollback()
+        raise ValueError(f"Database conflict: {e.orig}") from e
+    return unit
+
+
+def delete_unit(db: Session, unit_id: int) -> bool:
+    unit = get_unit_by_id(db, unit_id)
+    if not unit:
+        return False
+    if db.query(ItemUnit).filter(ItemUnit.unit_id == unit_id).first():
+        raise ValueError("Cannot delete unit: item units still exist")
+    try:
+        db.delete(unit)
+        db.commit()
+    except IntegrityError as e:
+        db.rollback()
+        raise ValueError(f"Database conflict: {e.orig}") from e
+    return True
+
+
+# --- ItemUnit ---
+
+def _ensure_item_exists(db: Session, item_id: int) -> None:
+    if not (
+        db.query(Item)
+        .filter(Item.id == item_id, Item.is_active.is_(True))
+        .first()
+    ):
+        raise ValueError(f"Item id not found: {item_id}")
+
+
+def _ensure_unit_exists(db: Session, unit_id: int) -> None:
+    if not db.query(Unit).filter(Unit.id == unit_id).first():
+        raise ValueError(f"Unit id not found: {unit_id}")
+
+
+def _ensure_item_unit_unique(
+    db: Session,
+    *,
+    item_id: int,
+    unit_id: int,
+    exclude_id: Optional[int] = None,
+) -> None:
+    query = db.query(ItemUnit).filter(
+        ItemUnit.item_id == item_id,
+        ItemUnit.unit_id == unit_id,
+    )
+    if exclude_id is not None:
+        query = query.filter(ItemUnit.id != exclude_id)
+    if query.first():
+        raise ValueError("Item unit mapping already exists for this item and unit")
+
+
+def list_item_units(
+    db: Session,
+    page: int = 1,
+    page_size: int = 20,
+    item_id: Optional[int] = None,
+    unit_id: Optional[int] = None,
+) -> ItemUnitListResponse:
+    query = db.query(ItemUnit)
+    if item_id is not None:
+        query = query.filter(ItemUnit.item_id == item_id)
+    if unit_id is not None:
+        query = query.filter(ItemUnit.unit_id == unit_id)
+    total = query.count()
+    items = (
+        query.order_by(ItemUnit.id)
+        .offset((page - 1) * page_size)
+        .limit(page_size)
+        .all()
+    )
+    return ItemUnitListResponse(
+        items=[ItemUnitResponse.model_validate(iu) for iu in items],
+        total=total,
+        page=page,
+        page_size=page_size,
+    )
+
+
+def get_item_unit_by_id(db: Session, item_unit_id: int) -> Optional[ItemUnit]:
+    return db.query(ItemUnit).filter(ItemUnit.id == item_unit_id).first()
+
+
+def create_item_unit(db: Session, body: ItemUnitCreate) -> ItemUnit:
+    _ensure_item_exists(db, body.item_id)
+    _ensure_unit_exists(db, body.unit_id)
+    _ensure_item_unit_unique(db, item_id=body.item_id, unit_id=body.unit_id)
+    item_unit = ItemUnit(
+        item_id=body.item_id,
+        unit_id=body.unit_id,
+        conversion_factor=body.conversion_factor,
+    )
+    try:
+        db.add(item_unit)
+        db.commit()
+        db.refresh(item_unit)
+    except IntegrityError as e:
+        db.rollback()
+        raise ValueError(f"Database conflict: {e.orig}") from e
+    return item_unit
+
+
+def update_item_unit(
+    db: Session, item_unit_id: int, body: ItemUnitUpdate
+) -> Optional[ItemUnit]:
+    item_unit = get_item_unit_by_id(db, item_unit_id)
+    if not item_unit:
+        return None
+    data = body.model_dump(exclude_unset=True)
+    item_id = data.get("item_id", item_unit.item_id)
+    unit_id = data.get("unit_id", item_unit.unit_id)
+    if "item_id" in data or "unit_id" in data:
+        _ensure_item_exists(db, item_id)
+        _ensure_unit_exists(db, unit_id)
+        _ensure_item_unit_unique(
+            db,
+            item_id=item_id,
+            unit_id=unit_id,
+            exclude_id=item_unit_id,
+        )
+        item_unit.item_id = item_id
+        item_unit.unit_id = unit_id
+    if "conversion_factor" in data:
+        item_unit.conversion_factor = data["conversion_factor"]
+    try:
+        db.commit()
+        db.refresh(item_unit)
+    except IntegrityError as e:
+        db.rollback()
+        raise ValueError(f"Database conflict: {e.orig}") from e
+    return item_unit
+
+
+def delete_item_unit(db: Session, item_unit_id: int) -> bool:
+    item_unit = get_item_unit_by_id(db, item_unit_id)
+    if not item_unit:
+        return False
+    try:
+        db.delete(item_unit)
+        db.commit()
+    except IntegrityError as e:
+        db.rollback()
+        raise ValueError(f"Database conflict: {e.orig}") from e
+    return True

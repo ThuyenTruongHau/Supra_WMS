@@ -1,0 +1,38 @@
+﻿import type { NodeInfo } from '@/types/warehouseMap';
+
+// ─── Canvas Constants ───────────────────────────────────────────────────────────
+//
+// ZOOM_MIN is set dynamically per-map (stored in zoomMinRef) so the user can
+// always zoom back out to the initial fit view, regardless of map dimensions.
+
+export const ZOOM_MAX = 40;
+export const ZOOM_FACTOR = 1.15;
+export const HIT_RADIUS = 12; // world-space pixels at scale=1
+export const BASE_NODE_SIZE = 200; // screen-space base size in px
+export const LINE_COLOR = '#d0d0d0';
+export const NODE_NORMAL_COLOR = '#9ca3af';
+export const SHELF_FULL_COLOR = '#0f3d46'; // Kệ có hàng (Màu xanh logo tối emerald)
+export const SHELF_EMPTY_COLOR = '#66625F'; // Kệ trống xám
+export const SHELF_STROKE_COLOR = '#2d4f7c';
+export const PADDING = 0.05; // 5% border padding when fitting to canvas
+
+// ─── Helpers ───────────────────────────────────────────────────────────────────
+
+/**
+ * Parse a raw nodeArr row into a typed NodeInfo.
+ * Y-axis is flipped here (y_new = mapHeight - y_old) so the canvas coordinate
+ * system (Y ↓) matches the map data coordinate system (Y ↑).
+ * This is done ONCE at load time — never repeated per frame.
+ */
+export function parseNode(row: (number | string | number[])[], mapHeight: number): NodeInfo {
+  return {
+    x: row[0] as number,
+    y: mapHeight - (row[1] as number), // ← Y-flip: JSON Y↑  →  Canvas Y↓
+    type: row[2] as number,
+    content: row[3] as string,
+    name: row[4] as string,
+    isTurn: row[5] as number,
+    shelfIsTurn: row[6] as number,
+    extraTypes: (row[7] as number[]) ?? [],
+  };
+}
