@@ -55,7 +55,7 @@ export default function AppRoutes() {
         <Route index element={<Navigate to="/report" replace />} />
         <Route path="dashboard" element={<DashboardPage />} />
         <Route path="items" element={<ItemPage />} />
-        <Route path="items/:sku" element={<ItemDetailPage />} />
+        <Route path="items/:id" element={<ItemDetailPage />} />
         <Route path="import" element={<ImportPage />} />
         <Route path="import/:id" element={<ImportDetailPage />} />
         <Route path="export" element={<OutboundPage />} />

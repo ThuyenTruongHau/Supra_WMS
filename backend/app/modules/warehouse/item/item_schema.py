@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 from typing import Any, Optional
 
@@ -48,3 +48,28 @@ class ItemListResponse(BaseModel):
     total: int
     page: int
     page_size: int
+
+
+class ItemAnalyzeResponse(BaseModel):
+    total_items: int
+    total_quantity: Decimal
+    total_nearly_outdated: int
+    total_low_stock: int
+
+
+class ItemStockInDetail(BaseModel):
+    id: int
+    item_id: int
+    location_id: int
+    location_code: Optional[str] = None
+    lot_number: Optional[str] = None
+    expiry_date: Optional[date] = None
+    quantity: Decimal
+    status: str
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ItemDetailResponse(BaseModel):
+    item: ItemResponse
+    stocks: list[ItemStockInDetail]

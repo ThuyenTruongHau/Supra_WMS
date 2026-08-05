@@ -18,7 +18,7 @@ type SkuSearchSelectProps = {
   value?: string;
   onChange?: (sku: string | undefined) => void;
   onSelectOption?: (option: SkuSearchOption | null) => void;
-  zoneId: number;
+  warehouseId: number;
   placeholder?: string;
   className?: string;
   disabled?: boolean;
@@ -32,7 +32,7 @@ export function SkuSearchSelect({
   value,
   onChange,
   onSelectOption,
-  zoneId,
+  warehouseId,
   placeholder = "Tìm theo tên, SKU, mã...",
   className,
   disabled,
@@ -47,10 +47,10 @@ export function SkuSearchSelect({
   }, [value]);
 
   const { data, isFetching, isError, refetch } = useGetItems({
-    zone_id: zoneId,
+    warehouse_id: warehouseId,
     q: submittedQuery || undefined,
     limit: ITEM_FETCH_LIMIT,
-    enabled: hasSearched && zoneId > 0,
+    enabled: hasSearched && warehouseId > 0,
     staleTime: 0,
   });
 
@@ -71,7 +71,7 @@ export function SkuSearchSelect({
   }, [hasSearched, isFetching, data, submittedQuery]);
 
   const handleSearch = async () => {
-    if (zoneId <= 0) return;
+    if (warehouseId <= 0) return;
     const q = searchInput.trim();
     setSubmittedQuery(q);
     setHasSearched(true);
@@ -174,8 +174,8 @@ export function SkuSearchSelect({
         variant="secondary"
         icon={<SearchOutlined />}
         loading={isFetching}
-        disabled={disabled || zoneId <= 0}
-        title={zoneId <= 0 ? "Vui lòng chọn kho trước" : undefined}
+        disabled={disabled || warehouseId <= 0}
+        title={warehouseId <= 0 ? "Vui lòng chọn kho trước" : undefined}
         className="!h-11 !w-[72px] shrink-0"
         onClick={() => void handleSearch()}
       >

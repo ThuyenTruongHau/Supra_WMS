@@ -5,13 +5,9 @@ import { useImportWarehouseMap } from "@/hooks/useWarehouseMap";
 interface WarehouseMapImportDialogProps {
   open: boolean;
   onClose: () => void;
-  zoneId: number;
+  warehouseId: number;
 }
 
-/**
- * Extracts a human-readable error message from an Axios error response.
- * Supports both `detail: string` and `detail: array` (FastAPI validation errors).
- */
 function extractErrorDetail(error: unknown): string {
   const err = error as { response?: { data?: { detail?: unknown } } };
   const detail = err?.response?.data?.detail;
@@ -32,7 +28,7 @@ function extractErrorDetail(error: unknown): string {
 const WarehouseMapImportDialog: React.FC<WarehouseMapImportDialogProps> = ({
   open,
   onClose,
-  zoneId,
+  warehouseId,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -51,7 +47,7 @@ const WarehouseMapImportDialog: React.FC<WarehouseMapImportDialogProps> = ({
 
     setErrorMsg(null);
     importMutation.mutate(
-      { zoneId, file: selectedFile },
+      { warehouseId, file: selectedFile },
       {
         onSuccess: () => {
           message.success("Import warehouse map thành công!");
@@ -65,7 +61,7 @@ const WarehouseMapImportDialog: React.FC<WarehouseMapImportDialogProps> = ({
   };
 
   const handleClose = () => {
-    if (importMutation.isPending) return; // Prevent close while uploading
+    if (importMutation.isPending) return;
     setSelectedFile(null);
     setErrorMsg(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
@@ -101,15 +97,15 @@ const WarehouseMapImportDialog: React.FC<WarehouseMapImportDialogProps> = ({
       }
     >
       <div className="space-y-4">
-        {/* Zone info */}
         <div className="rounded-lg bg-slate-50 p-3 border border-slate-100">
           <span className="text-xs text-slate-500 block mb-1">
-            Zone đang chọn
+            Warehouse đang chọn
           </span>
-          <span className="font-semibold text-slate-700">Zone {zoneId}</span>
+          <span className="font-semibold text-slate-700">
+            Warehouse {warehouseId}
+          </span>
         </div>
 
-        {/* File picker */}
         <div>
           <label className="block text-sm font-medium text-slate-700 mb-2">
             Chọn file ZIP chứa bản đồ
@@ -130,7 +126,7 @@ const WarehouseMapImportDialog: React.FC<WarehouseMapImportDialogProps> = ({
           />
           {selectedFile && (
             <p className="mt-2 text-xs text-slate-500">
-              📦 {selectedFile.name}{" "}
+              {selectedFile.name}{" "}
               <span className="text-slate-400">
                 ({(selectedFile.size / 1024).toFixed(1)} KB)
               </span>
@@ -138,16 +134,14 @@ const WarehouseMapImportDialog: React.FC<WarehouseMapImportDialogProps> = ({
           )}
         </div>
 
-        {/* Error message */}
         {errorMsg && <Alert variant="error">{errorMsg}</Alert>}
 
-        {/* Hint */}
         <p className="text-xs text-slate-400">
           ZIP phải chứa file{" "}
           <code className="bg-slate-100 px-1 py-0.5 rounded text-slate-500">
             compress.json
           </code>
-          . Import sẽ thay thế bản đồ hiện tại của zone này.
+          . Import sẽ thay thế bản đồ hiện tại của warehouse này.
         </p>
       </div>
     </Modal>

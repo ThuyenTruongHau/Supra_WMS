@@ -4,7 +4,7 @@ import {
   getFullLocationsApi,
   importWarehouseMapApi,
   downloadActiveMapApi,
-  getLocationDetailByCodeApi,
+  getLocationDetailByIdApi,
 } from '@/api/warehouseMap';
 import type {
   MapData,
@@ -15,74 +15,70 @@ import type {
 import { AxiosError } from 'axios';
 import { ApiErrorResponse } from '@/types/apiError';
 
-// 1. Hook lấy map active — queryKey chứa zoneId → đổi zone = fetch mới tự động
-export const useActiveWarehouseMap = (zoneId: number) => {
+export const useActiveWarehouseMap = (warehouseId: number) => {
   return useQuery<MapData, AxiosError<ApiErrorResponse>>({
-    queryKey: ['warehouse-map', zoneId],
-    queryFn: () => getActiveWarehouseMapApi(zoneId),
+    queryKey: ['warehouse-map', warehouseId],
+    queryFn: () => getActiveWarehouseMapApi(warehouseId),
     staleTime: 5 * 60 * 1000,
-    enabled: zoneId > 0,
+    enabled: warehouseId > 0,
   });
 };
 
-// 2. Hook lấy renderable locations (active + full)
-export const useFullLocations = (zoneId: number) => {
+export const useFullLocations = (warehouseId: number) => {
   return useQuery<FullLocationsResponse, AxiosError<ApiErrorResponse>>({
-    queryKey: ['full-locations', zoneId],
-    queryFn: () => getFullLocationsApi(zoneId),
+    queryKey: ['full-locations', warehouseId],
+    queryFn: () => getFullLocationsApi(warehouseId),
     staleTime: 2 * 60 * 1000,
-    enabled: zoneId > 0,
+    enabled: warehouseId > 0,
   });
 };
 
-// 3. Hook import ZIP — mutation, invalidate cả map + locations sau thành công
 export const useImportWarehouseMap = () => {
   const queryClient = useQueryClient();
   return useMutation<
     WarehouseMapImportResult,
     AxiosError<ApiErrorResponse>,
-    { zoneId: number; file: File }
+    { warehouseId: number; file: File }
   >({
-    mutationFn: ({ zoneId, file }) => importWarehouseMapApi(zoneId, file),
+    mutationFn: ({ warehouseId, file }) =>
+      importWarehouseMapApi(warehouseId, file),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({
-        queryKey: ['warehouse-map', variables.zoneId],
+        queryKey: ['warehouse-map', variables.warehouseId],
       });
       queryClient.invalidateQueries({
-        queryKey: ['full-locations', variables.zoneId],
+        queryKey: ['full-locations', variables.warehouseId],
       });
     },
   });
 };
 
-// 4. Hook download ZIP active — user-initiated action
 export const useDownloadWarehouseMap = () => {
   return useMutation<
     void,
     AxiosError<ApiErrorResponse>,
-    { zoneId: number }
+    { warehouseId: number }
   >({
-    mutationFn: async ({ zoneId }) => {
-      const blob = await downloadActiveMapApi(zoneId);
+    mutationFn: async ({ warehouseId }) => {
+      const blob = await downloadActiveMapApi(warehouseId);
       const url = URL.createObjectURL(blob);
       const anchor = document.createElement('a');
       anchor.href = url;
-      anchor.download = `warehouse-map-zone-${zoneId}.zip`;
+      anchor.download = `warehouse-map-${warehouseId}.zip`;
       anchor.click();
       URL.revokeObjectURL(url);
     },
   });
 };
 
-// 5. Hook lấy thông tin chi tiết location (khi click vào node trên map)
-export const useLocationDetail = (locationCode: string | undefined) => {
+export const useLocationDetail = (locationId: number | undefined) => {
   return useQuery<
     WarehouseLocationItemStockDetail,
     AxiosError<ApiErrorResponse>
   >({
-    queryKey: ['location-detail', locationCode],
-    queryFn: () => getLocationDetailByCodeApi(locationCode as string),
-    staleTime: 60 * 1000, // Cache trong 1 phút vì có thể tồn kho thay đổi
-    enabled: !!locationCode,
+    queryKey: ['location-detail', locationId],
+    queryFn: () => getLocationDetailByIdApi(locationId as number),
+    staleTime: 60 * 1000,
+    enabled: !!locationId && locationId > 0,
   });
 };

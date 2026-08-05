@@ -1167,7 +1167,7 @@ function EditOutboundOrderModal({ open, order, onClose }: EditModalProps) {
                                 className="col-span-4 !mb-0 min-w-0"
                               >
                                 <SkuSearchSelect
-                                  zoneId={selectedWarehouseId || 0}
+                                  warehouseId={selectedWarehouseId || 0}
                                 />
                               </Form.Item>
                               <Form.Item

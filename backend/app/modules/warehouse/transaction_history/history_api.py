@@ -18,7 +18,7 @@ from app.modules.warehouse.transaction_history.history_schema import (
     HistoryListResponse,
 )
 
-router = APIRouter(tags=["Transaction"])
+router = APIRouter(tags=["Transaction_History"])
 
 DbSession = Annotated[Session, Depends(get_db)]
 CurrentUser = Annotated[User, Depends(get_current_user)]

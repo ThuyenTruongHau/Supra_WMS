@@ -31,7 +31,7 @@ from app.modules.auth.auth_model import User, UserRole, Role, RolePermission, Pe
 
 # Warehouse
 from app.modules.warehouse.warehouse_zone.warehouse_model import Warehouse, Zone  # noqa: F401
-from app.modules.warehouse.location_map.location_model import Location  # noqa: F401  # sửa path cho đúng folder thực tế
+from app.modules.warehouse.location_map.location_model import Location, WarehouseMap  # noqa: F401  # sửa path cho đúng folder thực tế
 from app.modules.warehouse.item.item_model import Item  # noqa: F401
 from app.modules.warehouse.unit.unit_model import Unit, ItemUnit
 from app.modules.warehouse.item_stock.item_stock_model import ItemStock  # noqa: F401

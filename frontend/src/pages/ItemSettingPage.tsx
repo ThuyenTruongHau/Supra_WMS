@@ -23,7 +23,7 @@ export default function ItemSettingPage() {
   const debouncedSearch = useDebounce(search, 500);
 
   const { data: getItemsResponse, isLoading: isItemsLoading } = useGetItems({
-    zone_id: activeZoneId || 0,
+    warehouse_id: activeZoneId || 0,
     q: debouncedSearch.trim() || undefined,
   });
 
@@ -76,9 +76,8 @@ export default function ItemSettingPage() {
       name: values.name.trim(),
       description: values.description?.trim() ?? '',
       base_unit: values.base_unit?.trim() ?? 'thùng',
-      zone_id: activeZoneId,
+      warehouse_id: activeZoneId,
       supplier: values.supplier.trim(),
-      product_code: values.product_code.trim(),
       details,
     };
 
@@ -91,7 +90,7 @@ export default function ItemSettingPage() {
         details,
       };
       updateMutation.mutate(
-        { sku: editingItem.sku, data: updateData },
+        { id: editingItem.id, data: updateData },
         {
           onSuccess: () => {
             message.success('Cập nhật Item thành công!');
@@ -129,11 +128,6 @@ export default function ItemSettingPage() {
       className: 'font-medium text-slate-700',
     },
     {
-      title: 'Mã (Product Code)',
-      dataIndex: 'product_code',
-      key: 'product_code',
-    },
-    {
       title: 'Nhà cung cấp',
       dataIndex: 'supplier',
       key: 'supplier',
@@ -162,9 +156,9 @@ export default function ItemSettingPage() {
       render: (_: any, record: Item) => (
         <Switch
           checked={record.is_active}
-          loading={updateMutation.isPending && updateMutation.variables?.sku === record.sku}
+          loading={updateMutation.isPending && updateMutation.variables?.id === record.id}
           onChange={(checked) => {
-            updateMutation.mutate({ sku: record.sku, data: { is_active: checked } });
+            updateMutation.mutate({ id: record.id, data: { is_active: checked } });
           }}
         />
       ),
@@ -251,10 +245,6 @@ export default function ItemSettingPage() {
 
           <Form.Item name="name" label="Tên Item" rules={[{ required: true, message: 'Vui lòng nhập tên!' }]}>
             <Input placeholder="Ví dụ: Thùng Carton" />
-          </Form.Item>
-
-          <Form.Item name="product_code" label="Mã Sản phẩm (Product Code)" rules={[{ required: true, message: 'Vui lòng nhập mã sản phẩm!' }]}>
-            <Input placeholder="Ví dụ: ITEM-001" disabled={!!editingItem} />
           </Form.Item>
 
           <Form.Item name="supplier" label="Nhà cung cấp" rules={[{ required: true, message: 'Vui lòng nhập nhà cung cấp!' }]}>

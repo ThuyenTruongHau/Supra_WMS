@@ -7,34 +7,32 @@ import type {
 } from '@/types/warehouseMap';
 
 export const getActiveWarehouseMapApi = async (
-  zoneId: number,
+  warehouseId: number,
 ): Promise<MapData> => {
   const response = await axiosInstance.get<MapData>(
-    '/api/v1/warehouse-maps/active',
-    { params: { zone_id: zoneId } },
+    `/api/v1/warehouse-maps/${warehouseId}/map-data`,
   );
   return response.data;
 };
 
 export const getFullLocationsApi = async (
-  zoneId: number,
+  warehouseId: number,
 ): Promise<FullLocationsResponse> => {
   const response = await axiosInstance.get<FullLocationsResponse>(
-    '/api/v1/warehouse-locations/locations_full',
-    { params: { zone_id: zoneId } },
+    '/api/v1/locations/for-map',
+    { params: { warehouse_id: warehouseId } },
   );
   return response.data;
 };
 
 export const importWarehouseMapApi = async (
-  zoneId: number,
+  warehouseId: number,
   file: File,
 ): Promise<WarehouseMapImportResult> => {
   const formData = new FormData();
-  formData.append('zone_id', String(zoneId));
+  formData.append('warehouse_id', String(warehouseId));
   formData.append('file', file);
 
-  // Không tự set Content-Type — để axios/browser tự thêm boundary
   const response = await axiosInstance.post<WarehouseMapImportResult>(
     '/api/v1/warehouse-maps/import',
     formData,
@@ -46,30 +44,45 @@ export const importWarehouseMapApi = async (
 };
 
 export const downloadActiveMapApi = async (
-  zoneId: number,
+  warehouseId: number,
 ): Promise<Blob> => {
   const response = await axiosInstance.get(
-    '/api/v1/warehouse-maps/active/download',
+    `/api/v1/warehouse-maps/${warehouseId}/export`,
     {
-      params: { zone_id: zoneId },
       responseType: 'blob',
     },
   );
-
-  console.log(response.data)
   return response.data;
 };
 
+export const getLocationDetailByIdApi = async (
+  locationId: number,
+): Promise<WarehouseLocationItemStockDetail> => {
+  const response = await axiosInstance.get<WarehouseLocationItemStockDetail>(
+    `/api/v1/locations/${locationId}/detail`,
+  );
+  return response.data;
+};
+
+/** Resolve location detail by code via list + detail (for ExitPoint / picker flows). */
 export const getLocationDetailByCodeApi = async (
   locationCode: string,
   includeInactive = false,
 ): Promise<WarehouseLocationItemStockDetail> => {
-  const code = encodeURIComponent(locationCode);
-  const response = await axiosInstance.get<WarehouseLocationItemStockDetail>(
-    `/api/v1/warehouse-location-details/by-code/${code}`,
-    {
-      params: { include_inactive: includeInactive },
+  const listResponse = await axiosInstance.get<{
+    items: Array<{ id: number; location_code: string }>;
+  }>('/api/v1/locations', {
+    params: {
+      q: locationCode,
+      page_size: 100,
+      ...(includeInactive ? {} : {}),
     },
+  });
+  const match = listResponse.data.items.find(
+    (item) => item.location_code === locationCode,
   );
-  return response.data;
+  if (!match) {
+    throw new Error(`Location not found: ${locationCode}`);
+  }
+  return getLocationDetailByIdApi(match.id);
 };
