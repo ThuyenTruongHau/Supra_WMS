@@ -52,7 +52,9 @@ export default function ItemPage() {
   const { selectedWarehouseId } = useAppStore();
   const { data: zones = [] } = useZone();
   const selectedWarehouseName =
-    zones.find((z) => z.id === selectedWarehouseId)?.name ?? "Chưa chọn kho";
+    zones.find((z) => z.id === selectedWarehouseId)?.name ??
+    zones.find((z) => z.id === selectedWarehouseId)?.code ??
+    "Chưa chọn kho";
   const [searchInput, setSearchInput] = useState("");
   const [submittedQuery, setSubmittedQuery] = useState("");
   const [page, setPage] = useState(1);

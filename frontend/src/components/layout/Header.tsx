@@ -1,30 +1,30 @@
 import { useState, useEffect } from "react";
 import { DownOutlined, BankOutlined, SettingOutlined } from "@ant-design/icons";
 import { useAppStore } from "@/store/useAppStore";
-import { useZone } from "@/hooks/useZone";
+import { useWarehouses } from "@/hooks/useWarehouse";
 import { useLocation } from "react-router-dom";
 
 export default function Header() {
   const location = useLocation();
   const isSettingPage = location.pathname.startsWith('/setting');
-  const { data: zones, isLoading } = useZone();
+  const { data: warehouses, isLoading } = useWarehouses();
   const { selectedWarehouseId, setSelectedWarehouseId, lang, setLang } =
     useAppStore();
   const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {
-    if (zones && zones.length > 0) {
-      const hasAccess = zones.some((z) => z.id === selectedWarehouseId);
+    if (warehouses && warehouses.length > 0) {
+      const hasAccess = warehouses.some((z) => z.id === selectedWarehouseId);
 
       if (!hasAccess) {
-        setSelectedWarehouseId(zones[0].id);
+        setSelectedWarehouseId(warehouses[0].id);
       }
     }
-  }, [zones, selectedWarehouseId, setSelectedWarehouseId]);
+  }, [warehouses, selectedWarehouseId, setSelectedWarehouseId]);
 
-  const currentZone = zones?.find((z) => z.id === selectedWarehouseId);
-  const warehouseName = currentZone
-    ? currentZone.name
+  const currentWarehouse = warehouses?.find((z) => z.id === selectedWarehouseId);
+  const warehouseName = currentWarehouse
+    ? currentWarehouse.name || currentWarehouse.code
     : isLoading
       ? "Đang tải..."
       : "Chưa chọn kho";
@@ -77,7 +77,7 @@ export default function Header() {
                 />
 
                 <div className="absolute right-0 mt-2 w-56 bg-white border border-slate-100 rounded-xl shadow-lg py-1.5 z-20 animate-in fade-in slide-in-from-top-1 duration-200">
-                  {zones?.map((wh) => (
+                  {warehouses?.map((wh) => (
                     <button
                       key={wh.id}
                       onClick={() => {

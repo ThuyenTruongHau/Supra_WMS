@@ -72,7 +72,11 @@ const WarehouseMapCanvas: React.FC<WarehouseMapCanvasProps> = ({
   // ─── Zustand stores ────────────────────────────────────────────────────────
   const selectedWarehouseId = useAppStore((s) => s.selectedWarehouseId);
   const roleCanonical = useAuthStore((s) => s.role_canonical);
-  const isAdmin = roleCanonical === 'A001';
+  const role = useAuthStore((s) => s.role);
+  const isAdmin =
+    roleCanonical === 'A001' ||
+    roleCanonical?.toLowerCase() === 'admin' ||
+    role?.toLowerCase() === 'admin';
 
   // ─── React Query hooks ─────────────────────────────────────────────────────
   const {
