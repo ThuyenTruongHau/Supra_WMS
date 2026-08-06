@@ -17,31 +17,33 @@ import {
   useUpdateUser,
   useDeleteUser,
 } from "@/hooks/useAuth";
-import { User } from "@/types/auth";
+import { ROLE_OPTIONS, type User } from "@/types/auth";
 import Hero from "@/components/shared/Hero";
+import dayjs from "dayjs";
 
 type UserFormValues = {
   username: string;
   email: string;
-  full_name: string;
-  role: string;
+  role_id: number;
   password?: string;
-  password_reenter?: string;
+  password_confirm?: string;
+  is_active?: boolean;
 };
 
-export default function WarehouseSettingPage() {
+export default function UserSettingPage() {
   const { data: users, isLoading, error } = useUser();
   const createMutation = useCreateUser();
   const updateMutation = useUpdateUser();
   const deleteMutation = useDeleteUser();
 
-  const [form] = Form.useForm();
+  const [form] = Form.useForm<UserFormValues>();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
 
   const handleOpenCreate = () => {
     setEditingUser(null);
     form.resetFields();
+    form.setFieldsValue({ role_id: ROLE_OPTIONS[0]?.id, is_active: true });
     setIsModalOpen(true);
   };
 
@@ -50,10 +52,10 @@ export default function WarehouseSettingPage() {
     form.setFieldsValue({
       username: record.username,
       email: record.email,
-      full_name: record.full_name,
-      role: record.role,
+      role_id: record.roles?.[0]?.id ?? ROLE_OPTIONS[0]?.id,
+      is_active: record.is_active,
       password: undefined,
-      password_reenter: undefined,
+      password_confirm: undefined,
     });
     setIsModalOpen(true);
   };
@@ -73,9 +75,9 @@ export default function WarehouseSettingPage() {
               message.success("Xóa người dùng thành công!");
               resolve(null);
             },
-            onError: (error) => {
+            onError: (err) => {
               message.error(
-                error.response?.data?.detail || "Không thể xóa người dùng",
+                err.response?.data?.detail || "Không thể xóa người dùng",
               );
               resolve(null);
             },
@@ -87,40 +89,58 @@ export default function WarehouseSettingPage() {
 
   const handleSubmit = (values: UserFormValues) => {
     if (editingUser) {
-      const { password, password_reenter, ...rest } = values;
-      const payload: Record<string, string> = { ...rest };
-      if (password?.trim()) {
-        payload.password = password;
-        payload.password_reenter = password_reenter ?? "";
+      const payload: {
+        email: string;
+        role_ids: number[];
+        is_active?: boolean;
+        password?: string;
+        password_confirm?: string;
+      } = {
+        email: values.email,
+        role_ids: values.role_id ? [values.role_id] : [],
+        is_active: values.is_active,
+      };
+      if (values.password?.trim()) {
+        payload.password = values.password;
+        payload.password_confirm = values.password_confirm ?? "";
       }
       updateMutation.mutate(
-        { id: editingUser.id, data: payload as Omit<User, "id"> },
+        { id: editingUser.id, data: payload },
         {
           onSuccess: () => {
             message.success("Cập nhật người dùng thành công!");
             setIsModalOpen(false);
             form.resetFields();
           },
-          onError: (error) => {
+          onError: (err) => {
             message.error(
-              error.response?.data?.detail || "Không thể cập nhật người dùng",
+              err.response?.data?.detail || "Không thể cập nhật người dùng",
             );
           },
         },
       );
     } else {
-      createMutation.mutate(values as Omit<User, "id">, {
-        onSuccess: () => {
-          message.success("Thêm người dùng thành công!");
-          setIsModalOpen(false);
-          form.resetFields();
+      createMutation.mutate(
+        {
+          username: values.username.trim(),
+          email: values.email.trim(),
+          password: values.password ?? "",
+          password_confirm: values.password_confirm ?? "",
+          role_ids: values.role_id ? [values.role_id] : [],
         },
-        onError: (error) => {
-          message.error(
-            error.response?.data?.detail || "Không thể thêm người dùng mới",
-          );
+        {
+          onSuccess: () => {
+            message.success("Thêm người dùng thành công!");
+            setIsModalOpen(false);
+            form.resetFields();
+          },
+          onError: (err) => {
+            message.error(
+              err.response?.data?.detail || "Không thể thêm người dùng mới",
+            );
+          },
         },
-      });
+      );
     }
   };
 
@@ -140,28 +160,29 @@ export default function WarehouseSettingPage() {
       className: "font-medium text-slate-700",
     },
     {
-      title: "Họ và tên",
-      dataIndex: "full_name",
-      key: "full_name",
-      className: "text-slate-500",
+      title: "Vai trò",
+      key: "roles",
+      render: (_: unknown, record: User) =>
+        record.roles?.map((r) => r.name).join(", ") || "—",
     },
     {
-      title: "Vai trò",
-      dataIndex: "role",
-      key: "role",
-      className: "text-slate-500",
+      title: "Trạng thái",
+      dataIndex: "is_active",
+      key: "is_active",
+      render: (active: boolean) => (active ? "Active" : "Inactive"),
     },
     {
       title: "Ngày khởi tạo",
       dataIndex: "created_at",
       key: "created_at",
-      className: "text-slate-500",
+      render: (val: string) =>
+        val ? dayjs(val).format("DD/MM/YYYY HH:mm") : "—",
     },
     {
       title: "Thao tác",
       key: "action",
       width: 150,
-      render: (_: any, record: User) => (
+      render: (_: unknown, record: User) => (
         <Space size="middle">
           <Button
             variant="edit"
@@ -205,7 +226,6 @@ export default function WarehouseSettingPage() {
         title="Quản lý Người dùng"
         extra={
           <Button
-            // type="primary"
             onClick={handleOpenCreate}
             icon={<PlusOutlined />}
             className="!bg-brand-primary hover:!bg-stripe-primary-deep !border-none !h-10 !rounded-lg font-semibold flex items-center"
@@ -215,7 +235,6 @@ export default function WarehouseSettingPage() {
         }
       />
 
-      {/* Bảng danh sách kho */}
       <Card className="shadow-sm border-gray-100/50 rounded-xl overflow-hidden">
         <Table
           columns={columns}
@@ -226,7 +245,6 @@ export default function WarehouseSettingPage() {
         />
       </Card>
 
-      {/* Modal Thêm / Sửa kho */}
       <Modal
         title={editingUser ? "Cập nhật Người dùng" : "Thêm Người dùng Mới"}
         open={isModalOpen}
@@ -244,9 +262,10 @@ export default function WarehouseSettingPage() {
             label="Tên đăng nhập"
             rules={[
               { required: true, message: "Vui lòng nhập tên đăng nhập!" },
+              { min: 3, message: "Tối thiểu 3 ký tự" },
             ]}
           >
-            <Input placeholder="Ví dụ: admin" />
+            <Input placeholder="Ví dụ: admin" disabled={!!editingUser} />
           </Form.Item>
 
           <Form.Item
@@ -261,28 +280,29 @@ export default function WarehouseSettingPage() {
           </Form.Item>
 
           <Form.Item
-            name="full_name"
-            label="Họ và tên"
-            rules={[{ required: true, message: "Vui lòng nhập họ và tên!" }]}
-          >
-            <Input placeholder="Ví dụ: Nguyễn Văn A" />
-          </Form.Item>
-
-          <Form.Item
-            name="role"
+            name="role_id"
             label="Vai trò"
             rules={[{ required: true, message: "Vui lòng chọn vai trò!" }]}
           >
-            <Select placeholder="Chọn vai trò">
-              <Select.Option value="admin">Admin</Select.Option>
-              <Select.Option value="raw_material_operator">
-                Nhân viên kho nguyên liệu
-              </Select.Option>
-              <Select.Option value="finished_product_operator">
-                Nhân viên kho thành phẩm
-              </Select.Option>
-            </Select>
+            <Select
+              placeholder="Chọn vai trò"
+              options={ROLE_OPTIONS.map((r) => ({
+                value: r.id,
+                label: r.name,
+              }))}
+            />
           </Form.Item>
+
+          {editingUser && (
+            <Form.Item name="is_active" label="Trạng thái">
+              <Select
+                options={[
+                  { value: true, label: "Active" },
+                  { value: false, label: "Inactive" },
+                ]}
+              />
+            </Form.Item>
+          )}
 
           <Form.Item
             name="password"
@@ -290,17 +310,21 @@ export default function WarehouseSettingPage() {
             required={!editingUser}
             rules={
               editingUser
-                ? [] // optional khi sửa
-                : [{ required: true, message: "Vui lòng nhập mật khẩu!" }]
+                ? [{ min: 8, message: "Tối thiểu 8 ký tự" }]
+                : [
+                    { required: true, message: "Vui lòng nhập mật khẩu!" },
+                    { min: 8, message: "Tối thiểu 8 ký tự" },
+                  ]
             }
           >
-            <Input.Password type="password" placeholder="Ví dụ: 123456" />
+            <Input.Password placeholder="Tối thiểu 8 ký tự" />
           </Form.Item>
 
           <Form.Item
-            name="password_reenter"
+            name="password_confirm"
             label="Nhập lại mật khẩu"
             required={!editingUser}
+            dependencies={["password"]}
             rules={
               editingUser
                 ? [
@@ -335,7 +359,7 @@ export default function WarehouseSettingPage() {
                   ]
             }
           >
-            <Input.Password type="password" placeholder="Ví dụ: 123456" />
+            <Input.Password placeholder="Nhập lại mật khẩu" />
           </Form.Item>
 
           <Form.Item className="mb-0 flex justify-end">

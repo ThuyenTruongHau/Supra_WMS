@@ -72,7 +72,11 @@ const WarehouseMapCanvas: React.FC<WarehouseMapCanvasProps> = ({
   // ─── Zustand stores ────────────────────────────────────────────────────────
   const selectedWarehouseId = useAppStore((s) => s.selectedWarehouseId);
   const roleCanonical = useAuthStore((s) => s.role_canonical);
-  const isAdmin = roleCanonical === 'A001';
+  const role = useAuthStore((s) => s.role);
+  const isAdmin =
+    roleCanonical === 'A001' ||
+    roleCanonical?.toLowerCase() === 'admin' ||
+    role?.toLowerCase() === 'admin';
 
   // ─── React Query hooks ─────────────────────────────────────────────────────
   const {
@@ -130,6 +134,7 @@ const WarehouseMapCanvas: React.FC<WarehouseMapCanvasProps> = ({
   // UI state
   const [drawerVisible, setDrawerVisible] = useState(false);
   const [selectedNode, setSelectedNode] = useState<NodeInfo | null>(null);
+  const [selectedLocationId, setSelectedLocationId] = useState<number | undefined>();
   const [importDialogOpen, setImportDialogOpen] = useState(false);
 
   // Download mutation
@@ -457,6 +462,8 @@ const WarehouseMapCanvas: React.FC<WarehouseMapCanvasProps> = ({
 
       if (closest) {
         setSelectedNode(closest);
+        const loc = fullLocationsMapRef.current.get(closest.content);
+        setSelectedLocationId(loc?.id);
         if (!hideDrawer) setDrawerVisible(true);
         // Picker mode (hideDrawer): luôn trả node cho parent.
         // Map view: chỉ callback khi kệ không full (giữ hành vi cũ).
@@ -465,6 +472,7 @@ const WarehouseMapCanvas: React.FC<WarehouseMapCanvasProps> = ({
         }
       } else {
         setDrawerVisible(false);
+        setSelectedLocationId(undefined);
         onNodeClick?.(null);
       }
     },
@@ -520,7 +528,7 @@ const WarehouseMapCanvas: React.FC<WarehouseMapCanvasProps> = ({
           onImportClick={() => setImportDialogOpen(true)}
           onDownloadClick={() => {
             downloadMutation.mutate(
-              { zoneId: selectedWarehouseId },
+              { warehouseId: selectedWarehouseId },
               {
                 onSuccess: () => message.success('Đã tải xuống bản đồ'),
                 onError: () => message.error('Không thể tải xuống bản đồ'),
@@ -550,8 +558,12 @@ const WarehouseMapCanvas: React.FC<WarehouseMapCanvasProps> = ({
         {!hideDrawer && (
           <WarehouseMapDrawer
             visible={drawerVisible}
-            onClose={() => setDrawerVisible(false)}
+            onClose={() => {
+              setDrawerVisible(false);
+              setSelectedLocationId(undefined);
+            }}
             node={selectedNode}
+            locationId={selectedLocationId}
           />
         )}
       </div>
@@ -561,7 +573,7 @@ const WarehouseMapCanvas: React.FC<WarehouseMapCanvasProps> = ({
         <WarehouseMapImportDialog
           open={importDialogOpen}
           onClose={() => setImportDialogOpen(false)}
-          zoneId={selectedWarehouseId}
+          warehouseId={selectedWarehouseId}
         />
       )}
     </div>

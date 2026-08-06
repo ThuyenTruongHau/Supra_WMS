@@ -17,14 +17,14 @@ export default function WorkerInboundConfirmPage() {
   const navigate = useNavigate();
   const locationState = useLocation().state as { detail?: InboundOrderItemDetail };
   const username = useAuthStore(state => state.username);
-  const zoneId = useAppStore(state => state.selectedWarehouseId) || 49;
+  const warehouseId = useAppStore(state => state.selectedWarehouseId) || 49;
   const logout = useLogout();
 
   const decoded = vehicleNumber ? decodeURIComponent(vehicleNumber) : '';
 
   // Fallback: nếu location.state bị mất (ví dụ bấm Back), fetch lại từ API
   const { data: ordersData } = useGetInboundOrders({
-    zone_id: zoneId,
+    zone_id: warehouseId,
     vehicle_number: decoded,
   });
 
@@ -36,18 +36,22 @@ export default function WorkerInboundConfirmPage() {
     return allDetails.find(d => String(d.id) === detailId);
   }, [locationState?.detail, ordersData, detailId]);
 
-  const { data: fullLocationsData } = useFullLocations(zoneId);
+  const { data: fullLocationsData } = useFullLocations(warehouseId);
 
   // Lấy các ô TRỐNG từ map data để làm danh sách dự phòng
   const emptyLocations = useMemo(() => {
     if (!fullLocationsData) return [];
 
-    // Safety check: Backend might return an array directly, or an object with `locations` array
-    const locationsArray = Array.isArray(fullLocationsData) ? fullLocationsData : fullLocationsData.locations;
+    const locationsArray = Array.isArray(fullLocationsData)
+      ? fullLocationsData
+      : fullLocationsData.locations;
 
     if (!Array.isArray(locationsArray)) return [];
 
-    return locationsArray.filter(l => (l.item_stock?.length || 0) === 0 && l.location_type === 'STORAGE' && l.is_active);
+    return locationsArray.filter(
+      (l) =>
+        (l.status === 'empty' || (l.item_stock?.length || 0) === 0),
+    );
   }, [fullLocationsData]);
 
   const suggestedLocation = detail?.location?.location_code || '';
@@ -68,7 +72,7 @@ export default function WorkerInboundConfirmPage() {
   const locationOptions = useMemo(() => {
     const options = emptyLocations.map(l => ({
       value: l.location_code,
-      label: `${l.location_code} (${l.zone_name})`,
+      label: l.location_code,
     }));
 
     // Đảm bảo vị trí đề xuất (nếu có) luôn nằm trong danh sách chọn (phòng trường hợp nó không nằm trong emptyLocations)

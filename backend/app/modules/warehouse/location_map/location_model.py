@@ -28,7 +28,7 @@ class Location(Base):
     zone_id = Column(
         Integer,
         ForeignKey("zone.id"),
-        nullable=False,
+        nullable=True,
         index=True,
     )
     is_active = Column(Boolean, default=True, nullable=False)
@@ -78,7 +78,27 @@ class Location(Base):
         lazy="selectin"
     )
 
+class WarehouseMap(Base):
+    __tablename__ = "warehouse_map"
 
+    id = Column(Integer, primary_key=True, index=True)
+    warehouse_id = Column(
+        Integer,
+        ForeignKey("warehouse.id"),
+        nullable=False,
+        index=True,
+    )
+    zone_id = Column(
+        Integer,
+        ForeignKey("zone.id"),
+        nullable=True,
+        index=True,
+    )
+    source = Column(String(255), nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    is_active = Column(Boolean, default=True, nullable=False)
 
+    zone = relationship("Zone", lazy="joined")
+    warehouse = relationship("Warehouse", lazy="joined")
 
     

@@ -105,15 +105,21 @@ export default function ExitPointSettingPage() {
         message.error(`Location '${location.location_code}' đang inactive.`);
         return null;
       }
-      if (location.location_type !== OUTBOUND_STATION) {
+      if (
+        location.location_type &&
+        location.location_type !== OUTBOUND_STATION
+      ) {
         message.error(
           `Location '${location.location_code}' không phải outbound_station (hiện là ${location.location_type}).`,
         );
         return null;
       }
-      if (location.zone_id !== activeZoneId) {
+      if (
+        location.warehouse_id !== activeZoneId &&
+        location.zone_id !== activeZoneId
+      ) {
         message.error(
-          `Location '${location.location_code}' không thuộc zone đang chọn.`,
+          `Location '${location.location_code}' không thuộc warehouse/zone đang chọn.`,
         );
         return null;
       }

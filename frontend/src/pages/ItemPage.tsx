@@ -43,16 +43,18 @@ function formatDate(date?: string | null) {
   return dayjs(date).format("DD/MM/YYYY HH:mm");
 }
 
-function formatKpi(value?: number) {
+function formatKpi(value?: number | string) {
   if (value === undefined || value === null) return "—";
-  return value.toLocaleString("vi-VN");
+  return Number(value).toLocaleString("vi-VN");
 }
 
 export default function ItemPage() {
   const { selectedWarehouseId } = useAppStore();
   const { data: zones = [] } = useZone();
   const selectedWarehouseName =
-    zones.find((z) => z.id === selectedWarehouseId)?.name ?? "Chưa chọn kho";
+    zones.find((z) => z.id === selectedWarehouseId)?.name ??
+    zones.find((z) => z.id === selectedWarehouseId)?.code ??
+    "Chưa chọn kho";
   const [searchInput, setSearchInput] = useState("");
   const [submittedQuery, setSubmittedQuery] = useState("");
   const [page, setPage] = useState(1);
@@ -69,9 +71,9 @@ export default function ItemPage() {
   };
 
   const { data, isLoading: isItemsLoading } = useItems({
-    zone_id: selectedWarehouseId,
+    warehouse_id: selectedWarehouseId,
     q: submittedQuery || undefined,
-    limit: ITEM_FETCH_LIMIT,
+    page_size: ITEM_FETCH_LIMIT,
   });
   const itemList = data?.items ?? [];
   const createMutation = useCreateItem();
@@ -124,9 +126,8 @@ export default function ItemPage() {
         name: values.name.trim(),
         description: values.description?.trim() ?? "",
         base_unit: values.base_unit?.trim() ?? "thùng",
-        zone_id: selectedWarehouseId,
+        warehouse_id: selectedWarehouseId,
         supplier: values.supplier.trim(),
-        product_code: values.product_code.trim(),
         details,
       },
       {
@@ -181,7 +182,7 @@ export default function ItemPage() {
     importMutation.mutate(
       {
         file,
-        zoneId: selectedWarehouseId,
+        warehouseId: selectedWarehouseId,
         onProgress: (job) => setImportJob(job),
       },
       {
@@ -369,7 +370,7 @@ export default function ItemPage() {
           loading={isItemsLoading}
           rowKey="id"
           onRow={(record) => ({
-            onDoubleClick: () => navigate(`/items/${record.sku}`),
+            onDoubleClick: () => navigate(`/items/${record.id}`),
           })}
           rowClassName={() => "cursor-pointer select-none"}
           pagination={{
@@ -427,14 +428,6 @@ export default function ItemPage() {
             rules={[{ required: true, message: "Vui lòng nhập NCC!" }]}
           >
             <Input placeholder="Ví dụ: VCC Steel" />
-          </Form.Item>
-
-          <Form.Item
-            name="product_code"
-            label="Mã sản phẩm"
-            rules={[{ required: true, message: "Vui lòng nhập mã sản phẩm!" }]}
-          >
-            <Input placeholder="Ví dụ: ITEM-019" />
           </Form.Item>
 
           <Form.Item
@@ -535,7 +528,7 @@ export default function ItemPage() {
       >
         <div className="space-y-3 py-2">
           <p className="text-sm text-slate-600">
-            Zone: <strong>{selectedWarehouseName}</strong>
+            Warehouse: <strong>{selectedWarehouseName}</strong>
             {importJob?.filename ? (
               <>
                 {" "}

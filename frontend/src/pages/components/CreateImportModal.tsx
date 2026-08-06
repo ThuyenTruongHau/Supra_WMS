@@ -524,7 +524,7 @@ export default function CreateImportModal({
                   <div className="grid grid-cols-3 gap-4 mb-4 mt-2">
                     <div className="min-w-0">
                       <SkuSearchSelect
-                        zoneId={selectedWarehouseId || 0}
+                        warehouseId={selectedWarehouseId || 0}
                         value={group.sku || undefined}
                         onChange={(sku) => {
                           const newGroups = [...palletGroups];

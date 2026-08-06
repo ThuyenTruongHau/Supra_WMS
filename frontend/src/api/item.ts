@@ -11,40 +11,51 @@ import type {
 const BASE = '/api/v1/items'
 
 export const listItemsApi = async (params: ItemListParams) => {
-  const { data } = await axiosInstance.get<ItemListResponse>(`${BASE}/`, { params })
+  const { warehouse_id, q, page, page_size, limit, is_active } = params
+  const { data } = await axiosInstance.get<ItemListResponse>(BASE, {
+    params: {
+      warehouse_id,
+      q,
+      page: page ?? 1,
+      page_size: page_size ?? limit ?? 20,
+      is_active,
+    },
+  })
   return data
 }
 
-export const analyzeItemsApi = async (zoneId: number) => {
-  const { data } = await axiosInstance.get<ItemAnalyzeResponse>(`${BASE}/analyze-items/${zoneId}`)
+export const analyzeItemsApi = async (warehouseId: number) => {
+  const { data } = await axiosInstance.get<ItemAnalyzeResponse>(
+    `${BASE}/analyze-items/${warehouseId}`,
+  )
   return data
 }
 
-export const getItemBySkuApi = async (sku: string) => {
-  const { data } = await axiosInstance.get<ItemDetails>(`${BASE}/${encodeURIComponent(sku)}`)
+export const getItemByIdApi = async (itemId: number) => {
+  const { data } = await axiosInstance.get<ItemDetails>(`${BASE}/${itemId}`)
   return data
 }
 
 export const createItemApi = async (payload: CreateItemInput) => {
-  const { data } = await axiosInstance.post<Item>(`${BASE}/`, payload)
+  const { data } = await axiosInstance.post<Item>(BASE, payload)
   return data
 }
 
-export const updateItemApi = async (sku: string, payload: UpdateItemInput) => {
-  const { data } = await axiosInstance.patch<Item>(`${BASE}/${encodeURIComponent(sku)}`, payload)
+export const updateItemApi = async (itemId: number, payload: UpdateItemInput) => {
+  const { data } = await axiosInstance.patch<Item>(`${BASE}/${itemId}`, payload)
   return data
 }
 
-export const deactivateItemApi = async (sku: string) => {
-  await axiosInstance.post(`${BASE}/${encodeURIComponent(sku)}/deactivate`)
+export const deactivateItemApi = async (itemId: number) => {
+  await axiosInstance.delete(`${BASE}/${itemId}`)
 }
 
 export const importItemsApi = async (
   file: File,
-  zoneId: number,
+  warehouseId: number,
 ): Promise<ItemImportJobAccepted> => {
   const formData = new FormData()
-  formData.append('zone_id', String(zoneId))
+  formData.append('warehouse_id', String(warehouseId))
   formData.append('file', file)
   const { data } = await axiosInstance.post<ItemImportJobAccepted>(
     `${BASE}/import`,

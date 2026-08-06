@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   listItemsApi,
-  getItemBySkuApi,
+  getItemByIdApi,
   createItemApi,
   updateItemApi,
   deactivateItemApi,
@@ -24,7 +24,7 @@ import { AxiosError } from "axios";
 import { ApiErrorResponse } from "@/types/apiError";
 
 interface UseGetItemsParams {
-  zone_id: number;
+  warehouse_id: number;
   q?: string;
   limit?: number;
   enabled?: boolean;
@@ -33,38 +33,36 @@ interface UseGetItemsParams {
 
 export const useGetItems = (params: UseGetItemsParams) => {
   return useQuery({
-    queryKey: ['items', params.zone_id, params.q, params.limit],
+    queryKey: ["items", params.warehouse_id, params.q, params.limit],
     queryFn: async () => {
       return await listItemsApi({
-        zone_id: params.zone_id,
+        warehouse_id: params.warehouse_id,
         q: params.q,
-        limit: params.limit,
+        page_size: params.limit,
       });
     },
-    enabled: params.zone_id > 0 && (params.enabled ?? true),
+    enabled: params.warehouse_id > 0 && (params.enabled ?? true),
     staleTime: params.staleTime ?? 5 * 60 * 1000,
   });
 };
 
-// 1. Hook lấy danh sách (Read)
 export const useItems = (params: ItemListParams) => {
   return useQuery<ItemListResponse, Error>({
     queryKey: ["items", params],
     queryFn: () => listItemsApi(params),
-    enabled: (params.zone_id ?? 0) > 0,
+    enabled: (params.warehouse_id ?? 0) > 0,
     staleTime: 5 * 60 * 1000,
   });
 };
 
-export const useItemBySku = (sku: string) =>
+export const useItemById = (itemId: number) =>
   useQuery<ItemDetails, Error>({
-    queryKey: ["item", sku],
-    queryFn: () => getItemBySkuApi(sku),
-    enabled: !!sku,
+    queryKey: ["item", itemId],
+    queryFn: () => getItemByIdApi(itemId),
+    enabled: itemId > 0,
     staleTime: 5 * 60 * 1000,
   });
 
-// 2. Hook tạo mới (Create)
 export const useCreateItem = () => {
   const queryClient = useQueryClient();
   return useMutation<Item, AxiosError<ApiErrorResponse>, CreateItemInput>({
@@ -76,27 +74,25 @@ export const useCreateItem = () => {
   });
 };
 
-// 3. Hook cập nhật (Update)
 export const useUpdateItem = () => {
   const queryClient = useQueryClient();
   return useMutation<
     Item,
     AxiosError<ApiErrorResponse>,
-    { sku: string; data: UpdateItemInput }
+    { id: number; data: UpdateItemInput }
   >({
-    mutationFn: ({ sku, data }) => updateItemApi(sku, data),
-    onSuccess: (_, { sku }) => {
+    mutationFn: ({ id, data }) => updateItemApi(id, data),
+    onSuccess: (_, { id }) => {
       queryClient.invalidateQueries({ queryKey: ["items"] });
-      queryClient.invalidateQueries({ queryKey: ["item", sku] });
+      queryClient.invalidateQueries({ queryKey: ["item", id] });
       queryClient.invalidateQueries({ queryKey: ["item_analyze"] });
     },
   });
 };
 
-// 4. Hook xóa (Delete)
 export const useDeactivateItem = () => {
   const queryClient = useQueryClient();
-  return useMutation<void, AxiosError<ApiErrorResponse>, string>({
+  return useMutation<void, AxiosError<ApiErrorResponse>, number>({
     mutationFn: deactivateItemApi,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["items"] });
@@ -105,11 +101,11 @@ export const useDeactivateItem = () => {
   });
 };
 
-export const useItemAnalyze = (zoneId: number) => {
+export const useItemAnalyze = (warehouseId: number) => {
   return useQuery<ItemAnalyzeResponse, Error>({
-    queryKey: ["item_analyze", zoneId],
-    queryFn: () => analyzeItemsApi(zoneId),
-    enabled: zoneId > 0,
+    queryKey: ["item_analyze", warehouseId],
+    queryFn: () => analyzeItemsApi(warehouseId),
+    enabled: warehouseId > 0,
     staleTime: 5 * 60 * 1000,
   });
 };
@@ -118,10 +114,10 @@ const IMPORT_POLL_MS = 1500;
 
 async function runImportWithPolling(
   file: File,
-  zoneId: number,
+  warehouseId: number,
   onProgress?: (job: ItemImportJobStatus) => void,
 ): Promise<ItemImportJobStatus> {
-  const accepted: ItemImportJobAccepted = await importItemsApi(file, zoneId);
+  const accepted: ItemImportJobAccepted = await importItemsApi(file, warehouseId);
   let job = await getItemImportJobApi(accepted.job_id);
 
   while (job.status === "pending" || job.status === "running") {
@@ -139,10 +135,14 @@ export const useImportItems = () => {
   return useMutation<
     ItemImportJobStatus,
     AxiosError<ApiErrorResponse>,
-    { file: File; zoneId: number; onProgress?: (job: ItemImportJobStatus) => void }
+    {
+      file: File;
+      warehouseId: number;
+      onProgress?: (job: ItemImportJobStatus) => void;
+    }
   >({
-    mutationFn: ({ file, zoneId, onProgress }) =>
-      runImportWithPolling(file, zoneId, onProgress),
+    mutationFn: ({ file, warehouseId, onProgress }) =>
+      runImportWithPolling(file, warehouseId, onProgress),
     onSuccess: (job) => {
       if (job.status === "completed") {
         queryClient.invalidateQueries({ queryKey: ["items"] });

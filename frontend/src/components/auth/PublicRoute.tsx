@@ -6,7 +6,9 @@ export function PublicRoute({ children }: { children: React.ReactNode }) {
     const role_canonical = useAuthStore((s) => s.role_canonical)
     
     if (isAuthenticated) {
-        const targetPath = ['O001'].includes(role_canonical || '') ? '/worker/vehicles' : '/report'
+        const role = (role_canonical || '').toLowerCase()
+        const isWorker = role === 'o001' || role === 'operator'
+        const targetPath = isWorker ? '/worker/vehicles' : '/report'
         return <Navigate to={targetPath} replace />
     }
     return children

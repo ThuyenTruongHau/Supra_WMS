@@ -9,7 +9,9 @@ from app.core.database import get_db
 from app.core.dependencies import require_permission
 from app.modules.warehouse.item import item_service
 from app.modules.warehouse.item.item_schema import (
+    ItemAnalyzeResponse,
     ItemCreate,
+    ItemDetailResponse,
     ItemListResponse,
     ItemResponse,
     ItemUpdate,
@@ -43,6 +45,18 @@ def list_items(
     )
 
 
+@router.get(
+    "/items/analyze-items/{warehouse_id}",
+    response_model=ItemAnalyzeResponse,
+    dependencies=[Depends(require_permission("item:read"))],
+)
+def analyze_items(warehouse_id: int, db: DbSession):
+    try:
+        return item_service.analyze_items(db, warehouse_id)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e)) from e
+
+
 @router.post(
     "/items",
     response_model=ItemResponse,
@@ -59,14 +73,14 @@ def create_item(body: ItemCreate, db: DbSession):
 
 @router.get(
     "/items/{item_id}",
-    response_model=ItemResponse,
+    response_model=ItemDetailResponse,
     dependencies=[Depends(require_permission("item:read"))],
 )
 def get_item(item_id: int, db: DbSession):
-    item = item_service.get_item_by_id(db, item_id)
-    if not item:
-        raise HTTPException(status_code=404, detail="Item not found")
-    return ItemResponse.model_validate(item)
+    try:
+        return item_service.get_item_detail(db, item_id)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e)) from e
 
 
 @router.patch(

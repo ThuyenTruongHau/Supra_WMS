@@ -18,7 +18,7 @@ import {
 } from "@/components/ui";
 import {
   useDeactivateItem,
-  useItemBySku,
+  useItemById,
   useUpdateItem,
 } from "@/hooks/useItem";
 import type { ItemStock } from "@/types/item";
@@ -146,31 +146,27 @@ function formatDate(date?: string | null) {
 const locationColumns: ColumnsType<ItemStock> = [
   {
     title: "Mã vị trí",
-    dataIndex: "location_id",
-    key: "location_id",
+    dataIndex: "location_code",
+    key: "location_code",
+    render: (code: string | null | undefined, row) =>
+      code || row.location_id || "—",
   },
   {
     title: "Số lượng",
     dataIndex: "quantity",
     key: "quantity",
     align: "right",
-    render: (qty: number) => (
+    render: (qty: number | string) => (
       <span className="font-semibold text-brand-dark">{qty}</span>
     ),
-  },
-  {
-    title: "Đã giữ",
-    dataIndex: "reserved_quantity",
-    key: "reserved_quantity",
-    align: "right",
   },
   {
     title: "Số Lot",
     dataIndex: "lot_number",
     key: "lot_number",
     align: "right",
-    render: (lotNumber: string) => (
-      <span className="font-semibold text-brand-dark">{lotNumber}</span>
+    render: (lotNumber: string | null) => (
+      <span className="font-semibold text-brand-dark">{lotNumber || "—"}</span>
     ),
   },
   {
@@ -178,15 +174,9 @@ const locationColumns: ColumnsType<ItemStock> = [
     dataIndex: "expiry_date",
     key: "expiry_date",
     align: "right",
-    render: (date: string) => (
+    render: (date: string | null) => (
       <span className="font-semibold text-brand-dark">{formatDate(date)}</span>
     ),
-  },
-  {
-    title: "Khả dụng",
-    dataIndex: "available_quantity",
-    key: "available_quantity",
-    align: "right",
   },
   {
     title: "Trạng thái",
@@ -201,10 +191,11 @@ export default function ItemDetailPage() {
   const { data: zones = [] } = useZone();
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [form] = Form.useForm<ItemFormValues>();
-  const { sku } = useParams<{ sku: string }>();
+  const { id } = useParams<{ id: string }>();
+  const itemId = Number(id) || 0;
   const updateMutation = useUpdateItem();
   const deactivateMutation = useDeactivateItem();
-  const { data } = useItemBySku(sku ?? "");
+  const { data } = useItemById(itemId);
   const item = data?.item;
   const stocks = data?.stocks ?? [];
 
@@ -242,7 +233,7 @@ export default function ItemDetailPage() {
 
     updateMutation.mutate(
       {
-        sku: item.sku,
+        id: item.id,
         data: {
           name: values.name.trim(),
           description: values.description?.trim() ?? "",
@@ -273,7 +264,7 @@ export default function ItemDetailPage() {
       content: `Bạn có chắc chắn muốn xóa sản phẩm "${item.name}" (${item.sku})?`,
       onOk: () =>
         new Promise<void>((resolve, reject) => {
-          deactivateMutation.mutate(item.sku, {
+          deactivateMutation.mutate(item.id, {
             onSuccess: () => {
               message.success("Xóa sản phẩm thành công!");
               navigate("/items");
@@ -302,7 +293,7 @@ export default function ItemDetailPage() {
         </Button>
         <Card>
           <p className="text-gray-500">
-            Không tìm thấy sản phẩm với mã &quot;{sku}&quot;.
+            Không tìm thấy sản phẩm với id &quot;{id}&quot;.
           </p>
         </Card>
       </div>
