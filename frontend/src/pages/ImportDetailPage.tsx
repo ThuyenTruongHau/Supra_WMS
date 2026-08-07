@@ -155,7 +155,7 @@ export default function ImportDetailPage() {
         <div>
           <div className="font-semibold text-slate-800">{record.item_name}</div>
           <div className="text-xs text-slate-400">
-            SKU: {record.item_sku} | Lot: {record.item_lot_code}
+            Part_number: {record.item_sku} | Lot: {record.item_lot_code}
           </div>
         </div>
       ),

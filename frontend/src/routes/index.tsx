@@ -12,9 +12,9 @@ import ItemDetailPage from "@/pages/ItemDetailPage";
 import OutboundPage from "@/pages/OutboundPage";
 import ImportPage from "@/pages/ImportPage";
 import ImportDetailPage from "@/pages/ImportDetailPage";
-import EntryPointSettingPage from "@/pages/EntryPointSettingPage";
+import ZoneSettingPage from "@/pages/ZoneSettingPage";
+import UnitSettingPage from "@/pages/UnitSettingPage";
 import OutboundDetailPage from "@/pages/OutboundDetailPage";
-import ExitPointSettingPage from "@/pages/ExitPointSettingPage";
 // import ItemSettingPage from "@/pages/ItemSettingPage";
 // import StocktakePage from "@/pages/StocktakePage";
 import WorkerInboundVehicleListPage from "@/pages/WorkerInboundVehicleListPage";
@@ -56,6 +56,7 @@ export default function AppRoutes() {
         <Route path="dashboard" element={<DashboardPage />} />
         <Route path="items" element={<ItemPage />} />
         <Route path="items/:id" element={<ItemDetailPage />} />
+        <Route path="zones" element={<ZoneSettingPage />} />
         <Route path="import" element={<ImportPage />} />
         <Route path="import/:id" element={<ImportDetailPage />} />
         <Route path="export" element={<OutboundPage />} />
@@ -67,11 +68,10 @@ export default function AppRoutes() {
         <Route path="setting" element={<div>Trang Cài Đặt</div>} />
         <Route path="setting/users" element={<UserSettingPage />} />
         <Route path="setting/warehouse" element={<WarehouseSettingPage />} />
-        <Route path="setting/exit-points" element={<ExitPointSettingPage />} />
-        <Route
-          path="setting/entry-points"
-          element={<EntryPointSettingPage />}
-        />
+        <Route path="setting/zones" element={<Navigate to="/zones" replace />} />
+        <Route path="setting/units" element={<UnitSettingPage />} />
+        <Route path="setting/entry-points" element={<Navigate to="/zones" replace />} />
+        <Route path="setting/exit-points" element={<Navigate to="/setting/units" replace />} />
         {/* <Route path="setting/items" element={<ItemSettingPage />} /> */}
       </Route>
     </Routes>

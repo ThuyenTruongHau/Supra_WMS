@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   PlusOutlined,
   SearchOutlined,
@@ -17,6 +17,7 @@ import {
   Form,
   Space,
   message,
+  Select,
 } from "@/components/ui";
 import { Progress } from "antd";
 import {
@@ -28,11 +29,12 @@ import {
 import { useAppStore } from "@/store/useAppStore";
 import { useNavigate } from "react-router-dom";
 import { useZone } from "@/hooks/useZone";
+import { useUnits } from "@/hooks/useUnit";
 import { getItemsForExport, downloadItemExcel } from "@/utils/itemExport";
 import dayjs from "dayjs";
 
 const PAGE_SIZE = 20;
-const ITEM_FETCH_LIMIT = 1000;
+const ITEM_FETCH_LIMIT = 100;
 
 type CreateItemFormValues = Omit<CreateItemInput, "details"> & {
   detailEntries?: { key: string; value: string }[];
@@ -51,6 +53,7 @@ function formatKpi(value?: number | string) {
 export default function ItemPage() {
   const { selectedWarehouseId } = useAppStore();
   const { data: zones = [] } = useZone();
+  const { data: units = [], isLoading: isUnitsLoading } = useUnits();
   const selectedWarehouseName =
     zones.find((z) => z.id === selectedWarehouseId)?.name ??
     zones.find((z) => z.id === selectedWarehouseId)?.code ??
@@ -81,14 +84,18 @@ export default function ItemPage() {
   const { data: analyze, isLoading: isAnalyzeLoading } =
     useItemAnalyze(selectedWarehouseId);
 
+  useEffect(() => {
+    if (isCreateOpen) {
+      form.resetFields();
+    }
+  }, [isCreateOpen, form]);
+
   const handleOpenCreate = () => {
-    form.resetFields();
     setIsCreateOpen(true);
   };
 
   const handleCloseCreate = () => {
     setIsCreateOpen(false);
-    form.resetFields();
   };
 
   const kpiCards = [
@@ -125,9 +132,10 @@ export default function ItemPage() {
         sku: values.sku.trim(),
         name: values.name.trim(),
         description: values.description?.trim() ?? "",
-        base_unit: values.base_unit?.trim() ?? "thùng",
+        base_unit: Number(values.base_unit),
+        max_quantity: Number(values.max_quantity),
+        min_quantity: Number(values.min_quantity),
         warehouse_id: selectedWarehouseId,
-        supplier: values.supplier.trim(),
         details,
       },
       {
@@ -221,7 +229,7 @@ export default function ItemPage() {
 
   const columns: ColumnsType<Item> = [
     {
-      title: "Mã SKU",
+      title: "Part_number",
       dataIndex: "sku",
       key: "sku",
       sorter: (a, b) => a.sku.localeCompare(b.sku),
@@ -231,12 +239,6 @@ export default function ItemPage() {
       dataIndex: "name",
       key: "name",
       sorter: (a, b) => a.name.localeCompare(b.name),
-    },
-    {
-      title: "Nhà cung cấp",
-      dataIndex: "supplier",
-      key: "supplier",
-      sorter: (a, b) => a.supplier.localeCompare(b.supplier),
     },
     {
       title: "Mô tả",
@@ -309,7 +311,7 @@ export default function ItemPage() {
               <Input
                 allowClear
                 prefix={<SearchOutlined className="text-gray-400" />}
-                placeholder="Tìm theo tên, SKU, mã..."
+                placeholder="Tìm theo tên, Part_number, mã..."
                 value={searchInput}
                 onChange={(e) => {
                   const value = e.target.value;
@@ -390,6 +392,7 @@ export default function ItemPage() {
         onCancel={handleCloseCreate}
         footer={null}
         width={640}
+        centered
         destroyOnHidden
         title={
           <span className="text-brand-dark font-semibold">
@@ -402,16 +405,14 @@ export default function ItemPage() {
           layout="vertical"
           onFinish={handleCreate}
           className="mt-2"
-          initialValues={{
-            quantity: 0,
-          }}
+          initialValues={{ min_quantity: 10, max_quantity: 999999 }}
         >
           <Form.Item
             name="sku"
-            label="SKU"
-            rules={[{ required: true, message: "Vui lòng nhập SKU!" }]}
+            label="Part_number"
+            rules={[{ required: true, message: "Vui lòng nhập Part_number!" }]}
           >
-            <Input placeholder="Ví dụ: SKU-019" />
+            <Input placeholder="Ví dụ: PN-019" />
           </Form.Item>
 
           <Form.Item
@@ -423,20 +424,44 @@ export default function ItemPage() {
           </Form.Item>
 
           <Form.Item
-            name="supplier"
-            label="Nhà cung cấp"
-            rules={[{ required: true, message: "Vui lòng nhập NCC!" }]}
-          >
-            <Input placeholder="Ví dụ: VCC Steel" />
-          </Form.Item>
-
-          <Form.Item
             name="base_unit"
             label="Đơn vị"
-            rules={[{ required: true, message: "Vui lòng nhập đơn vị!" }]}
+            rules={[{ required: true, message: "Vui lòng chọn đơn vị!" }]}
           >
-            <Input placeholder="Ví dụ: thùng" />
+            <Select
+              showSearch
+              placeholder="Chọn đơn vị"
+              optionFilterProp="label"
+              loading={isUnitsLoading}
+              options={units.map((unit) => ({
+                value: unit.id,
+                label: unit.name,
+              }))}
+            />
           </Form.Item>
+
+          <div className="grid grid-cols-2 gap-4">
+            <Form.Item
+              name="min_quantity"
+              label="Số lượng tối thiểu"
+              rules={[
+                { required: true, message: "Vui lòng nhập số lượng tối thiểu!" },
+                { type: "number", min: 0, message: "Giá trị phải >= 0" },
+              ]}
+            >
+              <Input type="number" min={0} placeholder="Ví dụ: 10" />
+            </Form.Item>
+            <Form.Item
+              name="max_quantity"
+              label="Số lượng tối đa"
+              rules={[
+                { required: true, message: "Vui lòng nhập số lượng tối đa!" },
+                { type: "number", min: 0, message: "Giá trị phải >= 0" },
+              ]}
+            >
+              <Input type="number" min={0} placeholder="Ví dụ: 1000" />
+            </Form.Item>
+          </div>
 
           <Form.Item
             name="description"
@@ -519,7 +544,7 @@ export default function ItemPage() {
           </Button>
         }
         closable={!importMutation.isPending}
-        maskClosable={!importMutation.isPending}
+        mask={{ closable: !importMutation.isPending }}
         title={
           <span className="text-brand-dark font-semibold">
             Import sản phẩm từ Excel

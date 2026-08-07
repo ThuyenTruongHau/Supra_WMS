@@ -15,6 +15,7 @@ from app.modules.warehouse.warehouse_zone.warehouse_schema import (
     WarehouseUpdate,
     ZoneCreate,
     ZoneListResponse,
+    ZoneLocationAssign,
     ZoneResponse,
     ZoneUpdate,
 )
@@ -167,3 +168,16 @@ def delete_zone(zone_id: int, db: DbSession):
     if not deleted:
         raise HTTPException(status_code=404, detail="Zone not found")
     return None
+
+
+@router.put(
+    "/zones/{zone_id}/locations",
+    dependencies=[Depends(require_permission("zone:update"))],
+)
+def assign_zone_locations(zone_id: int, body: ZoneLocationAssign, db: DbSession):
+    try:
+        return warehouse_service.assign_locations_to_zone(
+            db, zone_id, body.location_ids
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e

@@ -43,6 +43,8 @@ interface WarehouseMapCanvasProps {
   hideToolbar?: boolean;
   /** Ẩn drawer chi tiết khi click vào kệ (dùng khi nhúng làm Picker) */
   hideDrawer?: boolean;
+  /** Mã location đang được chọn — highlight màu xanh trên map */
+  selectedLocationCodes?: string[];
 }
 import {
   ZOOM_MAX,
@@ -53,7 +55,9 @@ import {
   NODE_NORMAL_COLOR,
   SHELF_FULL_COLOR,
   SHELF_EMPTY_COLOR,
+  SHELF_SELECTED_COLOR,
   SHELF_STROKE_COLOR,
+  SHELF_SELECTED_STROKE_COLOR,
   PADDING,
   parseNode,
 } from '@/utils/warehouseMapUtils';
@@ -65,6 +69,7 @@ const WarehouseMapCanvas: React.FC<WarehouseMapCanvasProps> = ({
   onNodeClick,
   hideToolbar = false,
   hideDrawer = false,
+  selectedLocationCodes = [],
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -98,6 +103,20 @@ const WarehouseMapCanvas: React.FC<WarehouseMapCanvasProps> = ({
   const nodesRef = useRef<NodeInfo[]>([]);
   const fullCodesRef = useRef<Set<string>>(new Set());
   const fullLocationsMapRef = useRef<Map<string, FullLocationDetail>>(new Map());
+  const selectedCodesRef = useRef<Set<string>>(new Set());
+
+  const selectedCodesKey = useMemo(
+    () => selectedLocationCodes.join('\u0000'),
+    [selectedLocationCodes],
+  );
+
+  useEffect(() => {
+    selectedCodesRef.current = new Set(
+      selectedLocationCodes.map((code) => String(code)),
+    );
+    draw();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedCodesKey]);
 
   // Keep fullCodesRef in sync
   useEffect(() => {
@@ -217,20 +236,23 @@ const WarehouseMapCanvas: React.FC<WarehouseMapCanvasProps> = ({
         ctx.fillStyle = NODE_NORMAL_COLOR;
         ctx.fill();
       } else if (type === 1) {
-        // Shelf: determine color from renderable locations API
-        // Nodes in fullCodesRef → full (grey), not in set → empty (green)
         const half = baseSize * 0.7;
+        const isSelected = selectedCodesRef.current.has(String(node.content));
         const isFull = fullCodesRef.current.has(node.content);
-        ctx.fillStyle = isFull ? SHELF_FULL_COLOR : SHELF_EMPTY_COLOR;
+
+        if (isSelected) {
+          ctx.fillStyle = SHELF_SELECTED_COLOR;
+        } else {
+          ctx.fillStyle = isFull ? SHELF_FULL_COLOR : SHELF_EMPTY_COLOR;
+        }
         ctx.fillRect(x - half * 1.5, y - half, half * 3, half * 2);
 
-        // Border
-        ctx.strokeStyle = SHELF_STROKE_COLOR;
-        ctx.lineWidth = invScale * 0.8;
+        ctx.strokeStyle = isSelected ? SHELF_SELECTED_STROKE_COLOR : SHELF_STROKE_COLOR;
+        ctx.lineWidth = invScale * (isSelected ? 1.2 : 0.8);
         ctx.strokeRect(x - half * 1.5, y - half, half * 3, half * 2);
 
-        // Draw item stock text
-        if (isFull) {
+        // Draw item stock text (skip overlay when selected for clearer highlight)
+        if (isFull && !isSelected) {
           const locDetail = fullLocationsMapRef.current.get(node.content);
           if (locDetail && locDetail.item_stock && locDetail.item_stock.length > 0) {
             ctx.save();
@@ -507,6 +529,8 @@ const WarehouseMapCanvas: React.FC<WarehouseMapCanvasProps> = ({
   // ─── Derive UI state ──────────────────────────────────────────────────────
 
   const hasData = !!mapApiData;
+  const nodesCount = mapApiData?.nodeArr?.length ?? 0;
+  const linesCount = mapApiData?.lineArr?.length;
   const errorMessage = isError
     ? (error?.response?.data?.detail ?? error?.message ?? 'Không thể tải bản đồ')
     : null;
@@ -522,8 +546,8 @@ const WarehouseMapCanvas: React.FC<WarehouseMapCanvasProps> = ({
           hasData={hasData}
           isLoading={isLoading}
           errorMessage={errorMessage}
-          nodesCount={nodesRef.current.length}
-          linesCount={mapDataRef.current?.lineArr.length}
+          nodesCount={nodesCount}
+          linesCount={linesCount}
           downloadLoading={downloadMutation.isPending}
           onImportClick={() => setImportDialogOpen(true)}
           onDownloadClick={() => {

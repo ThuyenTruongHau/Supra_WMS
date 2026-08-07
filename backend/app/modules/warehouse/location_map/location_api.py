@@ -13,6 +13,7 @@ from app.modules.warehouse.location_map.location_schema import (
     LocationDetailResponse,
     LocationListResponse,
     LocationResponse,
+    LocationUpdate,
     LocationsForMapResponse,
     MapDataResponse,
 )
@@ -30,7 +31,7 @@ DbSession = Annotated[Session, Depends(get_db)]
 def list_locations(
     db: DbSession,
     page: int = Query(1, ge=1),
-    page_size: int = Query(20, ge=1, le=100),
+    page_size: int = Query(20, ge=1, le=10000),
     warehouse_id: Optional[int] = Query(None),
     zone_id: Optional[int] = Query(None),
     q: Optional[str] = Query(None),
@@ -79,6 +80,21 @@ def get_location_detail(location_id: int, db: DbSession):
 )
 def get_location(location_id: int, db: DbSession):
     location = location_service.get_location_by_id(db, location_id)
+    if not location:
+        raise HTTPException(status_code=404, detail="Location not found")
+    return LocationResponse.model_validate(location)
+
+
+@router.patch(
+    "/locations/{location_id}",
+    response_model=LocationResponse,
+    dependencies=[Depends(require_permission("location:update"))],
+)
+def update_location(location_id: int, body: LocationUpdate, db: DbSession):
+    try:
+        location = location_service.update_location(db, location_id, body)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
     if not location:
         raise HTTPException(status_code=404, detail="Location not found")
     return LocationResponse.model_validate(location)

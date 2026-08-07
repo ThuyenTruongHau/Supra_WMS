@@ -3,6 +3,7 @@ import { Card, Table, Button, Modal, Form, Input, Space, message, Select } from 
 import { PlusOutlined, SearchOutlined, MinusCircleOutlined, EditOutlined } from '@ant-design/icons';
 import { useZone } from '@/hooks/useZone';
 import { useGetItems, useCreateItem, useUpdateItem } from '@/hooks/useItem';
+import { useUnits } from '@/hooks/useUnit';
 import { useDebounce } from '@/hooks/useDebounce';
 import Hero from '@/components/shared/Hero';
 import { Item, CreateItemInput, UpdateItemInput } from '@/types/item';
@@ -30,6 +31,7 @@ export default function ItemSettingPage() {
   const items = getItemsResponse?.items || [];
   const createMutation = useCreateItem();
   const updateMutation = useUpdateItem();
+  const { data: units = [], isLoading: isUnitsLoading } = useUnits();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<Item | null>(null);
@@ -48,6 +50,7 @@ export default function ItemSettingPage() {
       : [];
     form.setFieldsValue({
       ...record,
+      base_unit: units.find((u) => u.name === record.base_unit)?.id,
       detailEntries,
     });
     setIsModalOpen(true);
@@ -75,9 +78,10 @@ export default function ItemSettingPage() {
       sku: values.sku.trim(),
       name: values.name.trim(),
       description: values.description?.trim() ?? '',
-      base_unit: values.base_unit?.trim() ?? 'thùng',
+      base_unit: Number(values.base_unit),
+      max_quantity: Number(values.max_quantity),
+      min_quantity: Number(values.min_quantity),
       warehouse_id: activeZoneId,
-      supplier: values.supplier.trim(),
       details,
     };
 
@@ -85,8 +89,9 @@ export default function ItemSettingPage() {
       const updateData: UpdateItemInput = {
         name: values.name.trim(),
         description: values.description?.trim() ?? '',
-        base_unit: values.base_unit?.trim() ?? 'thùng',
-        supplier: values.supplier.trim(),
+        base_unit: Number(values.base_unit),
+        max_quantity: Number(values.max_quantity),
+        min_quantity: Number(values.min_quantity),
         details,
       };
       updateMutation.mutate(
@@ -116,7 +121,7 @@ export default function ItemSettingPage() {
 
   const columns: ColumnsType<Item> = [
     {
-      title: 'SKU',
+      title: 'Part_number',
       dataIndex: 'sku',
       key: 'sku',
       render: (text: string) => <span className="font-semibold text-brand-primary">{text}</span>,
@@ -128,11 +133,6 @@ export default function ItemSettingPage() {
       className: 'font-medium text-slate-700',
     },
     {
-      title: 'Nhà cung cấp',
-      dataIndex: 'supplier',
-      key: 'supplier',
-    },
-    {
       title: 'Mô tả',
       dataIndex: 'description',
       key: 'description',
@@ -141,6 +141,15 @@ export default function ItemSettingPage() {
       title: 'Đơn vị',
       dataIndex: 'base_unit',
       key: 'base_unit',
+    },
+    {
+      title: 'Min / Max',
+      key: 'quantity_bounds',
+      render: (_: unknown, record: Item) => (
+        <span className="text-slate-600">
+          {record.min_quantity} / {record.max_quantity}
+        </span>
+      ),
     },
     {
       title: 'Ngày tạo',
@@ -213,7 +222,7 @@ export default function ItemSettingPage() {
             <Input
               allowClear
               prefix={<SearchOutlined className="text-gray-400" />}
-              placeholder="Tìm kiếm theo SKU, tên, mã, nhà cung cấp..."
+              placeholder="Tìm kiếm theo Part_number, tên, mã..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="w-80"
@@ -236,24 +245,62 @@ export default function ItemSettingPage() {
         onCancel={handleCloseCreate}
         footer={null}
         width={640}
-        destroyOnClose
+        destroyOnHidden
       >
-        <Form form={form} layout="vertical" className="mt-4" onFinish={handleFinish}>
-          <Form.Item name="sku" label="SKU" rules={[{ required: true, message: 'Vui lòng nhập SKU!' }]}>
-            <Input placeholder="Ví dụ: SKU-019" disabled={!!editingItem} />
+        <Form
+          form={form}
+          layout="vertical"
+          className="mt-4"
+          onFinish={handleFinish}
+          initialValues={{ min_quantity: 10, max_quantity: 999999 }}
+        >
+          <Form.Item name="sku" label="Part_number" rules={[{ required: true, message: 'Vui lòng nhập Part_number!' }]}>
+            <Input placeholder="Ví dụ: PN-019" disabled={!!editingItem} />
           </Form.Item>
 
           <Form.Item name="name" label="Tên Item" rules={[{ required: true, message: 'Vui lòng nhập tên!' }]}>
             <Input placeholder="Ví dụ: Thùng Carton" />
           </Form.Item>
 
-          <Form.Item name="supplier" label="Nhà cung cấp" rules={[{ required: true, message: 'Vui lòng nhập nhà cung cấp!' }]}>
-            <Input placeholder="Ví dụ: Công ty A" />
+          <Form.Item
+            name="base_unit"
+            label="Đơn vị"
+            rules={[{ required: true, message: 'Vui lòng chọn đơn vị!' }]}
+          >
+            <Select
+              showSearch
+              placeholder="Chọn đơn vị"
+              optionFilterProp="label"
+              loading={isUnitsLoading}
+              options={units.map((unit) => ({
+                value: unit.id,
+                label: unit.name,
+              }))}
+            />
           </Form.Item>
 
-          <Form.Item name="base_unit" label="Đơn vị" rules={[{ required: true, message: 'Vui lòng nhập đơn vị!' }]}>
-            <Input placeholder="Ví dụ: thùng, kg..." />
-          </Form.Item>
+          <div className="grid grid-cols-2 gap-4">
+            <Form.Item
+              name="min_quantity"
+              label="Số lượng tối thiểu"
+              rules={[
+                { required: true, message: 'Vui lòng nhập số lượng tối thiểu!' },
+                { type: 'number', min: 0, message: 'Giá trị phải >= 0' },
+              ]}
+            >
+              <Input type="number" min={0} placeholder="Ví dụ: 10" />
+            </Form.Item>
+            <Form.Item
+              name="max_quantity"
+              label="Số lượng tối đa"
+              rules={[
+                { required: true, message: 'Vui lòng nhập số lượng tối đa!' },
+                { type: 'number', min: 0, message: 'Giá trị phải >= 0' },
+              ]}
+            >
+              <Input type="number" min={0} placeholder="Ví dụ: 1000" />
+            </Form.Item>
+          </div>
 
           <Form.Item name="description" label="Mô tả" rules={[{ required: true, message: 'Vui lòng nhập mô tả!' }]}>
             <Input placeholder="Ví dụ: Mô tả chi tiết về Item này" />

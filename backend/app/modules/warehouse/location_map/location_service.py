@@ -212,8 +212,22 @@ def get_location_detail(db: Session, location_id: int) -> LocationDetailResponse
 def upsert_location(db: Session, body: LocationCreate) -> Location:
     _ensure_warehouse_and_zone(db, body.warehouse_id, body.zone_id)
 
-    exist_location_name = db.query(Location).filter(Location.location_name == body.location_name).first()
-    exist_location_code = db.query(Location).filter(Location.location_code == body.location_code).first()
+    exist_location_name = (
+        db.query(Location)
+        .filter(
+            Location.warehouse_id == body.warehouse_id,
+            Location.location_name == body.location_name,
+        )
+        .first()
+    )
+    exist_location_code = (
+        db.query(Location)
+        .filter(
+            Location.warehouse_id == body.warehouse_id,
+            Location.location_code == body.location_code,
+        )
+        .first()
+    )
     if exist_location_name or exist_location_code:
         return update_location(db, exist_location_name.id if exist_location_name else exist_location_code.id, LocationUpdate(
             location_code=body.location_code.strip(),
@@ -260,25 +274,27 @@ def update_location(
         existing = (
             db.query(Location)
             .filter(
+                Location.warehouse_id == warehouse_id,
                 Location.location_code == data["location_code"],
                 Location.id != location_id,
             )
             .first()
         )
         if existing:
-            raise ValueError("Location code already exists")
+            raise ValueError("Location code already exists in this warehouse")
         location.location_code = data["location_code"].strip()
     if "location_name" in data:
         existing = (
             db.query(Location)
             .filter(
+                Location.warehouse_id == warehouse_id,
                 Location.location_name == data["location_name"],
                 Location.id != location_id,
             )
             .first()
         )
         if existing:
-            raise ValueError("Location name already exists")
+            raise ValueError("Location name already exists in this warehouse")
         location.location_name = data["location_name"].strip()
     for field in ("row", "column", "level", "node_name", "is_active"):
         if field in data:
@@ -383,11 +399,62 @@ async def import_warehouse_map(
         db.refresh(warehouse_map)
         return warehouse_map
 
+    except IntegrityError as exc:
+        db.rollback()
+        if source_path and source_path.exists():
+            source_path.unlink(missing_ok=True)
+        raise ValueError(
+            "Mã hoặc tên location bị trùng trong kho này. Vui lòng kiểm tra lại bản đồ."
+        ) from exc
     except Exception:
         db.rollback()
         if source_path and source_path.exists():
             source_path.unlink(missing_ok=True)
         raise
+
+def _hard_delete_locations_for_warehouse(db: Session, warehouse_id: int) -> int:
+    location_ids = [
+        row[0]
+        for row in db.query(Location.id)
+        .filter(Location.warehouse_id == warehouse_id)
+        .all()
+    ]
+    if not location_ids:
+        return 0
+
+    db.query(ItemStock).filter(ItemStock.location_id.in_(location_ids)).delete(
+        synchronize_session=False
+    )
+    deleted = (
+        db.query(Location)
+        .filter(Location.warehouse_id == warehouse_id)
+        .delete(synchronize_session=False)
+    )
+    db.flush()
+    return deleted
+
+
+def _dedupe_shelves(shelves: list[dict]) -> list[dict]:
+    """Keep one shelf per location_code (last wins), then drop duplicate location_name."""
+    by_code: dict[str, dict] = {}
+    for shelf in shelves:
+        code = str(shelf["location_code"]).strip()
+        by_code[code] = {
+            **shelf,
+            "location_code": code,
+            "location_name": str(shelf["location_name"]).strip(),
+        }
+
+    used_names: set[str] = set()
+    unique: list[dict] = []
+    for shelf in by_code.values():
+        name = shelf["location_name"]
+        if name in used_names:
+            continue
+        used_names.add(name)
+        unique.append(shelf)
+    return unique
+
 
 def sync_locations_from_map(
     db: Session,
@@ -396,29 +463,30 @@ def sync_locations_from_map(
     shelves: list[dict],
     zone_id: Optional[int] = None,
 ) -> dict:
-    created = updated = skipped = 0
+    _ensure_warehouse_and_zone(db, warehouse_id, zone_id)
+    deleted = _hard_delete_locations_for_warehouse(db, warehouse_id)
+    unique_shelves = _dedupe_shelves(shelves)
 
-    for shelf in shelves:
-        body = LocationCreate(
-            location_code=shelf["location_code"],
-            location_name=shelf["location_name"],
-            row=shelf["row"],
-            column=shelf["column"],
-            level=shelf["level"],
-            warehouse_id=warehouse_id,
-            zone_id=zone_id if zone_id else None
+    for shelf in unique_shelves:
+        db.add(
+            Location(
+                location_code=shelf["location_code"].strip(),
+                location_name=shelf["location_name"].strip(),
+                row=shelf["row"],
+                column=shelf["column"],
+                level=shelf["level"],
+                warehouse_id=warehouse_id,
+                zone_id=zone_id,
+                is_active=True,
+            )
         )
 
-        existing = db.query(Location).filter(
-            Location.location_code == body.location_code
-        ).first()
-        upsert_location(db, body)  # upsert của bạn
-        if existing:
-            updated += 1
-        else:
-            created += 1
-
-    return {"created": created, "updated": updated, "total": len(shelves)}
+    db.flush()
+    return {
+        "deleted": deleted,
+        "created": len(unique_shelves),
+        "total": len(unique_shelves),
+    }
 
 def parse_shelf_node_from_map_node(node: list) -> Optional[ParsedShelfNode]:
     if len(node) < 5 or node[2] != 1:

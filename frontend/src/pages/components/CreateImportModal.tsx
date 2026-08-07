@@ -184,7 +184,7 @@ export default function CreateImportModal({
   const handleNext = async () => {
     const hasFull = palletGroups.some((g) => !g.sku || !g.lot_code);
     if (hasFull) {
-      message.error("Vui lòng điền đầy đủ Mã SKU và Mã lô!");
+      message.error("Vui lòng điền đầy đủ Part_number và Mã lô!");
       return;
     }
 
@@ -398,7 +398,7 @@ export default function CreateImportModal({
   };
 
   const step2Columns = [
-    { title: "SKU", dataIndex: "sku", key: "sku" },
+    { title: "Part_number", dataIndex: "sku", key: "sku" },
     { title: "Lot Code", dataIndex: "lot_code", key: "lot_code" },
     { title: "Số lượng", dataIndex: "quantity", key: "quantity" },
     {
@@ -692,7 +692,7 @@ export default function CreateImportModal({
                       className="w-full mt-2 text-brand-primary border-brand-primary/30 hover:!text-brand-primary hover:!border-brand-primary"
                       onClick={() => handleAddConfig(groupIndex)}
                     >
-                      Thêm pallet cùng SKU với số lượng khác
+                      Thêm pallet cùng Part_number với số lượng khác
                     </Button>
                   </div>
                 </div>
@@ -704,7 +704,7 @@ export default function CreateImportModal({
                 className="w-full h-12 text-brand-dark"
                 onClick={handleAddGroup}
               >
-                Thêm nhóm SKU mới
+                Thêm nhóm Part_number mới
               </Button>
             </div>
           </div>

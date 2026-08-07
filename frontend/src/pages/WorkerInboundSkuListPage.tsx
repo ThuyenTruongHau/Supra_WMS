@@ -112,7 +112,7 @@ export default function WorkerInboundSkuListPage() {
       </header>
 
       <div className="flex-1 p-4 sm:p-6 max-w-[1920px] w-full mx-auto">
-        <h2 className="text-xl sm:text-2xl font-bold text-stripe-ink mb-4 sm:mb-6">Chọn lệnh SKU</h2>
+        <h2 className="text-xl sm:text-2xl font-bold text-stripe-ink mb-4 sm:mb-6">Chọn lệnh Part_number</h2>
 
         {isLoading ? (
           <div className="flex flex-col items-center justify-center py-32 text-brand-primary">

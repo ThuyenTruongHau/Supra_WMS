@@ -14,6 +14,7 @@ import {
   AuditOutlined,
   BellOutlined,
   SettingOutlined,
+  ClusterOutlined,
   RightOutlined,
   UserOutlined,
   HomeOutlined,
@@ -253,6 +254,7 @@ export default function Sidebar() {
               label: "Tổng quan",
             },
             { to: "/items", icon: <BoxPlotOutlined />, label: "Sản phẩm" },
+            { to: "/zones", icon: <ClusterOutlined />, label: "Zone" },
             { to: "/import", icon: <ImportOutlined />, label: "Nhập kho" },
             { to: "/export", icon: <ExportOutlined />, label: "Xuất kho" },
             { to: "/inventory", icon: <AuditOutlined />, label: "Kiểm kê" },
@@ -276,14 +278,9 @@ export default function Sidebar() {
             },
             { to: "/setting/warehouse", icon: <HomeOutlined />, label: "Kho" },
             {
-              to: "/setting/entry-points",
-              icon: <ImportOutlined />,
-              label: "Điểm nhập",
-            },
-            {
-              to: "/setting/exit-points",
+              to: "/setting/units",
               icon: <ExportOutlined />,
-              label: "Điểm xuất",
+              label: "Đơn vị",
             },
             // { to: "/setting/items", icon: <BoxPlotOutlined />, label: "Sản phẩm" },
           ]}

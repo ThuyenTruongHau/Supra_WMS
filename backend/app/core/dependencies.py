@@ -3,11 +3,11 @@ from typing import Annotated, Callable
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from app.core.database import get_db
 from app.core.security import decode_access_token
-from app.modules.auth.auth_model import User
+from app.modules.auth.auth_model import User, Role
 
 security = HTTPBearer()
 
@@ -33,7 +33,15 @@ def get_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
     
-    user = db.query(User).filter(User.username == username).first()
+    user = (
+        db.query(User)
+        .options(
+            selectinload(User.roles).selectinload(Role.permissions),
+            selectinload(User.warehouses),
+        )
+        .filter(User.username == username)
+        .first()
+    )
     if user is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -65,12 +73,14 @@ def require_role(*allowed_roles: str) -> Callable:
 
 def require_permission(*codes: str) -> Callable:
     def checker(current_user: Annotated[User, Depends(get_current_user)]) -> User:
+        if any(role.name == "admin" for role in current_user.roles):
+            return current_user
         user_codes = {
             p.code
             for role in current_user.roles
             for p in role.permissions
         }
-        # Admin wildcard
+        # Admin wildcard via role_permissions
         if "*" in user_codes:
             return current_user
         if not set(codes).issubset(user_codes):

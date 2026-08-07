@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Modal, Button, Alert, message } from "@/components/ui";
 import { useImportWarehouseMap } from "@/hooks/useWarehouseMap";
 
@@ -34,24 +34,67 @@ const WarehouseMapImportDialog: React.FC<WarehouseMapImportDialogProps> = ({
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  const importMutation = useImportWarehouseMap();
+  const { mutate, reset, isPending } = useImportWarehouseMap();
+
+  useEffect(() => {
+    if (!open) return;
+    setSelectedFile(null);
+    setErrorMsg(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+    reset();
+  }, [open, reset]);
+
+  const resetForm = () => {
+    setSelectedFile(null);
+    setErrorMsg(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+    reset();
+  };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] ?? null;
+    if (!file) {
+      setSelectedFile(null);
+      return;
+    }
+
+    if (!file.name.toLowerCase().endsWith(".zip")) {
+      message.error("Chỉ hỗ trợ file ZIP (.zip)");
+      e.target.value = "";
+      setSelectedFile(null);
+      return;
+    }
+
+    if (file.size === 0) {
+      message.error("File ZIP trống, vui lòng chọn file khác");
+      e.target.value = "";
+      setSelectedFile(null);
+      return;
+    }
+
     setSelectedFile(file);
     setErrorMsg(null);
   };
 
   const handleUpload = () => {
-    if (!selectedFile) return;
+    if (!selectedFile) {
+      message.warning("Vui lòng chọn file ZIP trước khi upload");
+      return;
+    }
+
+    if (warehouseId <= 0) {
+      message.error("Vui lòng chọn kho trước khi import");
+      return;
+    }
 
     setErrorMsg(null);
-    importMutation.mutate(
+    mutate(
       { warehouseId, file: selectedFile },
       {
         onSuccess: () => {
           message.success("Import warehouse map thành công!");
-          handleClose();
+          resetForm();
+          onClose();
         },
         onError: (error) => {
           setErrorMsg(extractErrorDetail(error));
@@ -61,11 +104,8 @@ const WarehouseMapImportDialog: React.FC<WarehouseMapImportDialogProps> = ({
   };
 
   const handleClose = () => {
-    if (importMutation.isPending) return;
-    setSelectedFile(null);
-    setErrorMsg(null);
-    if (fileInputRef.current) fileInputRef.current.value = "";
-    importMutation.reset();
+    if (isPending) return;
+    resetForm();
     onClose();
   };
 
@@ -74,22 +114,22 @@ const WarehouseMapImportDialog: React.FC<WarehouseMapImportDialogProps> = ({
       title="Import Warehouse Map"
       open={open}
       onCancel={handleClose}
-      mask={{ closable: !importMutation.isPending }}
-      closable={!importMutation.isPending}
+      mask={{ closable: !isPending }}
+      closable={!isPending}
       footer={
         <div className="flex justify-end gap-2 pt-2">
           <Button
             variant="secondary"
             onClick={handleClose}
-            disabled={importMutation.isPending}
+            disabled={isPending}
           >
             Hủy
           </Button>
           <Button
             variant="primary"
             onClick={handleUpload}
-            loading={importMutation.isPending}
-            disabled={!selectedFile || importMutation.isPending}
+            loading={isPending}
+            disabled={!selectedFile || isPending}
           >
             Upload
           </Button>
@@ -97,15 +137,6 @@ const WarehouseMapImportDialog: React.FC<WarehouseMapImportDialogProps> = ({
       }
     >
       <div className="space-y-4">
-        <div className="rounded-lg bg-slate-50 p-3 border border-slate-100">
-          <span className="text-xs text-slate-500 block mb-1">
-            Warehouse đang chọn
-          </span>
-          <span className="font-semibold text-slate-700">
-            Warehouse {warehouseId}
-          </span>
-        </div>
-
         <div>
           <label className="block text-sm font-medium text-slate-700 mb-2">
             Chọn file ZIP chứa bản đồ
@@ -113,9 +144,9 @@ const WarehouseMapImportDialog: React.FC<WarehouseMapImportDialogProps> = ({
           <input
             ref={fileInputRef}
             type="file"
-            accept=".zip"
+            accept=".zip,application/zip"
             onChange={handleFileSelect}
-            disabled={importMutation.isPending}
+            disabled={isPending}
             className="
               block w-full text-sm text-slate-500
               file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0

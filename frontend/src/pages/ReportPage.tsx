@@ -22,7 +22,7 @@ const KPI_CARDS = [
   { label: 'Tổng đơn nhập', value: '1,284', color: '#3aa6a6' },
   { label: 'Tổng đơn xuất', value: '976', color: '#0f3d46' },
   { label: 'Giá trị tồn kho', value: '4.2 tỷ', color: '#0f3460' },
-  { label: 'Sản phẩm theo dõi', value: '358 SKU', color: '#6b7280' },
+  { label: 'Sản phẩm theo dõi', value: '358 Part_number', color: '#6b7280' },
 ]
 
 const MONTHLY_DATA = [

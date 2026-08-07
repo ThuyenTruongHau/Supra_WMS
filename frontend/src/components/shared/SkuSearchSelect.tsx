@@ -25,7 +25,7 @@ type SkuSearchSelectProps = {
 };
 
 /**
- * Ô SKU giống trang Sản phẩm: Input + nút Tìm.
+ * Ô Part_number giống trang Sản phẩm: Input + nút Tìm.
  * Bấm Tìm → gọi API ngay và mở dropdown kết quả (rộng hơn).
  */
 export function SkuSearchSelect({
@@ -33,7 +33,7 @@ export function SkuSearchSelect({
   onChange,
   onSelectOption,
   warehouseId,
-  placeholder = "Tìm theo tên, SKU, mã...",
+  placeholder = "Tìm theo tên, Part_number, mã...",
   className,
   disabled,
 }: SkuSearchSelectProps) {

@@ -10,6 +10,9 @@ from app.modules.warehouse.item.item_api import router as item_router
 from app.modules.warehouse.item_stock.item_stock_api import router as item_stock_router
 from app.modules.warehouse.transaction_history.history_api import router as transaction_router
 from app.modules.warehouse.unit.unit_api import router as unit_router
+from app.modules.warehouse.inbound_order.inbound_order_api import router as inbound_order_router
+from app.modules.warehouse.outbound_order.outbound_order_api import router as outbound_order_router
+from app.modules.robot.robot_api import router as robot_router
 from app.core.logger import setup_logger
 
 logger = setup_logger(
@@ -43,6 +46,8 @@ app.add_middleware(
     max_age=3600,
 )
 
+app.include_router(inbound_order_router, prefix="/api/v1")
+app.include_router(outbound_order_router, prefix="/api/v1")
 app.include_router(auth_router, prefix="/api/v1")
 app.include_router(warehouse_router, prefix="/api/v1")
 app.include_router(location_router, prefix="/api/v1")
@@ -50,6 +55,7 @@ app.include_router(item_router, prefix="/api/v1")
 app.include_router(item_stock_router, prefix="/api/v1")
 app.include_router(transaction_router, prefix="/api/v1")
 app.include_router(unit_router, prefix="/api/v1")
+app.include_router(robot_router, prefix="/api/v1")
 
 @app.get("/")
 async def root():

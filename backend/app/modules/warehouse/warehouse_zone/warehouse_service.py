@@ -18,6 +18,8 @@ from app.modules.warehouse.warehouse_zone.warehouse_schema import (
 )
 from app.modules.warehouse.location_map.location_model import Location
 from app.modules.warehouse.item.item_model import Item
+from app.core.logger import get_logger
+logger = get_logger("main")
 
 
 # --- Warehouse ---
@@ -226,3 +228,46 @@ def delete_zone(db: Session, zone_id: int) -> bool:
         db.rollback()
         raise ValueError("Cannot delete zone: related records still exist") from e
     return True
+
+
+def assign_locations_to_zone(
+    db: Session,
+    zone_id: int,
+    location_ids: list[int],
+) -> dict:
+    zone = get_zone_by_id(db, zone_id)
+    if not zone:
+        raise ValueError("Zone not found")
+
+    logger.info(f"Assigning locations to zone: {location_ids}")
+
+    unique_ids = list(dict.fromkeys(location_ids))
+    if unique_ids:
+        locations = (
+            db.query(Location)
+            .filter(Location.id.in_(unique_ids), Location.is_active.is_(True))
+            .all()
+        )
+        if len(locations) != len(unique_ids):
+            raise ValueError("One or more location ids not found")
+        for location in locations:
+            if location.warehouse_id != zone.warehouse_id:
+                raise ValueError(
+                    f"Location {location.location_code} does not belong to zone warehouse"
+                )
+
+    for location in db.query(Location).filter(Location.zone_id == zone_id).all():
+        location.zone_id = None
+
+    for location_id in unique_ids:
+        location = db.query(Location).filter(Location.id == location_id).first()
+        if location:
+            location.zone_id = zone_id
+
+    try:
+        db.commit()
+    except IntegrityError as e:
+        db.rollback()
+        raise ValueError(f"Database conflict: {e.orig}") from e
+
+    return {"assigned": len(unique_ids)}

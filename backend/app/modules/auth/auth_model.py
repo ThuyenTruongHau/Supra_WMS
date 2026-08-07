@@ -1,16 +1,34 @@
-from sqlalchemy import Boolean, Column, DateTime, Integer, String, func
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Index, Integer, String, func, text
 from app.core.database import Base
 from sqlalchemy.orm import relationship
-from sqlalchemy import ForeignKey
 
 class User(Base):
     __tablename__ = "users"
-    
+    __table_args__ = (
+        Index(
+            "uq_users_username_active",
+            "username",
+            unique=True,
+            postgresql_where=text("is_active IS TRUE"),
+        ),
+        Index(
+            "uq_users_email_active",
+            "email",
+            unique=True,
+            postgresql_where=text("is_active IS TRUE"),
+        ),
+    )
+
     id = Column(Integer, primary_key=True, index=True)
-    username = Column(String(50), unique=True, nullable=False, index=True)
-    email = Column(String(255), unique=True, nullable=False, index=True)
+    username = Column(String(50), nullable=False, index=True)
+    email = Column(String(255), nullable=False, index=True)
     hashed_password = Column(String(255), nullable=False)
     roles = relationship("Role", secondary="user_roles", back_populates="users")
+    warehouses = relationship(
+        "Warehouse",
+        secondary="user_warehouses",
+        lazy="selectin",
+    )
     is_active = Column(Boolean, default=True, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
@@ -28,6 +46,21 @@ class UserRole(Base):
         Integer,
         ForeignKey("roles.id", ondelete="CASCADE"),
         primary_key=True
+    )
+
+
+class UserWarehouse(Base):
+    __tablename__ = "user_warehouses"
+
+    user_id = Column(
+        Integer,
+        ForeignKey("users.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    warehouse_id = Column(
+        Integer,
+        ForeignKey("warehouse.id", ondelete="CASCADE"),
+        primary_key=True,
     )
 
 class Role(Base):

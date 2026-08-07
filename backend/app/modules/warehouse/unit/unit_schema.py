@@ -53,6 +53,9 @@ class ItemUnitResponse(BaseModel):
     item_id: int
     unit_id: int
     conversion_factor: Decimal
+    item_name: Optional[str] = None
+    item_sku: Optional[str] = None
+    unit_name: Optional[str] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 

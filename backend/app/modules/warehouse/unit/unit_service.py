@@ -3,7 +3,7 @@
 from typing import Optional
 
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app.modules.warehouse.item.item_model import Item
 from app.modules.warehouse.unit.unit_model import ItemUnit, Unit
@@ -122,6 +122,20 @@ def _ensure_unit_exists(db: Session, unit_id: int) -> None:
         raise ValueError(f"Unit id not found: {unit_id}")
 
 
+def item_unit_to_response(item_unit: ItemUnit) -> ItemUnitResponse:
+    return ItemUnitResponse(
+        id=item_unit.id,
+        item_id=item_unit.item_id,
+        unit_id=item_unit.unit_id,
+        conversion_factor=item_unit.conversion_factor,
+        item_name=item_unit.item.name if item_unit.item else None,
+        item_sku=item_unit.item.sku if item_unit.item else None,
+        unit_name=item_unit.unit.name if item_unit.unit else None,
+        created_at=item_unit.created_at,
+        updated_at=item_unit.updated_at,
+    )
+
+
 def _ensure_item_unit_unique(
     db: Session,
     *,
@@ -146,7 +160,10 @@ def list_item_units(
     item_id: Optional[int] = None,
     unit_id: Optional[int] = None,
 ) -> ItemUnitListResponse:
-    query = db.query(ItemUnit)
+    query = db.query(ItemUnit).options(
+        joinedload(ItemUnit.item),
+        joinedload(ItemUnit.unit),
+    )
     if item_id is not None:
         query = query.filter(ItemUnit.item_id == item_id)
     if unit_id is not None:
@@ -159,7 +176,7 @@ def list_item_units(
         .all()
     )
     return ItemUnitListResponse(
-        items=[ItemUnitResponse.model_validate(iu) for iu in items],
+        items=[item_unit_to_response(iu) for iu in items],
         total=total,
         page=page,
         page_size=page_size,
@@ -167,7 +184,15 @@ def list_item_units(
 
 
 def get_item_unit_by_id(db: Session, item_unit_id: int) -> Optional[ItemUnit]:
-    return db.query(ItemUnit).filter(ItemUnit.id == item_unit_id).first()
+    return (
+        db.query(ItemUnit)
+        .options(
+            joinedload(ItemUnit.item),
+            joinedload(ItemUnit.unit),
+        )
+        .filter(ItemUnit.id == item_unit_id)
+        .first()
+    )
 
 
 def create_item_unit(db: Session, body: ItemUnitCreate) -> ItemUnit:
@@ -183,6 +208,7 @@ def create_item_unit(db: Session, body: ItemUnitCreate) -> ItemUnit:
         db.add(item_unit)
         db.commit()
         db.refresh(item_unit)
+        item_unit = get_item_unit_by_id(db, item_unit.id)
     except IntegrityError as e:
         db.rollback()
         raise ValueError(f"Database conflict: {e.orig}") from e
@@ -214,6 +240,7 @@ def update_item_unit(
     try:
         db.commit()
         db.refresh(item_unit)
+        item_unit = get_item_unit_by_id(db, item_unit.id)
     except IntegrityError as e:
         db.rollback()
         raise ValueError(f"Database conflict: {e.orig}") from e

@@ -110,7 +110,7 @@ export default function WorkerInboundConfirmPage() {
   };
 
   if (!detail) {
-    return <div className="min-h-[100dvh] flex items-center justify-center text-stripe-ink-mute text-xl">Không tìm thấy lệnh SKU</div>;
+    return <div className="min-h-[100dvh] flex items-center justify-center text-stripe-ink-mute text-xl">Không tìm thấy lệnh Part_number</div>;
   }
 
 

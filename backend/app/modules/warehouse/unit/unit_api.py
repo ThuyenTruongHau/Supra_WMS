@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.dependencies import require_permission
 from app.modules.warehouse.unit import unit_service
+from app.modules.warehouse.unit.unit_service import item_unit_to_response
 from app.modules.warehouse.unit.unit_schema import (
     ItemUnitCreate,
     ItemUnitListResponse,
@@ -130,7 +131,7 @@ def create_item_unit(body: ItemUnitCreate, db: DbSession):
         item_unit = unit_service.create_item_unit(db, body)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
-    return ItemUnitResponse.model_validate(item_unit)
+    return item_unit_to_response(item_unit)
 
 
 @router.get(
@@ -142,7 +143,7 @@ def get_item_unit(item_unit_id: int, db: DbSession):
     item_unit = unit_service.get_item_unit_by_id(db, item_unit_id)
     if not item_unit:
         raise HTTPException(status_code=404, detail="Item unit not found")
-    return ItemUnitResponse.model_validate(item_unit)
+    return item_unit_to_response(item_unit)
 
 
 @router.patch(
@@ -157,7 +158,7 @@ def update_item_unit(item_unit_id: int, body: ItemUnitUpdate, db: DbSession):
         raise HTTPException(status_code=400, detail=str(e)) from e
     if not item_unit:
         raise HTTPException(status_code=404, detail="Item unit not found")
-    return ItemUnitResponse.model_validate(item_unit)
+    return item_unit_to_response(item_unit)
 
 
 @router.delete(

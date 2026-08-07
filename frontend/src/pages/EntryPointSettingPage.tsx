@@ -237,7 +237,7 @@ export default function EntryPointSettingPage() {
         width="90vw"
         style={{ top: 20 }}
         styles={{ body: { height: '80vh', padding: 0 } }}
-        destroyOnClose
+        destroyOnHidden
       >
         <div className="w-full h-full">
           <WarehouseMapCanvas

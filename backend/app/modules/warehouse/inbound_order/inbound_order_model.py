@@ -45,7 +45,7 @@ class InboundOrderDetail(Base):
     )
     item_id = Column(Integer, ForeignKey("item.id"), nullable=False)
     quantity = Column(Integer, nullable=False, default=0)
-    unit = Column(String(50), nullable=False)
+    unit_id = Column(Integer, ForeignKey("unit.id"), nullable=False)
     status = Column(String(20), default="initialize", nullable=False, index=True)
     detail_type = Column(String(50), nullable=False, index=True)
 
@@ -60,6 +60,7 @@ class InboundOrderDetail(Base):
 
     inbound_order = relationship("InboundOrder", foreign_keys=[inbound_order_id], lazy="joined")
     item = relationship("Item", foreign_keys=[item_id], lazy="joined")
+    unit = relationship("Unit", foreign_keys=[unit_id], lazy="joined")
 
 class InboundOrderAllocation(Base):
     """Inbound order allocation."""

@@ -80,7 +80,7 @@ const suggestionColumns: ColumnsType<OutboundWorkflowAllocation> = [
     ),
   },
   {
-    title: "SKU",
+    title: "Part_number",
     key: "sku",
     render: (_, row) => (
       <span className="font-semibold text-brand-primary">{row.item.sku}</span>
@@ -142,7 +142,7 @@ const shortageColumns: ColumnsType<OutboundShortage> = [
     key: "customer_name",
   },
   {
-    title: "SKU",
+    title: "Part_number",
     key: "sku",
     render: (_, row) => row.item.sku,
   },
@@ -177,7 +177,7 @@ const bypassColumns: ColumnsType<OutboundBypassRequest> = [
     key: "customer_name",
   },
   {
-    title: "SKU",
+    title: "Part_number",
     key: "sku",
     render: (_, row) => row.item.sku,
   },
@@ -675,9 +675,9 @@ export default function CreateOutboundModal({
                               >
                                 <Form.Item
                                   name={[detailField.name, "sku"]}
-                                  label="SKU"
+                                  label="Part_number"
                                   rules={[
-                                    { required: true, message: "Chọn SKU" },
+                                    { required: true, message: "Chọn Part_number" },
                                   ]}
                                   className="col-span-5 !mb-0 min-w-0"
                                 >

@@ -36,9 +36,7 @@ export const importWarehouseMapApi = async (
   const response = await axiosInstance.post<WarehouseMapImportResult>(
     '/api/v1/warehouse-maps/import',
     formData,
-    {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    },
+    { timeout: 5 * 60 * 1000 },
   );
   return response.data;
 };

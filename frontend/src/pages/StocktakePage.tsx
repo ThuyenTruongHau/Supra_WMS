@@ -232,7 +232,7 @@ export default function StocktakePage() {
       render: (_: any, record: any) => (
         <div>
           <div style={{ fontWeight: 'bold' }}>{record.productName}</div>
-          <span style={{ fontSize: '12px', color: '#8c8c8c' }}>SKU: {record.sku}</span>
+          <span style={{ fontSize: '12px', color: '#8c8c8c' }}>Part_number: {record.sku}</span>
         </div>
       )
     },

@@ -1,0 +1,26 @@
+export interface ItemUnit {
+  id: number;
+  item_id: number;
+  unit_id: number;
+  conversion_factor: number;
+  item_name: string | null;
+  item_sku: string | null;
+  unit_name: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+}
+
+export interface ItemUnitListResponse {
+  items: ItemUnit[];
+  total: number;
+  page: number;
+  page_size: number;
+}
+
+export type CreateItemUnitInput = {
+  item_id: number;
+  unit_id: number;
+  conversion_factor: number;
+};
+
+export type UpdateItemUnitInput = Partial<CreateItemUnitInput>;

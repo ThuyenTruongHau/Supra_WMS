@@ -15,6 +15,7 @@ import {
   Input,
   Space,
   message,
+  Select,
 } from "@/components/ui";
 import {
   useDeactivateItem,
@@ -24,6 +25,7 @@ import {
 import type { ItemStock } from "@/types/item";
 import { useAppStore } from "@/store/useAppStore";
 import { useZone } from "@/hooks/useZone";
+import { useUnits } from "@/hooks/useUnit";
 import { DetailView } from "@/components/ui/DetailView";
 import dayjs from "dayjs";
 import type { Item } from "@/types/item";
@@ -54,17 +56,12 @@ function ItemDetailsView({ details }: { details?: Record<string, unknown> }) {
 
 export const itemDetailFields: DetailFieldSchema<Item>[] = [
   {
-    key: "supplier",
-    label: "Nhà cung cấp",
-    accessor: (item) => item.supplier,
-  },
-  {
     key: "quantity",
     label: "Số lượng",
     render: (item) => (
       <span
         className={
-          item.quantity === 0 || item.quantity < 10
+          item.quantity < item.min_quantity
             ? "font-semibold text-orange-500"
             : "font-semibold"
         }
@@ -72,6 +69,16 @@ export const itemDetailFields: DetailFieldSchema<Item>[] = [
         {item.quantity}
       </span>
     ),
+  },
+  {
+    key: "min_quantity",
+    label: "Số lượng tối thiểu",
+    accessor: (item) => item.min_quantity,
+  },
+  {
+    key: "max_quantity",
+    label: "Số lượng tối đa",
+    accessor: (item) => item.max_quantity,
   },
   {
     key: "base_unit",
@@ -103,9 +110,10 @@ export const itemDetailFields: DetailFieldSchema<Item>[] = [
 type ItemFormValues = {
   name: string;
   sku: string; // chỉ hiển thị, disabled
-  supplier: string;
-  base_unit: string;
+  base_unit: number;
   description: string;
+  min_quantity: number;
+  max_quantity: number;
   quantity: number; // chỉ hiển thị, disabled
   detailEntries?: { key: string; value: string }[];
 };
@@ -189,6 +197,7 @@ export default function ItemDetailPage() {
   const navigate = useNavigate();
   const { selectedWarehouseId } = useAppStore();
   const { data: zones = [] } = useZone();
+  const { data: units = [], isLoading: isUnitsLoading } = useUnits();
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [form] = Form.useForm<ItemFormValues>();
   const { id } = useParams<{ id: string }>();
@@ -207,9 +216,10 @@ export default function ItemDetailPage() {
     form.setFieldsValue({
       name: item.name,
       sku: item.sku,
-      supplier: item.supplier,
-      base_unit: item.base_unit,
+      base_unit: units.find((u) => u.name === item.base_unit)?.id,
       description: item.description ?? "",
+      min_quantity: item.min_quantity,
+      max_quantity: item.max_quantity,
       quantity: item.quantity,
       detailEntries: Object.entries(item.details ?? {}).map(([key, value]) => ({
         key,
@@ -237,8 +247,9 @@ export default function ItemDetailPage() {
         data: {
           name: values.name.trim(),
           description: values.description?.trim() ?? "",
-          base_unit: values.base_unit?.trim() ?? "",
-          supplier: values.supplier?.trim() ?? "",
+          base_unit: Number(values.base_unit),
+          min_quantity: Number(values.min_quantity),
+          max_quantity: Number(values.max_quantity),
           // Không gửi quantity — BE tính từ ItemStock
           ...(Object.keys(details).length > 0 ? { details } : {}),
         },
@@ -355,9 +366,6 @@ export default function ItemDetailPage() {
           <h3 className="text-base font-semibold text-brand-dark">
             Tồn kho theo vị trí
           </h3>
-          <p className="mt-1 text-sm text-gray-400">
-            Phân bổ sản phẩm tại các vị trí trong kho
-          </p>
         </div>
         <Table<ItemStock>
           columns={locationColumns}
@@ -400,17 +408,10 @@ export default function ItemDetailPage() {
           </Form.Item>
           <Form.Item
             name="sku"
-            label="SKU"
-            rules={[{ required: true, message: "Vui lòng nhập SKU!" }]}
+            label="Part_number"
+            rules={[{ required: true, message: "Vui lòng nhập Part_number!" }]}
           >
-            <Input />
-          </Form.Item>
-          <Form.Item
-            name="supplier"
-            label="Nhà cung cấp"
-            rules={[{ required: true, message: "Vui lòng nhập NCC!" }]}
-          >
-            <Input />
+            <Input disabled />
           </Form.Item>
           <Form.Item
             name="quantity"
@@ -419,12 +420,43 @@ export default function ItemDetailPage() {
           >
             <Input type="number" disabled min={0} />
           </Form.Item>
+          <div className="grid grid-cols-2 gap-4">
+            <Form.Item
+              name="min_quantity"
+              label="Số lượng tối thiểu"
+              rules={[
+                { required: true, message: "Vui lòng nhập số lượng tối thiểu!" },
+                { type: "number", min: 0, message: "Giá trị phải >= 0" },
+              ]}
+            >
+              <Input type="number" min={0} />
+            </Form.Item>
+            <Form.Item
+              name="max_quantity"
+              label="Số lượng tối đa"
+              rules={[
+                { required: true, message: "Vui lòng nhập số lượng tối đa!" },
+                { type: "number", min: 0, message: "Giá trị phải >= 0" },
+              ]}
+            >
+              <Input type="number" min={0} />
+            </Form.Item>
+          </div>
           <Form.Item
             name="base_unit"
             label="Đơn vị"
-            rules={[{ required: true, message: "Vui lòng nhập đơn vị!" }]}
+            rules={[{ required: true, message: "Vui lòng chọn đơn vị!" }]}
           >
-            <Input />
+            <Select
+              showSearch
+              placeholder="Chọn đơn vị"
+              optionFilterProp="label"
+              loading={isUnitsLoading}
+              options={units.map((unit) => ({
+                value: unit.id,
+                label: unit.name,
+              }))}
+            />
           </Form.Item>
           <Form.Item
             name="description"

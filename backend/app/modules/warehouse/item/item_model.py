@@ -18,7 +18,9 @@ class Item(Base):
     sku = Column(String(50), unique=True, nullable=False, index=True)
     name = Column(String(255), nullable=False)
     description = Column(Text)
-    base_unit = Column(String(20), nullable=False)
+    base_unit_id = Column("base_unit", Integer, ForeignKey("unit.id"), nullable=False)
+    max_quantity = Column(Integer, nullable=False)
+    min_quantity = Column(Integer, nullable=False)
     is_active = Column(Boolean, default=True, nullable=False)
     warehouse_id = Column(Integer, ForeignKey("warehouse.id"), nullable=False, index=True)
     details = Column(
@@ -32,6 +34,7 @@ class Item(Base):
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
     warehouse = relationship("Warehouse", lazy="joined")
+    unit = relationship("Unit", foreign_keys=[base_unit_id], lazy="joined")
 
     quantity = column_property(
         select(func.coalesce(func.sum(ItemStock.quantity), 0))

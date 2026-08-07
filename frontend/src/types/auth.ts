@@ -12,6 +12,14 @@ export interface RoleBrief {
   name: string;
 }
 
+export interface WarehouseBrief {
+  id: number;
+  code: string;
+  name: string | null;
+}
+
+export type UserModule = 'inbound' | 'outbound' | 'stocktake';
+
 export interface AuthTokens {
   access_token: string;
   refresh_token?: string | null;
@@ -45,6 +53,7 @@ export interface User {
   username: string;
   email: string;
   roles: RoleBrief[];
+  warehouses: WarehouseBrief[];
   is_active: boolean;
   created_at: string;
   updated_at?: string;
@@ -63,6 +72,9 @@ export interface CreateUserInput {
   password: string;
   password_confirm: string;
   role_ids?: number[];
+  is_admin?: boolean;
+  warehouse_ids?: number[];
+  modules?: UserModule[];
 }
 
 export interface UpdateUserInput {
@@ -70,11 +82,25 @@ export interface UpdateUserInput {
   password?: string;
   password_confirm?: string;
   role_ids?: number[];
-  is_active?: boolean;
+  is_admin?: boolean;
+  warehouse_ids?: number[];
+  modules?: UserModule[];
 }
 
 /** Temporary role options until BE exposes GET /roles */
 export const ROLE_OPTIONS: RoleBrief[] = [
   { id: 1, name: 'admin' },
   { id: 2, name: 'operator' },
+];
+
+export const MODULE_OPTIONS: { key: UserModule; label: string }[] = [
+  { key: 'inbound', label: 'Đơn nhập' },
+  { key: 'outbound', label: 'Đơn xuất' },
+  { key: 'stocktake', label: 'Kiểm kê' },
+];
+
+export const MODULE_ROLE_NAMES: UserModule[] = [
+  'inbound',
+  'outbound',
+  'stocktake',
 ];

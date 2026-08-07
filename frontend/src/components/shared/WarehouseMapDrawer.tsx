@@ -93,7 +93,7 @@ const WarehouseMapDrawer: React.FC<WarehouseMapDrawerProps> = ({
                   <div>
                     <span className="block text-xs text-slate-500">Mã kệ</span>
                     <span className="font-semibold text-slate-700">
-                      {detailData.location.location_code}
+                      {detailData.location.location_name}
                     </span>
                   </div>
                   <div>

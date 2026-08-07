@@ -1,19 +1,60 @@
 """Authentication service."""
 
-from datetime import timedelta, datetime, timezone
+from datetime import timedelta
 from typing import Optional
-from sqlalchemy.orm import Session, selectinload
+
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session, selectinload
+
 from app.core.config import settings
-from app.modules.auth.auth_model import User, Role
-from app.modules.auth.auth_schema import LoginRequest, LoginResponse, TokenResponse, UserCreate, UserSignupResponse, UserResponse, UserUpdate, UserListResponse
-from app.core.security import verify_password, decode_refresh_token, create_access_token, create_refresh_token, get_password_hash
+from app.core.security import (
+    create_access_token,
+    create_refresh_token,
+    decode_refresh_token,
+    get_password_hash,
+    verify_password,
+)
+from app.modules.auth.auth_model import User, Role, Permission
+from app.modules.auth.auth_schema import (
+    MODULE_NAMES,
+    LoginRequest,
+    LoginResponse,
+    ModuleName,
+    TokenResponse,
+    UserCreate,
+    UserListResponse,
+    UserResponse,
+    UserSignupResponse,
+    UserUpdate,
+)
+from app.modules.warehouse.warehouse_zone.warehouse_model import Warehouse
+
 
 def _user_query(db: Session, *, include_inactive: bool = False):
-    q = db.query(User).options(selectinload(User.roles))
+    q = db.query(User).options(
+        selectinload(User.roles).selectinload(Role.permissions),
+        selectinload(User.warehouses),
+    )
     if not include_inactive:
         q = q.filter(User.is_active.is_(True))
     return q
+
+
+def _get_active_user_by_username(db: Session, username: str) -> Optional[User]:
+    return _user_query(db).filter(User.username == username).first()
+
+
+def _get_active_user_by_email(
+    db: Session,
+    email: str,
+    *,
+    exclude_user_id: Optional[int] = None,
+) -> Optional[User]:
+    q = _user_query(db).filter(User.email == email)
+    if exclude_user_id is not None:
+        q = q.filter(User.id != exclude_user_id)
+    return q.first()
+
 
 def _get_roles_by_ids(db: Session, role_ids: list[int]) -> list[Role]:
     if not role_ids:
@@ -24,8 +65,140 @@ def _get_roles_by_ids(db: Session, role_ids: list[int]) -> list[Role]:
         raise ValueError(f"Role ids not found: {sorted(missing)}")
     return roles
 
-def _assign_roles(db: Session, user: User, role_ids: list[int]) -> None:
-    user.roles = _get_roles_by_ids(db, role_ids)
+
+def _get_roles_by_names(db: Session, names: list[str]) -> list[Role]:
+    if not names:
+        return []
+    roles = db.query(Role).filter(Role.name.in_(names)).all()
+    found = {r.name for r in roles}
+    missing = set(names) - found
+    if missing:
+        raise ValueError(f"Role names not found: {sorted(missing)}")
+    # Preserve requested order
+    by_name = {r.name: r for r in roles}
+    return [by_name[n] for n in names]
+
+
+def _get_warehouses_by_ids(db: Session, warehouse_ids: list[int]) -> list[Warehouse]:
+    if not warehouse_ids:
+        return []
+    warehouses = db.query(Warehouse).filter(Warehouse.id.in_(warehouse_ids)).all()
+    missing = set(warehouse_ids) - {w.id for w in warehouses}
+    if missing:
+        raise ValueError(f"Warehouse ids not found: {sorted(missing)}")
+    by_id = {w.id: w for w in warehouses}
+    return [by_id[i] for i in warehouse_ids]
+
+
+def _is_admin_role_ids(db: Session, role_ids: list[int]) -> bool:
+    if not role_ids:
+        return False
+    roles = _get_roles_by_ids(db, role_ids)
+    return any(r.name == "admin" for r in roles)
+
+
+def _ensure_admin_role_with_wildcard(db: Session) -> Role:
+    """Ensure admin role exists and is linked to permission '*'."""
+    admin_role = (
+        db.query(Role)
+        .options(selectinload(Role.permissions))
+        .filter(Role.name == "admin")
+        .first()
+    )
+    if not admin_role:
+        raise ValueError("Admin role not found. Run seed_data.")
+    wildcard = db.query(Permission).filter(Permission.code == "*").first()
+    if not wildcard:
+        raise ValueError("Wildcard permission '*' not found. Run seed_data.")
+    if not any(p.code == "*" for p in admin_role.permissions):
+        admin_role.permissions = [*admin_role.permissions, wildcard]
+        db.flush()
+    return admin_role
+
+
+def _assign_admin_access(db: Session, user: User) -> None:
+    admin_role = _ensure_admin_role_with_wildcard(db)
+    user.roles = [admin_role]
+    user.warehouses = []
+
+
+def _assign_module_access(
+    db: Session,
+    user: User,
+    *,
+    warehouse_ids: list[int],
+    modules: list[ModuleName],
+) -> None:
+    if not warehouse_ids:
+        raise ValueError("warehouse_ids is required for non-admin users")
+    if not modules:
+        raise ValueError("modules is required for non-admin users")
+    invalid = [m for m in modules if m not in MODULE_NAMES]
+    if invalid:
+        raise ValueError(f"Invalid modules: {invalid}")
+    user.roles = _get_roles_by_names(db, list(modules))
+    user.warehouses = _get_warehouses_by_ids(db, warehouse_ids)
+
+
+def _is_admin_request(
+    *,
+    is_admin: Optional[bool],
+    role_ids: Optional[list[int]],
+    db: Session,
+) -> bool:
+    if is_admin is True:
+        return True
+    if is_admin is False:
+        return False
+    if role_ids:
+        return _is_admin_role_ids(db, role_ids)
+    return False
+
+
+def _apply_access_on_create(db: Session, user: User, body: UserCreate) -> None:
+    if _is_admin_request(is_admin=body.is_admin, role_ids=body.role_ids, db=db):
+        _assign_admin_access(db, user)
+        return
+    _assign_module_access(
+        db,
+        user,
+        warehouse_ids=body.warehouse_ids,
+        modules=body.modules,
+    )
+
+
+def _apply_access_on_update(db: Session, user: User, body: UserUpdate) -> None:
+    data = body.model_dump(exclude_unset=True)
+    role_ids = data.get("role_ids")
+    warehouse_ids = data.get("warehouse_ids")
+    modules = data.get("modules")
+    is_admin = data.get("is_admin")
+
+    access_touched = (
+        "role_ids" in data
+        or "warehouse_ids" in data
+        or "modules" in data
+        or "is_admin" in data
+    )
+    if not access_touched:
+        return
+
+    if _is_admin_request(is_admin=is_admin, role_ids=role_ids, db=db):
+        _assign_admin_access(db, user)
+        return
+
+    # Non-admin: replace roles (removes admin + '*') and assign module roles
+    if warehouse_ids is None or modules is None:
+        raise ValueError(
+            "warehouse_ids and modules are required when updating a non-admin user"
+        )
+    _assign_module_access(
+        db,
+        user,
+        warehouse_ids=warehouse_ids,
+        modules=modules,
+    )
+
 
 def login(db: Session, body: LoginRequest) -> LoginResponse:
     user = authenticate_user(db, body.username, body.password)
@@ -40,11 +213,12 @@ def login(db: Session, body: LoginRequest) -> LoginResponse:
         ),
     )
 
-def sign_up(db: Session, user_in: UserCreate)->UserSignupResponse:
-    if db.query(User).filter(User.username == user_in.username).first():
+
+def sign_up(db: Session, user_in: UserCreate) -> UserSignupResponse:
+    if _get_active_user_by_username(db, user_in.username):
         raise ValueError("User with this username already exists")
 
-    if db.query(User).filter(User.email == user_in.email).first():
+    if _get_active_user_by_email(db, user_in.email):
         raise ValueError("User with this email already exists")
 
     new_user = User(
@@ -53,40 +227,37 @@ def sign_up(db: Session, user_in: UserCreate)->UserSignupResponse:
         hashed_password=get_password_hash(user_in.password),
         is_active=True,
     )
-    # add into db
     try:
         db.add(new_user)
-        db.flush()  # có id trước khi gán role
-        if user_in.role_ids:
-            _assign_roles(db, new_user, user_in.role_ids)
-
+        db.flush()
+        _apply_access_on_create(db, new_user, user_in)
         db.commit()
-        new_user = _user_query(db, include_inactive=True).filter(User.id == new_user.id).one()
+        new_user = (
+            _user_query(db, include_inactive=True)
+            .filter(User.id == new_user.id)
+            .one()
+        )
     except ValueError:
         db.rollback()
         raise
     except IntegrityError as e:
         db.rollback()
-        # error from pgsql
-        raise ValueError(f"Database conflict: {str(e.orig)}")
-    #generate accessToken
-    access_token= create_access_token({"sub": new_user.username})
-    refresh_access_token= create_refresh_token({"sub": new_user.username})
-    
-    # define Response to this function
-    tokens=TokenResponse(
-        access_token=access_token,
-        refresh_token=refresh_access_token,
-        token_type="bearer"
+        raise ValueError(f"Database conflict: {str(e.orig)}") from e
+
+    tokens = TokenResponse(
+        access_token=create_access_token({"sub": new_user.username}),
+        refresh_token=create_refresh_token({"sub": new_user.username}),
+        token_type="bearer",
     )
-    
+
     return UserSignupResponse(
         id=new_user.id,
         username=new_user.username,
         email=new_user.email,
         roles=new_user.roles,
+        warehouses=new_user.warehouses,
         is_active=new_user.is_active,
-        tokens=tokens
+        tokens=tokens,
     )
 
 
@@ -105,8 +276,9 @@ def refresh_access_token(db: Session, refresh_token: str) -> Optional[str]:
 
     return create_access_token(
         data={"sub": user.username},
-        expires_delta=timedelta(minutes=settings.access_token_expire_minutes)
+        expires_delta=timedelta(minutes=settings.access_token_expire_minutes),
     )
+
 
 def authenticate_user(db: Session, username: str, password: str) -> Optional[User]:
     user = _user_query(db).filter(User.username == username).first()
@@ -117,6 +289,7 @@ def authenticate_user(db: Session, username: str, password: str) -> Optional[Use
     if not user.is_active:
         return None
     return user
+
 
 def list_users(db: Session, page: int = 1, page_size: int = 20) -> UserListResponse:
     query = _user_query(db)
@@ -134,37 +307,45 @@ def list_users(db: Session, page: int = 1, page_size: int = 20) -> UserListRespo
         page_size=page_size,
     )
 
+
 def get_user_by_id(db: Session, user_id: int) -> Optional[User]:
     return _user_query(db).filter(User.id == user_id).first()
 
+
 def update_user(db: Session, user_id: int, body: UserUpdate) -> Optional[User]:
-    user = _user_query(db).filter(User.id == user_id).first()
-    if not user:
+    user = (
+        _user_query(db, include_inactive=True)
+        .filter(User.id == user_id)
+        .first()
+    )
+    if not user or not user.is_active:
         return None
     data = body.model_dump(exclude_unset=True)
+    data.pop("password_confirm", None)
     if "email" in data:
-        existing = (
-            db.query(User)
-            .filter(User.email == data["email"], User.id != user_id)
-            .first()
+        existing = _get_active_user_by_email(
+            db, data["email"], exclude_user_id=user_id
         )
         if existing:
             raise ValueError("Email already in use")
         user.email = data["email"]
     if "password" in data:
-        user.hashed_password = get_password_hash(data["password"])
-    if "is_active" in data:
-        user.is_active = data["is_active"]
-    if "role_ids" in data:
-        _assign_roles(db, user, data["role_ids"])
+        password = (data["password"] or "").strip()
+        if password:
+            user.hashed_password = get_password_hash(password)
+
     try:
+        _apply_access_on_update(db, user, body)
         db.commit()
-        db.refresh(user)
-        user = _user_query(db).filter(User.id == user_id).one()
+        user = _user_query(db, include_inactive=True).filter(User.id == user_id).one()
+    except ValueError:
+        db.rollback()
+        raise
     except IntegrityError as e:
         db.rollback()
         raise ValueError(f"Database conflict: {e.orig}") from e
     return user
+
 
 def delete_user(db: Session, user_id: int) -> bool:
     user = (
@@ -177,5 +358,3 @@ def delete_user(db: Session, user_id: int) -> bool:
     user.is_active = False
     db.commit()
     return True
-
-

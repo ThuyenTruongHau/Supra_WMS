@@ -22,9 +22,8 @@ export function getItemsForExport(
 export function toExportRows(items: Item[]) {
   return items.map((i, index) => ({
     STT: index + 1,
-    "Mã sản phẩm": i.sku,
+    Part_number: i.sku,
     "Tên sản phẩm": i.name,
-    SKU: i.sku,
     "Nhà cung cấp": i.supplier,
     "Số lượng": i.quantity,
     "Đơn vị": i.base_unit,

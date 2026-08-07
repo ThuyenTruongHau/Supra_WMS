@@ -43,7 +43,6 @@ export const importOutboundOrderApi = async (
     `${BASE}/import`,
     formData,
     {
-      headers: { 'Content-Type': 'multipart/form-data' },
       timeout: 5 * 60 * 1000,
     },
   )

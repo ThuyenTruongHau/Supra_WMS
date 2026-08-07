@@ -13,7 +13,9 @@ export const LINE_COLOR = '#d0d0d0';
 export const NODE_NORMAL_COLOR = '#9ca3af';
 export const SHELF_FULL_COLOR = '#0f3d46'; // Kệ có hàng (Màu xanh logo tối emerald)
 export const SHELF_EMPTY_COLOR = '#66625F'; // Kệ trống xám
+export const SHELF_SELECTED_COLOR = '#22c55e'; // Kệ đang được chọn (picker)
 export const SHELF_STROKE_COLOR = '#2d4f7c';
+export const SHELF_SELECTED_STROKE_COLOR = '#15803d';
 export const PADDING = 0.05; // 5% border padding when fitting to canvas
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
@@ -29,8 +31,8 @@ export function parseNode(row: (number | string | number[])[], mapHeight: number
     x: row[0] as number,
     y: mapHeight - (row[1] as number), // ← Y-flip: JSON Y↑  →  Canvas Y↓
     type: row[2] as number,
-    content: row[3] as string,
-    name: row[4] as string,
+    content: String(row[3]),
+    name: String(row[4] ?? ''),
     isTurn: row[5] as number,
     shelfIsTurn: row[6] as number,
     extraTypes: (row[7] as number[]) ?? [],

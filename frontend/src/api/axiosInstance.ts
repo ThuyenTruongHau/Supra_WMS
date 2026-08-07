@@ -39,6 +39,10 @@ axiosInstance.interceptors.request.use(
     if (access_token && config.headers && !isAuthRoute) {
       config.headers.Authorization = `Bearer ${access_token}`;
     }
+    // Let axios/browser set multipart boundary for file uploads
+    if (config.data instanceof FormData && config.headers) {
+      delete config.headers['Content-Type'];
+    }
     return config;
   },
   (error) => {

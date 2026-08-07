@@ -27,7 +27,14 @@ if config.config_file_name is not None:
 from app.core.config import settings
 from app.core.database import Base
 # Import TẤT CẢ model để đăng ký vào metadata
-from app.modules.auth.auth_model import User, UserRole, Role, RolePermission, Permission  # noqa: F401
+from app.modules.auth.auth_model import (  # noqa: F401
+    User,
+    UserRole,
+    UserWarehouse,
+    Role,
+    RolePermission,
+    Permission,
+)
 
 # Warehouse
 from app.modules.warehouse.warehouse_zone.warehouse_model import Warehouse, Zone  # noqa: F401
@@ -47,6 +54,7 @@ from app.modules.warehouse.outbound_order.outbound_order_model import (  # noqa:
     OutboundOrderAllocation,
 )
 from app.modules.warehouse.transaction_history.history_model import Transaction, History  # noqa: F401
+from app.modules.robot.robot_model import RobotTask, TaskStatus  # noqa: F401
 
 target_metadata = Base.metadata
 

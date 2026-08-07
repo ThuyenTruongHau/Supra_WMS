@@ -16,7 +16,10 @@ export const loginApi = async (data: LoginRequest): Promise<LoginResponse> => {
     data,
   );
   const { user, tokens } = response.data;
-  const roleName = user.roles?.[0]?.name ?? '';
+  const roleName =
+    user.roles?.find((r) => r.name === 'admin')?.name ??
+    user.roles?.[0]?.name ??
+    '';
   return {
     access_token: tokens.access_token,
     refresh_token: tokens.refresh_token ?? '',
@@ -70,6 +73,7 @@ export const createUserApi = async (data: CreateUserInput): Promise<User> => {
     username: string;
     email: string;
     roles: User['roles'];
+    warehouses?: User['warehouses'];
     is_active: boolean;
   }>('/api/v1/auth/signup', data);
   const body = response.data;
@@ -78,6 +82,7 @@ export const createUserApi = async (data: CreateUserInput): Promise<User> => {
     username: body.username,
     email: body.email,
     roles: body.roles ?? [],
+    warehouses: body.warehouses ?? [],
     is_active: body.is_active,
     created_at: new Date().toISOString(),
   };

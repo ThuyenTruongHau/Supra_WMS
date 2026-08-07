@@ -1,33 +1,73 @@
 import axiosInstance from './axiosInstance';
-import type { Warehouse, WarehouseListResponse } from '@/types/warehouse';
+import type {
+  CreateZoneInput,
+  LocationListResponse,
+  UpdateZoneInput,
+  Zone,
+  ZoneListResponse,
+} from '@/types/zone';
 
-/** @deprecated Prefer `@/api/warehouse` — kept so old imports still resolve. */
-export type Zone = Warehouse;
+const ZONES_BASE = '/api/v1/zones';
+const LOCATIONS_BASE = '/api/v1/locations';
 
-export const getZoneApi = async (): Promise<Zone[]> => {
-  const response = await axiosInstance.get<WarehouseListResponse>(
-    '/api/v1/warehouses',
-    { params: { page: 1, page_size: 100 } },
-  );
-  return response.data.items;
+export const listZonesApi = async (params?: {
+  warehouse_id?: number;
+  page?: number;
+  page_size?: number;
+}): Promise<ZoneListResponse> => {
+  const { data } = await axiosInstance.get<ZoneListResponse>(ZONES_BASE, {
+    params: {
+      warehouse_id: params?.warehouse_id,
+      page: params?.page ?? 1,
+      page_size: params?.page_size ?? 100,
+    },
+  });
+  return data;
+};
+
+export const createZoneApi = async (payload: CreateZoneInput): Promise<Zone> => {
+  const { data } = await axiosInstance.post<Zone>(ZONES_BASE, payload);
+  return data;
 };
 
 export const updateZoneApi = async (
   id: number,
-  data: Omit<Zone, 'id'>,
+  payload: UpdateZoneInput,
 ): Promise<Zone> => {
-  const response = await axiosInstance.patch<Zone>(
-    `/api/v1/warehouses/${id}`,
-    data,
-  );
-  return response.data;
-};
-
-export const createZoneApi = async (data: Omit<Zone, 'id'>): Promise<Zone> => {
-  const response = await axiosInstance.post<Zone>('/api/v1/warehouses', data);
-  return response.data;
+  const { data } = await axiosInstance.patch<Zone>(`${ZONES_BASE}/${id}`, payload);
+  return data;
 };
 
 export const deleteZoneApi = async (id: number): Promise<void> => {
-  await axiosInstance.delete(`/api/v1/warehouses/${id}`);
+  await axiosInstance.delete(`${ZONES_BASE}/${id}`);
+};
+
+export const assignZoneLocationsApi = async (
+  zoneId: number,
+  locationIds: number[],
+): Promise<{ assigned: number }> => {
+  const { data } = await axiosInstance.put<{ assigned: number }>(
+    `${ZONES_BASE}/${zoneId}/locations`,
+    { location_ids: locationIds },
+  );
+  return data;
+};
+
+export const listLocationsApi = async (params?: {
+  warehouse_id?: number;
+  zone_id?: number;
+  q?: string;
+  page?: number;
+  page_size?: number;
+}): Promise<LocationListResponse> => {
+  const { data } = await axiosInstance.get<LocationListResponse>(LOCATIONS_BASE, {
+    params: {
+      warehouse_id: params?.warehouse_id,
+      zone_id: params?.zone_id,
+      q: params?.q,
+      page: params?.page ?? 1,
+      page_size: params?.page_size ?? 10000,
+    },
+  });
+  return data;
 };

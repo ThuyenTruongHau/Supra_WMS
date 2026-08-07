@@ -65,3 +65,7 @@ class ZoneListResponse(BaseModel):
     total: int
     page: int
     page_size: int
+
+
+class ZoneLocationAssign(BaseModel):
+    location_ids: list[int] = Field(default_factory=list)

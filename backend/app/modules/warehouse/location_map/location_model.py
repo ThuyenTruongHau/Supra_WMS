@@ -1,5 +1,5 @@
 from sqlalchemy import (
-    Boolean, Column, DateTime, ForeignKey, Integer, String, func,
+    Boolean, Column, DateTime, ForeignKey, Integer, String, UniqueConstraint, func,
     select, case, exists,
 )
 from sqlalchemy.orm import relationship, column_property
@@ -11,10 +11,22 @@ class Location(Base):
     """Warehouse location model for storing materials and products."""
     
     __tablename__ = "location"
-    
+    __table_args__ = (
+        UniqueConstraint(
+            "warehouse_id",
+            "location_code",
+            name="uq_location_warehouse_code",
+        ),
+        UniqueConstraint(
+            "warehouse_id",
+            "location_name",
+            name="uq_location_warehouse_name",
+        ),
+    )
+
     id = Column(Integer, primary_key=True, index=True)
-    location_code = Column(String(50), unique=True, nullable=False, index=True)
-    location_name = Column(String(100), unique=True, nullable=False, index=True)
+    location_code = Column(String(50), nullable=False, index=True)
+    location_name = Column(String(100), nullable=False, index=True)
     row = Column(String(10))  # Mapped from DB 'row' column
     column = Column("column", String(10))  # 'column' is SQL keyword, use mapped name
     level = Column(String(10))

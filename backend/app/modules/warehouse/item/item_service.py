@@ -18,12 +18,16 @@ from app.modules.warehouse.item.item_schema import (
     ItemStockInDetail,
     ItemUpdate,
 )
+from app.modules.warehouse.unit.unit_model import Unit
 from app.modules.warehouse.warehouse_zone.warehouse_model import Warehouse
 from app.modules.warehouse.item_stock.item_stock_model import ItemStock
 from app.modules.warehouse.location_map.location_model import Location
 
-LOW_STOCK_THRESHOLD = 10
 NEARLY_OUTDATED_DAYS = 30
+
+def _validate_quantity_bounds(min_quantity: int, max_quantity: int) -> None:
+    if min_quantity > max_quantity:
+        raise ValueError("min_quantity must be less than or equal to max_quantity")
 
 
 def _item_query(db: Session, *, include_inactive: bool = False):
@@ -36,6 +40,11 @@ def _item_query(db: Session, *, include_inactive: bool = False):
 def _ensure_warehouse_exists(db: Session, warehouse_id: int) -> None:
     if not db.query(Warehouse).filter(Warehouse.id == warehouse_id).first():
         raise ValueError(f"Warehouse id not found: {warehouse_id}")
+
+
+def _ensure_unit_exists(db: Session, unit_id: int) -> None:
+    if not db.query(Unit).filter(Unit.id == unit_id).first():
+        raise ValueError(f"Unit id not found: {unit_id}")
 
 
 def list_items(
@@ -137,7 +146,7 @@ def analyze_items(db: Session, warehouse_id: int) -> ItemAnalyzeResponse:
         .filter(
             Item.warehouse_id == warehouse_id,
             Item.is_active.is_(True),
-            func.coalesce(stock_sum.c.qty, 0) < LOW_STOCK_THRESHOLD,
+            func.coalesce(stock_sum.c.qty, 0) < Item.min_quantity,
         )
         .scalar()
         or 0
@@ -187,15 +196,18 @@ def get_item_detail(db: Session, item_id: int) -> ItemDetailResponse:
 
 def create_item(db: Session, body: ItemCreate) -> Item:
     _ensure_warehouse_exists(db, body.warehouse_id)
+    _ensure_unit_exists(db, body.base_unit)
     if db.query(Item).filter(Item.sku == body.sku).first():
         raise ValueError("SKU already exists")
     item = Item(
         sku=body.sku.strip(),
         name=body.name.strip(),
         description=body.description,
-        base_unit=body.base_unit.strip(),
+        base_unit_id=body.base_unit,
+        max_quantity=body.max_quantity,
+        min_quantity=body.min_quantity,
         warehouse_id=body.warehouse_id,
-        supplier=body.supplier.strip(),
+        supplier=(body.supplier or "").strip(),
         details=body.details or {},
         is_active=True,
     )
@@ -226,10 +238,28 @@ def update_item(db: Session, item_id: int, body: ItemUpdate) -> Optional[Item]:
         if existing:
             raise ValueError("SKU already exists")
         item.sku = data["sku"].strip()
-    for field in ("name", "description", "base_unit", "supplier", "details", "is_active"):
+
+    next_min = data.get("min_quantity", item.min_quantity)
+    next_max = data.get("max_quantity", item.max_quantity)
+    if "min_quantity" in data or "max_quantity" in data:
+        _validate_quantity_bounds(next_min, next_max)
+
+    if "base_unit" in data:
+        _ensure_unit_exists(db, data["base_unit"])
+        item.base_unit_id = data["base_unit"]
+
+    for field in (
+        "name",
+        "description",
+        "max_quantity",
+        "min_quantity",
+        "supplier",
+        "details",
+        "is_active",
+    ):
         if field in data:
             value = data[field]
-            if field in ("name", "base_unit", "supplier") and isinstance(value, str):
+            if field in ("name", "supplier") and isinstance(value, str):
                 value = value.strip()
             setattr(item, field, value)
     try:
