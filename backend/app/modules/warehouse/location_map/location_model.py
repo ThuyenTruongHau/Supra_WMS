@@ -1,11 +1,39 @@
 from sqlalchemy import (
     Boolean, Column, DateTime, ForeignKey, Integer, String, UniqueConstraint, func,
-    select, case, exists,
+    select, case, exists, or_,
 )
 from sqlalchemy.orm import relationship, column_property
 from app.core.database import Base
 from app.modules.warehouse.item_stock.item_stock_model import ItemStock
+from app.modules.warehouse.inbound_order.inbound_order_model import InboundOrderAllocation
+from app.modules.warehouse.outbound_order.outbound_order_model import OutboundOrderAllocation
 
+MAPPING_LOCATION_STATUS = {
+    "in_progress": "in_transit",
+    "initialize": "reserved",
+}
+
+def _allocation_at_location_exists(allocation_cls, detail_status: str):
+    return exists(
+        select(1).where(
+            allocation_cls.status == detail_status,
+            or_(
+                allocation_cls.to_location_id == id,
+                allocation_cls.from_location_id == id,
+            ),
+        )
+    )
+def _location_allocation_case_whens():
+    return [
+        (
+            or_(
+                _allocation_at_location_exists(InboundOrderAllocation, s),
+                _allocation_at_location_exists(OutboundOrderAllocation, s),
+            ),
+            loc_status,
+        )
+        for s, loc_status in MAPPING_LOCATION_STATUS.items()
+    ]
 
 class Location(Base):
     """Warehouse location model for storing materials and products."""
@@ -65,6 +93,7 @@ class Location(Base):
     status = column_property(
         select(
             case(
+                *_location_allocation_case_whens(),
                 (
                     exists(
                         select(1).where(
@@ -73,12 +102,12 @@ class Location(Base):
                             ItemStock.is_active.is_(True),
                         )
                     ),
-                    "has_stock",  # hoặc "has_stock" / "có hàng"
+                    "has_stock",
                 ),
                 else_="empty",
             )
         )
-        .correlate_except(ItemStock)
+        .correlate_except(ItemStock, InboundOrderAllocation, OutboundOrderAllocation)
         .scalar_subquery()
     )
 

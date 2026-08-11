@@ -1,4 +1,4 @@
-from datetime import date, datetime
+from datetime import datetime
 from decimal import Decimal
 from typing import Optional
 from uuid import UUID
@@ -11,7 +11,7 @@ class ItemStockCreate(BaseModel):
     location_id: int
     quantity: Decimal = Field(default=Decimal("0"), ge=0)
     lot_number: Optional[str] = Field(None, max_length=50)
-    expiry_date: Optional[date] = None
+    expiry_date: Optional[str] = Field(None, max_length=50)
     status: str = Field(default="available", max_length=20)
 
 
@@ -20,7 +20,7 @@ class ItemStockUpdate(BaseModel):
     location_id: Optional[int] = None
     quantity: Optional[Decimal] = Field(None, ge=0)
     lot_number: Optional[str] = Field(None, max_length=50)
-    expiry_date: Optional[date] = None
+    expiry_date: Optional[str] = Field(None, max_length=50)
     status: Optional[str] = Field(None, max_length=20)
     is_active: Optional[bool] = None
 
@@ -32,7 +32,7 @@ class ItemStockResponse(BaseModel):
     location_id: int
     quantity: Decimal
     lot_number: Optional[str] = None
-    expiry_date: Optional[date] = None
+    expiry_date: Optional[str] = None
     status: str
     is_active: bool
     created_at: Optional[datetime] = None

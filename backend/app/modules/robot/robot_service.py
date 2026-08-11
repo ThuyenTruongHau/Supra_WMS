@@ -3,7 +3,9 @@ from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
-from app.modules.robot.robot_model import RobotTask, TaskStatus
+from app.modules.robot.robot_model import RobotTask, TaskStatus, MAPPING_STATUS
+from app.modules.warehouse.inbound_order.inbound_order_model import InboundOrderDetail
+from app.modules.warehouse.outbound_order.outbound_order_model import OutboundOrderDetail
 from app.core.logger import get_logger
 logger = get_logger("main")
 
@@ -49,6 +51,22 @@ class TaskStatusService:
         order_id = payload.get("orderId")
         if not order_id:
             raise HTTPException(status_code=400, detail="orderId is required")
+
+        robot_task = db.query(RobotTask).filter(RobotTask.order_id == order_id).first()
+        if not robot_task:
+            raise HTTPException(status_code=404, detail="Robot task not found")
+
+        if robot_task.inbound_order_detail_id is not None:
+            inbound_id = robot_task.inbound_order_detail.inbound_order_id
+            order = db.query(InboundOrderDetail).filter(InboundOrderDetail.id == inbound_id).first()
+        elif robot_task.outbound_order_detail_id is not None:
+            outbound_id = robot_task.outbound_order_detail.outbound_order_id
+            order = db.query(OutboundOrderDetail).filter(OutboundOrderDetail.id == outbound_id).first()
+        else:
+            raise HTTPException(status_code=400, detail="Order not found")
+        
+        if payload.get("status") in MAPPING_STATUS.keys():
+            order.status = MAPPING_STATUS[payload.get("status")]
 
         record = TaskStatus(
             sub_task_status=payload.get("subTaskStatus"),

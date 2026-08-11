@@ -14,6 +14,8 @@ from app.modules.warehouse.inbound_order.inbound_order_api import router as inbo
 from app.modules.warehouse.outbound_order.outbound_order_api import router as outbound_order_router
 from app.modules.robot.robot_api import router as robot_router
 from app.core.logger import setup_logger
+from app.core.cache import close_redis, get_redis
+import redis
 
 logger = setup_logger(
     name="main",
@@ -26,8 +28,19 @@ logger = setup_logger(
 async def lifespan(app: FastAPI):
     # start app
     logger.info("Starting app")
+    try:
+        get_redis().ping()
+        logger.info(
+            "Redis connected: %s (prefix=%s)",
+            settings.redis_url,
+            settings.redis_key_prefix,
+        )
+    except redis.RedisError as e:
+        logger.error("Redis connection failed: %s", e)
+        raise RuntimeError("Cannot connect to Redis") from e
     yield
     # stop app
+    close_redis()
     logger.info("Stopping app")
 
 app = FastAPI(

@@ -1,10 +1,16 @@
 from sqlalchemy import (
-    Column, Integer, String, Text, DateTime, ForeignKey, Numeric, func, JSON
+    Column, Integer, String, Text, DateTime, ForeignKey, Numeric, func, JSON, select, table, column, and_, exists, case
 )
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, column_property
 from sqlalchemy.dialects.postgresql import JSONB
 
 from app.core.database import Base
+
+_inbound_order_detail_tbl = table(
+    "inbound_order_detail",
+    column("inbound_order_id", Integer),
+    column("status", String),
+)
 
 
 class InboundOrder(Base):
@@ -14,7 +20,6 @@ class InboundOrder(Base):
     
     id = Column(Integer, primary_key=True, index=True)
     order_code = Column(String(50), unique=True, nullable=False, index=True)
-    status = Column(String(20), default="initialize", nullable=False, index=True)
     note = Column(Text)
     created_by_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     warehouse_id = Column(Integer, ForeignKey("warehouse.id"), nullable=False, index=True)
@@ -29,6 +34,41 @@ class InboundOrder(Base):
     
     created_by = relationship("User", foreign_keys=[created_by_id], lazy="joined")
     warehouse = relationship("Warehouse", foreign_keys=[warehouse_id], lazy="joined")
+
+    status = column_property(
+        select(
+            case(
+                (
+                    and_(
+                        exists(
+                            select(1).where(
+                                _inbound_order_detail_tbl.c.inbound_order_id == id,
+                            )
+                        ),
+                        ~exists(
+                            select(1).where(
+                                _inbound_order_detail_tbl.c.inbound_order_id == id,
+                                _inbound_order_detail_tbl.c.status != "completed",
+                            )
+                        ),
+                    ),
+                    "completed",
+                ),
+                (
+                    exists(
+                        select(1).where(
+                            _inbound_order_detail_tbl.c.inbound_order_id == id,
+                            _inbound_order_detail_tbl.c.status != "initialize",
+                        )
+                    ),
+                    "in-progress",
+                ),
+                else_="initialize",
+            )
+        )
+        .correlate_except(_inbound_order_detail_tbl)
+        .scalar_subquery()
+    )
 
 
 class InboundOrderDetail(Base):
@@ -45,6 +85,8 @@ class InboundOrderDetail(Base):
     )
     item_id = Column(Integer, ForeignKey("item.id"), nullable=False)
     quantity = Column(Integer, nullable=False, default=0)
+    lot_number = Column(String(50), nullable=True, index=True)
+    expiry_date = Column(String(50), nullable=True, index=True)
     unit_id = Column(Integer, ForeignKey("unit.id"), nullable=False)
     status = Column(String(20), default="initialize", nullable=False, index=True)
     detail_type = Column(String(50), nullable=False, index=True)
@@ -61,6 +103,11 @@ class InboundOrderDetail(Base):
     inbound_order = relationship("InboundOrder", foreign_keys=[inbound_order_id], lazy="joined")
     item = relationship("Item", foreign_keys=[item_id], lazy="joined")
     unit = relationship("Unit", foreign_keys=[unit_id], lazy="joined")
+    allocations = relationship(
+        "InboundOrderAllocation",
+        back_populates="inbound_order_detail",
+        lazy="selectin",
+    )
 
 class InboundOrderAllocation(Base):
     """Inbound order allocation."""
@@ -71,13 +118,24 @@ class InboundOrderAllocation(Base):
     inbound_order_detail_id = Column(Integer, ForeignKey("inbound_order_detail.id"), nullable=False, index=True)
     item_stock_id = Column(Integer, ForeignKey("item_stock.id"), nullable=False, index=True)
     quantity = Column(Integer, nullable=False, default=0)
-    from_location_id = Column(Integer, ForeignKey("location.id"), nullable=False, index=True)
-    to_location_id = Column(Integer, ForeignKey("location.id"), nullable=False, index=True)
-    status = Column(String(20), default="initialize", nullable=False, index=True)
+    from_location_id = Column(Integer, ForeignKey("location.id"), nullable=True, index=True)
+    to_location_id = Column(Integer, ForeignKey("location.id"), nullable=True, index=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
-    inbound_order_detail = relationship("InboundOrderDetail", foreign_keys=[inbound_order_detail_id], lazy="joined")
+    inbound_order_detail = relationship(
+        "InboundOrderDetail",
+        foreign_keys=[inbound_order_detail_id],
+        back_populates="allocations",
+        lazy="joined",
+    )
     item_stock = relationship("ItemStock", foreign_keys=[item_stock_id], lazy="joined")
     from_location = relationship("Location", foreign_keys=[from_location_id], lazy="joined")
     to_location = relationship("Location", foreign_keys=[to_location_id], lazy="joined")
+
+    status = column_property(
+        select(InboundOrderDetail.status)
+        .where(InboundOrderDetail.id == inbound_order_detail_id)
+        .correlate_except(InboundOrderDetail)
+        .scalar_subquery()
+    )

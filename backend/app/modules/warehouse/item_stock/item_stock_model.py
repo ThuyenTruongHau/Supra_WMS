@@ -3,7 +3,6 @@
 from sqlalchemy import (
     CheckConstraint,
     Column,
-    Date,
     DateTime,
     ForeignKey,
     Integer,
@@ -36,7 +35,7 @@ class ItemStock(Base):
     inbound_order_detail_id = Column(Integer, ForeignKey("inbound_order_detail.id"), nullable=True, index=True)
     quantity = Column(Numeric(12, 3), nullable=False, default=0)
     lot_number = Column(String(50), nullable=True, index=True)
-    expiry_date = Column(Date, nullable=True, index=True)
+    expiry_date = Column(String(50), nullable=True, index=True)
     status = Column(
         String(20),
         nullable=False,

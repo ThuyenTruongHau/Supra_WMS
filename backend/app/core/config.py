@@ -17,7 +17,13 @@ class Settings(BaseSettings):
 
     #ICS
     ics_base_url: str = "Your RCS Server path"
+    inbound_process_code: str = "to_storage"
+    outbound_process_code: str = "out_storage"
 
+    # Redis (cache)
+    redis_url: str = "redis://10.73.231.5:6379/0"
+    redis_cache_ttl: int = 300
+    redis_key_prefix: str = "wms"
 
     class Config:
         env_file = ".env"
