@@ -1,4 +1,4 @@
-from datetime import date, datetime
+from datetime import datetime
 from decimal import Decimal
 from typing import Any, Optional
 
@@ -113,7 +113,7 @@ class ItemStockInDetail(BaseModel):
     location_id: int
     location_code: Optional[str] = None
     lot_number: Optional[str] = None
-    expiry_date: Optional[date] = None
+    expiry_date: Optional[str] = None
     quantity: Decimal
     status: str
 

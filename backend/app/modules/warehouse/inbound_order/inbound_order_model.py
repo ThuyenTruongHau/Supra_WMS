@@ -61,7 +61,7 @@ class InboundOrder(Base):
                             _inbound_order_detail_tbl.c.status != "initialize",
                         )
                     ),
-                    "in-progress",
+                    "in_progress",
                 ),
                 else_="initialize",
             )
@@ -83,26 +83,22 @@ class InboundOrderDetail(Base):
         nullable=False,
         index=True,
     )
-    item_id = Column(Integer, ForeignKey("item.id"), nullable=False)
-    quantity = Column(Integer, nullable=False, default=0)
-    lot_number = Column(String(50), nullable=True, index=True)
-    expiry_date = Column(String(50), nullable=True, index=True)
-    unit_id = Column(Integer, ForeignKey("unit.id"), nullable=False)
-    status = Column(String(20), default="initialize", nullable=False, index=True)
-    detail_type = Column(String(50), nullable=False, index=True)
-
+    from_location_id = Column(Integer, ForeignKey("location.id"), nullable=True, index=True)
+    to_location_id = Column(Integer, ForeignKey("location.id"), nullable=True, index=True)
     details = Column(
         JSON().with_variant(JSONB, "postgresql"),
         nullable=False,
         default=dict,
         server_default="{}",
     )
+    status = Column(String(20), default="initialize", nullable=False, index=True)
+    detail_type = Column(String(50), nullable=False, index=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+    
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
-
     inbound_order = relationship("InboundOrder", foreign_keys=[inbound_order_id], lazy="joined")
-    item = relationship("Item", foreign_keys=[item_id], lazy="joined")
-    unit = relationship("Unit", foreign_keys=[unit_id], lazy="joined")
+    from_location = relationship("Location", foreign_keys=[from_location_id], lazy="joined")
+    to_location = relationship("Location", foreign_keys=[to_location_id], lazy="joined")
     allocations = relationship(
         "InboundOrderAllocation",
         back_populates="inbound_order_detail",
@@ -117,9 +113,8 @@ class InboundOrderAllocation(Base):
     id = Column(Integer, primary_key=True, index=True)
     inbound_order_detail_id = Column(Integer, ForeignKey("inbound_order_detail.id"), nullable=False, index=True)
     item_stock_id = Column(Integer, ForeignKey("item_stock.id"), nullable=False, index=True)
+    unit_id = Column(Integer, ForeignKey("unit.id"), nullable=False, index=True)
     quantity = Column(Integer, nullable=False, default=0)
-    from_location_id = Column(Integer, ForeignKey("location.id"), nullable=True, index=True)
-    to_location_id = Column(Integer, ForeignKey("location.id"), nullable=True, index=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
@@ -130,9 +125,7 @@ class InboundOrderAllocation(Base):
         lazy="joined",
     )
     item_stock = relationship("ItemStock", foreign_keys=[item_stock_id], lazy="joined")
-    from_location = relationship("Location", foreign_keys=[from_location_id], lazy="joined")
-    to_location = relationship("Location", foreign_keys=[to_location_id], lazy="joined")
-
+    unit = relationship("Unit", foreign_keys=[unit_id], lazy="joined")
     status = column_property(
         select(InboundOrderDetail.status)
         .where(InboundOrderDetail.id == inbound_order_detail_id)

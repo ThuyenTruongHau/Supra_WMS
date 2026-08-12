@@ -1,4 +1,4 @@
-from typing import Annotated
+from typing import Annotated, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
@@ -14,10 +14,11 @@ from app.modules.warehouse.inbound_order.inbound_order_schema import (
     InboundReleaseLocationsResponse,
     InboundOrderCreate,
     InboundOrderResponse,
+    InboundOrderListResponse,
     InboundOrderDetailResponse,
+    InboundOrderUpdate,
 )
 from app.modules.warehouse.inbound_order import inbound_order_service
-from app.modules.robot.robot_schema import RobotTaskResponse
 
 _INBOUND_READ = require_permission("inbound:read")
 _INBOUND_CREATE = require_permission("inbound:create")
@@ -40,7 +41,6 @@ __all__ = [
 @router.post(
     "/inbound-orders/suggest-allocation",
     response_model=InboundSuggestAllocationResponse,
-    dependencies=[Depends(_INBOUND_CREATE)],
 )
 def suggest_inbound_allocation(body: InboundSuggestAllocation, db: DbSession):
     try:
@@ -82,7 +82,7 @@ def create_inbound_order(
 
 @router.get(
     "/inbound-orders",
-    response_model=list[InboundOrderResponse],
+    response_model=InboundOrderListResponse,
     dependencies=[Depends(_INBOUND_READ)],
 )
 def list_inbound_orders(
@@ -90,14 +90,23 @@ def list_inbound_orders(
     warehouse_id: int = Query(...),
     page: int = Query(1, ge=1),
     page_size: int = Query(10, ge=1, le=100),
+    q: Optional[str] = Query(None, description="Tìm theo mã đơn hoặc người tạo"),
+    status: Optional[str] = Query(None, description="Lọc trạng thái đơn"),
 ):
-    orders = inbound_order_service.get_inbound_order(
+    orders, total = inbound_order_service.get_inbound_order(
         db,
         warehouse_id=warehouse_id,
         page=page,
         page_size=page_size,
+        q=q,
+        status=status,
     )
-    return [InboundOrderResponse.model_validate(o) for o in orders]
+    return InboundOrderListResponse(
+        items=[InboundOrderResponse.model_validate(o) for o in orders],
+        total=total,
+        page=page,
+        page_size=page_size,
+    )
 
 
 @router.get(
@@ -118,10 +127,10 @@ def get_inbound_order_details(db: DbSession, order_code: str):
 )
 def accept_inbound_task(db: DbSession, detail_id: int):
     try:
-        task = inbound_order_service.accept_inbound_task(db, detail_id)
+        task = inbound_order_service.execute_inbound_task(db, detail_id)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e)) from e 
-    return RobotTaskResponse.model_validate(task)
+    return task
 
 @router.patch(
     "/inbound-orders/{order_code}",
@@ -144,11 +153,12 @@ def update_inbound_order(order_code: str, body: InboundOrderUpdate, db: DbSessio
 def caller_inbound_order(
     body: InboundOrderCreate,
     db: DbSession,
+    current_user: Annotated[User, Depends(_INBOUND_CREATE)],
     inbound_type: str,
 ):
     try:
         order = inbound_order_service.caller_inbound_order(
-            db, body, inbound_type
+            db, body, user_id=current_user.id, inbound_type=inbound_type
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e

@@ -84,27 +84,12 @@ const WarehouseMapToolbar: React.FC<WarehouseMapToolbarProps> = ({
         <span className="text-xs text-red-500 max-w-sm truncate">⚠ {errorMessage}</span>
       )}
 
-      {/* Legend */}
-      <div className="flex items-center gap-3 ml-auto">
-        <div className="flex items-center gap-1.5">
-          <div className="w-2.5 h-2.5 rounded-full bg-[#9ca3af]" />
-          <span className="text-slate-700 text-xs">Waypoint</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <div className="w-2.5 h-2.5 rounded bg-[#66625F] border border-[#2d4f7c]" />
-          <span className="text-slate-700 text-xs">Kệ trống</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <div className="w-2.5 h-2.5 rounded bg-[#10b981] border border-[#2d4f7c]" />
-          <span className="text-slate-700 text-xs">Có hàng</span>
-        </div>
-        <div className="hidden sm:flex items-center gap-1 text-slate-400 text-xs ml-2 border-l border-slate-200 pl-3">
-          <kbd className="px-1 py-0.5 rounded bg-slate-100 font-mono text-[10px] text-slate-500">scroll</kbd>
-          <span>zoom</span>
-          <span className="mx-1">·</span>
-          <kbd className="px-1 py-0.5 rounded bg-slate-100 font-mono text-[10px] text-slate-500">drag</kbd>
-          <span>pan</span>
-        </div>
+      <div className="ml-auto hidden sm:flex items-center gap-1 text-slate-400 text-xs">
+        <kbd className="px-1 py-0.5 rounded bg-slate-100 font-mono text-[10px] text-slate-500">scroll</kbd>
+        <span>zoom</span>
+        <span className="mx-1">·</span>
+        <kbd className="px-1 py-0.5 rounded bg-slate-100 font-mono text-[10px] text-slate-500">drag</kbd>
+        <span>pan</span>
       </div>
     </div>
   );

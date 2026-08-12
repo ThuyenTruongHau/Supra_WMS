@@ -1,56 +1,116 @@
-import React, { useState, useRef } from 'react';
-import * as XLSX from 'xlsx';
-import Hero from '@/components/shared/Hero';
-import { Card, Button, Table, Input, Select } from '@/components/ui';
-import { Space, Tag, message } from 'antd';
-import { useNavigate } from 'react-router-dom';
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import * as XLSX from "xlsx";
+import Hero from "@/components/shared/Hero";
+import { Card, Button, Table, Select, Input, message } from "@/components/ui";
+import { useNavigate } from "react-router-dom";
+import InboundStatusTag from "@/components/shared/InboundStatusTag";
 import {
-  SearchOutlined,
   DownloadOutlined,
   UploadOutlined,
   PlusOutlined,
-  EyeOutlined,
-  UserOutlined
-} from '@ant-design/icons';
-import type { ColumnsType } from 'antd/es/table';
-import CreateImportModal, { PalletGroupForm } from './components/CreateImportModal';
-import { useGetInboundOrders } from '@/hooks/useInboundOrder';
-import { useDebounce } from '@/hooks/useDebounce';
-import { useAppStore } from '@/store/useAppStore';
-import dayjs from 'dayjs';
+  SearchOutlined,
+} from "@ant-design/icons";
+import type { ColumnsType } from "antd/es/table";
+import CreateImportModal, {
+  type ImportGroupDraft,
+  type ImportItemDraft,
+} from "./components/CreateImportModal";
+import { useGetInboundOrders } from "@/hooks/useInboundOrder";
+import { useAppStore } from "@/store/useAppStore";
+import type { InboundOrder } from "@/types/inboundOrder";
+import dayjs from "dayjs";
+import { useUser } from "@/hooks/useAuth";
+
+const PAGE_SIZE = 20;
+const STATUS_FILTER_WIDTH = 180;
+const SEARCH_WIDTH = 280;
+
+const TABLE_CLASS =
+  "[&_.ant-table-thead_th]:!bg-slate-50 [&_.ant-table-thead_th]:!text-slate-600 [&_.ant-table-thead_th]:!font-semibold [&_.ant-table-thead_th]:!text-base [&_.ant-table-tbody_td]:!text-base [&_.ant-table-thead_th]:!py-3 [&_.ant-table-tbody_td]:!py-3 [&_.ant-table-row]:hover:bg-slate-50/50";
 
 export default function ImportPage() {
   const navigate = useNavigate();
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [importData, setImportData] = useState<PalletGroupForm[] | undefined>(undefined);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const selectedWarehouseId = useAppStore((state) => state.selectedWarehouseId);
 
-  // Filter states
-  const [supplierName, setSupplierName] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
+  const [page, setPage] = useState(1);
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [searchInput, setSearchInput] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [importGroups, setImportGroups] = useState<
+    ImportGroupDraft[] | undefined
+  >();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Debounce supplier name search (500ms)
-  const debouncedSupplier = useDebounce(supplierName, 500);
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setSearchQuery(searchInput.trim());
+      setPage(1);
+    }, 400);
+    return () => window.clearTimeout(timer);
+  }, [searchInput]);
 
-  // Lấy dữ liệu phiếu nhập từ API (infinite query for cursor pagination)
-  const { data, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage } = useGetInboundOrders({
-    zone_id: selectedWarehouseId || 0,
-    supplier_name: debouncedSupplier || undefined,
-    status: statusFilter !== 'all' ? statusFilter : undefined,
-    limit: 20,
+  const { data: ordersData, isLoading, refetch } = useGetInboundOrders({
+    warehouse_id: selectedWarehouseId || 0,
+    page,
+    page_size: PAGE_SIZE,
+    q: searchQuery || undefined,
+    status: statusFilter === "all" ? undefined : statusFilter,
   });
+  const orders = ordersData?.items ?? [];
 
-  // Flatten all pages into a single orders array
-  const orders = data?.pages?.flatMap((page) => page.orders) ?? [];
+  const { data: users = [] } = useUser();
 
-  // KPI dữ liệu (Sử dụng CSS variables từ index.css)
+  const userNameById = useMemo(() => {
+    const map = new Map<number, string>();
+    for (const u of users) map.set(u.id, u.username);
+    return map;
+  }, [users]);
+
   const kpiData = [
-    { label: 'Tổng đơn nhập', value: String(orders.length), color: 'var(--color-brand-dark)' },
-    { label: 'Đang thực thi', value: String(orders.filter(o => o.status === 'in_progress').length), color: 'var(--color-stripe-lemon)' },
-    { label: 'Đã hoàn thành', value: String(orders.filter(o => o.status === 'completed').length), color: 'var(--color-brand-primary)' },
-    { label: 'Đã huỷ', value: String(orders.filter(o => o.status === 'cancelled').length), color: 'var(--color-stripe-ruby)' },
+    {
+      label: "Tổng đơn",
+      value: String(ordersData?.total ?? 0),
+      color: "var(--color-brand-dark)",
+    },
+    {
+      label: "Khởi tạo",
+      value: String(orders.filter((o) => o.status === "initialize").length),
+      color: "var(--color-stripe-ink-mute)",
+    },
+    {
+      label: "Đang xử lý",
+      value: String(orders.filter((o) => o.status === "in-progress").length),
+      color: "var(--color-stripe-lemon)",
+    },
+    {
+      label: "Hoàn thành",
+      value: String(orders.filter((o) => o.status === "completed").length),
+      color: "var(--color-brand-primary)",
+    },
   ];
+
+  const handleDownloadTemplate = () => {
+    const wsData = [
+      ["Nhóm", "Mã Item", "Item ID", "Unit ID", "Số lượng", "LOT", "Hạn sử dụng"],
+      ["PALLET-1", "SKU001", 1, 1, 100, "120626", "2026-12-31"],
+      ["PALLET-1", "SKU002", 2, 1, 50, "120526", "2026-11-30"],
+      ["PALLET-2", "SKU003", 3, 1, 20, "120426", "2026-10-31"],
+    ];
+    const ws = XLSX.utils.aoa_to_sheet(wsData);
+    ws["!cols"] = [
+      { wch: 12 },
+      { wch: 15 },
+      { wch: 10 },
+      { wch: 10 },
+      { wch: 10 },
+      { wch: 12 },
+      { wch: 14 },
+    ];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Template");
+    XLSX.writeFile(wb, "Template_NhapKho.xlsx");
+  };
 
   const handleImportExcel = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -60,259 +120,293 @@ export default function ImportPage() {
     reader.onload = (evt) => {
       try {
         const fileData = new Uint8Array(evt.target?.result as ArrayBuffer);
-        const workbook = XLSX.read(fileData, { type: 'array' });
-        const sheetName = workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[sheetName];
-        const jsonData = XLSX.utils.sheet_to_json<any[]>(worksheet, { header: 1 });
+        const workbook = XLSX.read(fileData, { type: "array" });
+        const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+        const jsonData = XLSX.utils.sheet_to_json<unknown[]>(worksheet, {
+          header: 1,
+        });
 
         let headerRowIndex = -1;
-        let skuColIdx = -1;
-        let nameColIdx = -1;
-        let lotColIdx = -1;
-        let qtyColIdx = -1;
-        let numPalletColIdx = -1;
-        let detailDatetimeColIdx = -1;
-        let vehicleNumberColIdx = -1;
-        let sourceWarehouseColIdx = -1;
-        let targetWarehouseColIdx = -1;
-        let deliveryColIdx = -1;
-        let nvtColIdx = -1;
+        let groupCol = -1;
+        let skuCol = -1;
+        let itemIdCol = -1;
+        let unitIdCol = -1;
+        let qtyCol = -1;
+        let lotCol = -1;
+        let expiryCol = -1;
 
-        // Tìm dòng header
         for (let i = 0; i < jsonData.length; i++) {
-          const row = jsonData[i];
+          const row = jsonData[i] as unknown[];
           if (!row) continue;
-          const colIdx = row.findIndex((cell: any) => typeof cell === 'string' && cell.trim() === 'Mã Item');
-          if (colIdx !== -1) {
+          const find = (name: string) =>
+            row.findIndex(
+              (cell) =>
+                typeof cell === "string" && cell.trim().toLowerCase() === name,
+            );
+          skuCol = find("mã item");
+          if (skuCol === -1) skuCol = find("sku");
+          if (skuCol !== -1 || find("item id") !== -1) {
             headerRowIndex = i;
-            skuColIdx = colIdx;
-            nameColIdx = row.findIndex((c: any) => typeof c === 'string' && c.trim() === 'Tên Item');
-            lotColIdx = row.findIndex((c: any) => typeof c === 'string' && c.trim() === 'LOT');
-            qtyColIdx = row.findIndex((c: any) => typeof c === 'string' && c.trim() === 'Số lượng');
-            numPalletColIdx = row.findIndex((c: any) => typeof c === 'string' && c.trim() === 'Số pallet');
-            detailDatetimeColIdx = row.findIndex((c: any) => typeof c === 'string' && c.trim() === 'Ngày/ Giờ chi tiết');
-            vehicleNumberColIdx = row.findIndex((c: any) => typeof c === 'string' && c.trim() === 'Số xe');
-            sourceWarehouseColIdx = row.findIndex((c: any) => typeof c === 'string' && c.trim() === 'Kho xuất');
-            targetWarehouseColIdx = row.findIndex((c: any) => typeof c === 'string' && c.trim() === 'Kho nhập');
-            deliveryColIdx = row.findIndex((c: any) => typeof c === 'string' && c.trim() === 'Delivery');
-            nvtColIdx = row.findIndex((c: any) => typeof c === 'string' && c.trim() === 'NVT');
+            groupCol = find("nhóm");
+            if (groupCol === -1) groupCol = find("pallet");
+            itemIdCol = find("item id");
+            unitIdCol = find("unit id");
+            qtyCol = find("số lượng");
+            lotCol = find("lot");
+            expiryCol = find("hạn sử dụng");
             break;
           }
         }
 
         if (headerRowIndex === -1) {
-          message.error('Không tìm thấy cột "Mã Item" trong file Excel!');
-          if (fileInputRef.current) fileInputRef.current.value = '';
+          message.error('Không tìm thấy header Excel (cần cột "Mã Item" hoặc "Item ID")');
           return;
         }
 
-        const parsedGroups: PalletGroupForm[] = [];
+        // Các dòng cùng giá trị cột "Nhóm" chia sẻ một vị trí đích.
+        // Dòng không có nhóm được coi là một nhóm riêng.
+        const groupsByName = new Map<string, ImportGroupDraft>();
+        const parsedGroups: ImportGroupDraft[] = [];
+        let itemCount = 0;
 
-        // Đọc dữ liệu từ dòng dưới header
         for (let i = headerRowIndex + 1; i < jsonData.length; i++) {
-          const row = jsonData[i];
+          const row = jsonData[i] as unknown[];
           if (!row) continue;
-          const sku = row[skuColIdx];
-          if (!sku) continue; // Bỏ qua dòng trống
+          const itemId =
+            itemIdCol >= 0 && row[itemIdCol] != null
+              ? Number(row[itemIdCol])
+              : undefined;
+          const sku =
+            skuCol >= 0 && row[skuCol] != null
+              ? String(row[skuCol]).trim()
+              : undefined;
+          if (!itemId && !sku) continue;
 
-          const item_name = nameColIdx !== -1 ? row[nameColIdx] : '';
-          const lot = lotColIdx !== -1 ? row[lotColIdx] : '';
-          const qty = qtyColIdx !== -1 ? Number(row[qtyColIdx]) : 0;
-          const numPallets = numPalletColIdx !== -1 ? Number(row[numPalletColIdx]) : 0;
+          const item: ImportItemDraft = {
+            key: `import-item-${i}`,
+            sku,
+            item_id: itemId && !Number.isNaN(itemId) ? itemId : undefined,
+            quantity: qtyCol >= 0 ? Number(row[qtyCol]) || 0 : 0,
+            unit_id:
+              unitIdCol >= 0 && row[unitIdCol] != null
+                ? Number(row[unitIdCol])
+                : undefined,
+            lot_number:
+              lotCol >= 0 && row[lotCol] != null
+                ? String(row[lotCol]).trim()
+                : undefined,
+            expiry_date:
+              expiryCol >= 0 && row[expiryCol] != null
+                ? String(row[expiryCol]).trim()
+                : undefined,
+          };
+          itemCount += 1;
 
-          parsedGroups.push({
-            key: `group-${Date.now()}-${i}`,
-            sku: String(sku).trim(),
-            item_name: item_name ? String(item_name).trim() : '',
-            lot_code: lot ? String(lot).trim() : '',
-            expire_at: undefined, // Cố tình để trống để user tự chọn
-            // extra fields
-            detail_datetime: detailDatetimeColIdx !== -1 && row[detailDatetimeColIdx] ? String(row[detailDatetimeColIdx]).trim() : undefined,
-            vehicle_number: vehicleNumberColIdx !== -1 && row[vehicleNumberColIdx] ? String(row[vehicleNumberColIdx]).trim() : undefined,
-            source_warehouse: sourceWarehouseColIdx !== -1 && row[sourceWarehouseColIdx] ? String(row[sourceWarehouseColIdx]).trim() : undefined,
-            target_warehouse: targetWarehouseColIdx !== -1 && row[targetWarehouseColIdx] ? String(row[targetWarehouseColIdx]).trim() : undefined,
-            delivery_type: deliveryColIdx !== -1 && row[deliveryColIdx] ? String(row[deliveryColIdx]).trim() : undefined,
-            nvt_code: nvtColIdx !== -1 && row[nvtColIdx] ? String(row[nvtColIdx]).trim() : undefined,
-            configs: [{
-              key: `config-${Date.now()}-${i}`,
-              qtyPerPallet: isNaN(qty) ? 0 : qty,
-              numPallets: isNaN(numPallets) ? 1 : numPallets,
-            }]
-          });
+          const groupName =
+            groupCol >= 0 && row[groupCol] != null
+              ? String(row[groupCol]).trim()
+              : "";
+
+          if (groupName) {
+            const existing = groupsByName.get(groupName);
+            if (existing) {
+              existing.items.push(item);
+              continue;
+            }
+            const group: ImportGroupDraft = {
+              key: `import-group-${groupName}-${i}`,
+              items: [item],
+            };
+            groupsByName.set(groupName, group);
+            parsedGroups.push(group);
+          } else {
+            parsedGroups.push({
+              key: `import-group-${i}`,
+              items: [item],
+            });
+          }
         }
 
-        if (parsedGroups.length > 0) {
-          setImportData(parsedGroups);
-          setIsCreateModalOpen(true);
-          message.success(`Đã đọc thành công ${parsedGroups.length} mã sản phẩm từ Excel!`);
-        } else {
-          message.warning('Không tìm thấy dữ liệu hợp lệ trong file!');
+        if (parsedGroups.length === 0) {
+          message.warning("Không có dòng hợp lệ trong Excel");
+          return;
         }
-      } catch (error) {
-        message.error('Lỗi khi đọc file Excel!');
+
+        setImportGroups(parsedGroups);
+        setIsCreateOpen(true);
+        message.success(
+          `Đã đọc ${itemCount} SKU trong ${parsedGroups.length} nhóm từ Excel`,
+        );
+      } catch {
+        message.error("Lỗi khi đọc file Excel");
       } finally {
-        if (fileInputRef.current) fileInputRef.current.value = '';
+        if (fileInputRef.current) fileInputRef.current.value = "";
       }
     };
     reader.readAsArrayBuffer(file);
   };
 
-  const handleDownloadTemplate = () => {
-    const ws_data = [
-      ['Mã Item', 'Tên Item', 'LOT', 'Số lượng', 'Số pallet', 'Ngày/ Giờ chi tiết', 'Số xe', 'Kho xuất', 'Kho nhập', 'Delivery', 'NVT'],
-      ['SKU001', 'Sản phẩm mẫu 1', '120626', 100, 2, '2023-10-25 10:00', '51C-12345', 'Kho A', 'Kho B', '100012345', 'Hoa vân'],
-      ['SKU002', 'Sản phẩm mẫu 2', '120526', 50, 1, '2023-10-25 10:00', '51C-12345', 'Kho A', 'Kho B', '100012345', 'HOa vân']
-    ];
-    const ws = XLSX.utils.aoa_to_sheet(ws_data);
-
-    ws['!cols'] = [
-      { wch: 15 }, { wch: 30 }, { wch: 15 }, { wch: 10 }, { wch: 10 },
-      { wch: 20 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 15 }
-    ];
-
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Template");
-    XLSX.writeFile(wb, "Template_NhapKho.xlsx");
-  };
-
-  const columns: ColumnsType<any> = [
+  const columns: ColumnsType<InboundOrder> = [
     {
-      title: 'Mã phiếu',
-      dataIndex: 'order_code',
-      key: 'order_code',
-      render: (text) => <a style={{ color: 'var(--color-brand-primary)' }} className="font-medium hover:opacity-80">{text}</a>,
-    },
-    {
-      title: 'Ngày tạo',
-      dataIndex: 'created_at',
-      key: 'created_at',
-      render: (text) => dayjs(text).format('DD/MM/YYYY HH:mm'),
-    },
-    {
-      title: 'Tiến độ',
-      key: 'progress',
-      render: (_, record) => {
-        let totalOrdered = 0;
-        let totalReceived = 0;
-        record.details?.forEach((detail: any) => {
-          totalOrdered += Number(detail.ordered_quantity) || 0;
-          totalReceived += Number(detail.received_quantity) || 0;
-        });
-        return `${totalReceived}/${totalOrdered}`;
-      }
-    },
-    {
-      title: 'Trạng thái',
-      dataIndex: 'status',
-      key: 'status',
-      render: (status) => {
-        let color = 'default';
-        let text = status;
-        if (status === 'pending') { color = 'default'; text = 'Chờ nhập'; }
-        if (status === 'in_progress') { color = 'var(--color-stripe-lemon)'; text = 'Đang thực thi'; }
-        if (status === 'completed') { color = 'var(--color-brand-primary)'; text = 'Hoàn thành'; }
-        if (status === 'cancelled') { color = 'var(--color-stripe-ruby)'; text = 'Đã hủy'; }
-        return <Tag color={color}>{text}</Tag>;
-      },
-    },
-    {
-      title: 'Thao tác',
-      key: 'action',
-      render: (_, record) => (
-        <Space>
-          <Button variant="text" icon={<EyeOutlined />} onClick={() => navigate(`/import/${record.order_code}`)} title="Xem chi tiết (Admin)" />
-          <Button variant="text" icon={<UserOutlined />} onClick={() => navigate(`/worker/inbound/${record.order_code}`)} title="Màn hình Công nhân (Tablet)" className="text-brand-primary!" />
-        </Space>
+      title: "Mã phiếu",
+      dataIndex: "order_code",
+      key: "order_code",
+      render: (text: string) => (
+        <a
+          style={{ color: "var(--color-brand-primary)" }}
+          className="font-semibold hover:opacity-80"
+          onClick={() => navigate(`/import/${text}`)}
+        >
+          {text}
+        </a>
       ),
+    },
+    {
+      title: "Người tạo",
+      dataIndex: "created_by_id",
+      key: "created_by_id",
+      render: (id: number) => userNameById.get(id) ?? `#${id}`,
+    },
+    {
+      title: "Ghi chú",
+      dataIndex: "note",
+      key: "note",
+      ellipsis: true,
+      render: (note: string | null) =>
+        note || <span className="text-slate-300">-</span>,
+    },
+    {
+      title: "Ngày tạo",
+      dataIndex: "created_at",
+      key: "created_at",
+      render: (text: string | null) =>
+        text ? dayjs(text).format("DD/MM/YYYY HH:mm") : "-",
+    },
+    {
+      title: "Trạng thái",
+      dataIndex: "status",
+      key: "status",
+      width: 120,
+      render: (status: string) => <InboundStatusTag status={status} size="sm" />,
     },
   ];
 
+  const total = ordersData?.total ?? 0;
+
   return (
-    <div className=" space-y-6">
-      {/* Sử dụng component Hero */}
-      <Hero
-        title="Quản lý Nhập kho"
-        list={kpiData}
-      />
+    <div className="space-y-6">
+      <Hero title="Quản lý Nhập kho" list={kpiData} />
 
       <Card>
-        {/* Action Bar */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
           <div className="flex flex-wrap items-center gap-3">
-            <Input
-              placeholder="Tìm người tạo"
-              prefix={<SearchOutlined className="text-slate-400" />}
-              className="w-64"
-              value={supplierName}
-              onChange={(e) => setSupplierName(e.target.value)}
-              allowClear
-            />
             <Select
               placeholder="Trạng thái"
-              className="w-40"
+              className="shrink-0"
+              style={{
+                width: STATUS_FILTER_WIDTH,
+                minWidth: STATUS_FILTER_WIDTH,
+                maxWidth: STATUS_FILTER_WIDTH,
+              }}
               value={statusFilter}
-              onChange={(val) => setStatusFilter(val)}
+              onChange={(val) => {
+                setStatusFilter(val as string);
+                setPage(1);
+              }}
               options={[
-                { value: 'all', label: 'Tất cả trạng thái' },
-                { value: 'pending', label: 'Chờ nhập' },
-                { value: 'in_progress', label: 'Đang thực thi' },
-                { value: 'completed', label: 'Hoàn thành' },
-                { value: 'cancelled', label: 'Đã hủy' },
+                { value: "all", label: "Tất cả trạng thái" },
+                { value: "initialize", label: "Khởi tạo" },
+                { value: "reserved", label: "Giữ chỗ" },
+                { value: "in_transit", label: "Đang luân chuyển" },
+                { value: "in-progress", label: "Đang xử lý" },
+                { value: "completed", label: "Hoàn thành" },
               ]}
+            />
+            <Input
+              allowClear
+              placeholder="Tìm mã đơn, người tạo..."
+              prefix={<SearchOutlined className="text-slate-400" />}
+              className="shrink-0 !h-11"
+              style={{
+                width: SEARCH_WIDTH,
+                minWidth: SEARCH_WIDTH,
+                maxWidth: SEARCH_WIDTH,
+                height: 44,
+              }}
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
             />
           </div>
 
           <div className="flex items-center gap-3">
             <input
               type="file"
-              accept=".xlsx, .xls"
+              accept=".xlsx,.xls"
               ref={fileInputRef}
-              style={{ display: 'none' }}
+              className="hidden"
               onChange={handleImportExcel}
             />
-            <Button variant="secondary" icon={<UploadOutlined />} onClick={() => fileInputRef.current?.click()}>
+            <Button
+              variant="secondary"
+              icon={<UploadOutlined />}
+              onClick={() => fileInputRef.current?.click()}
+            >
               Import Excel
             </Button>
-            <Button variant="secondary" icon={<DownloadOutlined />} onClick={handleDownloadTemplate}>
-              Tải Template
+            <Button
+              variant="secondary"
+              icon={<DownloadOutlined />}
+              onClick={handleDownloadTemplate}
+            >
+              Export Template
             </Button>
-            <Button variant="primary" icon={<PlusOutlined />} onClick={() => setIsCreateModalOpen(true)}>
+            <Button
+              variant="primary"
+              icon={<PlusOutlined />}
+              onClick={() => {
+                setImportGroups(undefined);
+                setIsCreateOpen(true);
+              }}
+            >
               Tạo đơn nhập
             </Button>
           </div>
         </div>
 
-        {/* Data Table */}
         <Table
           columns={columns}
           dataSource={orders}
           rowKey="id"
           loading={isLoading}
-          pagination={false}
+          onRow={(record) => ({
+            onDoubleClick: () => navigate(`/import/${record.order_code}`),
+          })}
+          rowClassName={() => "cursor-pointer select-none"}
+          pagination={{
+            current: page,
+            pageSize: PAGE_SIZE,
+            total,
+            showSizeChanger: false,
+            showTotal: (t, range) =>
+              `Hiển thị ${range[0]}–${range[1]} / ${t} đơn`,
+            onChange: (nextPage) => setPage(nextPage),
+          }}
+          className={TABLE_CLASS}
+          size="middle"
         />
-        {hasNextPage && (
-          <div className="flex justify-center mt-4">
-            <Button
-              variant="secondary"
-              onClick={() => fetchNextPage()}
-              loading={isFetchingNextPage}
-            >
-              Tải thêm
-            </Button>
-          </div>
-        )}
       </Card>
 
       <CreateImportModal
-        open={isCreateModalOpen}
-        initialData={importData}
+        open={isCreateOpen}
+        initialGroups={importGroups}
         onCancel={() => {
-          setIsCreateModalOpen(false);
-          setImportData(undefined);
+          setIsCreateOpen(false);
+          setImportGroups(undefined);
         }}
         onSuccess={() => {
-          setIsCreateModalOpen(false);
-          setImportData(undefined);
+          setIsCreateOpen(false);
+          setImportGroups(undefined);
+          void refetch();
         }}
       />
     </div>

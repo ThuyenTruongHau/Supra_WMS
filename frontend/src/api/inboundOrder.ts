@@ -1,55 +1,83 @@
-import axiosInstance from './axiosInstance';
-import {
-  DraftInboundOrderRequest,
-  DraftInboundOrderResponse,
-  GetStorageLocationSuggestionsResponse,
-  CreateInboundOrderRequest,
-  CreateInboundOrderResponse,
+import axiosInstance from "./axiosInstance";
+import type {
   GetInboundOrdersParams,
-  GetInboundOrdersResponse,
+  InboundOrder,
+  InboundOrderCreateRequest,
   InboundOrderDetail,
-  ReceiveInboundOrderDetailRequest,
-  InboundVehicle
-} from '@/types/inboundOrder';
+  InboundOrderListResponse,
+  InboundOrderUpdateRequest,
+  InboundReleaseLocationsRequest,
+  InboundReleaseLocationsResponse,
+  InboundSuggestAllocationRequest,
+  InboundSuggestAllocationResponse,
+} from "@/types/inboundOrder";
 
-export const getInboundVehiclesApi = async (zone_id: number = 49): Promise<InboundVehicle[]> => {
-  const response = await axiosInstance.get('api/v1/inbound-orders/vehicles', { params: { zone_id } });
-  return response.data;
-};
+const BASE = "/api/v1/inbound-orders";
 
-export const getInboundOrdersApi = async (params: GetInboundOrdersParams): Promise<GetInboundOrdersResponse> => {
-  const response = await axiosInstance.get('api/v1/inbound-orders/', { params });
-  return response.data;
-};
-
-export const getInboundOrderDetailApi = async (orderCode: string): Promise<InboundOrderDetail> => {
-  const response = await axiosInstance.get(`api/v1/inbound-orders/${orderCode}/`);
-  return response.data;
-};
-
-export const draftInboundOrderApi = async (data: DraftInboundOrderRequest): Promise<DraftInboundOrderResponse> => {
-  const response = await axiosInstance.post('api/v1/inbound-orders/draft', data);
-  console.log("Draft của response", response.data)
-  return response.data;
-};
-
-export const getStorageLocationSuggestionsApi = async (sessionId: string): Promise<GetStorageLocationSuggestionsResponse> => {
-  const response = await axiosInstance.get('api/v1/inbound-orders/storage-locations-suggest', {
-    params: { session_id: sessionId }
+export const getInboundOrdersApi = async (
+  params: GetInboundOrdersParams,
+): Promise<InboundOrderListResponse> => {
+  const { data } = await axiosInstance.get<InboundOrderListResponse>(BASE, {
+    params,
   });
-  return response.data;
+  return data;
 };
 
-export const createInboundOrderApi = async (sessionId: string, data: CreateInboundOrderRequest): Promise<CreateInboundOrderResponse> => {
-  const response = await axiosInstance.post('api/v1/inbound-orders', data, {
-    params: { session_id: sessionId }
+export const getInboundOrderDetailsApi = async (
+  orderCode: string,
+): Promise<InboundOrderDetail[]> => {
+  const { data } = await axiosInstance.get<InboundOrderDetail[]>(
+    `${BASE}/${encodeURIComponent(orderCode)}/details`,
+  );
+  return data;
+};
+
+export const suggestInboundAllocationApi = async (
+  body: InboundSuggestAllocationRequest,
+): Promise<InboundSuggestAllocationResponse> => {
+  const { data } = await axiosInstance.post<InboundSuggestAllocationResponse>(
+    `${BASE}/suggest-allocation`,
+    body,
+  );
+  return data;
+};
+
+export const releaseInboundLocationsApi = async (
+  body: InboundReleaseLocationsRequest,
+): Promise<InboundReleaseLocationsResponse> => {
+  const { data } = await axiosInstance.post<InboundReleaseLocationsResponse>(
+    `${BASE}/release-locations`,
+    body,
+  );
+  return data;
+};
+
+export const createInboundOrderApi = async (
+  body: InboundOrderCreateRequest,
+  inboundType: string,
+): Promise<InboundOrder> => {
+  const { data } = await axiosInstance.post<InboundOrder>(BASE, body, {
+    params: { inbound_type: inboundType },
   });
-  return response.data;
+  return data;
 };
 
-export const receiveInboundOrderDetailApi = async (orderCode: string, detailId: number, data: ReceiveInboundOrderDetailRequest): Promise<any> => {
-  console.log(`[API CALL] POST api/v1/inbound-orders/${orderCode}/details/${detailId}/receive`, { body: data });
-  const response = await axiosInstance.post(`api/v1/inbound-orders/${orderCode}/details/${detailId}/receive`, data);
-  return response.data;
+export const updateInboundOrderApi = async (
+  orderCode: string,
+  body: InboundOrderUpdateRequest,
+  inboundType: string,
+): Promise<InboundOrder> => {
+  const { data } = await axiosInstance.patch<InboundOrder>(
+    `${BASE}/${encodeURIComponent(orderCode)}`,
+    body,
+    { params: { inbound_type: inboundType } },
+  );
+  return data;
 };
 
+export const acceptInboundTaskApi = async (detailId: number): Promise<unknown> => {
+  const { data } = await axiosInstance.post(
+    `/api/v1/inbound-allocations/${detailId}/accept-task`,
+  );
+  return data;
+};

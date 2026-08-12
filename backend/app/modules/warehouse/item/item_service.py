@@ -4,10 +4,11 @@ from datetime import date, timedelta
 from decimal import Decimal
 from typing import Optional
 
-from sqlalchemy import func
+from sqlalchemy import Date, cast, func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.modules.warehouse.item.item_model import Item
 from app.modules.warehouse.item.item_schema import (
     ItemAnalyzeResponse,
@@ -19,7 +20,7 @@ from app.modules.warehouse.item.item_schema import (
     ItemUpdate,
 )
 from app.modules.warehouse.unit.unit_model import Unit
-from app.modules.warehouse.warehouse_zone.warehouse_model import Warehouse
+from app.modules.warehouse.warehouse_zone.warehouse_model import Warehouse, Zone
 from app.modules.warehouse.item_stock.item_stock_model import ItemStock
 from app.modules.warehouse.location_map.location_model import Location
 
@@ -103,10 +104,14 @@ def analyze_items(db: Session, warehouse_id: int) -> ItemAnalyzeResponse:
     total_quantity = (
         db.query(func.coalesce(func.sum(ItemStock.quantity), 0))
         .join(Item, Item.id == ItemStock.item_id)
+        .join(Location, Location.id == ItemStock.location_id)
+        .join(Zone, Zone.id == Location.zone_id)
         .filter(
             Item.warehouse_id == warehouse_id,
             Item.is_active.is_(True),
             ItemStock.is_active.is_(True),
+            Location.is_active.is_(True),
+            Zone.code.in_(settings.zone_storage),
         )
         .scalar()
     )
@@ -118,25 +123,36 @@ def analyze_items(db: Session, warehouse_id: int) -> ItemAnalyzeResponse:
     total_nearly_outdated = (
         db.query(func.count(func.distinct(ItemStock.item_id)))
         .join(Item, Item.id == ItemStock.item_id)
+        .join(Location, Location.id == ItemStock.location_id)
+        .join(Zone, Zone.id == Location.zone_id)
         .filter(
             Item.warehouse_id == warehouse_id,
             Item.is_active.is_(True),
             ItemStock.is_active.is_(True),
+            Location.is_active.is_(True),
+            Zone.code.in_(settings.zone_storage),
             ItemStock.expiry_date.isnot(None),
-            ItemStock.expiry_date >= today,
-            ItemStock.expiry_date <= nearly_end,
+            cast(ItemStock.expiry_date, Date) >= today,
+            cast(ItemStock.expiry_date, Date) <= nearly_end,
         )
         .scalar()
         or 0
     )
 
-    # Low stock: active items whose total active stock qty < threshold
+    # Low stock: active items whose storage-zone stock qty < threshold
     stock_sum = (
         db.query(
             ItemStock.item_id.label("item_id"),
             func.coalesce(func.sum(ItemStock.quantity), 0).label("qty"),
         )
-        .filter(ItemStock.is_active.is_(True))
+        .join(Location, Location.id == ItemStock.location_id)
+        .join(Zone, Zone.id == Location.zone_id)
+        .filter(
+            ItemStock.is_active.is_(True),
+            Location.warehouse_id == warehouse_id,
+            Location.is_active.is_(True),
+            Zone.code.in_(settings.zone_storage),
+        )
         .group_by(ItemStock.item_id)
         .subquery()
     )

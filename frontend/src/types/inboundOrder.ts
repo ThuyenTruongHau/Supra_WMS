@@ -1,126 +1,167 @@
-export interface DraftInboundOrderDetail {
-  sku: string;
-  item_name: string;
-  item_lot_code: string;
-  item_expire_at?: string; // ISO String format
-  ordered_quantity: number;
-  vehicle_number?: string;
-  detail_datetime?: string;
-  source_warehouse?: string;
-  target_warehouse?: string;
-  delivery_type?: string;
-  nvt_code?: string;
-  status?: string;
+export type InboundOrderStatus =
+  | "initialize"
+  | "reserved"
+  | "reversed"
+  | "in_transit"
+  | "in-progress"
+  | "completed"
+  | string;
+
+export interface InboundOrder {
+  id: number;
+  order_code: string;
+  status: InboundOrderStatus;
+  note: string | null;
+  created_by_id: number;
+  warehouse_id: number;
+  details: Record<string, unknown>;
+  created_at: string | null;
+  updated_at: string | null;
 }
 
-export interface DraftInboundOrderRequest {
-  supplier_name: string;
-  notes: string;
-  details: DraftInboundOrderDetail[];
+export interface InboundOrderListResponse {
+  items: InboundOrder[];
+  total: number;
+  page: number;
+  page_size: number;
 }
 
-export interface DraftInboundOrderResponse {
-  session_id: string;
-  expires_at: string;
-  message: string;
+/** Một SKU nằm trong vị trí đích của detail. */
+export interface InboundOrderAllocation {
+  id: number;
+  inbound_order_detail_id: number;
+  item_stock_id: number;
+  unit_id: number;
+  quantity: number;
+  status: string;
+  item_id: number | null;
+  sku: string | null;
+  item_name: string | null;
+  unit_name: string | null;
+  lot_number: string | null;
+  expiry_date: string | null;
+  created_at: string | null;
+  updated_at: string | null;
 }
 
-export interface StorageLocationSuggestion {
-  location_code: string;
-  distance_meters: number;
-  has_same_sku_nearby: boolean;
-  score: number;
-  zone_name: string;
-}
-
-export interface GetStorageLocationSuggestionsResponse {
-  session_id: string;
-  suggestions: StorageLocationSuggestion[];
-}
-
-export interface CreateInboundOrderDetail extends DraftInboundOrderDetail {
-  location_code: string;
-}
-
-export interface CreateInboundOrderRequest {
-  supplier_name: string;
-  notes: string;
-  details: CreateInboundOrderDetail[];
-}
-
-export interface CreateInboundOrderResponse {
-  id?: number;
-  message?: string;
-  [key: string]: any;
+/** Một vị trí đích (nhóm/pallet) kèm danh sách SKU. */
+export interface InboundOrderDetail {
+  id: number;
+  inbound_order_id: number;
+  from_location_id: number | null;
+  to_location_id: number | null;
+  from_location_code: string | null;
+  from_location_name: string | null;
+  to_location_code: string | null;
+  to_location_name: string | null;
+  status: string;
+  detail_type: string;
+  details: Record<string, unknown>;
+  created_at: string | null;
+  updated_at: string | null;
+  allocations: InboundOrderAllocation[];
 }
 
 export interface GetInboundOrdersParams {
-  zone_id: number;
-  vehicle_number?: string;
+  warehouse_id: number;
+  page?: number;
+  page_size?: number;
+  q?: string;
   status?: string;
-  supplier_name?: string;
-  created_by?: string | number;
-  created_from?: string;
-  created_to?: string;
-  cursor?: string | number;
-  limit?: number;
 }
 
-export interface InboundVehicle {
-  vehicle_number: string;
+/** --- Suggest allocation --- */
+export interface InboundSuggestAllocationItem {
+  item_id: number;
+  quantity: number;
+  unit_id: number;
+  lot_number?: string | null;
 }
 
-export interface InboundOrderLocation {
-  id: number;
-  location_code: string;
-  zone_name: string;
+export interface InboundSuggestLineItem {
+  items: InboundSuggestAllocationItem[];
+  details?: Record<string, unknown>;
 }
 
-export interface InboundOrderItemDetail {
-  id: number;
-  item_sku: string;
-  item_name: string;
-  item_unit: string;
-  item_lot_code: string;
-  item_expire_at: string;
-  ordered_quantity: string | number;
-  received_quantity: string | number;
-  status: string;
-  location: InboundOrderLocation;
-  // Worker inbound – trường mới
-  num_pallets?: number;
-  detail_datetime?: string;
-  vehicle_number?: string;
-  order_code?: string;
+export interface InboundSuggestAllocationRequest {
+  warehouse_id: number;
+  detail_type: string;
+  line_items: InboundSuggestLineItem[];
 }
 
-export interface InboundOrderDetail {
-  id: number;
+export interface InboundSuggestAllocationItemResponse {
+  item_id: number;
+  quantity: number;
+  unit_id: number;
+  lot_number: string | null;
+  details: Record<string, unknown>;
+}
+
+export interface InboundSuggestAllocationGroupResponse {
+  detail_type: string;
+  target_location_name: string;
+  target_location_id: number;
+  line_items: InboundSuggestAllocationItemResponse[];
+}
+
+export interface InboundSuggestAllocationResponse {
+  line_items: InboundSuggestAllocationGroupResponse[];
+}
+
+export interface InboundReleaseLocationsRequest {
+  location_ids: number[];
+}
+
+export interface InboundReleaseLocationsResponse {
+  deleted: number;
+}
+
+/** --- Create --- */
+export interface InboundOrderAllocationCreate {
+  item_id: number;
+  quantity: number;
+  unit_id: number;
+  lot_number?: string | null;
+  expiry_date?: string | null;
+}
+
+export interface InboundOrderDetailCreate {
+  from_location_id: number;
+  to_location_id: number;
+  details?: Record<string, unknown>;
+  allocations: InboundOrderAllocationCreate[];
+}
+
+export interface InboundOrderCreateRequest {
   order_code: string;
-  supplier_name: string;
-  status: string;
-  notes: string | null;
-  details: InboundOrderItemDetail[];
-  creator: {
-    id: number;
-    username: string;
-  };
-  created_at: string;
-  updated_at: string;
-  // Worker inbound – trường mới (key từ PalletGroupForm)
-  source_warehouse?: string | null;
-  target_warehouse?: string | null;
-  delivery_type?: string | null;
-  nvt_code?: string | null;
+  note?: string | null;
+  warehouse_id: number;
+  details?: Record<string, unknown>;
+  line_items: InboundOrderDetailCreate[];
 }
 
-export interface GetInboundOrdersResponse {
-  orders: InboundOrderDetail[];
-  next_cursor?: string | number | null;
+/** --- Update --- */
+export interface InboundOrderAllocationUpdate {
+  id?: number | null;
+  delete?: boolean;
+  item_id?: number | null;
+  quantity?: number | null;
+  unit_id?: number | null;
+  lot_number?: string | null;
+  expiry_date?: string | null;
 }
 
-export interface ReceiveInboundOrderDetailRequest {
-  received_quantity: number;
-  actual_location_code: string;
-  "start-location"?: string;
+export interface InboundOrderDetailUpdate {
+  id?: number | null;
+  delete?: boolean;
+  from_location_id?: number | null;
+  to_location_id?: number | null;
+  details?: Record<string, unknown> | null;
+  allocations?: InboundOrderAllocationUpdate[] | null;
+}
+
+export interface InboundOrderUpdateRequest {
+  note?: string | null;
+  details?: Record<string, unknown> | null;
+  line_items?: InboundOrderDetailUpdate[];
 }

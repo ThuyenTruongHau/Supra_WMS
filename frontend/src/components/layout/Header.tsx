@@ -38,32 +38,32 @@ export default function Header() {
       <div className="flex items-center gap-4">
         {/* 1. Bộ chọn Kho hiện tại hoặc Nhãn Cài đặt */}
         {isSettingPage ? (
-          <div className="relative w-56 rounded-xl border border-slate-200 bg-slate-50 flex items-center gap-2 px-4 py-2">
-            <SettingOutlined className="text-slate-400 text-lg" />
-            <div className="text-sm font-semibold text-slate-700 truncate">
+          <div className="relative flex h-14 w-72 min-w-[288px] max-w-[288px] items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4">
+            <SettingOutlined className="text-lg text-slate-400" />
+            <div className="truncate text-base font-semibold text-slate-700">
               Cài đặt hệ thống
             </div>
           </div>
         ) : (
-          <div className="relative w-56 rounded-xl border border-brand-primary/30 bg-brand-primary/5">
+          <div className="relative h-14 w-72 min-w-[288px] max-w-[288px] rounded-xl border border-brand-primary/30 bg-brand-primary/5">
             <button
               onClick={() => setIsOpen(!isOpen)}
-              className="flex w-full items-center justify-between gap-2 bg-brand-primary/5 hover:bg-brand-primary/10 border border-brand-primary/20 px-4 py-1.5 rounded-xl cursor-pointer text-left transition-all"
+              className="flex h-14 w-full items-center justify-between gap-2 rounded-xl border border-brand-primary/20 bg-brand-primary/5 px-4 text-left transition-all hover:bg-brand-primary/10 cursor-pointer"
             >
               <BankOutlined
-                className="shrink-0 text-lg mr-2"
+                className="mr-2 shrink-0 text-xl"
                 style={{ color: "#3aa6a6" }}
               />
               <div className="min-w-0 flex-1 text-left">
-                <div className="text-[10px] text-slate-400 uppercase tracking-wider leading-none">
+                <div className="text-xs uppercase leading-none tracking-wider text-slate-400">
                   Kho hiện tại
                 </div>
-                <div className="text-sm font-semibold text-slate-700 mt-1 truncate">
+                <div className="mt-1 truncate text-base font-semibold text-slate-700">
                   {warehouseName}
                 </div>
               </div>
               <DownOutlined
-                className={`shrink-0 text-slate-400 text-xs ml-2 transition-transform duration-200 ${isOpen ? "-rotate-90" : ""}`}
+                className={`ml-2 shrink-0 text-xs text-slate-400 transition-transform duration-200 ${isOpen ? "-rotate-90" : ""}`}
               />
             </button>
 
@@ -76,7 +76,7 @@ export default function Header() {
                   onClick={() => setIsOpen(!isOpen)}
                 />
 
-                <div className="absolute right-0 mt-2 w-56 bg-white border border-slate-100 rounded-xl shadow-lg py-1.5 z-20 animate-in fade-in slide-in-from-top-1 duration-200">
+                <div className="absolute right-0 z-20 mt-2 w-72 min-w-[288px] max-w-[288px] animate-in fade-in slide-in-from-top-1 rounded-xl border border-slate-100 bg-white py-1.5 shadow-lg duration-200">
                   {warehouses?.map((wh) => (
                     <button
                       key={wh.id}

@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   getActiveWarehouseMapApi,
   getFullLocationsApi,
+  getLocationsByLogicApi,
   importWarehouseMapApi,
   downloadActiveMapApi,
   getLocationDetailByIdApi,
@@ -30,6 +31,19 @@ export const useFullLocations = (warehouseId: number) => {
     queryFn: () => getFullLocationsApi(warehouseId),
     staleTime: 2 * 60 * 1000,
     enabled: warehouseId > 0,
+  });
+};
+
+export const useInboundBufferLocations = (
+  warehouseId: number,
+  enabled = true,
+) => {
+  return useQuery({
+    queryKey: ['inbound-buffer-locations', warehouseId],
+    queryFn: () => getLocationsByLogicApi(warehouseId, 'inbound_buffer'),
+    staleTime: 2 * 60 * 1000,
+    enabled: enabled && warehouseId > 0,
+    refetchOnMount: true,
   });
 };
 

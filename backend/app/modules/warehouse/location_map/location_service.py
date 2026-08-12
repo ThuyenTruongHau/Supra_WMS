@@ -4,6 +4,8 @@ from typing import Optional
 
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
+from sqlalchemy import or_
+from app.core.config import settings
 
 from app.modules.warehouse.location_map.location_model import Location, WarehouseMap
 from decimal import Decimal
@@ -148,11 +150,8 @@ def list_locations_for_map(db: Session, warehouse_id: int) -> LocationsForMapRes
             if stock.is_active and stock.quantity is not None and stock.quantity > 0
         ]
         status = loc.status or ("has_stock" if stocks else "empty")
-        if status == "has_stock" or stocks:
+        if stocks:
             location_codes.append(loc.location_code)
-            status = "has_stock"
-        else:
-            status = "empty"
 
         items.append(
             MapLocationItem(
@@ -611,3 +610,22 @@ def export_warehouse_map(db: Session, warehouse_id: int) -> tuple[bytes, str]:
         raise ValueError("Map file is empty")
     filename = f"warehouse-map-{warehouse_id}.zip"
     return content, filename
+
+def get_inbound_buffer_locations(db: Session, warehouse_id: int) -> list[Location]:
+    zone_keys = settings.zone_inbound
+    return (
+        db.query(Location)
+        .join(Zone, Location.zone_id == Zone.id)
+        .filter(
+            Location.warehouse_id == warehouse_id,
+            Location.is_active.is_(True),
+            or_(Zone.name.in_(zone_keys), Zone.code.in_(zone_keys)),
+        )
+        .order_by(Location.location_code)
+        .all()
+    )
+
+def get_locations_by_logic(db: Session, warehouse_id: int, type: str) -> list[Location]:
+    if type == "inbound_buffer":
+        return get_inbound_buffer_locations(db, warehouse_id)
+    raise ValueError(f"Unsupported location type: {type}")

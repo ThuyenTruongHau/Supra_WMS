@@ -1,754 +1,868 @@
-import React, { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Modal,
   Form,
   Input,
-  Button,
+  Button as AntButton,
   Divider,
   Space,
-  Typography,
-  message,
   Steps,
   DatePicker,
+  Tag,
+  message,
 } from "antd";
-import {
-  PlusOutlined,
-  DeleteOutlined,
-  EnvironmentOutlined,
-} from "@ant-design/icons";
-import { Table } from "@/components/ui";
-import WarehouseMapCanvas from "@/components/shared/WarehouseMapCanvas";
-import type { NodeInfo } from "@/types/warehouseMap";
-import { useAuthStore } from "@/store/useAuthStore";
-import { useAppStore } from "@/store/useAppStore";
+import { PlusOutlined, DeleteOutlined } from "@ant-design/icons";
+import { Select, Table, Button } from "@/components/ui";
 import { SkuSearchSelect } from "@/components/shared/SkuSearchSelect";
+import { useAppStore } from "@/store/useAppStore";
 import {
-  useDraftInboundOrder,
-  useGetStorageLocationSuggestions,
+  useSuggestInboundAllocation,
+  useReleaseInboundLocations,
   useCreateInboundOrder,
+  useUpdateInboundOrder,
 } from "@/hooks/useInboundOrder";
+import type {
+  InboundOrderAllocationUpdate,
+  InboundOrderDetailUpdate,
+  InboundSuggestAllocationGroupResponse,
+} from "@/types/inboundOrder";
+import { useUnits } from "@/hooks/useUnit";
+import { useInboundBufferLocations } from "@/hooks/useWarehouseMap";
 import dayjs from "dayjs";
+import type { AxiosError } from "axios";
+import type { ApiErrorResponse } from "@/types/apiError";
 
-const { Text } = Typography;
+/** Một SKU trong nhóm. */
+export interface ImportItemDraft {
+  key: string;
+  allocation_id?: number;
+  sku?: string;
+  item_id?: number;
+  item_name?: string;
+  quantity: number;
+  unit_id?: number;
+  lot_number?: string;
+  expiry_date?: string;
+}
+
+/** Một nhóm/pallet — nhiều SKU dùng chung một vị trí đích. */
+export interface ImportGroupDraft {
+  key: string;
+  detail_id?: number;
+  from_location_id?: number;
+  to_location_id?: number;
+  to_location_name?: string;
+  status?: string;
+  items: ImportItemDraft[];
+}
 
 interface CreateImportModalProps {
   open: boolean;
   onCancel: () => void;
   onSuccess: () => void;
-  initialData?: PalletGroupForm[];
+  mode?: "create" | "edit";
+  editOrderCode?: string;
+  initialNote?: string;
+  initialGroups?: ImportGroupDraft[];
 }
 
-export interface PalletGroupForm {
-  key: string;
-  sku: string;
-  item_name: string;
-  lot_code: string;
-  expire_at?: string;
-  configs: {
-    key: string;
-    qtyPerPallet: number;
-    numPallets: number;
-  }[];
-  // Extra fields from Excel (optional)
-  detail_datetime?: string;
-  vehicle_number?: string;
-  source_warehouse?: string;
-  target_warehouse?: string;
-  delivery_type?: string;
-  nvt_code?: string;
-}
+let draftSeq = 0;
+const nextKey = (prefix: string) => `${prefix}-${Date.now()}-${draftSeq++}`;
 
-interface ExpandedPallet {
-  key: string;
-  sku: string;
-  item_name: string;
-  lot_code: string;
-  expire_at?: string;
-  quantity: number;
-  vehicle_number?: string;
-  detail_datetime?: string;
-  source_warehouse?: string;
-  target_warehouse?: string;
-  delivery_type?: string;
-  nvt_code?: string;
-  suggestedNodeId?: string;
-  assignedNodeId?: string;
+export const createEmptyItem = (): ImportItemDraft => ({
+  key: nextKey("item"),
+  quantity: 1,
+});
+
+export const createEmptyGroup = (): ImportGroupDraft => ({
+  key: nextKey("group"),
+  items: [createEmptyItem()],
+});
+
+function errorMessage(err: unknown): string {
+  const ax = err as AxiosError<ApiErrorResponse>;
+  const detail = ax?.response?.data?.detail;
+  if (typeof detail === "string") return detail;
+  if (err instanceof Error) return err.message;
+  return "Có lỗi xảy ra";
 }
 
 export default function CreateImportModal({
   open,
   onCancel,
   onSuccess,
-  initialData,
+  mode = "create",
+  editOrderCode,
+  initialNote,
+  initialGroups,
 }: CreateImportModalProps) {
-  const [currentStep, setCurrentStep] = useState(0);
-  const [notes, setNotes] = useState("");
-  const [sessionId, setSessionId] = useState<string | null>(null);
+  const isEdit = mode === "edit";
+  const selectedWarehouseId = useAppStore((s) => s.selectedWarehouseId);
+  const inboundType = useAppStore((s) => s.inboundType);
 
-  const username = useAuthStore((state) => state.username);
-  const selectedWarehouseId = useAppStore((state) => state.selectedWarehouseId);
+  const [step, setStep] = useState(0);
+  const [orderCode, setOrderCode] = useState("");
+  const [note, setNote] = useState("");
+  const [groups, setGroups] = useState<ImportGroupDraft[]>([createEmptyGroup()]);
+  const [originalGroups, setOriginalGroups] = useState<ImportGroupDraft[]>([]);
+  const [suggested, setSuggested] = useState<
+    InboundSuggestAllocationGroupResponse[]
+  >([]);
 
-  const draftMutation = useDraftInboundOrder();
-  const suggestMutation = useGetStorageLocationSuggestions();
-  const createMutation = useCreateInboundOrder();
+  const { data: units = [] } = useUnits();
+  const {
+    data: bufferLocationsData,
+    isLoading: bufferLocationsLoading,
+    isError: bufferLocationsError,
+    refetch: refetchBufferLocations,
+  } = useInboundBufferLocations(selectedWarehouseId || 0, open);
 
-  const [palletGroups, setPalletGroups] = useState<PalletGroupForm[]>([
-    {
-      key: "group-1",
-      sku: "",
-      item_name: "",
-      lot_code: "",
-      expire_at: undefined,
-      configs: [{ key: "config-1", qtyPerPallet: 0, numPallets: 1 }],
-    },
-  ]);
-
-  React.useEffect(() => {
-    if (open) {
-      if (initialData && initialData.length > 0) {
-        setPalletGroups(initialData);
-      } else {
-        setPalletGroups([
-          {
-            key: "group-1",
-            sku: "",
-            item_name: "",
-            lot_code: "",
-            expire_at: undefined,
-            configs: [{ key: "config-1", qtyPerPallet: 0, numPallets: 1 }],
-          },
-        ]);
-      }
-      setCurrentStep(0);
-      setSessionId(null);
-      setExpandedPallets([]);
-      setNotes("");
-    }
-  }, [open, initialData]);
-
-  const [expandedPallets, setExpandedPallets] = useState<ExpandedPallet[]>([]);
-  const [isMapModalOpen, setIsMapModalOpen] = useState(false);
-  const [pickingForPalletKey, setPickingForPalletKey] = useState<string | null>(
-    null,
+  const bufferLocationOptions = useMemo(
+    () =>
+      (bufferLocationsData?.items ?? []).map((loc) => ({
+        value: loc.id,
+        label: `${loc.location_code}${loc.location_name ? ` — ${loc.location_name}` : ""}`,
+      })),
+    [bufferLocationsData],
   );
 
+  const unitOptions = useMemo(
+    () => units.map((u) => ({ value: u.id, label: u.name })),
+    [units],
+  );
+
+  const suggestMutation = useSuggestInboundAllocation();
+  const releaseMutation = useReleaseInboundLocations();
+  const createMutation = useCreateInboundOrder();
+  const updateMutation = useUpdateInboundOrder();
+
+  useEffect(() => {
+    if (!open) return;
+    setStep(0);
+    setSuggested([]);
+    const seed =
+      initialGroups && initialGroups.length > 0
+        ? initialGroups
+        : [createEmptyGroup()];
+    setGroups(seed);
+    if (isEdit) {
+      setOrderCode(editOrderCode ?? "");
+      setNote(initialNote ?? "");
+      setOriginalGroups(seed);
+    } else {
+      setOrderCode(`IN-${dayjs().format("YYYYMMDD-HHmmss")}`);
+      setNote("");
+      setOriginalGroups([]);
+    }
+  }, [open, isEdit, editOrderCode, initialNote, initialGroups]);
+
+  const releaseSuggestedLocations = async () => {
+    const ids = suggested
+      .map((s) => s.target_location_id)
+      .filter((id): id is number => !!id);
+    if (ids.length === 0) return;
+    try {
+      await releaseMutation.mutateAsync({ location_ids: ids });
+    } catch {
+      // best-effort release
+    }
+  };
+
+  const handleClose = async () => {
+    if (!isEdit && step === 1) await releaseSuggestedLocations();
+    onCancel();
+  };
+
+  const updateGroup = (groupKey: string, patch: Partial<ImportGroupDraft>) => {
+    setGroups((prev) =>
+      prev.map((g) => (g.key === groupKey ? { ...g, ...patch } : g)),
+    );
+  };
+
+  const updateItem = (
+    groupKey: string,
+    itemKey: string,
+    patch: Partial<ImportItemDraft>,
+  ) => {
+    setGroups((prev) =>
+      prev.map((g) =>
+        g.key === groupKey
+          ? {
+              ...g,
+              items: g.items.map((i) =>
+                i.key === itemKey ? { ...i, ...patch } : i,
+              ),
+            }
+          : g,
+      ),
+    );
+  };
+
   const handleAddGroup = () => {
-    setPalletGroups([
-      ...palletGroups,
-      {
-        key: `group-${Date.now()}`,
-        sku: "",
-        item_name: "",
-        lot_code: "",
-        expire_at: undefined,
-        configs: [
-          { key: `config-${Date.now()}`, qtyPerPallet: 0, numPallets: 1 },
-        ],
-      },
-    ]);
+    if (isEdit) return;
+    setGroups((prev) => [...prev, createEmptyGroup()]);
   };
 
   const handleRemoveGroup = (groupKey: string) => {
-    setPalletGroups(palletGroups.filter((g) => g.key !== groupKey));
+    setGroups((prev) => prev.filter((g) => g.key !== groupKey));
   };
 
-  const handleAddConfig = (groupIndex: number) => {
-    const newGroups = [...palletGroups];
-    newGroups[groupIndex].configs.push({
-      key: `config-${Date.now()}`,
-      qtyPerPallet: 0,
-      numPallets: 1,
-    });
-    setPalletGroups(newGroups);
-  };
-
-  const handleRemoveConfig = (groupIndex: number, configKey: string) => {
-    const newGroups = [...palletGroups];
-    newGroups[groupIndex].configs = newGroups[groupIndex].configs.filter(
-      (c) => c.key !== configKey,
+  const handleAddItem = (groupKey: string) => {
+    setGroups((prev) =>
+      prev.map((g) =>
+        g.key === groupKey ? { ...g, items: [...g.items, createEmptyItem()] } : g,
+      ),
     );
-    setPalletGroups(newGroups);
   };
 
-  const handleUpdateConfig = (
-    groupIndex: number,
-    configIndex: number,
-    field: "qtyPerPallet" | "numPallets",
-    value: number,
-  ) => {
-    const newGroups = [...palletGroups];
-    newGroups[groupIndex].configs[configIndex][field] = value;
-    setPalletGroups(newGroups);
+  const handleRemoveItem = (groupKey: string, itemKey: string) => {
+    setGroups((prev) =>
+      prev.map((g) =>
+        g.key === groupKey
+          ? { ...g, items: g.items.filter((i) => i.key !== itemKey) }
+          : g,
+      ),
+    );
   };
 
-  const handleNext = async () => {
-    const hasFull = palletGroups.some((g) => !g.sku || !g.lot_code);
-    if (hasFull) {
-      message.error("Vui lòng điền đầy đủ Part_number và Mã lô!");
-      return;
+  const validateStep0 = () => {
+    if (!selectedWarehouseId) {
+      message.error("Vui lòng chọn kho");
+      return false;
     }
-
-    let hasZeroConfig = false;
-    const expanded: ExpandedPallet[] = [];
-    palletGroups.forEach((group) => {
-      group.configs.forEach((config) => {
-        if (config.qtyPerPallet <= 0 || config.numPallets <= 0) {
-          hasZeroConfig = true;
-        }
-        for (let i = 0; i < config.numPallets; i++) {
-          expanded.push({
-            key: `expanded-${group.key}-${config.key}-${i}`,
-            sku: group.sku,
-            item_name: group.item_name,
-            lot_code: group.lot_code,
-            expire_at: group.expire_at,
-            quantity: config.qtyPerPallet,
-            vehicle_number: group.vehicle_number,
-            detail_datetime: group.detail_datetime,
-            source_warehouse: group.source_warehouse,
-            target_warehouse: group.target_warehouse,
-            delivery_type: group.delivery_type,
-            nvt_code: group.nvt_code,
-          });
-        }
-      });
-    });
-
-    if (hasZeroConfig) {
-      message.error(
-        "Vui lòng điền số lượng Pallet và số lượng trên mỗi Pallet lớn hơn 0!",
-      );
-      return;
+    if (!orderCode.trim()) {
+      message.error("Vui lòng nhập mã đơn");
+      return false;
     }
+    if (groups.length === 0) {
+      message.error("Cần ít nhất một nhóm hàng");
+      return false;
+    }
+    for (const [index, group] of groups.entries()) {
+      if (isEdit && !group.from_location_id) {
+        message.error(`Nhóm ${index + 1}: cần chọn điểm cấp`);
+        return false;
+      }
+      if (group.items.length === 0) {
+        message.error(`Nhóm ${index + 1}: cần ít nhất một SKU`);
+        return false;
+      }
+      for (const item of group.items) {
+        if (!item.item_id || !item.unit_id || !item.quantity || item.quantity <= 0) {
+          message.error(`Nhóm ${index + 1}: mỗi SKU cần Item, Unit và SL > 0`);
+          return false;
+        }
+      }
+    }
+    return true;
+  };
+
+  const validateStep1 = () => {
+    for (const [index, group] of groups.entries()) {
+      if (!group.to_location_id) {
+        message.error(`Nhóm ${index + 1}: thiếu vị trí đích`);
+        return false;
+      }
+      if (!group.from_location_id) {
+        message.error(`Nhóm ${index + 1}: cần chọn điểm cấp`);
+        return false;
+      }
+    }
+    return true;
+  };
+
+  const handleContinue = async () => {
+    if (!validateStep0()) return;
 
     try {
-      const draftPayload = {
-        supplier_name: username || "Unknown",
-        notes: notes,
-        details: expanded.map((p) => ({
-          sku: p.sku,
-          item_name: p.item_name,
-          item_lot_code: p.lot_code,
-          item_expire_at: p.expire_at ? p.expire_at : undefined,
-          ordered_quantity: p.quantity,
-          vehicle_number: p.vehicle_number,
-          detail_datetime: p.detail_datetime,
-          source_warehouse: p.source_warehouse,
-          target_warehouse: p.target_warehouse,
-          delivery_type: p.delivery_type,
-          nvt_code: p.nvt_code,
-          status: "in_progress",
+      message.loading({ content: "Đang gợi ý vị trí...", key: "suggest" });
+      const res = await suggestMutation.mutateAsync({
+        warehouse_id: selectedWarehouseId,
+        detail_type: inboundType,
+        line_items: groups.map((g) => ({
+          items: g.items.map((i) => ({
+            item_id: i.item_id!,
+            quantity: i.quantity,
+            unit_id: i.unit_id!,
+            lot_number: i.lot_number?.trim() || null,
+          })),
+          details: {
+            items: g.items.map((i) => ({
+              sku: i.sku,
+              item_name: i.item_name,
+              lot_number: i.lot_number?.trim() || null,
+              expiry_date: i.expiry_date || null,
+            })),
+          },
         })),
-      };
-      console.log(
-        "=== [1] POST /api/v1/inbound-orders/draft PAYLOAD ===",
-        draftPayload,
+      });
+      setSuggested(res.line_items);
+      setGroups((prev) =>
+        prev.map((g, idx) => ({
+          ...g,
+          to_location_id: res.line_items[idx]?.target_location_id,
+          to_location_name: res.line_items[idx]?.target_location_name,
+        })),
       );
+      message.success({ content: "Đã gợi ý vị trí đích", key: "suggest" });
+      setStep(1);
+      void refetchBufferLocations();
+    } catch (err) {
+      message.error({ content: errorMessage(err), key: "suggest" });
+    }
+  };
 
-      message.loading({ content: "Đang gửi bản nháp...", key: "draft" });
-      const draftRes = await draftMutation.mutateAsync(draftPayload);
+  const buildUpdatePayload = (): InboundOrderDetailUpdate[] => {
+    const currentDetailIds = new Set(
+      groups.map((g) => g.detail_id).filter((id): id is number => !!id),
+    );
+    const deletedGroups: InboundOrderDetailUpdate[] = originalGroups
+      .map((g) => g.detail_id)
+      .filter((id): id is number => !!id && !currentDetailIds.has(id))
+      .map((id) => ({ id, delete: true }));
 
-      const sessId = draftRes.session_id;
-      setSessionId(sessId);
+    const originalGroupByDetailId = new Map(
+      originalGroups
+        .filter((g) => g.detail_id)
+        .map((g) => [g.detail_id!, g] as const),
+    );
 
-      console.log(
-        "=== [2] GET /api/v1/inbound-orders/storage-locations-suggest PARAMS ===",
-        { session_id: sessId },
-      );
-      message.loading({ content: "Đang lấy gợi ý vị trí...", key: "draft" });
-      const suggestRes = await suggestMutation.mutateAsync(sessId);
+    const updatedGroups: InboundOrderDetailUpdate[] = groups
+      .filter((g) => g.detail_id)
+      .map((g) => {
+        const original = originalGroupByDetailId.get(g.detail_id!);
+        const currentAllocationIds = new Set(
+          g.items
+            .map((i) => i.allocation_id)
+            .filter((id): id is number => !!id),
+        );
+        const deletedAllocations: InboundOrderAllocationUpdate[] = (
+          original?.items ?? []
+        )
+          .map((i) => i.allocation_id)
+          .filter(
+            (id): id is number => !!id && !currentAllocationIds.has(id),
+          )
+          .map((id) => ({ id, delete: true }));
 
-      // Map suggestions to expanded pallets
-      const mappedExpanded = expanded.map((p, index) => {
-        const suggestion = suggestRes.suggestions[index];
+        const upsertAllocations: InboundOrderAllocationUpdate[] = g.items.map(
+          (i) => ({
+            ...(i.allocation_id ? { id: i.allocation_id } : {}),
+            item_id: i.item_id,
+            quantity: i.quantity,
+            unit_id: i.unit_id,
+            lot_number: i.lot_number?.trim() || null,
+            expiry_date: i.expiry_date || null,
+          }),
+        );
+
         return {
-          ...p,
-          suggestedNodeId: suggestion ? suggestion.location_code : undefined,
+          id: g.detail_id!,
+          ...(g.from_location_id
+            ? { from_location_id: g.from_location_id }
+            : {}),
+          allocations: [...deletedAllocations, ...upsertAllocations],
         };
       });
 
-      setExpandedPallets(mappedExpanded);
-      message.success({ content: "Lấy gợi ý thành công!", key: "draft" });
-      setCurrentStep(1);
-    } catch (error: any) {
-      console.error("API Error:", error);
-      const errorMsg =
-        error?.response?.data?.message ||
-        error?.response?.data?.detail ||
-        "Có lỗi xảy ra khi gọi API";
-      message.error({ content: errorMsg, key: "draft" });
-    }
+    return [...deletedGroups, ...updatedGroups];
   };
 
-  const handleMapNodeClick = (node: NodeInfo | null) => {
-    if (!node || node.type !== 1) {
-      message.warning("Vui lòng chọn vào một Kệ (Shelf) hợp lệ!");
-      return;
-    }
+  const handleSubmit = async () => {
+    if (!selectedWarehouseId) return;
 
-    const isDuplicate = expandedPallets.some(
-      (p) =>
-        p.key !== pickingForPalletKey &&
-        (p.assignedNodeId === node.name ||
-          (!p.assignedNodeId && p.suggestedNodeId === node.name)),
-    );
+    if (isEdit) {
+      if (!validateStep0() || !editOrderCode) return;
 
-    if (isDuplicate) {
-      message.error(
-        `Kệ ${node.name} đã được phân bổ cho pallet khác trong đơn này!`,
-      );
-      return;
-    }
-
-    setExpandedPallets((prev) =>
-      prev.map((p) => {
-        if (p.key === pickingForPalletKey) {
-          return { ...p, assignedNodeId: node.name };
-        }
-        return p;
-      }),
-    );
-
-    message.success(`Đã gán Kệ ${node.name}`);
-    setIsMapModalOpen(false);
-  };
-
-  const handleSave = async () => {
-    const usedNodes = new Set();
-    let hasDuplicate = false;
-    let hasMissingLocation = false;
-
-    expandedPallets.forEach((p) => {
-      const nodeId = p.assignedNodeId || p.suggestedNodeId;
-      if (!nodeId) {
-        hasMissingLocation = true;
-      } else {
-        if (usedNodes.has(nodeId)) hasDuplicate = true;
-        usedNodes.add(nodeId);
+      try {
+        message.loading({ content: "Đang cập nhật đơn nhập...", key: "submit" });
+        await updateMutation.mutateAsync({
+          orderCode: editOrderCode,
+          inboundType,
+          data: {
+            note: note.trim() || null,
+            line_items: buildUpdatePayload(),
+          },
+        });
+        message.success({
+          content: "Cập nhật đơn nhập thành công!",
+          key: "submit",
+        });
+        onSuccess();
+      } catch (err) {
+        message.error({ content: errorMessage(err), key: "submit" });
       }
-    });
-
-    if (hasDuplicate) {
-      message.error(
-        "Có vị trí kệ bị trùng lặp giữa các pallet. Vui lòng kiểm tra lại!",
-      );
       return;
     }
 
-    if (hasMissingLocation) {
-      message.error("Có pallet chưa được gán vị trí!");
-      return;
+    for (const group of groups) {
+      if (!group.to_location_id) {
+        message.error("Mỗi nhóm cần có vị trí đích (To location)");
+        return;
+      }
     }
 
-    if (!sessionId) return;
+    if (!validateStep1()) return;
 
     try {
-      const createPayload = {
-        supplier_name: username || "Unknown",
-        notes: notes,
-        details: expandedPallets.map((p) => ({
-          sku: p.sku,
-          item_name: p.item_name,
-          item_lot_code: p.lot_code,
-          item_expire_at: p.expire_at,
-          ordered_quantity: p.quantity,
-          vehicle_number: p.vehicle_number,
-          detail_datetime: p.detail_datetime,
-          source_warehouse: p.source_warehouse,
-          target_warehouse: p.target_warehouse,
-          delivery_type: p.delivery_type,
-          nvt_code: p.nvt_code,
-          status: "in_progress",
-          location_code: (p.assignedNodeId || p.suggestedNodeId) as string,
-        })),
-      };
-      console.log(
-        "=== [3] POST /api/v1/inbound-orders PAYLOAD ===\n",
-        "Params:",
-        { session_id: sessionId },
-        "\n Body:",
-        createPayload,
-      );
-
-      message.loading({ content: "Đang tạo đơn nhập...", key: "create" });
+      message.loading({ content: "Đang tạo đơn nhập...", key: "submit" });
       await createMutation.mutateAsync({
-        sessionId,
-        data: createPayload,
-      });
-      message.success({ content: "Tạo đơn nhập thành công!", key: "create" });
-
-      // Reset state
-      setNotes("");
-      setSessionId(null);
-      setPalletGroups([
-        {
-          key: "group-1",
-          sku: "",
-          item_name: "",
-          lot_code: "",
-          expire_at: "",
-          configs: [{ key: "config-1", qtyPerPallet: 0, numPallets: 1 }],
+        inboundType,
+        data: {
+          order_code: orderCode.trim(),
+          note: note.trim() || null,
+          warehouse_id: selectedWarehouseId,
+          details: {},
+          line_items: groups.map((g) => ({
+            from_location_id: g.from_location_id!,
+            to_location_id: g.to_location_id!,
+            details: {
+              items: g.items.map((i) => ({
+                sku: i.sku,
+                item_name: i.item_name,
+              })),
+            },
+            allocations: g.items.map((i) => ({
+              item_id: i.item_id!,
+              quantity: i.quantity,
+              unit_id: i.unit_id!,
+              lot_number: i.lot_number?.trim() || null,
+              expiry_date: i.expiry_date || null,
+            })),
+          })),
         },
-      ]);
-      setCurrentStep(0);
+      });
+      message.success({ content: "Tạo đơn nhập thành công!", key: "submit" });
+      setSuggested([]);
       onSuccess();
-    } catch (error) {
-      message.error({ content: "Có lỗi xảy ra khi tạo đơn", key: "create" });
+    } catch (err) {
+      message.error({ content: errorMessage(err), key: "submit" });
     }
   };
 
-  const step2Columns = [
-    { title: "Part_number", dataIndex: "sku", key: "sku" },
-    { title: "Lot Code", dataIndex: "lot_code", key: "lot_code" },
-    { title: "Số lượng", dataIndex: "quantity", key: "quantity" },
+  const isSubmitting = createMutation.isPending || updateMutation.isPending;
+
+  const reviewColumns = [
     {
-      title: "Vị trí gán",
-      key: "location",
-      render: (_: any, record: ExpandedPallet) => (
-        <Space>
-          <Text
-            strong
-            className={
-              record.assignedNodeId ? "text-brand-primary" : "text-slate-600"
-            }
-          >
-            {record.assignedNodeId || record.suggestedNodeId}
-          </Text>
-          <Button
-            type="text"
-            icon={
-              <EnvironmentOutlined
-                className={
-                  record.assignedNodeId
-                    ? "text-brand-primary"
-                    : "text-slate-400"
-                }
-              />
-            }
-            onClick={() => {
-              setPickingForPalletKey(record.key);
-              setIsMapModalOpen(true);
-            }}
-          />
-        </Space>
+      title: "Nhóm",
+      key: "group",
+      width: 90,
+      render: (_: unknown, __: ImportGroupDraft, index: number) =>
+        `Nhóm ${index + 1}`,
+    },
+    {
+      title: "Điểm cấp",
+      key: "from",
+      width: 280,
+      render: (_: unknown, g: ImportGroupDraft) => (
+        <Select
+          className="w-full"
+          showSearch
+          optionFilterProp="label"
+          placeholder="Chọn điểm cấp..."
+          value={g.from_location_id}
+          options={bufferLocationOptions}
+          loading={bufferLocationsLoading}
+          notFoundContent={
+            bufferLocationsLoading
+              ? "Đang tải..."
+              : bufferLocationsError
+                ? "Không tải được điểm cấp"
+                : "Không có điểm cấp"
+          }
+          onChange={(val) =>
+            updateGroup(g.key, { from_location_id: Number(val) })
+          }
+        />
       ),
+    },
+    {
+      title: "Vị trí đích (gợi ý)",
+      key: "to",
+      render: (_: unknown, g: ImportGroupDraft) =>
+        g.to_location_name
+          ? `${g.to_location_name} (#${g.to_location_id})`
+          : g.to_location_id
+            ? `#${g.to_location_id}`
+            : "—",
+    },
+    {
+      title: "Số SKU",
+      key: "count",
+      width: 90,
+      render: (_: unknown, g: ImportGroupDraft) => g.items.length,
+    },
+  ];
+
+  const renderGroupItemsEditor = (group: ImportGroupDraft) => (
+    <div className="space-y-3 py-1">
+      {group.items.map((item, itemIndex) => (
+        <div
+          key={item.key}
+          className="p-3 bg-white border border-stripe-hairline rounded-md"
+        >
+          <div className="mb-2 flex items-center justify-between">
+            <span className="text-xs font-medium text-slate-400">
+              SKU {itemIndex + 1}
+            </span>
+            {group.items.length > 1 && (
+              <Button
+                variant="dangerText"
+                icon={<DeleteOutlined />}
+                onClick={() => handleRemoveItem(group.key, item.key)}
+              />
+            )}
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="col-span-2">
+              {item.allocation_id ? (
+                <Input
+                  value={
+                    item.sku
+                      ? `${item.sku}${item.item_name ? ` — ${item.item_name}` : ""}`
+                      : ""
+                  }
+                  disabled
+                />
+              ) : (
+                <SkuSearchSelect
+                  warehouseId={selectedWarehouseId || 0}
+                  value={item.sku}
+                  onChange={(sku) => {
+                    if (!sku) {
+                      updateItem(group.key, item.key, {
+                        sku: undefined,
+                        item_id: undefined,
+                        item_name: undefined,
+                      });
+                    } else {
+                      updateItem(group.key, item.key, { sku });
+                    }
+                  }}
+                  onSelectOption={(opt) => {
+                    updateItem(group.key, item.key, {
+                      sku: opt?.value,
+                      item_id: opt?.item_id,
+                      item_name: opt?.item_name,
+                    });
+                  }}
+                />
+              )}
+            </div>
+            <Input
+              type="number"
+              min={1}
+              prefix={<span className="text-xs text-slate-400">SL:</span>}
+              value={item.quantity}
+              onChange={(e) =>
+                updateItem(group.key, item.key, {
+                  quantity: Number(e.target.value) || 0,
+                })
+              }
+            />
+            <Select
+              className="w-full"
+              placeholder="Unit"
+              value={item.unit_id}
+              options={unitOptions}
+              onChange={(val) =>
+                updateItem(group.key, item.key, {
+                  unit_id: Number(val),
+                })
+              }
+            />
+            <Input
+              placeholder="LOT"
+              value={item.lot_number || ""}
+              onChange={(e) =>
+                updateItem(group.key, item.key, {
+                  lot_number: e.target.value,
+                })
+              }
+            />
+            <DatePicker
+              className="w-full"
+              placeholder="Hạn sử dụng"
+              format="DD/MM/YYYY"
+              value={item.expiry_date ? dayjs(item.expiry_date) : null}
+              onChange={(date) =>
+                updateItem(group.key, item.key, {
+                  expiry_date: date ? date.format("YYYY-MM-DD") : undefined,
+                })
+              }
+            />
+          </div>
+        </div>
+      ))}
+      <AntButton
+        type="dashed"
+        icon={<PlusOutlined />}
+        className="w-full"
+        onClick={() => handleAddItem(group.key)}
+      >
+        Thêm SKU vào nhóm này
+      </AntButton>
+    </div>
+  );
+
+  const reviewItemColumns = [
+    {
+      title: "Item",
+      key: "item",
+      render: (_: unknown, i: ImportItemDraft) =>
+        `${i.sku || i.item_id}${i.item_name ? ` — ${i.item_name}` : ""}`,
+    },
+    { title: "SL", dataIndex: "quantity", key: "quantity", width: 90 },
+    {
+      title: "Đơn vị",
+      key: "unit",
+      width: 120,
+      render: (_: unknown, i: ImportItemDraft) =>
+        units.find((u) => u.id === i.unit_id)?.name ?? "—",
+    },
+    {
+      title: "Số lô",
+      key: "lot",
+      width: 140,
+      render: (_: unknown, i: ImportItemDraft) => i.lot_number || "—",
+    },
+    {
+      title: "HSD",
+      key: "expiry",
+      width: 130,
+      render: (_: unknown, i: ImportItemDraft) =>
+        i.expiry_date ? dayjs(i.expiry_date).format("DD/MM/YYYY") : "—",
     },
   ];
 
   return (
-    <>
-      <Modal
-        title={
-          <span className="text-xl font-bold text-brand-dark">
-            Tạo Phiếu Nhập Kho Mới
-          </span>
-        }
-        open={open}
-        onCancel={onCancel}
-        width={900}
-        footer={
-          <div className="flex justify-between items-center w-full">
-            {currentStep === 0 ? (
-              <div />
-            ) : (
-              <Button onClick={() => setCurrentStep(0)}>Quay lại</Button>
-            )}
-
-            <Space>
-              <Button onClick={onCancel}>Hủy</Button>
-              {currentStep === 0 ? (
-                <Button
-                  type="primary"
-                  onClick={handleNext}
-                  className="bg-brand-primary"
-                  loading={draftMutation.isPending || suggestMutation.isPending}
-                >
-                  Tiếp tục (Phân bổ Vị trí)
-                </Button>
-              ) : (
-                <Button
-                  type="primary"
-                  onClick={handleSave}
-                  className="bg-brand-primary"
-                  loading={createMutation.isPending}
-                >
-                  Xác nhận Tạo Đơn
-                </Button>
-              )}
-            </Space>
-          </div>
-        }
-      >
-        <Steps
-          current={currentStep}
-          className="mb-8 mt-4"
-          items={[{ title: "Khai báo hàng hóa" }, { title: "Phân bổ vị trí" }]}
-        />
-
-        {currentStep === 0 && (
-          <div className="space-y-6">
-            <Form layout="vertical">
-              <Form.Item label="Ghi chú (Tùy chọn)" className="mb-0">
-                <Input.TextArea
-                  placeholder="Nhập ghi chú cho đơn nhập này..."
-                  rows={2}
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                />
-              </Form.Item>
-            </Form>
-
-            <Divider
-              titlePlacement="left"
-              className="!text-sm text-slate-400 mt-0"
+    <Modal
+      title={
+        <span className="text-xl font-bold text-brand-dark">
+          {isEdit ? "Cập nhật Phiếu Nhập Kho" : "Tạo Phiếu Nhập Kho"}
+        </span>
+      }
+      open={open}
+      onCancel={() => void handleClose()}
+      width={1040}
+      centered
+      footer={
+        <div className="flex justify-between items-center w-full">
+          {!isEdit && step === 1 ? (
+            <AntButton
+              onClick={() => {
+                void releaseSuggestedLocations().then(() => {
+                  setSuggested([]);
+                  setGroups((prev) =>
+                    prev.map((g) => ({
+                      ...g,
+                      to_location_id: undefined,
+                      to_location_name: undefined,
+                      from_location_id: undefined,
+                    })),
+                  );
+                  setStep(0);
+                });
+              }}
             >
-              DANH SÁCH PALLET
-            </Divider>
+              Quay lại
+            </AntButton>
+          ) : (
+            <div />
+          )}
+          <Space>
+            <AntButton onClick={() => void handleClose()}>Hủy</AntButton>
+            {isEdit ? (
+              <AntButton
+                type="primary"
+                className="bg-brand-primary"
+                loading={isSubmitting}
+                onClick={() => void handleSubmit()}
+              >
+                Xác nhận Cập Nhật
+              </AntButton>
+            ) : step === 0 ? (
+              <AntButton
+                type="primary"
+                className="bg-brand-primary"
+                loading={suggestMutation.isPending}
+                onClick={() => void handleContinue()}
+              >
+                Tiếp tục (Gợi ý vị trí)
+              </AntButton>
+            ) : (
+              <AntButton
+                type="primary"
+                className="bg-brand-primary"
+                loading={isSubmitting}
+                onClick={() => void handleSubmit()}
+              >
+                Xác nhận Tạo Đơn
+              </AntButton>
+            )}
+          </Space>
+        </div>
+      }
+    >
+      {!isEdit && (
+        <Steps
+          current={step}
+          className="mb-6 mt-4"
+          items={[
+            { title: "Khai báo hàng hóa" },
+            { title: "Gợi ý vị trí & chọn điểm cấp" },
+          ]}
+        />
+      )}
 
-            <div className="space-y-4 max-h-[50vh] overflow-y-auto custom-scrollbar pr-2">
-              {palletGroups.map((group, groupIndex) => (
-                <div
-                  key={group.key}
-                  className="p-4 bg-slate-50 border border-stripe-hairline rounded-lg relative"
-                >
-                  {palletGroups.length > 1 && (
+      <Form layout="vertical" className="mb-4">
+        {(step === 0 && !isEdit) || isEdit ? (
+          <Form.Item label="Mã đơn" required className="mb-0">
+            <Input
+              value={orderCode}
+              onChange={(e) => setOrderCode(e.target.value)}
+              disabled={isEdit}
+            />
+          </Form.Item>
+        ) : null}
+        <Form.Item
+          label="Ghi chú"
+          className={(step === 0 && !isEdit) || isEdit ? "mb-0 mt-4" : "mb-0"}
+        >
+          <Input.TextArea
+            rows={2}
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder="Ghi chú đơn nhập..."
+          />
+        </Form.Item>
+      </Form>
+
+      {step === 0 && !isEdit && (
+        <div className="space-y-4">
+          <Divider titlePlacement="left" className="!text-sm text-slate-400">
+            DỮ LIỆU HÀNG HÓA — MỖI NHÓM LÀ MỘT VỊ TRÍ ĐÍCH
+          </Divider>
+
+          <div className="space-y-4 max-h-[50vh] overflow-y-auto pr-1">
+            {groups.map((group, groupIndex) => (
+              <div
+                key={group.key}
+                className="p-4 bg-slate-50 border border-stripe-hairline rounded-lg space-y-3"
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <span className="font-semibold text-brand-dark">
+                    Nhóm {groupIndex + 1}
+                  </span>
+                  {groups.length > 1 && (
                     <Button
-                      type="text"
-                      danger
+                      variant="dangerText"
                       icon={<DeleteOutlined />}
-                      className="absolute top-2 right-2 z-10"
                       onClick={() => handleRemoveGroup(group.key)}
                     />
                   )}
-
-                  <div className="grid grid-cols-3 gap-4 mb-4 mt-2">
-                    <div className="min-w-0">
-                      <SkuSearchSelect
-                        warehouseId={selectedWarehouseId || 0}
-                        value={group.sku || undefined}
-                        onChange={(sku) => {
-                          const newGroups = [...palletGroups];
-                          newGroups[groupIndex].sku = sku || "";
-                          if (!sku) {
-                            newGroups[groupIndex].item_name = "";
-                          }
-                          setPalletGroups(newGroups);
-                        }}
-                        onSelectOption={(opt) => {
-                          const newGroups = [...palletGroups];
-                          newGroups[groupIndex].sku = opt?.value || "";
-                          newGroups[groupIndex].item_name =
-                            opt?.item_name || "";
-                          setPalletGroups(newGroups);
-                        }}
-                      />
-                    </div>
-                    <Input
-                      placeholder="Nhập Lot Code..."
-                      value={group.lot_code}
-                      onChange={(e) => {
-                        const newGroups = [...palletGroups];
-                        newGroups[groupIndex].lot_code = e.target.value;
-                        setPalletGroups(newGroups);
-                      }}
-                    />
-                    <DatePicker
-                      placeholder="Hạn sử dụng"
-                      format="DD/MM/YYYY"
-                      value={group.expire_at ? dayjs(group.expire_at) : null}
-                      onChange={(date) => {
-                        const newGroups = [...palletGroups];
-                        newGroups[groupIndex].expire_at = date
-                          ? date.toISOString()
-                          : undefined;
-                        setPalletGroups(newGroups);
-                      }}
-                      className="w-full"
-                    />
-                    <DatePicker
-                      placeholder="Ngày/ Giờ chi tiết"
-                      showTime
-                      format="DD/MM/YYYY HH:mm"
-                      value={
-                        group.detail_datetime
-                          ? dayjs(group.detail_datetime)
-                          : null
-                      }
-                      onChange={(date) => {
-                        const newGroups = [...palletGroups];
-                        newGroups[groupIndex].detail_datetime = date
-                          ? date.toISOString()
-                          : "";
-                        setPalletGroups(newGroups);
-                      }}
-                      className="w-full"
-                    />
-                    <Input
-                      placeholder="Số xe"
-                      value={group.vehicle_number || ""}
-                      onChange={(e) => {
-                        const newGroups = [...palletGroups];
-                        newGroups[groupIndex].vehicle_number = e.target.value;
-                        setPalletGroups(newGroups);
-                      }}
-                    />
-                    <Input
-                      placeholder="Kho xuất"
-                      value={group.source_warehouse || ""}
-                      onChange={(e) => {
-                        const newGroups = [...palletGroups];
-                        newGroups[groupIndex].source_warehouse = e.target.value;
-                        setPalletGroups(newGroups);
-                      }}
-                    />
-                    <Input
-                      placeholder="Kho nhập"
-                      value={group.target_warehouse || ""}
-                      onChange={(e) => {
-                        const newGroups = [...palletGroups];
-                        newGroups[groupIndex].target_warehouse = e.target.value;
-                        setPalletGroups(newGroups);
-                      }}
-                    />
-                    <Input
-                      placeholder="Delivery"
-                      value={group.delivery_type || ""}
-                      onChange={(e) => {
-                        const newGroups = [...palletGroups];
-                        newGroups[groupIndex].delivery_type = e.target.value;
-                        setPalletGroups(newGroups);
-                      }}
-                    />
-                    <Input
-                      placeholder="NVT"
-                      value={group.nvt_code || ""}
-                      onChange={(e) => {
-                        const newGroups = [...palletGroups];
-                        newGroups[groupIndex].nvt_code = e.target.value;
-                        setPalletGroups(newGroups);
-                      }}
-                    />
-                  </div>
-
-                  <div className="space-y-2 pl-4 border-l-2 border-brand-primary/20">
-                    {group.configs.map((config, configIndex) => (
-                      <div key={config.key} className="flex items-center gap-2">
-                        <div className="flex-1 flex items-center gap-2">
-                          <Input
-                            type="number"
-                            min={1}
-                            value={config.qtyPerPallet}
-                            onChange={(e) =>
-                              handleUpdateConfig(
-                                groupIndex,
-                                configIndex,
-                                "qtyPerPallet",
-                                parseInt(e.target.value) || 0,
-                              )
-                            }
-                            prefix={
-                              <span className="text-slate-400 text-xs">
-                                SL/Pallet:
-                              </span>
-                            }
-                          />
-                          <span className="text-slate-400 font-bold">×</span>
-                          <Input
-                            type="number"
-                            min={1}
-                            value={config.numPallets}
-                            onChange={(e) =>
-                              handleUpdateConfig(
-                                groupIndex,
-                                configIndex,
-                                "numPallets",
-                                parseInt(e.target.value) || 0,
-                              )
-                            }
-                            prefix={
-                              <span className="text-slate-400 text-xs">
-                                Số Pallet:
-                              </span>
-                            }
-                          />
-                        </div>
-
-                        {group.configs.length > 1 && (
-                          <Button
-                            type="text"
-                            danger
-                            icon={<DeleteOutlined />}
-                            onClick={() =>
-                              handleRemoveConfig(groupIndex, config.key)
-                            }
-                          />
-                        )}
-                      </div>
-                    ))}
-
-                    <Button
-                      type="dashed"
-                      icon={<PlusOutlined />}
-                      className="w-full mt-2 text-brand-primary border-brand-primary/30 hover:!text-brand-primary hover:!border-brand-primary"
-                      onClick={() => handleAddConfig(groupIndex)}
-                    >
-                      Thêm pallet cùng Part_number với số lượng khác
-                    </Button>
-                  </div>
                 </div>
-              ))}
 
-              <Button
-                type="dashed"
-                icon={<PlusOutlined />}
-                className="w-full h-12 text-brand-dark"
-                onClick={handleAddGroup}
-              >
-                Thêm nhóm Part_number mới
-              </Button>
-            </div>
+                {renderGroupItemsEditor(group)}
+              </div>
+            ))}
           </div>
-        )}
 
-        {currentStep === 1 && (
-          <div className="space-y-4 max-h-[50vh] overflow-y-auto custom-scrollbar">
-            <div className="bg-brand-primary/10 p-3 rounded-lg border border-brand-primary/20 text-sm text-brand-dark">
-              Hệ thống đã tự động tách thành{" "}
-              <strong>{expandedPallets.length}</strong> pallet vật lý độc lập và
-              gọi API gợi ý vị trí. Bạn có thể bấm vào icon bản đồ để sửa lại vị
-              trí kệ theo ý muốn.
-            </div>
-
-            <Table
-              columns={step2Columns}
-              dataSource={expandedPallets}
-              pagination={false}
-              size="small"
-              className="border border-stripe-hairline rounded-lg"
-            />
-          </div>
-        )}
-      </Modal>
-
-      <Modal
-        title="Chọn Vị trí Kệ (Click vào Kệ trống)"
-        open={isMapModalOpen}
-        onCancel={() => setIsMapModalOpen(false)}
-        footer={null}
-        width="90vw"
-        style={{ top: 20 }}
-        styles={{ body: { height: "80vh", padding: 0, position: "relative" } }}
-      >
-        <div className="absolute inset-0 bg-slate-100 rounded-b-lg overflow-hidden">
-          {isMapModalOpen && (
-            <WarehouseMapCanvas
-              hideToolbar
-              hideDrawer
-              onNodeClick={handleMapNodeClick}
-            />
-          )}
+          <AntButton
+            type="dashed"
+            icon={<PlusOutlined />}
+            className="w-full h-11"
+            onClick={handleAddGroup}
+          >
+            Thêm nhóm (vị trí đích mới)
+          </AntButton>
         </div>
-      </Modal>
-    </>
+      )}
+
+      {isEdit && (
+        <div className="space-y-4">
+          <Divider titlePlacement="left" className="!text-sm text-slate-400">
+            DỮ LIỆU HÀNG HÓA — MỖI NHÓM LÀ MỘT VỊ TRÍ ĐÍCH
+          </Divider>
+
+          <div className="space-y-4 max-h-[55vh] overflow-y-auto pr-1">
+            {groups.map((group, groupIndex) => (
+              <div
+                key={group.key}
+                className="p-4 bg-slate-50 border border-stripe-hairline rounded-lg space-y-3"
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-semibold text-brand-dark">
+                      Nhóm {groupIndex + 1}
+                    </span>
+                    {group.to_location_name && (
+                      <Tag color="green">Đích: {group.to_location_name}</Tag>
+                    )}
+                    {group.status && <Tag>{group.status}</Tag>}
+                  </div>
+                  {groups.length > 1 && (
+                    <Button
+                      variant="dangerText"
+                      icon={<DeleteOutlined />}
+                      onClick={() => handleRemoveGroup(group.key)}
+                    />
+                  )}
+                </div>
+
+                <Select
+                  className="w-full"
+                  showSearch
+                  optionFilterProp="label"
+                  placeholder="Chọn điểm cấp (buffer)..."
+                  value={group.from_location_id}
+                  options={bufferLocationOptions}
+                  loading={bufferLocationsLoading}
+                  notFoundContent={
+                    bufferLocationsLoading
+                      ? "Đang tải..."
+                      : bufferLocationsError
+                        ? "Không tải được điểm cấp"
+                        : "Không có điểm cấp"
+                  }
+                  onChange={(val) =>
+                    updateGroup(group.key, { from_location_id: Number(val) })
+                  }
+                />
+
+                {renderGroupItemsEditor(group)}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {step === 1 && !isEdit && (
+        <div className="space-y-3">
+          <div className="bg-brand-primary/10 p-3 rounded-lg border border-brand-primary/20 text-sm">
+            Hệ thống đã gợi ý vị trí đích cho từng nhóm. Chọn điểm cấp (buffer)
+            cho mỗi nhóm trước khi xác nhận.
+          </div>
+          <Table
+            columns={reviewColumns}
+            dataSource={groups}
+            pagination={false}
+            rowKey="key"
+            size="small"
+            expandable={{
+              expandedRowRender: (g: ImportGroupDraft) => (
+                <Table
+                  columns={reviewItemColumns}
+                  dataSource={g.items}
+                  pagination={false}
+                  rowKey="key"
+                  size="small"
+                />
+              ),
+            }}
+          />
+        </div>
+      )}
+    </Modal>
   );
 }

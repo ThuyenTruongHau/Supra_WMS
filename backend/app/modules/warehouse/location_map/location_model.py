@@ -5,39 +5,72 @@ from sqlalchemy import (
 from sqlalchemy.orm import relationship, column_property
 from app.core.database import Base
 from app.modules.warehouse.item_stock.item_stock_model import ItemStock
-from app.modules.warehouse.inbound_order.inbound_order_model import InboundOrderAllocation
+from app.modules.warehouse.inbound_order.inbound_order_model import InboundOrderDetail
 from app.modules.warehouse.outbound_order.outbound_order_model import OutboundOrderAllocation
 
 MAPPING_LOCATION_STATUS = {
     "in_progress": "in_transit",
+    "issued": "in_transit",
     "initialize": "reserved",
 }
 
-def _allocation_at_location_exists(allocation_cls, detail_status: str):
+
+def _detail_at_location_exists(detail_cls, detail_statuses, location_id_col):
     return exists(
-        select(1).where(
-            allocation_cls.status == detail_status,
+        select(1)
+        .where(
+            detail_cls.status.in_(detail_statuses),
             or_(
-                allocation_cls.to_location_id == id,
-                allocation_cls.from_location_id == id,
+                detail_cls.to_location_id == location_id_col,
+                detail_cls.from_location_id == location_id_col,
             ),
         )
+        # Without this the EXISTS auto-correlates its own table away, leaving no FROM
+        # clause whenever the expression is rendered outside a SELECT on location.
+        .correlate_except(detail_cls)
     )
-def _location_allocation_case_whens():
-    return [
+
+
+def _location_status_expression(location_id_col):
+    statuses_by_location_status: dict[str, list[str]] = {}
+    for detail_status, location_status in MAPPING_LOCATION_STATUS.items():
+        statuses_by_location_status.setdefault(location_status, []).append(detail_status)
+
+    case_whens = [
         (
             or_(
-                _allocation_at_location_exists(InboundOrderAllocation, s),
-                _allocation_at_location_exists(OutboundOrderAllocation, s),
+                _detail_at_location_exists(
+                    InboundOrderDetail, detail_statuses, location_id_col
+                ),
+                _detail_at_location_exists(
+                    OutboundOrderAllocation, detail_statuses, location_id_col
+                ),
             ),
-            loc_status,
+            location_status,
         )
-        for s, loc_status in MAPPING_LOCATION_STATUS.items()
+        for location_status, detail_statuses in statuses_by_location_status.items()
     ]
+    return case(
+        *case_whens,
+        (
+            exists(
+                select(1)
+                .where(
+                    ItemStock.location_id == location_id_col,
+                    ItemStock.quantity > 0,
+                    ItemStock.is_active.is_(True),
+                )
+                .correlate_except(ItemStock)
+            ),
+            "has_stock",
+        ),
+        else_="empty",
+    )
+
 
 class Location(Base):
     """Warehouse location model for storing materials and products."""
-    
+
     __tablename__ = "location"
     __table_args__ = (
         UniqueConstraint(
@@ -90,26 +123,7 @@ class Location(Base):
         .scalar_subquery()
     )
 
-    status = column_property(
-        select(
-            case(
-                *_location_allocation_case_whens(),
-                (
-                    exists(
-                        select(1).where(
-                            ItemStock.location_id == id,
-                            ItemStock.quantity > 0,
-                            ItemStock.is_active.is_(True),
-                        )
-                    ),
-                    "has_stock",
-                ),
-                else_="empty",
-            )
-        )
-        .correlate_except(ItemStock, InboundOrderAllocation, OutboundOrderAllocation)
-        .scalar_subquery()
-    )
+    status = column_property(_location_status_expression(id))
 
     warehouse = relationship("Warehouse", lazy="joined")
     zone = relationship("Zone", lazy="joined")
@@ -118,6 +132,7 @@ class Location(Base):
         back_populates="location",
         lazy="selectin"
     )
+
 
 class WarehouseMap(Base):
     __tablename__ = "warehouse_map"
@@ -141,5 +156,3 @@ class WarehouseMap(Base):
 
     zone = relationship("Zone", lazy="joined")
     warehouse = relationship("Warehouse", lazy="joined")
-
-    

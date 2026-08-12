@@ -6,10 +6,11 @@ from app.core.config import settings
 from app.modules.robot.robot_model import RobotTask, TaskStatus, MAPPING_STATUS
 from app.modules.warehouse.inbound_order.inbound_order_model import InboundOrderDetail
 from app.modules.warehouse.outbound_order.outbound_order_model import OutboundOrderDetail
+from app.modules.warehouse.item_stock.item_stock_model import ItemStock
 from app.core.logger import get_logger
 logger = get_logger("main")
 
-ICS_ADD_TASK_PATH = f"{settings.ics_base_url.rstrip('/')}/ics/taskOrder/addTask"
+ICS_ADD_TASK_PATH = f"{settings.ics_base_url.rstrip('/')}:7000/ics/taskOrder/addTask"
 
 class TaskStatusService:
     def __init__(self):
@@ -17,6 +18,8 @@ class TaskStatusService:
 
     def add_task(self, payload: dict) -> dict:
         try:
+            logger.info(f"ICS addTask payload: {payload}")
+            logger.info(f"ICS address: {ICS_ADD_TASK_PATH}")
             with httpx.Client(timeout=httpx.Timeout(5.0)) as client:
                 response = client.post(ICS_ADD_TASK_PATH, json=payload)
                 response.raise_for_status()
@@ -47,6 +50,21 @@ class TaskStatusService:
             db.rollback()
             raise
 
+    def _settle_inbound_stock(self, db: Session, detail: InboundOrderDetail) -> None:
+        """Move stock created at the pickup location to its destination."""
+        if not detail.to_location_id:
+            return
+
+        stocks = (
+            db.query(ItemStock)
+            .filter(ItemStock.inbound_order_detail_id == detail.id)
+            .all()
+        )
+        for stock in stocks:
+            stock.location_id = detail.to_location_id
+            stock.status = "available"
+            stock.is_active = True
+
     def receive_task_status(self, db: Session, payload: dict) -> TaskStatus:
         order_id = payload.get("orderId")
         if not order_id:
@@ -56,17 +74,30 @@ class TaskStatusService:
         if not robot_task:
             raise HTTPException(status_code=404, detail="Robot task not found")
 
-        if robot_task.inbound_order_detail_id is not None:
-            inbound_id = robot_task.inbound_order_detail.inbound_order_id
-            order = db.query(InboundOrderDetail).filter(InboundOrderDetail.id == inbound_id).first()
+        is_inbound = robot_task.inbound_order_detail_id is not None
+        if is_inbound:
+            detail = (
+                db.query(InboundOrderDetail)
+                .filter(InboundOrderDetail.id == robot_task.inbound_order_detail_id)
+                .first()
+            )
         elif robot_task.outbound_order_detail_id is not None:
-            outbound_id = robot_task.outbound_order_detail.outbound_order_id
-            order = db.query(OutboundOrderDetail).filter(OutboundOrderDetail.id == outbound_id).first()
+            detail = (
+                db.query(OutboundOrderDetail)
+                .filter(OutboundOrderDetail.id == robot_task.outbound_order_detail_id)
+                .first()
+            )
         else:
             raise HTTPException(status_code=400, detail="Order not found")
-        
-        if payload.get("status") in MAPPING_STATUS.keys():
-            order.status = MAPPING_STATUS[payload.get("status")]
+
+        if not detail:
+            raise HTTPException(status_code=404, detail="Order detail not found")
+
+        ics_status = payload.get("status")
+        if ics_status in MAPPING_STATUS:
+            detail.status = MAPPING_STATUS[ics_status]
+            if is_inbound and detail.status == "completed":
+                self._settle_inbound_stock(db, detail)
 
         record = TaskStatus(
             sub_task_status=payload.get("subTaskStatus"),

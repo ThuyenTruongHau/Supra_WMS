@@ -5,13 +5,15 @@ import { Button, Input } from "@/components/ui";
 import { useGetItems } from "@/hooks/useItem";
 import { cn } from "@/components/ui/utils/cn";
 
-const ITEM_FETCH_LIMIT = 1000;
+const BROWSE_PAGE_SIZE = 40;
+const SEARCH_PAGE_SIZE = 100;
 const DROPDOWN_MIN_WIDTH = 560;
 
 export type SkuSearchOption = {
   value: string;
   label: string;
   item_name: string;
+  item_id?: number;
 };
 
 type SkuSearchSelectProps = {
@@ -24,9 +26,14 @@ type SkuSearchSelectProps = {
   disabled?: boolean;
 };
 
+type ItemQueryParams = {
+  q?: string;
+  page: number;
+  page_size: number;
+};
+
 /**
- * Ô Part_number giống trang Sản phẩm: Input + nút Tìm.
- * Bấm Tìm → gọi API ngay và mở dropdown kết quả (rộng hơn).
+ * Ô Part_number: focus → tải 40 SKU đầu; bấm Tìm → tìm theo ô nhập (hỗ trợ nhiều SKU).
  */
 export function SkuSearchSelect({
   value,
@@ -38,8 +45,7 @@ export function SkuSearchSelect({
   disabled,
 }: SkuSearchSelectProps) {
   const [searchInput, setSearchInput] = useState(value ?? "");
-  const [submittedQuery, setSubmittedQuery] = useState("");
-  const [hasSearched, setHasSearched] = useState(false);
+  const [queryParams, setQueryParams] = useState<ItemQueryParams | null>(null);
   const [dropdownOpen, setDropdownOpen] = useState(false);
 
   useEffect(() => {
@@ -48,45 +54,66 @@ export function SkuSearchSelect({
 
   const { data, isFetching, isError, refetch } = useGetItems({
     warehouse_id: warehouseId,
-    q: submittedQuery || undefined,
-    limit: ITEM_FETCH_LIMIT,
-    enabled: hasSearched && warehouseId > 0,
+    q: queryParams?.q,
+    page: queryParams?.page ?? 1,
+    page_size: queryParams?.page_size ?? BROWSE_PAGE_SIZE,
+    enabled: queryParams !== null && warehouseId > 0,
     staleTime: 0,
   });
 
-  const options: SkuSearchOption[] =
-    isFetching
-      ? []
-      : (data?.items.map((it) => ({
-          value: it.sku,
-          label: `${it.sku} - ${it.name}`,
-          item_name: it.name,
-        })) ?? []);
+  const options: SkuSearchOption[] = isFetching
+    ? []
+    : (data?.items.map((it) => ({
+        value: it.sku,
+        label: `${it.sku} - ${it.name}`,
+        item_name: it.name,
+        item_id: it.id,
+      })) ?? []);
 
-  // Sau khi API xong → mở dropdown ngay (không cần click thêm)
   useEffect(() => {
-    if (hasSearched && !isFetching) {
+    if (queryParams && !isFetching) {
       setDropdownOpen(true);
     }
-  }, [hasSearched, isFetching, data, submittedQuery]);
+  }, [queryParams, isFetching, data]);
+
+  const loadBrowse = () => {
+    if (warehouseId <= 0) return;
+    setQueryParams({ page: 1, page_size: BROWSE_PAGE_SIZE });
+  };
+
+  const handleFocus = () => {
+    if (warehouseId <= 0) return;
+    if (queryParams === null) {
+      loadBrowse();
+    }
+    setDropdownOpen(true);
+  };
 
   const handleSearch = async () => {
     if (warehouseId <= 0) return;
     const q = searchInput.trim();
-    setSubmittedQuery(q);
-    setHasSearched(true);
+    const next: ItemQueryParams = {
+      page: 1,
+      page_size: SEARCH_PAGE_SIZE,
+      q: q || undefined,
+    };
+
+    const sameQuery =
+      queryParams?.q === next.q &&
+      queryParams?.page === next.page &&
+      queryParams?.page_size === next.page_size;
+
+    setQueryParams(next);
     setDropdownOpen(true);
 
-    // Cùng từ khóa vẫn refetch để luôn ra kết quả mới
-    if (hasSearched && submittedQuery === q) {
+    if (sameQuery) {
       await refetch();
     }
   };
 
   const handleClear = () => {
     setSearchInput("");
-    setSubmittedQuery("");
-    setHasSearched(false);
+    setQueryParams(null);
     setDropdownOpen(false);
     onChange?.(undefined);
     onSelectOption?.(null);
@@ -99,7 +126,12 @@ export function SkuSearchSelect({
           className="!w-full"
           disabled={disabled}
           open={dropdownOpen}
-          onDropdownVisibleChange={setDropdownOpen}
+          onDropdownVisibleChange={(open) => {
+            setDropdownOpen(open);
+            if (open && queryParams === null && warehouseId > 0) {
+              loadBrowse();
+            }
+          }}
           value={searchInput}
           options={options.map((o) => ({
             value: o.value,
@@ -112,6 +144,7 @@ export function SkuSearchSelect({
               </div>
             ),
             item_name: o.item_name,
+            item_id: o.item_id,
           }))}
           onChange={(text) => {
             setSearchInput(text);
@@ -122,15 +155,15 @@ export function SkuSearchSelect({
           }}
           onSelect={(sku, option) => {
             const selected = String(sku);
+            const opt = option as { item_name?: string; item_id?: number };
             setSearchInput(selected);
             setDropdownOpen(false);
             onChange?.(selected);
             onSelectOption?.({
               value: selected,
-              label: `${selected} - ${(option as { item_name?: string })?.item_name ?? ""}`,
-              item_name: String(
-                (option as { item_name?: string })?.item_name ?? "",
-              ),
+              label: `${selected} - ${opt?.item_name ?? ""}`,
+              item_name: String(opt?.item_name ?? ""),
+              item_id: opt?.item_id,
             });
           }}
           popupMatchSelectWidth={false}
@@ -148,12 +181,12 @@ export function SkuSearchSelect({
           }}
           notFoundContent={
             isFetching
-              ? "Đang tìm…"
+              ? "Đang tải…"
               : isError
                 ? "Lỗi tải sản phẩm"
-                : hasSearched
+                : queryParams
                   ? "Không có kết quả"
-                  : "Bấm Tìm để tìm sản phẩm"
+                  : "Bấm vào ô hoặc Tìm để tải sản phẩm"
           }
         >
           <Input
@@ -161,6 +194,7 @@ export function SkuSearchSelect({
             disabled={disabled}
             placeholder={placeholder}
             prefix={<SearchOutlined className="text-gray-400" />}
+            onFocus={handleFocus}
             onPressEnter={(e) => {
               e.preventDefault();
               void handleSearch();

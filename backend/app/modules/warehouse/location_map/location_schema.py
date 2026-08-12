@@ -1,4 +1,4 @@
-from datetime import date, datetime
+from datetime import datetime
 from typing import Optional, Any
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -51,6 +51,10 @@ class LocationListResponse(BaseModel):
     page_size: int
 
 
+class LocationsByLogicResponse(BaseModel):
+    items: list[LocationResponse]
+
+
 class MapCreate(BaseModel):
     source: str = Field(..., min_length=1, max_length=255)
     warehouse_id: int
@@ -99,7 +103,7 @@ class LocationDetailStockItem(BaseModel):
     item_id: int
     sku: str
     lot_number: Optional[str] = None
-    expiry_date: Optional[date] = None
+    expiry_date: Optional[str] = None
     quantity: str
     status: str
 

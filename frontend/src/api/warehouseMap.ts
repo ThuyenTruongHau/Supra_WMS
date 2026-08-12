@@ -25,6 +25,28 @@ export const getFullLocationsApi = async (
   return response.data;
 };
 
+export interface LocationsByLogicResponse {
+  items: Array<{
+    id: number;
+    location_code: string;
+    location_name: string;
+    warehouse_id: number;
+    zone_id: number | null;
+    is_active: boolean;
+  }>;
+}
+
+export const getLocationsByLogicApi = async (
+  warehouseId: number,
+  type: string,
+): Promise<LocationsByLogicResponse> => {
+  const response = await axiosInstance.get<LocationsByLogicResponse>(
+    '/api/v1/locations/by-logic',
+    { params: { warehouse_id: warehouseId, type } },
+  );
+  return response.data;
+};
+
 export const importWarehouseMapApi = async (
   warehouseId: number,
   file: File,

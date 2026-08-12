@@ -26,19 +26,26 @@ import { ApiErrorResponse } from "@/types/apiError";
 interface UseGetItemsParams {
   warehouse_id: number;
   q?: string;
+  page?: number;
+  page_size?: number;
+  /** @deprecated use page_size */
   limit?: number;
   enabled?: boolean;
   staleTime?: number;
 }
 
 export const useGetItems = (params: UseGetItemsParams) => {
+  const page = params.page ?? 1;
+  const page_size = params.page_size ?? params.limit ?? 20;
+
   return useQuery({
-    queryKey: ["items", params.warehouse_id, params.q, params.limit],
+    queryKey: ["items", params.warehouse_id, params.q, page, page_size],
     queryFn: async () => {
       return await listItemsApi({
         warehouse_id: params.warehouse_id,
         q: params.q,
-        page_size: params.limit,
+        page,
+        page_size,
       });
     },
     enabled: params.warehouse_id > 0 && (params.enabled ?? true),

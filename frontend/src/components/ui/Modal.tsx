@@ -8,7 +8,7 @@ export interface AppModalProps extends ModalProps {
     titleClassName?: string
 }
 
-function ModalRoot({ className, title, ...props }: AppModalProps) {
+function ModalRoot({ className, title, centered = true, ...props }: AppModalProps) {
     const titleNode =
         typeof title === 'string' ? (
             <span className="text-brand-dark font-semibold">{title}</span>
@@ -20,6 +20,7 @@ function ModalRoot({ className, title, ...props }: AppModalProps) {
         <AntModal
             className={cn(modalClassName, className)}
             title={titleNode}
+            centered={centered}
             {...props}
         />
     )
@@ -35,6 +36,7 @@ function confirm(options: ConfirmOptions) {
     return AntModal.confirm({
         okText: 'Xác nhận',
         cancelText: 'Hủy',
+        centered: true,
         okType: danger ? 'danger' : okType,
         ...rest,
     })

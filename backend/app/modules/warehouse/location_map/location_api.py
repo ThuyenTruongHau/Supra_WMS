@@ -14,6 +14,7 @@ from app.modules.warehouse.location_map.location_schema import (
     LocationListResponse,
     LocationResponse,
     LocationUpdate,
+    LocationsByLogicResponse,
     LocationsForMapResponse,
     MapDataResponse,
 )
@@ -59,6 +60,25 @@ def list_locations_for_map(
         return location_service.list_locations_for_map(db, warehouse_id)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e)) from e
+
+
+@router.get(
+    "/locations/by-logic",
+    response_model=LocationsByLogicResponse,
+    dependencies=[Depends(require_permission("location:read"))],
+)
+def list_locations_by_logic(
+    db: DbSession,
+    warehouse_id: int = Query(...),
+    type: str = Query(..., description="Logic type, e.g. inbound_buffer"),
+):
+    try:
+        locations = location_service.get_locations_by_logic(db, warehouse_id, type)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    return LocationsByLogicResponse(
+        items=[LocationResponse.model_validate(loc) for loc in locations]
+    )
 
 
 @router.get(

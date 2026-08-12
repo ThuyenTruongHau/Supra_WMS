@@ -1,19 +1,21 @@
 """Item model for warehouse inventory."""
 
-from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, JSON, String, Text, func, select
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, JSON, String, Text, func, or_, select
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import column_property
+from app.core.config import settings
 
 from app.core.database import Base
 from app.modules.warehouse.item_stock.item_stock_model import ItemStock
+from app.modules.warehouse.location_map.location_model import Location
+from app.modules.warehouse.warehouse_zone.warehouse_model import Zone
 
 
 class Item(Base):
     """Item master data - represents physical items in warehouse."""
 
     __tablename__ = "item"
-
     id = Column(Integer, primary_key=True, index=True)
     sku = Column(String(50), unique=True, nullable=False, index=True)
     name = Column(String(255), nullable=False)
@@ -38,7 +40,20 @@ class Item(Base):
 
     quantity = column_property(
         select(func.coalesce(func.sum(ItemStock.quantity), 0))
-        .where(ItemStock.item_id == id, ItemStock.is_active.is_(True))
+        .where(
+            ItemStock.item_id == id,
+            ItemStock.is_active.is_(True),
+            ItemStock.location_id.in_(
+                select(Location.id)
+                .join(Zone, Location.zone_id == Zone.id)
+                .where(
+                    Location.warehouse_id == warehouse_id,
+                    Location.is_active.is_(True),
+                    Zone.code.in_(settings.zone_storage),
+                )
+                .correlate_except(Location, Zone)
+            ),
+        )
         .correlate_except(ItemStock)
         .scalar_subquery()
     )

@@ -28,6 +28,7 @@ import WarehouseMapDrawer from './WarehouseMapDrawer';
 import WarehouseMapImportDialog from './WarehouseMapImportDialog';
 import WarehouseMapToolbar from './WarehouseMapToolbar';
 import WarehouseMapOverlays from './WarehouseMapOverlays';
+import WarehouseMapLegend from './WarehouseMapLegend';
 import { useAppStore } from '@/store/useAppStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useActiveWarehouseMap, useFullLocations, useDownloadWarehouseMap } from '@/hooks/useWarehouseMap';
@@ -55,6 +56,8 @@ import {
   NODE_NORMAL_COLOR,
   SHELF_FULL_COLOR,
   SHELF_EMPTY_COLOR,
+  SHELF_RESERVED_COLOR,
+  SHELF_IN_TRANSIT_COLOR,
   SHELF_SELECTED_COLOR,
   SHELF_STROKE_COLOR,
   SHELF_SELECTED_STROKE_COLOR,
@@ -239,11 +242,19 @@ const WarehouseMapCanvas: React.FC<WarehouseMapCanvasProps> = ({
         const half = baseSize * 0.7;
         const isSelected = selectedCodesRef.current.has(String(node.content));
         const isFull = fullCodesRef.current.has(node.content);
+        const locDetail = fullLocationsMapRef.current.get(node.content);
+        const locationStatus = locDetail?.status;
 
         if (isSelected) {
           ctx.fillStyle = SHELF_SELECTED_COLOR;
+        } else if (locationStatus === 'reserved') {
+          ctx.fillStyle = SHELF_RESERVED_COLOR;
+        } else if (locationStatus === 'in_transit') {
+          ctx.fillStyle = SHELF_IN_TRANSIT_COLOR;
+        } else if (isFull || locationStatus === 'has_stock') {
+          ctx.fillStyle = SHELF_FULL_COLOR;
         } else {
-          ctx.fillStyle = isFull ? SHELF_FULL_COLOR : SHELF_EMPTY_COLOR;
+          ctx.fillStyle = SHELF_EMPTY_COLOR;
         }
         ctx.fillRect(x - half * 1.5, y - half, half * 3, half * 2);
 
@@ -253,16 +264,16 @@ const WarehouseMapCanvas: React.FC<WarehouseMapCanvasProps> = ({
 
         // Draw item stock text (skip overlay when selected for clearer highlight)
         if (isFull && !isSelected) {
-          const locDetail = fullLocationsMapRef.current.get(node.content);
-          if (locDetail && locDetail.item_stock && locDetail.item_stock.length > 0) {
+          const locDetailForText = fullLocationsMapRef.current.get(node.content);
+          if (locDetailForText && locDetailForText.item_stock && locDetailForText.item_stock.length > 0) {
             ctx.save();
             ctx.fillStyle = '#ffffff';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             const maxTextWidth = half * 2.8; 
             // Display only 1 item to make it prominent, show "+N more" if others exist
-            const stock = locDetail.item_stock[0];
-            const hasMore = locDetail.item_stock.length > 1;
+            const stock = locDetailForText.item_stock[0];
+            const hasMore = locDetailForText.item_stock.length > 1;
 
             // Uniform large font size for both lines
             const fontSize = half * 0.32;
@@ -301,7 +312,7 @@ const WarehouseMapCanvas: React.FC<WarehouseMapCanvasProps> = ({
                ctx.font = `italic 400 ${moreFontSize}px sans-serif`;
                ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
                ctx.shadowColor = 'transparent';
-               ctx.fillText(`+${locDetail.item_stock.length - 1} more...`, x, currentY, maxTextWidth);
+               ctx.fillText(`+${locDetailForText.item_stock.length - 1} more...`, x, currentY, maxTextWidth);
             }
 
             ctx.restore();
@@ -577,6 +588,8 @@ const WarehouseMapCanvas: React.FC<WarehouseMapCanvasProps> = ({
           errorMessage={errorMessage}
           isAdmin={isAdmin}
         />
+
+        {hasData && !isLoading && !isError && <WarehouseMapLegend />}
 
         {/* Drawer Component */}
         {!hideDrawer && (

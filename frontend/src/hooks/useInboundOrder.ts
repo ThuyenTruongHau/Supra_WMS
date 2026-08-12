@@ -1,82 +1,95 @@
-import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   getInboundOrdersApi,
-  getInboundVehiclesApi,
-  getInboundOrderDetailApi,
-  draftInboundOrderApi,
-  getStorageLocationSuggestionsApi,
+  getInboundOrderDetailsApi,
+  suggestInboundAllocationApi,
+  releaseInboundLocationsApi,
   createInboundOrderApi,
-  receiveInboundOrderDetailApi
-} from '@/api/inboundOrder';
-import {
+  updateInboundOrderApi,
+  acceptInboundTaskApi,
+} from "@/api/inboundOrder";
+import type {
   GetInboundOrdersParams,
-  CreateInboundOrderRequest,
-  ReceiveInboundOrderDetailRequest
-} from '@/types/inboundOrder';
-import { AxiosError } from 'axios';
-import { ApiErrorResponse } from '@/types/apiError';
-
-export const useGetInboundVehicles = (zone_id?: number) => {
-  return useQuery({
-    queryKey: ['inboundVehicles', zone_id],
-    queryFn: () => getInboundVehiclesApi(zone_id!),
-    enabled: !!zone_id,
-    staleTime: 5 * 60 * 1000,
-  });
-};
+  InboundOrderCreateRequest,
+  InboundOrderUpdateRequest,
+  InboundReleaseLocationsRequest,
+  InboundSuggestAllocationRequest,
+} from "@/types/inboundOrder";
+import type { AxiosError } from "axios";
+import type { ApiErrorResponse } from "@/types/apiError";
 
 export const useGetInboundOrders = (params: GetInboundOrdersParams) => {
-  return useInfiniteQuery({
-    queryKey: ['inboundOrders', params],
-    queryFn: async ({ pageParam }) => {
-      const query = { ...params, cursor: pageParam || undefined, limit: params.limit ?? 10 };
-      return getInboundOrdersApi(query);
-    },
-    initialPageParam: undefined as string | number | undefined,
-    getNextPageParam: (lastPage) => lastPage.next_cursor ?? undefined,
-    enabled: params.zone_id > 0,
+  return useQuery({
+    queryKey: ["inboundOrders", params],
+    queryFn: () => getInboundOrdersApi(params),
+    enabled: params.warehouse_id > 0,
     staleTime: 5 * 60 * 1000,
   });
 };
 
-export const useGetInboundOrderDetail = (orderCode: string | undefined) => {
+export const useGetInboundOrderDetails = (orderCode: string | undefined) => {
   return useQuery({
-    queryKey: ['inboundOrder', orderCode],
-    queryFn: () => getInboundOrderDetailApi(orderCode!),
+    queryKey: ["inboundOrderDetails", orderCode],
+    queryFn: () => getInboundOrderDetailsApi(orderCode!),
     enabled: !!orderCode,
     staleTime: 5 * 60 * 1000,
   });
 };
 
-export const useDraftInboundOrder = () => {
+export const useSuggestInboundAllocation = () => {
   return useMutation({
-    mutationFn: draftInboundOrderApi,
+    mutationFn: (body: InboundSuggestAllocationRequest) =>
+      suggestInboundAllocationApi(body),
   });
 };
 
-export const useGetStorageLocationSuggestions = () => {
+export const useReleaseInboundLocations = () => {
   return useMutation({
-    mutationFn: getStorageLocationSuggestionsApi,
+    mutationFn: (body: InboundReleaseLocationsRequest) =>
+      releaseInboundLocationsApi(body),
   });
 };
 
 export const useCreateInboundOrder = () => {
   const queryClient = useQueryClient();
-  return useMutation<any, AxiosError<ApiErrorResponse>, { sessionId: string; data: CreateInboundOrderRequest }>({
-    mutationFn: ({ sessionId, data }) => createInboundOrderApi(sessionId, data),
+  return useMutation<
+    Awaited<ReturnType<typeof createInboundOrderApi>>,
+    AxiosError<ApiErrorResponse>,
+    { data: InboundOrderCreateRequest; inboundType: string }
+  >({
+    mutationFn: ({ data, inboundType }) =>
+      createInboundOrderApi(data, inboundType),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['inboundOrders'] });
+      queryClient.invalidateQueries({ queryKey: ["inboundOrders"] });
     },
   });
 };
 
-export const useReceiveInboundOrderDetail = () => {
+export const useUpdateInboundOrder = () => {
   const queryClient = useQueryClient();
-  return useMutation<any, AxiosError<ApiErrorResponse>, { orderCode: string; detailId: number; data: ReceiveInboundOrderDetailRequest }>({
-    mutationFn: ({ orderCode, detailId, data }) => receiveInboundOrderDetailApi(orderCode, detailId, data),
+  return useMutation<
+    Awaited<ReturnType<typeof updateInboundOrderApi>>,
+    AxiosError<ApiErrorResponse>,
+    { orderCode: string; data: InboundOrderUpdateRequest; inboundType: string }
+  >({
+    mutationFn: ({ orderCode, data, inboundType }) =>
+      updateInboundOrderApi(orderCode, data, inboundType),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['inboundOrders'] });
-      queryClient.invalidateQueries({ queryKey: ['inboundOrder', variables.orderCode] });
+      queryClient.invalidateQueries({ queryKey: ["inboundOrders"] });
+      queryClient.invalidateQueries({
+        queryKey: ["inboundOrderDetails", variables.orderCode],
+      });
+    },
+  });
+};
+
+export const useAcceptInboundTask = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (detailId: number) => acceptInboundTaskApi(detailId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["inboundOrderDetails"] });
+      queryClient.invalidateQueries({ queryKey: ["inboundOrders"] });
     },
   });
 };
