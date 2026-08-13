@@ -1,12 +1,15 @@
 import httpx
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
+import json
 
 from app.core.config import settings
 from app.modules.robot.robot_model import RobotTask, TaskStatus, MAPPING_STATUS
 from app.modules.warehouse.inbound_order.inbound_order_model import InboundOrderDetail
 from app.modules.warehouse.outbound_order.outbound_order_model import OutboundOrderDetail
 from app.modules.warehouse.item_stock.item_stock_model import ItemStock
+from app.modules.warehouse.inbound_order.inbound_order_schema import InboundOrderDetailResponse
+from app.modules.warehouse.transaction_history.history_model import Transaction, History
 from app.core.logger import get_logger
 logger = get_logger("main")
 
@@ -18,8 +21,6 @@ class TaskStatusService:
 
     def add_task(self, payload: dict) -> dict:
         try:
-            logger.info(f"ICS addTask payload: {payload}")
-            logger.info(f"ICS address: {ICS_ADD_TASK_PATH}")
             with httpx.Client(timeout=httpx.Timeout(5.0)) as client:
                 response = client.post(ICS_ADD_TASK_PATH, json=payload)
                 response.raise_for_status()
@@ -38,7 +39,7 @@ class TaskStatusService:
             "orderId": task.order_id,
             "modelProcessCode": task.process_code,
             "fromSystem": task.system_code,
-            "taskOrderDetail": task.task_order_detail,
+            "taskOrderDetail": json.loads(task.task_order_detail),
         }
         try:
             self.add_task(payload)
@@ -51,7 +52,6 @@ class TaskStatusService:
             raise
 
     def _settle_inbound_stock(self, db: Session, detail: InboundOrderDetail) -> None:
-        """Move stock created at the pickup location to its destination."""
         if not detail.to_location_id:
             return
 
@@ -65,6 +65,29 @@ class TaskStatusService:
             stock.status = "available"
             stock.is_active = True
 
+            db.add(Transaction(
+                    from_location_id=detail.from_location_id,
+                    to_location_id=detail.to_location_id,
+                    transaction_type="inbound",
+                    item_stock_id=stock.id,
+                    quantity=int(stock.quantity),
+                    created_by_id=detail.inbound_order.created_by_id,
+                ))
+
+        db.add(History(
+            inbound_order_id=detail.inbound_order_id,
+            old_status="in_progress",
+            new_status="completed",
+            description=f"Inbound order detail {detail.id} completed",
+            details=InboundOrderDetailResponse.model_validate(detail).model_dump(mode="json"),
+            created_by_id=detail.inbound_order.created_by_id,
+        ))
+        try:
+            db.commit()
+        except Exception:
+            db.rollback()
+            raise
+
     def receive_task_status(self, db: Session, payload: dict) -> TaskStatus:
         order_id = payload.get("orderId")
         if not order_id:
@@ -74,8 +97,7 @@ class TaskStatusService:
         if not robot_task:
             raise HTTPException(status_code=404, detail="Robot task not found")
 
-        is_inbound = robot_task.inbound_order_detail_id is not None
-        if is_inbound:
+        if robot_task.inbound_order_detail_id is not None:
             detail = (
                 db.query(InboundOrderDetail)
                 .filter(InboundOrderDetail.id == robot_task.inbound_order_detail_id)
@@ -93,10 +115,10 @@ class TaskStatusService:
         if not detail:
             raise HTTPException(status_code=404, detail="Order detail not found")
 
-        ics_status = payload.get("status")
+        ics_status = str(payload.get("status"))
         if ics_status in MAPPING_STATUS:
             detail.status = MAPPING_STATUS[ics_status]
-            if is_inbound and detail.status == "completed":
+            if robot_task.inbound_order_detail_id is not None and detail.status == "completed":
                 self._settle_inbound_stock(db, detail)
 
         record = TaskStatus(
@@ -106,7 +128,7 @@ class TaskStatusService:
             device_num=payload.get("deviceNum"),
             qr_code=payload.get("qrCode"),
             shelf_number=payload.get("shelfNumber"),
-            status=payload.get("status"),
+            status=str(payload.get("status")),
         )
         try:
             db.add(record)
@@ -116,5 +138,7 @@ class TaskStatusService:
         except Exception:
             db.rollback()
             raise
+
+    
 
 task_status_service = TaskStatusService()

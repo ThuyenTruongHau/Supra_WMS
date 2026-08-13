@@ -20,6 +20,7 @@ class Item(Base):
     sku = Column(String(50), unique=True, nullable=False, index=True)
     name = Column(String(255), nullable=False)
     description = Column(Text)
+    base_quantity = Column(Integer, nullable=False, default=1, server_default="1")
     base_unit_id = Column("base_unit", Integer, ForeignKey("unit.id"), nullable=False)
     max_quantity = Column(Integer, nullable=False)
     min_quantity = Column(Integer, nullable=False)

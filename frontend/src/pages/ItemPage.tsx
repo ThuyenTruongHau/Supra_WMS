@@ -32,6 +32,7 @@ import { useZone } from "@/hooks/useZone";
 import { useUnits } from "@/hooks/useUnit";
 import { getItemsForExport, downloadItemExcel } from "@/utils/itemExport";
 import dayjs from "dayjs";
+import { formatQuantity, parseQuantity } from "@/utils/formatQuantity";
 
 const PAGE_SIZE = 20;
 const ITEM_FETCH_LIMIT = 100;
@@ -46,8 +47,7 @@ function formatDate(date?: string | null) {
 }
 
 function formatKpi(value?: number | string) {
-  if (value === undefined || value === null) return "—";
-  return Number(value).toLocaleString("vi-VN");
+  return formatQuantity(value);
 }
 
 export default function ItemPage() {
@@ -133,6 +133,7 @@ export default function ItemPage() {
         name: values.name.trim(),
         description: values.description?.trim() ?? "",
         base_unit: Number(values.base_unit),
+        base_quantity: Number(values.base_quantity ?? 1),
         max_quantity: Number(values.max_quantity),
         min_quantity: Number(values.min_quantity),
         warehouse_id: selectedWarehouseId,
@@ -250,18 +251,21 @@ export default function ItemPage() {
       title: "Số lượng",
       dataIndex: "quantity",
       key: "quantity",
-      sorter: (a, b) => a.quantity - b.quantity,
-      render: (qty: number) => (
-        <span
-          className={
-            qty === 0 || qty < 10
-              ? "font-semibold text-orange-500"
-              : "font-semibold text-brand-dark"
-          }
-        >
-          {qty}
-        </span>
-      ),
+      sorter: (a, b) => parseQuantity(a.quantity) - parseQuantity(b.quantity),
+      render: (qty: number | string) => {
+        const amount = parseQuantity(qty);
+        return (
+          <span
+            className={
+              amount === 0 || amount < 10
+                ? "font-semibold text-orange-500"
+                : "font-semibold text-brand-dark"
+            }
+          >
+            {formatQuantity(qty)}
+          </span>
+        );
+      },
     },
     {
       title: "Đơn vị",
@@ -302,39 +306,34 @@ export default function ItemPage() {
       </div>
 
       <Card className="shadow-sm border-gray-100/50 rounded-xl overflow-hidden p-0">
-        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-gray-100 px-5 py-4">
-          <div className="flex flex-wrap items-center gap-4">
-            <h3 className="text-base font-semibold text-brand-dark whitespace-nowrap">
-              Danh sách sản phẩm
-            </h3>
-            <div className="flex items-center gap-2">
-              <Input
-                allowClear
-                prefix={<SearchOutlined className="text-gray-400" />}
-                placeholder="Tìm theo tên, Part_number, mã..."
-                value={searchInput}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  setSearchInput(value);
-                  if (!value.trim()) {
-                    setSubmittedQuery("");
-                    setPage(1);
-                  }
-                }}
-                onPressEnter={handleSearch}
-                className="!w-72"
-              />
-              <Button
-                variant="secondary"
-                icon={<SearchOutlined />}
-                onClick={handleSearch}
-                loading={isItemsLoading}
-              >
-                Tìm
-              </Button>
-            </div>
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 px-5 py-4">
+          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+            <Input
+              allowClear
+              prefix={<SearchOutlined className="text-gray-400" />}
+              placeholder="Tìm theo tên, Part_number, mã..."
+              value={searchInput}
+              onChange={(e) => {
+                const value = e.target.value;
+                setSearchInput(value);
+                if (!value.trim()) {
+                  setSubmittedQuery("");
+                  setPage(1);
+                }
+              }}
+              onPressEnter={handleSearch}
+              className="!w-72 max-w-full"
+            />
+            <Button
+              variant="secondary"
+              icon={<SearchOutlined />}
+              onClick={handleSearch}
+              loading={isItemsLoading}
+            >
+              Tìm
+            </Button>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3 shrink-0">
             <input
               ref={fileInputRef}
               type="file"
@@ -365,6 +364,11 @@ export default function ItemPage() {
               Thêm sản phẩm
             </Button>
           </div>
+        </div>
+        <div className="border-b border-gray-100 px-5 py-3">
+          <h3 className="text-base font-semibold text-brand-dark">
+            Danh sách sản phẩm
+          </h3>
         </div>
         <Table<Item>
           columns={columns}
@@ -405,7 +409,7 @@ export default function ItemPage() {
           layout="vertical"
           onFinish={handleCreate}
           className="mt-2"
-          initialValues={{ min_quantity: 10, max_quantity: 999999 }}
+          initialValues={{ base_quantity: 1, min_quantity: 10, max_quantity: 999999 }}
         >
           <Form.Item
             name="sku"
@@ -438,6 +442,17 @@ export default function ItemPage() {
                 label: unit.name,
               }))}
             />
+          </Form.Item>
+
+          <Form.Item
+            name="base_quantity"
+            label="Số lượng cơ sở"
+            rules={[
+              { required: true, message: "Vui lòng nhập số lượng cơ sở!" },
+              { type: "number", min: 1, message: "Giá trị phải >= 1" },
+            ]}
+          >
+            <Input type="number" min={1} placeholder="Ví dụ: 1" />
           </Form.Item>
 
           <div className="grid grid-cols-2 gap-4">

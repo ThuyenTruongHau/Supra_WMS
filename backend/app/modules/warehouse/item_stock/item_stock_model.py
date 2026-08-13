@@ -33,6 +33,7 @@ class ItemStock(Base):
         index=True,
     )
     inbound_order_detail_id = Column(Integer, ForeignKey("inbound_order_detail.id"), nullable=True, index=True)
+    unit_id = Column(Integer, ForeignKey("unit.id"), nullable=False, index=True)
     quantity = Column(Numeric(12, 3), nullable=False, default=0)
     lot_number = Column(String(50), nullable=True, index=True)
     expiry_date = Column(String(50), nullable=True, index=True)
@@ -48,6 +49,7 @@ class ItemStock(Base):
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
     item = relationship("Item", lazy="joined")
+    unit = relationship("Unit", foreign_keys=[unit_id], lazy="joined")
     location = relationship(
         "Location",
         back_populates="stocks",

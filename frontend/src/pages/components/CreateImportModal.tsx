@@ -28,6 +28,11 @@ import type {
 } from "@/types/inboundOrder";
 import { useUnits } from "@/hooks/useUnit";
 import { useInboundBufferLocations } from "@/hooks/useWarehouseMap";
+import {
+  convertQuantityApi,
+  getItemAvailableUnitsApi,
+} from "@/api/itemUnit";
+import { formatQuantity } from "@/utils/formatQuantity";
 import dayjs from "dayjs";
 import type { AxiosError } from "axios";
 import type { ApiErrorResponse } from "@/types/apiError";
@@ -41,6 +46,9 @@ export interface ImportItemDraft {
   item_name?: string;
   quantity: number;
   unit_id?: number;
+  unit_options?: { value: number; label: string }[];
+  converted_quantity?: number;
+  converted_unit_name?: string;
   lot_number?: string;
   expiry_date?: string;
 }
@@ -196,6 +204,50 @@ export default function CreateImportModal({
           : g,
       ),
     );
+  };
+
+  const refreshConvertedQuantity = async (
+    groupKey: string,
+    itemKey: string,
+    itemId: number,
+    unitId: number,
+    quantity: number,
+  ) => {
+    if (!itemId || !unitId || quantity <= 0) {
+      updateItem(groupKey, itemKey, {
+        converted_quantity: undefined,
+        converted_unit_name: undefined,
+      });
+      return;
+    }
+    try {
+      const converted = await convertQuantityApi({
+        item_id: itemId,
+        unit_id: unitId,
+        quantity,
+      });
+      updateItem(groupKey, itemKey, {
+        converted_quantity: Number(converted.converted_quantity),
+        converted_unit_name: converted.base_unit_name,
+      });
+    } catch (err) {
+      updateItem(groupKey, itemKey, {
+        converted_quantity: undefined,
+        converted_unit_name: undefined,
+      });
+      message.error(errorMessage(err));
+    }
+  };
+
+  const loadItemUnits = async (groupKey: string, itemKey: string, itemId: number) => {
+    const available = await getItemAvailableUnitsApi(itemId);
+    updateItem(groupKey, itemKey, {
+      unit_options: available.units.map((u) => ({
+        value: u.unit_id,
+        label: u.unit_name,
+      })),
+    });
+    return available;
   };
 
   const handleAddGroup = () => {
@@ -513,8 +565,8 @@ export default function CreateImportModal({
               />
             )}
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="col-span-2">
+          <div className="space-y-3">
+            <div>
               {item.allocation_id ? (
                 <Input
                   value={
@@ -534,63 +586,127 @@ export default function CreateImportModal({
                         sku: undefined,
                         item_id: undefined,
                         item_name: undefined,
+                        unit_id: undefined,
+                        unit_options: undefined,
+                        converted_quantity: undefined,
+                        converted_unit_name: undefined,
                       });
                     } else {
                       updateItem(group.key, item.key, { sku });
                     }
                   }}
-                  onSelectOption={(opt) => {
-                    updateItem(group.key, item.key, {
-                      sku: opt?.value,
-                      item_id: opt?.item_id,
-                      item_name: opt?.item_name,
-                    });
+                  onSelectOption={async (opt) => {
+                    if (!opt?.item_id) return;
+                    const quantity =
+                      opt.base_quantity != null && opt.base_quantity > 0
+                        ? opt.base_quantity
+                        : 1;
+                    try {
+                      const available = await loadItemUnits(
+                        group.key,
+                        item.key,
+                        opt.item_id,
+                      );
+                      updateItem(group.key, item.key, {
+                        sku: opt.value,
+                        item_id: opt.item_id,
+                        item_name: opt.item_name,
+                        quantity,
+                        unit_id: available.base_unit_id,
+                      });
+                      await refreshConvertedQuantity(
+                        group.key,
+                        item.key,
+                        opt.item_id,
+                        available.base_unit_id,
+                        quantity,
+                      );
+                    } catch (err) {
+                      message.error(errorMessage(err));
+                    }
                   }}
                 />
               )}
             </div>
-            <Input
-              type="number"
-              min={1}
-              prefix={<span className="text-xs text-slate-400">SL:</span>}
-              value={item.quantity}
-              onChange={(e) =>
-                updateItem(group.key, item.key, {
-                  quantity: Number(e.target.value) || 0,
-                })
-              }
-            />
-            <Select
-              className="w-full"
-              placeholder="Unit"
-              value={item.unit_id}
-              options={unitOptions}
-              onChange={(val) =>
-                updateItem(group.key, item.key, {
-                  unit_id: Number(val),
-                })
-              }
-            />
-            <Input
-              placeholder="LOT"
-              value={item.lot_number || ""}
-              onChange={(e) =>
-                updateItem(group.key, item.key, {
-                  lot_number: e.target.value,
-                })
-              }
-            />
-            <DatePicker
-              className="w-full"
-              placeholder="Hạn sử dụng"
-              format="DD/MM/YYYY"
-              value={item.expiry_date ? dayjs(item.expiry_date) : null}
-              onChange={(date) =>
-                updateItem(group.key, item.key, {
-                  expiry_date: date ? date.format("YYYY-MM-DD") : undefined,
-                })
-              }
-            />
+            <div className="grid grid-cols-3 gap-3">
+              <Input
+                type="number"
+                min={1}
+                prefix={<span className="text-xs text-slate-400">SL:</span>}
+                value={item.quantity}
+                onChange={(e) => {
+                  const quantity = Number(e.target.value) || 0;
+                  updateItem(group.key, item.key, { quantity });
+                  if (item.item_id && item.unit_id) {
+                    void refreshConvertedQuantity(
+                      group.key,
+                      item.key,
+                      item.item_id,
+                      item.unit_id,
+                      quantity,
+                    );
+                  }
+                }}
+              />
+              <Select
+                className="w-full"
+                placeholder="Unit"
+                value={item.unit_id}
+                options={item.unit_options ?? unitOptions}
+                onChange={async (val) => {
+                  const unitId = Number(val);
+                  updateItem(group.key, item.key, { unit_id: unitId });
+                  if (item.item_id) {
+                    try {
+                      await loadItemUnits(group.key, item.key, item.item_id);
+                    } catch (err) {
+                      message.error(errorMessage(err));
+                      return;
+                    }
+                  }
+                  if (item.item_id && item.quantity > 0) {
+                    void refreshConvertedQuantity(
+                      group.key,
+                      item.key,
+                      item.item_id,
+                      unitId,
+                      item.quantity,
+                    );
+                  }
+                }}
+              />
+              <Input
+                disabled
+                prefix={<span className="text-xs text-slate-400">Quy đổi:</span>}
+                value={
+                  item.converted_quantity != null && item.converted_unit_name
+                    ? `${formatQuantity(item.converted_quantity)} ${item.converted_unit_name}`
+                    : "—"
+                }
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <Input
+                placeholder="LOT"
+                value={item.lot_number || ""}
+                onChange={(e) =>
+                  updateItem(group.key, item.key, {
+                    lot_number: e.target.value,
+                  })
+                }
+              />
+              <DatePicker
+                className="w-full"
+                placeholder="Hạn sử dụng"
+                format="DD/MM/YYYY"
+                value={item.expiry_date ? dayjs(item.expiry_date) : null}
+                onChange={(date) =>
+                  updateItem(group.key, item.key, {
+                    expiry_date: date ? date.format("YYYY-MM-DD") : undefined,
+                  })
+                }
+              />
+            </div>
           </div>
         </div>
       ))}

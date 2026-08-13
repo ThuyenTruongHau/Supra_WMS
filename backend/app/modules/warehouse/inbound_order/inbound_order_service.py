@@ -25,9 +25,12 @@ from app.modules.warehouse.inbound_order.inbound_order_schema import (
     SuggestAdditionalResponse,
 )
 from app.modules.warehouse.location_map.location_model import Location
+from app.modules.warehouse.item.item_model import Item
+from app.modules.warehouse.unit.unit_model import ItemUnit
 from app.modules.warehouse.item_stock.item_stock_model import ItemStock
 from app.modules.robot.robot_service import task_status_service
 from app.modules.robot.robot_model import RobotTask
+from app.modules.warehouse.transaction_history.history_model import History
 from app.core.config import settings
 from app.core.cache import cache_scan_keys, cache_set, cache_delete
 from app.core.logger import get_logger
@@ -118,11 +121,32 @@ def _create_stock_and_allocation(
     if not detail.from_location_id:
         raise ValueError("Detail requires from_location_id to create stock")
 
+    item = db.query(Item).filter(Item.id == payload.item_id).first()
+    if not item:
+        raise ValueError("Item not found")
+    if payload.unit_id == item.base_unit_id:
+        calculated_quantity = payload.quantity
+    else:
+        item_unit = (
+            db.query(ItemUnit)
+            .filter(
+                ItemUnit.item_id == payload.item_id,
+                ItemUnit.unit_id == payload.unit_id,
+            )
+            .first()
+        )
+        if not item_unit:
+            raise ValueError(
+                f"No conversion factor for item {payload.item_id} and unit {payload.unit_id}"
+            )
+        calculated_quantity = payload.quantity * item_unit.conversion_factor
+
     item_stock = ItemStock(
         item_id=payload.item_id,
         location_id=detail.from_location_id,
         inbound_order_detail_id=detail.id,
-        quantity=payload.quantity,
+        unit_id=item.base_unit_id,
+        quantity=calculated_quantity,
         lot_number=payload.lot_number,
         expiry_date=payload.expiry_date,
         status="in_transit",
@@ -169,6 +193,19 @@ def create_inbound_order(db: Session, body: InboundOrderCreate, user_id: int, in
                 _create_stock_and_allocation(db, detail, allocation_payload)
 
             cache_delete(f"inbound:reserved:{detail.to_location_id}")
+
+        db.add(History(
+            inbound_order_id=inbound_order.id,
+            old_status="none",
+            new_status="initialize",
+            description="Inbound order created",
+            details={
+                "order_code": body.order_code,
+                "warehouse_id": body.warehouse_id,
+                "line_items": [li.model_dump() for li in body.line_items],
+            },
+            created_by_id=user_id,
+        ))
 
         db.commit()
         db.refresh(inbound_order)
@@ -235,7 +272,7 @@ def _purge_detail(db: Session, detail: InboundOrderDetail) -> None:
     db.delete(detail)
 
 
-def update_inbound_order(db: Session, order_code: str, body: InboundOrderUpdate, inbound_type: str) -> InboundOrder:
+def update_inbound_order(db: Session, order_code: str, body: InboundOrderUpdate, inbound_type: str, user_id: int) -> InboundOrder:
     order = (
         db.query(InboundOrder)
         .filter(InboundOrder.order_code == order_code)
@@ -304,6 +341,15 @@ def update_inbound_order(db: Session, order_code: str, body: InboundOrderUpdate,
                     _upsert_allocations(db, detail, line.allocations)
             else:
                 _create_detail_with_stock_and_allocation(db, order, line, inbound_type)
+
+    db.add(History(
+        inbound_order_id=order.id,
+        old_status=order.status,
+        new_status=order.status,
+        description="Inbound order updated",
+        details=payload,
+        created_by_id=user_id,
+    ))
 
     try:
         db.commit()
@@ -523,14 +569,23 @@ def execute_inbound_task(db: Session, detail_id: int) -> RobotTask | InboundOrde
 
     start = detail.from_location.location_code
     target = detail.to_location.location_code
-    order_id = f"tds_inbound_{uuid.uuid4().hex[:8]}"
+    order_id = f"TDS_Inbound_{uuid.uuid4().hex[:8]}"
     robot_task = RobotTask(
         inbound_order_detail_id=detail.id,
         order_id=order_id,
         process_code=settings.inbound_process_code,
         system_code="Thadosoft",
-        task_order_detail=[{"taskPath": f"{start},{target}"}],
+        task_order_detail=json.dumps([{"taskPath": f"{start},{target}"}])
     )
+
+    db.add(History(
+        inbound_order_id=detail.inbound_order_id,
+        old_status=detail.status,
+        new_status="issued",
+        description=f"Inbound order detail {detail.id} issued",
+        details=InboundOrderDetailResponse.model_validate(detail).model_dump(mode="json"),
+        created_by_id=detail.inbound_order.created_by_id,
+    ))
 
     try:
         task_status_service.create_robot_task(db, robot_task)

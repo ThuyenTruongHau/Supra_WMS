@@ -15,6 +15,7 @@ from app.modules.warehouse.item_stock.item_stock_schema import (
 )
 from app.modules.warehouse.location_map.location_model import Location
 from app.modules.warehouse.transaction_history.history_model import Transaction
+from app.modules.warehouse.unit.unit_model import Unit
 
 
 def _stock_query(db: Session, *, include_inactive: bool = False):
@@ -24,7 +25,7 @@ def _stock_query(db: Session, *, include_inactive: bool = False):
     return q
 
 
-def _ensure_item_and_location(db: Session, item_id: int, location_id: int) -> None:
+def _ensure_item_and_location(db: Session, item_id: int, location_id: int) -> Item:
     item = (
         db.query(Item)
         .filter(Item.id == item_id, Item.is_active.is_(True))
@@ -39,6 +40,18 @@ def _ensure_item_and_location(db: Session, item_id: int, location_id: int) -> No
     )
     if not location:
         raise ValueError(f"Location id not found: {location_id}")
+    return item
+
+
+def _ensure_unit_exists(db: Session, unit_id: int) -> None:
+    if not db.query(Unit).filter(Unit.id == unit_id).first():
+        raise ValueError(f"Unit id not found: {unit_id}")
+
+
+def _resolve_stock_unit_id(db: Session, item: Item, unit_id: Optional[int]) -> int:
+    resolved = unit_id if unit_id is not None else item.base_unit_id
+    _ensure_unit_exists(db, resolved)
+    return resolved
 
 
 def list_item_stocks(
@@ -86,12 +99,13 @@ def get_item_stock_by_id(
 
 
 def create_item_stock(db: Session, body: ItemStockCreate) -> ItemStock:
-    _ensure_item_and_location(db, body.item_id, body.location_id)
+    item = _ensure_item_and_location(db, body.item_id, body.location_id)
     if body.quantity < 0:
         raise ValueError("Quantity must be >= 0")
     stock = ItemStock(
         item_id=body.item_id,
         location_id=body.location_id,
+        unit_id=_resolve_stock_unit_id(db, item, body.unit_id),
         quantity=body.quantity,
         lot_number=body.lot_number,
         expiry_date=body.expiry_date,
@@ -117,10 +131,21 @@ def update_item_stock(
     data = body.model_dump(exclude_unset=True)
     item_id = data.get("item_id", stock.item_id)
     location_id = data.get("location_id", stock.location_id)
+    item: Optional[Item] = None
     if "item_id" in data or "location_id" in data:
-        _ensure_item_and_location(db, item_id, location_id)
+        item = _ensure_item_and_location(db, item_id, location_id)
         stock.item_id = item_id
         stock.location_id = location_id
+    if "unit_id" in data:
+        if item is None:
+            item = (
+                db.query(Item)
+                .filter(Item.id == stock.item_id, Item.is_active.is_(True))
+                .first()
+            )
+            if not item:
+                raise ValueError(f"Item id not found: {stock.item_id}")
+        stock.unit_id = _resolve_stock_unit_id(db, item, data["unit_id"])
     if "quantity" in data:
         if data["quantity"] is not None and data["quantity"] < 0:
             raise ValueError("Quantity must be >= 0")

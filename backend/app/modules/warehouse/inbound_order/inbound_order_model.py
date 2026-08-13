@@ -12,6 +12,15 @@ _inbound_order_detail_tbl = table(
     column("status", String),
 )
 
+def _inbound_order_detail_exists(order_id_col, *criteria):
+    return exists(
+        select(1)
+        .where(
+            _inbound_order_detail_tbl.c.inbound_order_id == order_id_col,
+            *criteria,
+        )
+        .correlate_except(_inbound_order_detail_tbl)
+    )
 
 class InboundOrder(Base):
     """Inbound order header."""
@@ -36,40 +45,21 @@ class InboundOrder(Base):
     warehouse = relationship("Warehouse", foreign_keys=[warehouse_id], lazy="joined")
 
     status = column_property(
-        select(
-            case(
-                (
-                    and_(
-                        exists(
-                            select(1).where(
-                                _inbound_order_detail_tbl.c.inbound_order_id == id,
-                            )
-                        ),
-                        ~exists(
-                            select(1).where(
-                                _inbound_order_detail_tbl.c.inbound_order_id == id,
-                                _inbound_order_detail_tbl.c.status != "completed",
-                            )
-                        ),
-                    ),
-                    "completed",
+        case(
+            (
+                and_(
+                    _inbound_order_detail_exists(id),
+                    ~_inbound_order_detail_exists(id, _inbound_order_detail_tbl.c.status != "completed"),
                 ),
-                (
-                    exists(
-                        select(1).where(
-                            _inbound_order_detail_tbl.c.inbound_order_id == id,
-                            _inbound_order_detail_tbl.c.status != "initialize",
-                        )
-                    ),
-                    "in_progress",
-                ),
-                else_="initialize",
-            )
+                "completed",
+            ),
+            (
+                _inbound_order_detail_exists(id, _inbound_order_detail_tbl.c.status != "initialize"),
+                "in_progress",
+            ),
+            else_="initialize",
         )
-        .correlate_except(_inbound_order_detail_tbl)
-        .scalar_subquery()
     )
-
 
 class InboundOrderDetail(Base):
     """Inbound order detail line items."""

@@ -2,6 +2,7 @@ import React from 'react';
 import { useLocationDetail } from '@/hooks/useWarehouseMap';
 import { Loading, Alert, Button } from '@/components/ui';
 import { cn } from '@/components/ui/utils/cn';
+import { formatQuantity } from '@/utils/formatQuantity';
 
 interface NodeInfo {
   x: number;
@@ -136,7 +137,7 @@ const WarehouseMapDrawer: React.FC<WarehouseMapDrawerProps> = ({
                           </div>
                           <div className="text-right">
                             <span className="block font-bold text-emerald-600 text-lg">
-                              {stock.quantity}
+                              {formatQuantity(stock.quantity)}
                             </span>
                           </div>
                         </div>

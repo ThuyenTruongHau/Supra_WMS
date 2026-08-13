@@ -15,6 +15,7 @@ def _serialize_item_for_response(data: Any) -> Any:
             "name": data.name,
             "description": data.description,
             "base_unit": data.unit.name if data.unit else "",
+            "base_quantity": data.base_quantity,
             "max_quantity": data.max_quantity,
             "min_quantity": data.min_quantity,
             "warehouse_id": data.warehouse_id,
@@ -33,6 +34,7 @@ class ItemCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=255)
     description: Optional[str] = None
     base_unit: int = Field(..., gt=0)
+    base_quantity: int = Field(default=1, gt=0)
     max_quantity: int = Field(..., ge=0)
     min_quantity: int = Field(..., ge=0)
     warehouse_id: int
@@ -51,6 +53,7 @@ class ItemUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=1, max_length=255)
     description: Optional[str] = None
     base_unit: Optional[int] = Field(None, gt=0)
+    base_quantity: Optional[int] = Field(None, gt=0)
     max_quantity: Optional[int] = Field(None, ge=0)
     min_quantity: Optional[int] = Field(None, ge=0)
     warehouse_id: Optional[int] = None
@@ -75,6 +78,7 @@ class ItemResponse(BaseModel):
     name: str
     description: Optional[str] = None
     base_unit: str
+    base_quantity: int
     max_quantity: int
     min_quantity: int
     warehouse_id: int
@@ -111,6 +115,7 @@ class ItemStockInDetail(BaseModel):
     id: int
     item_id: int
     location_id: int
+    unit_id: int
     location_code: Optional[str] = None
     lot_number: Optional[str] = None
     expiry_date: Optional[str] = None

@@ -251,14 +251,14 @@ export default function ImportDetailPage() {
     });
   };
 
-  const handleAcceptTask = async (detailId: number) => {
+  const handleExecuteTask = async (detailId: number) => {
     try {
-      message.loading({ content: "Đang gửi lệnh...", key: "accept" });
+      message.loading({ content: "Đang gửi lệnh...", key: "execute" });
       await acceptMutation.mutateAsync(detailId);
-      message.success({ content: "Đã accept task", key: "accept" });
+      message.success({ content: "Đã thực thi task", key: "execute" });
       void refetch();
     } catch (err) {
-      message.error({ content: apiError(err), key: "accept" });
+      message.error({ content: apiError(err), key: "execute" });
     }
   };
 
@@ -355,33 +355,28 @@ export default function ImportDetailPage() {
       title: "Trạng thái",
       dataIndex: "status",
       key: "status",
-      width: 120,
-      render: (status: string) => (
-        <InboundStatusTag status={status} size="sm" />
-      ),
-    },
-    {
-      title: "Thao tác",
-      key: "action",
       width: 150,
-      render: (_, record) => {
-        const missingFrom = !record.from_location_id;
-        return (
-          <Button
-            variant="primary"
-            icon={<PlayCircleOutlined />}
-            loading={acceptMutation.isPending}
-            disabled={record.status === "completed" || missingFrom}
-            title={
-              missingFrom
-                ? "Chọn điểm cấp trước khi accept task"
-                : undefined
-            }
-            onClick={() => void handleAcceptTask(record.id)}
-          >
-            Accept task
-          </Button>
-        );
+      render: (status: string, record) => {
+        if (status === "initialize") {
+          const missingFrom = !record.from_location_id;
+          return (
+            <Button
+              variant="primary"
+              icon={<PlayCircleOutlined />}
+              loading={acceptMutation.isPending}
+              disabled={missingFrom}
+              title={
+                missingFrom
+                  ? "Chọn điểm cấp trước khi thực thi"
+                  : undefined
+              }
+              onClick={() => void handleExecuteTask(record.id)}
+            >
+              Execute
+            </Button>
+          );
+        }
+        return <InboundStatusTag status={status} size="sm" />;
       },
     },
   ];
@@ -588,7 +583,8 @@ export default function ImportDetailPage() {
           {progressPercent === 100 && totalCount > 0 && (
             <InboundStatusTag
               status="completed"
-              label="ĐƠN HÀNG HOÀN THÀNH"
+              size="sm"
+              className="px-2 py-0.5 text-xs font-semibold tracking-normal"
             />
           )}
         </div>

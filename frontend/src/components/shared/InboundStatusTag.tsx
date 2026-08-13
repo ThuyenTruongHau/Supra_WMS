@@ -1,13 +1,7 @@
 import { cn } from "@/components/ui";
 
-const STATUS_LABELS: Record<string, string> = {
-  initialize: "Khởi tạo",
-  reserved: "Giữ chỗ",
-  reversed: "Giữ chỗ",
-  in_transit: "Đang luân chuyển",
-  "in-progress": "Đang xử lý",
-  completed: "Hoàn thành",
-};
+const ORANGE_STATUS_STYLE =
+  "bg-orange-100 text-orange-800 border-orange-200 shadow-sm shadow-orange-200/60";
 
 const STATUS_STYLES: Record<string, string> = {
   initialize:
@@ -16,17 +10,12 @@ const STATUS_STYLES: Record<string, string> = {
     "bg-cyan-100 text-cyan-800 border-cyan-200 shadow-sm shadow-cyan-200/60",
   reversed:
     "bg-cyan-100 text-cyan-800 border-cyan-200 shadow-sm shadow-cyan-200/60",
-  in_transit:
-    "bg-orange-100 text-orange-800 border-orange-200 shadow-sm shadow-orange-200/60",
-  "in-progress":
-    "bg-amber-100 text-amber-800 border-amber-200 shadow-sm shadow-amber-200/60",
+  in_transit: ORANGE_STATUS_STYLE,
+  "in-progress": ORANGE_STATUS_STYLE,
+  in_progress: ORANGE_STATUS_STYLE,
   completed:
     "bg-emerald-100 text-emerald-800 border-emerald-200 shadow-sm shadow-emerald-200/60",
 };
-
-function statusLabel(status: string) {
-  return STATUS_LABELS[status] ?? status;
-}
 
 interface InboundStatusTagProps {
   status: string;
@@ -36,8 +25,8 @@ interface InboundStatusTagProps {
 }
 
 const SIZE_STYLES: Record<"sm" | "md", string> = {
-  sm: "rounded-md border px-2 py-0.5 text-xs font-semibold tracking-normal",
-  md: "rounded-lg border px-3.5 py-1.5 text-base font-extrabold tracking-wide",
+  sm: "rounded-md border px-2.5 py-1 text-sm font-semibold tracking-normal",
+  md: "rounded-lg border px-4 py-1.5 text-base font-extrabold tracking-wide",
 };
 
 export default function InboundStatusTag({
@@ -56,7 +45,7 @@ export default function InboundStatusTag({
         className,
       )}
     >
-      {label ?? statusLabel(status)}
+      {label ?? status}
     </span>
   );
 }

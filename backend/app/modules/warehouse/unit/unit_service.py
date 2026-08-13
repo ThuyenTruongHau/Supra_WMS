@@ -8,6 +8,10 @@ from sqlalchemy.orm import Session, joinedload
 from app.modules.warehouse.item.item_model import Item
 from app.modules.warehouse.unit.unit_model import ItemUnit, Unit
 from app.modules.warehouse.unit.unit_schema import (
+    ConvertQuantityRequest,
+    ConvertQuantityResponse,
+    ItemAvailableUnitsResponse,
+    ItemAvailableUnitOption,
     ItemUnitCreate,
     ItemUnitListResponse,
     ItemUnitResponse,
@@ -258,3 +262,83 @@ def delete_item_unit(db: Session, item_unit_id: int) -> bool:
         db.rollback()
         raise ValueError(f"Database conflict: {e.orig}") from e
     return True
+
+
+def convert_quantity(
+    db: Session, item_id: int, unit_id: int, quantity: int
+) -> ConvertQuantityResponse:
+    item = (
+        db.query(Item)
+        .options(joinedload(Item.unit))
+        .filter(Item.id == item_id, Item.is_active.is_(True))
+        .first()
+    )
+    if not item:
+        raise ValueError("Item not found")
+    if quantity <= 0:
+        raise ValueError("Quantity must be greater than 0")
+
+    if unit_id == item.base_unit_id:
+        converted = quantity
+    else:
+        item_unit = (
+            db.query(ItemUnit)
+            .filter(ItemUnit.item_id == item_id, ItemUnit.unit_id == unit_id)
+            .first()
+        )
+        if not item_unit:
+            raise ValueError("Item unit not found")
+        converted = quantity * item_unit.conversion_factor
+
+    return ConvertQuantityResponse(
+        converted_quantity=converted,
+        base_unit_id=item.base_unit_id,
+        base_unit_name=item.unit.name if item.unit else "",
+    )
+
+
+def get_item_unit_by_item(db: Session, item_id: int) -> ItemAvailableUnitsResponse:
+    item = (
+        db.query(Item)
+        .options(joinedload(Item.unit))
+        .filter(Item.id == item_id, Item.is_active.is_(True))
+        .first()
+    )
+    if not item:
+        raise ValueError("Item not found")
+
+    item_units = (
+        db.query(ItemUnit)
+        .options(joinedload(ItemUnit.unit))
+        .filter(ItemUnit.item_id == item_id)
+        .order_by(ItemUnit.id)
+        .all()
+    )
+
+    units: list[ItemAvailableUnitOption] = [
+        ItemAvailableUnitOption(
+            unit_id=item.base_unit_id,
+            unit_name=item.unit.name if item.unit else "",
+            is_base_unit=True,
+        )
+    ]
+    seen = {item.base_unit_id}
+    for item_unit in item_units:
+        if item_unit.unit_id in seen:
+            continue
+        units.append(
+            ItemAvailableUnitOption(
+                unit_id=item_unit.unit_id,
+                unit_name=item_unit.unit.name if item_unit.unit else "",
+                conversion_factor=item_unit.conversion_factor,
+                is_base_unit=False,
+            )
+        )
+        seen.add(item_unit.unit_id)
+
+    return ItemAvailableUnitsResponse(
+        item_id=item_id,
+        base_unit_id=item.base_unit_id,
+        base_unit_name=item.unit.name if item.unit else "",
+        units=units,
+    )

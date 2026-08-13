@@ -137,9 +137,9 @@ def accept_inbound_task(db: DbSession, detail_id: int):
     response_model=InboundOrderResponse,
     dependencies=[Depends(_INBOUND_UPDATE)],
 )
-def update_inbound_order(order_code: str, body: InboundOrderUpdate, db: DbSession, inbound_type: str):
+def update_inbound_order(order_code: str, body: InboundOrderUpdate, db: DbSession, inbound_type: str, current_user: Annotated[User, Depends(_INBOUND_UPDATE)],):
     try:
-        order = inbound_order_service.update_inbound_order(db, order_code, body, inbound_type)
+        order = inbound_order_service.update_inbound_order(db, order_code, body, inbound_type, user_id=current_user.id)
     except ValueError as e:
         msg = str(e)
         code = 404 if "not found" in msg.lower() else 400

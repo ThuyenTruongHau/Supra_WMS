@@ -67,3 +67,29 @@ class ItemUnitListResponse(BaseModel):
     total: int
     page: int
     page_size: int
+
+
+class ItemAvailableUnitOption(BaseModel):
+    unit_id: int
+    unit_name: str
+    conversion_factor: Optional[Decimal] = None
+    is_base_unit: bool = False
+
+
+class ItemAvailableUnitsResponse(BaseModel):
+    item_id: int
+    base_unit_id: int
+    base_unit_name: str
+    units: list[ItemAvailableUnitOption]
+
+
+class ConvertQuantityRequest(BaseModel):
+    item_id: int = Field(..., gt=0)
+    unit_id: int = Field(..., gt=0)
+    quantity: int = Field(..., gt=0)
+
+
+class ConvertQuantityResponse(BaseModel):
+    converted_quantity: Decimal
+    base_unit_id: int
+    base_unit_name: str

@@ -79,6 +79,7 @@ export default function ItemSettingPage() {
       name: values.name.trim(),
       description: values.description?.trim() ?? '',
       base_unit: Number(values.base_unit),
+      base_quantity: Number(values.base_quantity ?? 1),
       max_quantity: Number(values.max_quantity),
       min_quantity: Number(values.min_quantity),
       warehouse_id: activeZoneId,
@@ -90,6 +91,7 @@ export default function ItemSettingPage() {
         name: values.name.trim(),
         description: values.description?.trim() ?? '',
         base_unit: Number(values.base_unit),
+        base_quantity: Number(values.base_quantity ?? 1),
         max_quantity: Number(values.max_quantity),
         min_quantity: Number(values.min_quantity),
         details,
@@ -252,7 +254,7 @@ export default function ItemSettingPage() {
           layout="vertical"
           className="mt-4"
           onFinish={handleFinish}
-          initialValues={{ min_quantity: 10, max_quantity: 999999 }}
+          initialValues={{ base_quantity: 1, min_quantity: 10, max_quantity: 999999 }}
         >
           <Form.Item name="sku" label="Part_number" rules={[{ required: true, message: 'Vui lòng nhập Part_number!' }]}>
             <Input placeholder="Ví dụ: PN-019" disabled={!!editingItem} />
@@ -277,6 +279,17 @@ export default function ItemSettingPage() {
                 label: unit.name,
               }))}
             />
+          </Form.Item>
+
+          <Form.Item
+            name="base_quantity"
+            label="Số lượng cơ sở"
+            rules={[
+              { required: true, message: 'Vui lòng nhập số lượng cơ sở!' },
+              { type: 'number', min: 1, message: 'Giá trị phải >= 1' },
+            ]}
+          >
+            <Input type="number" min={1} placeholder="Ví dụ: 1" />
           </Form.Item>
 
           <div className="grid grid-cols-2 gap-4">

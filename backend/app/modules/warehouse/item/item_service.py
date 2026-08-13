@@ -196,6 +196,7 @@ def get_item_detail(db: Session, item_id: int) -> ItemDetailResponse:
                 id=stock.id,
                 item_id=stock.item_id,
                 location_id=stock.location_id,
+                unit_id=stock.unit_id,
                 location_code=location_code,
                 lot_number=stock.lot_number,
                 expiry_date=stock.expiry_date,
@@ -220,6 +221,7 @@ def create_item(db: Session, body: ItemCreate) -> Item:
         name=body.name.strip(),
         description=body.description,
         base_unit_id=body.base_unit,
+        base_quantity=body.base_quantity,
         max_quantity=body.max_quantity,
         min_quantity=body.min_quantity,
         warehouse_id=body.warehouse_id,
@@ -267,6 +269,7 @@ def update_item(db: Session, item_id: int, body: ItemUpdate) -> Optional[Item]:
     for field in (
         "name",
         "description",
+        "base_quantity",
         "max_quantity",
         "min_quantity",
         "supplier",

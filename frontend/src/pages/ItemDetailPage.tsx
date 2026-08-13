@@ -30,6 +30,7 @@ import { DetailView } from "@/components/ui/DetailView";
 import dayjs from "dayjs";
 import type { Item } from "@/types/item";
 import type { DetailFieldSchema } from "@/components/ui/DetailView";
+import { formatQuantity, parseQuantity } from "@/utils/formatQuantity";
 
 function ItemDetailsView({ details }: { details?: Record<string, unknown> }) {
   const entries = Object.entries(details ?? {});
@@ -58,17 +59,20 @@ export const itemDetailFields: DetailFieldSchema<Item>[] = [
   {
     key: "quantity",
     label: "Số lượng",
-    render: (item) => (
-      <span
-        className={
-          item.quantity < item.min_quantity
-            ? "font-semibold text-orange-500"
-            : "font-semibold"
-        }
-      >
-        {item.quantity}
-      </span>
-    ),
+    render: (item) => {
+      const amount = parseQuantity(item.quantity);
+      return (
+        <span
+          className={
+            amount < item.min_quantity
+              ? "font-semibold text-orange-500"
+              : "font-semibold"
+          }
+        >
+          {formatQuantity(item.quantity)}
+        </span>
+      );
+    },
   },
   {
     key: "min_quantity",
@@ -79,6 +83,11 @@ export const itemDetailFields: DetailFieldSchema<Item>[] = [
     key: "max_quantity",
     label: "Số lượng tối đa",
     accessor: (item) => item.max_quantity,
+  },
+  {
+    key: "base_quantity",
+    label: "Số lượng cơ sở",
+    accessor: (item) => item.base_quantity,
   },
   {
     key: "base_unit",
@@ -111,6 +120,7 @@ type ItemFormValues = {
   name: string;
   sku: string; // chỉ hiển thị, disabled
   base_unit: number;
+  base_quantity: number;
   description: string;
   min_quantity: number;
   max_quantity: number;
@@ -165,7 +175,9 @@ const locationColumns: ColumnsType<ItemStock> = [
     key: "quantity",
     align: "right",
     render: (qty: number | string) => (
-      <span className="font-semibold text-brand-dark">{qty}</span>
+      <span className="font-semibold text-brand-dark">
+        {formatQuantity(qty)}
+      </span>
     ),
   },
   {
@@ -217,10 +229,11 @@ export default function ItemDetailPage() {
       name: item.name,
       sku: item.sku,
       base_unit: units.find((u) => u.name === item.base_unit)?.id,
+      base_quantity: item.base_quantity,
       description: item.description ?? "",
       min_quantity: item.min_quantity,
       max_quantity: item.max_quantity,
-      quantity: item.quantity,
+      quantity: parseQuantity(item.quantity),
       detailEntries: Object.entries(item.details ?? {}).map(([key, value]) => ({
         key,
         value: String(value),
@@ -248,6 +261,7 @@ export default function ItemDetailPage() {
           name: values.name.trim(),
           description: values.description?.trim() ?? "",
           base_unit: Number(values.base_unit),
+          base_quantity: Number(values.base_quantity),
           min_quantity: Number(values.min_quantity),
           max_quantity: Number(values.max_quantity),
           // Không gửi quantity — BE tính từ ItemStock
@@ -419,6 +433,16 @@ export default function ItemDetailPage() {
             rules={[{ required: true, message: "Vui lòng nhập số lượng!" }]}
           >
             <Input type="number" disabled min={0} />
+          </Form.Item>
+          <Form.Item
+            name="base_quantity"
+            label="Số lượng cơ sở"
+            rules={[
+              { required: true, message: "Vui lòng nhập số lượng cơ sở!" },
+              { type: "number", min: 1, message: "Giá trị phải >= 1" },
+            ]}
+          >
+            <Input type="number" min={1} />
           </Form.Item>
           <div className="grid grid-cols-2 gap-4">
             <Form.Item

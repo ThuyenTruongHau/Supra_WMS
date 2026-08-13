@@ -14,6 +14,8 @@ export type SkuSearchOption = {
   label: string;
   item_name: string;
   item_id?: number;
+  base_unit?: string;
+  base_quantity?: number;
 };
 
 type SkuSearchSelectProps = {
@@ -68,6 +70,8 @@ export function SkuSearchSelect({
         label: `${it.sku} - ${it.name}`,
         item_name: it.name,
         item_id: it.id,
+        base_unit: it.base_unit,
+        base_quantity: it.base_quantity,
       })) ?? []);
 
   useEffect(() => {
@@ -145,6 +149,8 @@ export function SkuSearchSelect({
             ),
             item_name: o.item_name,
             item_id: o.item_id,
+            base_unit: o.base_unit,
+            base_quantity: o.base_quantity,
           }))}
           onChange={(text) => {
             setSearchInput(text);
@@ -155,7 +161,12 @@ export function SkuSearchSelect({
           }}
           onSelect={(sku, option) => {
             const selected = String(sku);
-            const opt = option as { item_name?: string; item_id?: number };
+            const opt = option as {
+              item_name?: string;
+              item_id?: number;
+              base_unit?: string;
+              base_quantity?: number;
+            };
             setSearchInput(selected);
             setDropdownOpen(false);
             onChange?.(selected);
@@ -164,6 +175,8 @@ export function SkuSearchSelect({
               label: `${selected} - ${opt?.item_name ?? ""}`,
               item_name: String(opt?.item_name ?? ""),
               item_id: opt?.item_id,
+              base_unit: opt?.base_unit,
+              base_quantity: opt?.base_quantity,
             });
           }}
           popupMatchSelectWidth={false}

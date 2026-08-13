@@ -24,3 +24,29 @@ export type CreateItemUnitInput = {
 };
 
 export type UpdateItemUnitInput = Partial<CreateItemUnitInput>;
+
+export interface ItemAvailableUnitOption {
+  unit_id: number;
+  unit_name: string;
+  conversion_factor?: number | null;
+  is_base_unit: boolean;
+}
+
+export interface ItemAvailableUnitsResponse {
+  item_id: number;
+  base_unit_id: number;
+  base_unit_name: string;
+  units: ItemAvailableUnitOption[];
+}
+
+export interface ConvertQuantityInput {
+  item_id: number;
+  unit_id: number;
+  quantity: number;
+}
+
+export interface ConvertQuantityResponse {
+  converted_quantity: number;
+  base_unit_id: number;
+  base_unit_name: string;
+}

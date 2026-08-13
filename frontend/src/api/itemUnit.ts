@@ -1,6 +1,9 @@
 import axiosInstance from './axiosInstance';
 import type {
+  ConvertQuantityInput,
+  ConvertQuantityResponse,
   CreateItemUnitInput,
+  ItemAvailableUnitsResponse,
   ItemUnit,
   ItemUnitListResponse,
   UpdateItemUnitInput,
@@ -42,4 +45,23 @@ export const updateItemUnitApi = async (
 
 export const deleteItemUnitApi = async (id: number): Promise<void> => {
   await axiosInstance.delete(`${BASE}/${id}`);
+};
+
+export const getItemAvailableUnitsApi = async (
+  itemId: number,
+): Promise<ItemAvailableUnitsResponse> => {
+  const { data } = await axiosInstance.get<ItemAvailableUnitsResponse>(
+    `${BASE}/by-item/${itemId}`,
+  );
+  return data;
+};
+
+export const convertQuantityApi = async (
+  payload: ConvertQuantityInput,
+): Promise<ConvertQuantityResponse> => {
+  const { data } = await axiosInstance.post<ConvertQuantityResponse>(
+    `${BASE}/convert-quantity`,
+    payload,
+  );
+  return data;
 };

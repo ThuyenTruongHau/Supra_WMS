@@ -10,6 +10,9 @@ from app.core.dependencies import require_permission
 from app.modules.warehouse.unit import unit_service
 from app.modules.warehouse.unit.unit_service import item_unit_to_response
 from app.modules.warehouse.unit.unit_schema import (
+    ConvertQuantityRequest,
+    ConvertQuantityResponse,
+    ItemAvailableUnitsResponse,
     ItemUnitCreate,
     ItemUnitListResponse,
     ItemUnitResponse,
@@ -118,6 +121,35 @@ def list_item_units(
         item_id=item_id,
         unit_id=unit_id,
     )
+
+
+@router.get(
+    "/item-units/by-item/{item_id}",
+    response_model=ItemAvailableUnitsResponse,
+    dependencies=[Depends(require_permission("item_unit:read"))],
+)
+def get_item_units_by_item(item_id: int, db: DbSession):
+    try:
+        return unit_service.get_item_unit_by_item(db, item_id)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e)) from e
+
+
+@router.post(
+    "/item-units/convert-quantity",
+    response_model=ConvertQuantityResponse,
+    dependencies=[Depends(require_permission("item_unit:read"))],
+)
+def convert_item_quantity(body: ConvertQuantityRequest, db: DbSession):
+    try:
+        return unit_service.convert_quantity(
+            db,
+            item_id=body.item_id,
+            unit_id=body.unit_id,
+            quantity=body.quantity,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
 
 @router.post(

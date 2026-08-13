@@ -34,6 +34,7 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { useActiveWarehouseMap, useFullLocations, useDownloadWarehouseMap } from '@/hooks/useWarehouseMap';
 import { message } from '@/components/ui';
 import type { MapData, NodeInfo, FullLocationDetail } from '@/types/warehouseMap';
+import { formatQuantity } from '@/utils/formatQuantity';
 
 // ─── Props ──────────────────────────────────────────────────────────────────────
 
@@ -301,8 +302,7 @@ const WarehouseMapCanvas: React.FC<WarehouseMapCanvasProps> = ({
             
             // 2. Draw Qty
             currentY += lineHeight;
-            const qty = Number(stock.quantity);
-            const qtyText = `Qty: ${qty}`;
+            const qtyText = `Qty: ${formatQuantity(stock.quantity, "0")}`;
             
             ctx.fillText(qtyText, x, currentY, maxTextWidth);
             

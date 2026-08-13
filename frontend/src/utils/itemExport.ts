@@ -1,5 +1,6 @@
 import * as XLSX from "xlsx";
 import type { Item } from "@/types/item";
+import { parseQuantity } from "@/utils/formatQuantity";
 
 export const EXPORT_LIMIT = 100;
 
@@ -25,7 +26,7 @@ export function toExportRows(items: Item[]) {
     Part_number: i.sku,
     "Tên sản phẩm": i.name,
     "Nhà cung cấp": i.supplier,
-    "Số lượng": i.quantity,
+    "Số lượng": parseQuantity(i.quantity),
     "Đơn vị": i.base_unit,
     "Ngày tạo": formatDateVi(i.created_at),
     "Ngày cập nhật": formatDateVi(i.updated_at),
