@@ -60,7 +60,7 @@ export default function AppRoutes() {
         <Route path="import" element={<ImportPage />} />
         <Route path="import/:id" element={<ImportDetailPage />} />
         <Route path="export" element={<OutboundPage />} />
-        <Route path="export/:orderCode" element={<OutboundDetailPage />} />
+        <Route path="export/:orderId" element={<OutboundDetailPage />} />
         {/* <Route path="inventory" element={<StocktakePage />} /> */}
         {/* Các Route con ngoài WMS dropdown */}
         <Route path="report" element={<ReportPage />} />

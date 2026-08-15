@@ -13,6 +13,7 @@ import {
   useGetInboundOrders,
   useGetInboundOrderDetails,
   useUpdateInboundOrder,
+  useDeleteInboundOrder,
   useAcceptInboundTask,
 } from "@/hooks/useInboundOrder";
 import { useAppStore } from "@/store/useAppStore";
@@ -29,6 +30,7 @@ import dayjs from "dayjs";
 import CreateImportModal, {
   type ImportGroupDraft,
 } from "./components/CreateImportModal";
+import { detailsToEntries } from "@/utils/keyValueDetails";
 
 const TABLE_CLASS =
   "[&_.ant-table-thead_th]:!bg-slate-50 [&_.ant-table-thead_th]:!text-slate-600 [&_.ant-table-thead_th]:!font-semibold [&_.ant-table-thead_th]:!text-base [&_.ant-table-tbody_td]:!text-base [&_.ant-table-thead_th]:!py-3 [&_.ant-table-tbody_td]:!py-3 [&_.ant-table-row]:hover:bg-slate-50/50";
@@ -144,6 +146,7 @@ export default function ImportDetailPage() {
   });
   const orders = ordersData?.items ?? [];
   const updateMutation = useUpdateInboundOrder();
+  const deleteMutation = useDeleteInboundOrder();
   const acceptMutation = useAcceptInboundTask();
   const { data: users = [] } = useUser();
   const { data: bufferLocationsData, isLoading: bufferLocationsLoading } =
@@ -194,6 +197,7 @@ export default function ImportDetailPage() {
       to_location_id: d.to_location_id ?? undefined,
       to_location_name: d.to_location_name ?? d.to_location_code ?? undefined,
       status: d.status,
+      detailEntries: detailsToEntries(d.details),
       items: (d.allocations ?? []).map((a) => ({
         key: `allocation-${a.id}`,
         allocation_id: a.id,
@@ -227,26 +231,17 @@ export default function ImportDetailPage() {
       content: `Bạn có chắc chắn muốn xóa đơn nhập "${orderCode}"?`,
       onOk: () =>
         new Promise<void>((resolve, reject) => {
-          updateMutation.mutate(
-            {
-              orderCode,
-              inboundType,
-              data: {
-                line_items: details.map((d) => ({ id: d.id, delete: true })),
-              },
+          deleteMutation.mutate(orderCode, {
+            onSuccess: () => {
+              message.success("Xóa đơn nhập thành công!");
+              navigate("/import");
+              resolve();
             },
-            {
-              onSuccess: () => {
-                message.success("Xóa đơn nhập thành công!");
-                navigate("/import");
-                resolve();
-              },
-              onError: (err) => {
-                message.error(apiError(err));
-                reject();
-              },
+            onError: (err) => {
+              message.error(apiError(err));
+              reject();
             },
-          );
+          });
         }),
     });
   };
@@ -488,7 +483,7 @@ export default function ImportDetailPage() {
             variant="dangerText"
             icon={<DeleteOutlined />}
             disabled={!allInitialize || details.length === 0}
-            loading={updateMutation.isPending}
+            loading={deleteMutation.isPending}
             title={
               !allInitialize ? "Chỉ đơn ở trạng thái khởi tạo mới được xóa" : undefined
             }
@@ -626,6 +621,7 @@ export default function ImportDetailPage() {
         mode="edit"
         editOrderCode={orderCode}
         initialNote={orderMeta?.note ?? ""}
+        initialDetails={orderMeta?.details}
         initialGroups={editInitialGroups}
         onCancel={() => setIsEditOpen(false)}
         onSuccess={() => {

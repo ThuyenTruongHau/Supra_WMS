@@ -67,25 +67,27 @@ export default function ImportPage() {
     return map;
   }, [users]);
 
+  const summary = ordersData?.summary;
+
   const kpiData = [
     {
       label: "Tổng đơn",
-      value: String(ordersData?.total ?? 0),
+      value: String(summary?.total ?? 0),
       color: "var(--color-brand-dark)",
     },
     {
       label: "Khởi tạo",
-      value: String(orders.filter((o) => o.status === "initialize").length),
+      value: String(summary?.initialize ?? 0),
       color: "var(--color-stripe-ink-mute)",
     },
     {
       label: "Đang xử lý",
-      value: String(orders.filter((o) => o.status === "in-progress").length),
+      value: String(summary?.in_progress ?? 0),
       color: "var(--color-stripe-lemon)",
     },
     {
       label: "Hoàn thành",
-      value: String(orders.filter((o) => o.status === "completed").length),
+      value: String(summary?.completed ?? 0),
       color: "var(--color-brand-primary)",
     },
   ];

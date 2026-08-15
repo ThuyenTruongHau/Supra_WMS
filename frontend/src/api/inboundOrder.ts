@@ -4,6 +4,7 @@ import type {
   InboundOrder,
   InboundOrderCreateRequest,
   InboundOrderDetail,
+  InboundOrderDeleteResponse,
   InboundOrderListResponse,
   InboundOrderUpdateRequest,
   InboundReleaseLocationsRequest,
@@ -71,6 +72,15 @@ export const updateInboundOrderApi = async (
     `${BASE}/${encodeURIComponent(orderCode)}`,
     body,
     { params: { inbound_type: inboundType } },
+  );
+  return data;
+};
+
+export const deleteInboundOrderApi = async (
+  orderCode: string,
+): Promise<InboundOrderDeleteResponse> => {
+  const { data } = await axiosInstance.delete<InboundOrderDeleteResponse>(
+    `${BASE}/${encodeURIComponent(orderCode)}`,
   );
   return data;
 };

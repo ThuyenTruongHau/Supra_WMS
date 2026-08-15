@@ -1,160 +1,129 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { analyzeOutboundApi, listOutboundOrdersApi } from '@/api/outboundOrder'
-import type {
-  OutboundOrderAnalyzeResponse,
-  OutboundOrderListParams,
-  OutboundOrderListResponse,
-  OutboundOrderDetail,
-  OutboundOrderCreateInput,
-  OutboundOrderUpdateInput,
-  OutboundOrderDeleteResponse,
-  OutboundWorkflowOut,
-  OutboundRobotTasksTracking,
-  BypassRequestCreateInput,
-  OutboundBypassRequest,
-} from '@/types/outbound'
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
+  getOutboundOrdersApi,
+  getOutboundOrderByIdApi,
+  getOutboundOrderDetailsApi,
+  getOutboundLackedDetailsApi,
+  calculateOutboundOrderApi,
   createOutboundOrderApi,
-  importOutboundOrderApi,
-  getOutboundOrderApi,
   updateOutboundOrderApi,
   deleteOutboundOrderApi,
-  getOutboundRobotTasksApi,
-  suggestOutboundAllocationsApi,
-  confirmOutboundAllocationsApi,
-  createBypassRequestsApi,
-} from '@/api/outboundOrder'
-import type { AxiosError } from 'axios'
-import type { ApiErrorResponse } from '@/types/apiError'
+} from "@/api/outboundOrder";
+import type {
+  CalculateOutboundRequest,
+  GetOutboundOrdersParams,
+  OutboundOrderCreateRequest,
+  OutboundOrderDeleteResponse,
+  OutboundOrderUpdateRequest,
+} from "@/types/outbound";
+import type { AxiosError } from "axios";
+import type { ApiErrorResponse } from "@/types/apiError";
 
-
-export const useOutboundOrders = (params: OutboundOrderListParams) => {
-  return useQuery<OutboundOrderListResponse, Error>({
-    queryKey: ['outbound_orders', params],
-    queryFn: () => listOutboundOrdersApi(params),
-    enabled: (params.zone_id ?? 0) > 0,
+export const useGetOutboundOrders = (params: GetOutboundOrdersParams) => {
+  return useQuery({
+    queryKey: ["outboundOrders", params],
+    queryFn: () => getOutboundOrdersApi(params),
+    enabled: params.warehouse_id > 0,
     staleTime: 5 * 60 * 1000,
-  })
-}
+  });
+};
 
-export const useOutboundAnalyze = (zoneId: number) => {
-  return useQuery<OutboundOrderAnalyzeResponse, Error>({
-    queryKey: ['outbound_analyze', zoneId],
-    queryFn: () => analyzeOutboundApi(zoneId),
-    enabled: zoneId > 0,
+export const useGetOutboundOrderById = (orderId: number | undefined) => {
+  return useQuery({
+    queryKey: ["outboundOrder", orderId],
+    queryFn: () => getOutboundOrderByIdApi(orderId!),
+    enabled: !!orderId && orderId > 0,
     staleTime: 5 * 60 * 1000,
-  })
-}
+  });
+};
+
+export const useGetOutboundOrderDetails = (orderId: number | undefined) => {
+  return useQuery({
+    queryKey: ["outboundOrderDetails", orderId],
+    queryFn: () => getOutboundOrderDetailsApi(orderId!),
+    enabled: !!orderId && orderId > 0,
+    staleTime: 5 * 60 * 1000,
+  });
+};
+
+export const useGetOutboundLackedDetails = (orderId: number | undefined) => {
+  return useQuery({
+    queryKey: ["outboundOrderLacked", orderId],
+    queryFn: () => getOutboundLackedDetailsApi(orderId!),
+    enabled: !!orderId && orderId > 0,
+    staleTime: 60 * 1000,
+  });
+};
+
+export const useCalculateOutboundOrder = () => {
+  const queryClient = useQueryClient();
+  return useMutation<
+    Awaited<ReturnType<typeof calculateOutboundOrderApi>>,
+    AxiosError<ApiErrorResponse>,
+    { body: CalculateOutboundRequest; strategy?: string }
+  >({
+    mutationFn: ({ body, strategy }) =>
+      calculateOutboundOrderApi(body, strategy),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["outboundOrder", variables.body.outbound_order_id],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["outboundOrderDetails", variables.body.outbound_order_id],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["outboundOrderLacked", variables.body.outbound_order_id],
+      });
+    },
+  });
+};
 
 export const useCreateOutboundOrder = () => {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: createOutboundOrderApi,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['outbound_orders'] })
-      queryClient.invalidateQueries({ queryKey: ['outbound_analyze'] })
-    },
-  })
-}
-
-export const useImportOutboundOrder = () => {
+  const queryClient = useQueryClient();
   return useMutation<
-    OutboundOrderCreateInput,
+    Awaited<ReturnType<typeof createOutboundOrderApi>>,
     AxiosError<ApiErrorResponse>,
-    { file: File; zoneId: number }
+    { data: OutboundOrderCreateRequest; outboundType: string }
   >({
-    mutationFn: ({ file, zoneId }) => importOutboundOrderApi(file, zoneId),
-  })
-}
-
-export const useOutboundOrderDetail = (orderCode?: string) => {
-  return useQuery<OutboundOrderDetail, Error>({
-    queryKey: ['outbound_order_detail', orderCode],
-    queryFn: () => getOutboundOrderApi(orderCode!),
-    enabled: !!orderCode, // chỉ gọi khi có order_code trên URL
-    staleTime: 5 * 60 * 1000,
-  })
-}
-
-export const useOutboundRobotTasks = (
-  orderCode?: string,
-  options?: { enabled?: boolean },
-) => {
-  return useQuery<OutboundRobotTasksTracking, Error>({
-    queryKey: ['outbound_robot_tasks', orderCode],
-    queryFn: () => getOutboundRobotTasksApi(orderCode!),
-    enabled: !!orderCode && (options?.enabled ?? true),
-    staleTime: 30 * 1000,
-  })
-}
+    mutationFn: ({ data, outboundType }) =>
+      createOutboundOrderApi(data, outboundType),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["outboundOrders"] });
+    },
+  });
+};
 
 export const useUpdateOutboundOrder = () => {
-  const queryClient = useQueryClient()
+  const queryClient = useQueryClient();
   return useMutation<
-    OutboundOrderDetail,
-    Error,
-    { orderCode: string; data: OutboundOrderUpdateInput }
+    Awaited<ReturnType<typeof updateOutboundOrderApi>>,
+    AxiosError<ApiErrorResponse>,
+    { orderId: number; data: OutboundOrderUpdateRequest; outboundType: string }
   >({
-    mutationFn: ({ orderCode, data }) => updateOutboundOrderApi(orderCode, data),
-    onSuccess: (_, { orderCode }) => {
-      queryClient.invalidateQueries({ queryKey: ['outbound_orders'] })
-      queryClient.invalidateQueries({ queryKey: ['outbound_order_detail', orderCode] })
-      queryClient.invalidateQueries({ queryKey: ['outbound_analyze'] })
+    mutationFn: ({ orderId, data, outboundType }) =>
+      updateOutboundOrderApi(orderId, data, outboundType),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["outboundOrders"] });
+      queryClient.invalidateQueries({
+        queryKey: ["outboundOrder", variables.orderId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["outboundOrderDetails", variables.orderId],
+      });
     },
-  })
-}
+  });
+};
+
 export const useDeleteOutboundOrder = () => {
-  const queryClient = useQueryClient()
-  return useMutation<OutboundOrderDeleteResponse, Error, string>({
+  const queryClient = useQueryClient();
+  return useMutation<
+    OutboundOrderDeleteResponse,
+    AxiosError<ApiErrorResponse>,
+    string
+  >({
     mutationFn: deleteOutboundOrderApi,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['outbound_orders'] })
-      queryClient.invalidateQueries({ queryKey: ['outbound_analyze'] })
+      queryClient.invalidateQueries({ queryKey: ["outboundOrders"] });
     },
-  })
-}
-
-const invalidateOutboundWorkflow = (
-  queryClient: ReturnType<typeof useQueryClient>,
-  orderCode: string,
-) => {
-  queryClient.invalidateQueries({ queryKey: ['outbound_orders'] })
-  queryClient.invalidateQueries({ queryKey: ['outbound_order_detail', orderCode] })
-  queryClient.invalidateQueries({ queryKey: ['outbound_robot_tasks', orderCode] })
-  queryClient.invalidateQueries({ queryKey: ['outbound_analyze'] })
-}
-
-export const useSuggestOutboundAllocations = () => {
-  const queryClient = useQueryClient()
-  return useMutation<OutboundWorkflowOut, AxiosError<ApiErrorResponse>, string>({
-    mutationFn: suggestOutboundAllocationsApi,
-    onSuccess: (_, orderCode) => {
-      invalidateOutboundWorkflow(queryClient, orderCode)
-    },
-  })
-}
-
-export const useConfirmOutboundAllocations = () => {
-  const queryClient = useQueryClient()
-  return useMutation<OutboundWorkflowOut, AxiosError<ApiErrorResponse>, string>({
-    mutationFn: confirmOutboundAllocationsApi,
-    onSuccess: (_, orderCode) => {
-      invalidateOutboundWorkflow(queryClient, orderCode)
-    },
-  })
-}
-
-export const useCreateBypassRequests = () => {
-  const queryClient = useQueryClient()
-  return useMutation<
-    OutboundBypassRequest[],
-    AxiosError<ApiErrorResponse>,
-    { orderCode: string; data?: BypassRequestCreateInput }
-  >({
-    mutationFn: ({ orderCode, data }) =>
-      createBypassRequestsApi(orderCode, data ?? {}),
-    onSuccess: (_, { orderCode }) => {
-      invalidateOutboundWorkflow(queryClient, orderCode)
-    },
-  })
-}
+  });
+};

@@ -1,106 +1,95 @@
-import axiosInstance from './axiosInstance'
+import axiosInstance from "./axiosInstance";
 import type {
-  OutboundOrderAnalyzeResponse,
-  OutboundOrderListParams,
-  OutboundOrderListResponse,
-  OutboundOrderCreateInput,
-  OutboundOrderDetail,
-  OutboundOrderUpdateInput,
+  CalculateOutboundRequest,
+  CalculateOutboundResponse,
+  GetOutboundOrdersParams,
+  LackedDetail,
+  OutboundOrder,
+  OutboundOrderCreateRequest,
   OutboundOrderDeleteResponse,
-  OutboundWorkflowOut,
-  OutboundRobotTasksTracking,
-  BypassRequestCreateInput,
-  OutboundBypassRequest,
-} from '@/types/outbound'
+  OutboundOrderDetail,
+  OutboundOrderListResponse,
+  OutboundOrderUpdateRequest,
+} from "@/types/outbound";
 
-const BASE = '/api/v1/outbound-orders'
+const BASE = "/api/v1/outbound-orders";
 
-export const listOutboundOrdersApi = async (params: OutboundOrderListParams) => {
-  const { data } = await axiosInstance.get<OutboundOrderListResponse>(BASE, { params })
-  return data
-}
+export const getOutboundOrdersApi = async (
+  params: GetOutboundOrdersParams,
+): Promise<OutboundOrderListResponse> => {
+  const { data } = await axiosInstance.get<OutboundOrderListResponse>(BASE, {
+    params,
+  });
+  return data;
+};
 
-export const analyzeOutboundApi = async (zoneId: number) => {
-  const { data } = await axiosInstance.get<OutboundOrderAnalyzeResponse>(
-    `${BASE}/analyze/${zoneId}`,
-  )
-  return data
-}
+export const getOutboundOrderByIdApi = async (
+  orderId: number,
+): Promise<OutboundOrder> => {
+  const { data } = await axiosInstance.get<OutboundOrder>(
+    `${BASE}/id/${orderId}`,
+  );
+  return data;
+};
 
-export const createOutboundOrderApi = async (payload: OutboundOrderCreateInput) => {
-  const { data } = await axiosInstance.post(BASE, payload)
-  return data
-}
+export const getOutboundOrderDetailsApi = async (
+  orderId: number,
+): Promise<OutboundOrderDetail[]> => {
+  const { data } = await axiosInstance.get<OutboundOrderDetail[]>(
+    `${BASE}/id/${orderId}/details`,
+  );
+  return data;
+};
 
-export const importOutboundOrderApi = async (
-  file: File,
-  zoneId: number,
-): Promise<OutboundOrderCreateInput> => {
-  const formData = new FormData()
-  formData.append('zone_id', String(zoneId))
-  formData.append('file', file)
-  const { data } = await axiosInstance.post<OutboundOrderCreateInput>(
-    `${BASE}/import`,
-    formData,
-    {
-      timeout: 5 * 60 * 1000,
-    },
-  )
-  return data
-}
-
-export const getOutboundOrderApi = async (orderCode: string) => {
-  const { data } = await axiosInstance.get<OutboundOrderDetail>(
-    `${BASE}/${orderCode}`,
-  )
-  return data
-}
+export const createOutboundOrderApi = async (
+  body: OutboundOrderCreateRequest,
+  outboundType: string,
+): Promise<OutboundOrder> => {
+  const { data } = await axiosInstance.post<OutboundOrder>(BASE, body, {
+    params: { outbound_type: outboundType },
+  });
+  return data;
+};
 
 export const updateOutboundOrderApi = async (
+  orderId: number,
+  body: OutboundOrderUpdateRequest,
+  outboundType: string,
+): Promise<OutboundOrder> => {
+  const { data } = await axiosInstance.patch<OutboundOrder>(
+    `${BASE}/id/${orderId}`,
+    body,
+    { params: { outbound_type: outboundType } },
+  );
+  return data;
+};
+
+export const deleteOutboundOrderApi = async (
   orderCode: string,
-  payload: OutboundOrderUpdateInput,
-) => {
-  const { data } = await axiosInstance.put<OutboundOrderDetail>(
-    `${BASE}/${orderCode}`,
-    payload,
-  )
-  return data
-}
-export const deleteOutboundOrderApi = async (orderCode: string) => {
+): Promise<OutboundOrderDeleteResponse> => {
   const { data } = await axiosInstance.delete<OutboundOrderDeleteResponse>(
-    `${BASE}/${orderCode}`,
-  )
-  return data
-}
+    `${BASE}/${encodeURIComponent(orderCode)}`,
+  );
+  return data;
+};
 
-export const getOutboundRobotTasksApi = async (orderCode: string) => {
-  const { data } = await axiosInstance.get<OutboundRobotTasksTracking>(
-    `${BASE}/${orderCode}/robot-tasks/status`,
-  )
-  return data
-}
+export const getOutboundLackedDetailsApi = async (
+  orderId: number,
+): Promise<LackedDetail[]> => {
+  const { data } = await axiosInstance.get<LackedDetail[]>(
+    `${BASE}/id/${orderId}/lacked`,
+  );
+  return data;
+};
 
-export const suggestOutboundAllocationsApi = async (orderCode: string) => {
-  const { data } = await axiosInstance.post<OutboundWorkflowOut>(
-    `${BASE}/${orderCode}/allocations/suggest`,
-  )
-  return data
-}
-
-export const confirmOutboundAllocationsApi = async (orderCode: string) => {
-  const { data } = await axiosInstance.post<OutboundWorkflowOut>(
-    `${BASE}/${orderCode}/allocations/confirm`,
-  )
-  return data
-}
-
-export const createBypassRequestsApi = async (
-  orderCode: string,
-  payload: BypassRequestCreateInput = {},
-) => {
-  const { data } = await axiosInstance.post<OutboundBypassRequest[]>(
-    `${BASE}/${orderCode}/bypass-requests`,
-    payload,
-  )
-  return data
-}
+export const calculateOutboundOrderApi = async (
+  body: CalculateOutboundRequest,
+  strategy = "fefo",
+): Promise<CalculateOutboundResponse> => {
+  const { data } = await axiosInstance.post<CalculateOutboundResponse>(
+    `${BASE}/calculate`,
+    body,
+    { params: { strategy } },
+  );
+  return data;
+};

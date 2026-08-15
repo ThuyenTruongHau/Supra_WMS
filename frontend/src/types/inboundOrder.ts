@@ -19,11 +19,19 @@ export interface InboundOrder {
   updated_at: string | null;
 }
 
+export interface OrderListSummary {
+  total: number;
+  initialize: number;
+  in_progress: number;
+  completed: number;
+}
+
 export interface InboundOrderListResponse {
   items: InboundOrder[];
   total: number;
   page: number;
   page_size: number;
+  summary: OrderListSummary;
 }
 
 /** Một SKU nằm trong vị trí đích của detail. */
@@ -164,4 +172,9 @@ export interface InboundOrderUpdateRequest {
   note?: string | null;
   details?: Record<string, unknown> | null;
   line_items?: InboundOrderDetailUpdate[];
+}
+
+export interface InboundOrderDeleteResponse {
+  order_code: string;
+  message: string;
 }

@@ -76,11 +76,19 @@ class InboundOrderResponse(BaseModel):
     updated_at: Optional[datetime] = None
     model_config = ConfigDict(from_attributes=True)
 
+class InboundOrderListSummary(BaseModel):
+    total: int
+    initialize: int
+    in_progress: int
+    completed: int
+
+
 class InboundOrderListResponse(BaseModel):
     items: list[InboundOrderResponse]
     total: int
     page: int
     page_size: int
+    summary: InboundOrderListSummary
 
 class InboundOrderAllocationResponse(BaseModel):
     id: int
@@ -137,3 +145,8 @@ class InboundOrderUpdate(BaseModel):
     note: Optional[str] = None
     details: Optional[dict[str, Any]] = None
     line_items: Optional[list[InboundOrderDetailUpdate]] = None
+
+
+class InboundOrderDeleteResponse(BaseModel):
+    order_code: str
+    message: str

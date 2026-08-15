@@ -6,11 +6,13 @@ import {
   releaseInboundLocationsApi,
   createInboundOrderApi,
   updateInboundOrderApi,
+  deleteInboundOrderApi,
   acceptInboundTaskApi,
 } from "@/api/inboundOrder";
 import type {
   GetInboundOrdersParams,
   InboundOrderCreateRequest,
+  InboundOrderDeleteResponse,
   InboundOrderUpdateRequest,
   InboundReleaseLocationsRequest,
   InboundSuggestAllocationRequest,
@@ -79,6 +81,20 @@ export const useUpdateInboundOrder = () => {
       queryClient.invalidateQueries({
         queryKey: ["inboundOrderDetails", variables.orderCode],
       });
+    },
+  });
+};
+
+export const useDeleteInboundOrder = () => {
+  const queryClient = useQueryClient();
+  return useMutation<
+    InboundOrderDeleteResponse,
+    AxiosError<ApiErrorResponse>,
+    string
+  >({
+    mutationFn: deleteInboundOrderApi,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["inboundOrders"] });
     },
   });
 };

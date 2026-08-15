@@ -6,7 +6,6 @@ import json
 from app.core.config import settings
 from app.modules.robot.robot_model import RobotTask, TaskStatus, MAPPING_STATUS
 from app.modules.warehouse.inbound_order.inbound_order_model import InboundOrderDetail
-from app.modules.warehouse.outbound_order.outbound_order_model import OutboundOrderDetail
 from app.modules.warehouse.item_stock.item_stock_model import ItemStock
 from app.modules.warehouse.inbound_order.inbound_order_schema import InboundOrderDetailResponse
 from app.modules.warehouse.transaction_history.history_model import Transaction, History
@@ -103,12 +102,12 @@ class TaskStatusService:
                 .filter(InboundOrderDetail.id == robot_task.inbound_order_detail_id)
                 .first()
             )
-        elif robot_task.outbound_order_detail_id is not None:
-            detail = (
-                db.query(OutboundOrderDetail)
-                .filter(OutboundOrderDetail.id == robot_task.outbound_order_detail_id)
-                .first()
-            )
+        # elif robot_task.outbound_order_detail_id is not None:
+        #     detail = (
+        #         db.query(OutboundOrderDetail)
+        #         .filter(OutboundOrderDetail.id == robot_task.outbound_order_detail_id)
+        #         .first()
+        #     )
         else:
             raise HTTPException(status_code=400, detail="Order not found")
 

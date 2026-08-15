@@ -17,6 +17,7 @@ from app.modules.warehouse.inbound_order.inbound_order_schema import (
     InboundOrderListResponse,
     InboundOrderDetailResponse,
     InboundOrderUpdate,
+    InboundOrderDeleteResponse,
 )
 from app.modules.warehouse.inbound_order import inbound_order_service
 
@@ -93,7 +94,7 @@ def list_inbound_orders(
     q: Optional[str] = Query(None, description="Tìm theo mã đơn hoặc người tạo"),
     status: Optional[str] = Query(None, description="Lọc trạng thái đơn"),
 ):
-    orders, total = inbound_order_service.get_inbound_order(
+    orders, total, summary = inbound_order_service.get_inbound_order(
         db,
         warehouse_id=warehouse_id,
         page=page,
@@ -106,6 +107,7 @@ def list_inbound_orders(
         total=total,
         page=page,
         page_size=page_size,
+        summary=summary,
     )
 
 
@@ -145,6 +147,26 @@ def update_inbound_order(order_code: str, body: InboundOrderUpdate, db: DbSessio
         code = 404 if "not found" in msg.lower() else 400
         raise HTTPException(status_code=code, detail=msg) from e
     return InboundOrderResponse.model_validate(order)
+
+@router.delete(
+    "/inbound-orders/{order_code}",
+    response_model=InboundOrderDeleteResponse,
+    dependencies=[Depends(_INBOUND_DELETE)],
+)
+def delete_inbound_order(
+    order_code: str,
+    db: DbSession,
+):
+    try:
+        inbound_order_service.delete_inbound_order(db, order_code)
+    except ValueError as e:
+        msg = str(e)
+        code = 404 if "not found" in msg.lower() else 400
+        raise HTTPException(status_code=code, detail=msg) from e
+    return InboundOrderDeleteResponse(
+        order_code=order_code,
+        message="Inbound order deleted",
+    )
 
 @router.post(
     "/inbound-orders/caller",

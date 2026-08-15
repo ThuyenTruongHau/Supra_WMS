@@ -1,19 +1,58 @@
 from sqlalchemy import (
-    Column, Integer, String, Text, DateTime, ForeignKey, Numeric, func, JSON
+    Column, Integer, String, Text, DateTime, ForeignKey, Numeric, func, JSON, select, table, column, and_, exists, case
 )
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, column_property
 from sqlalchemy.dialects.postgresql import JSONB
+
 from app.core.database import Base
+
+_outbound_order_detail_tbl = table(
+    "outbound_order_detail",
+    column("id", Integer),
+    column("outbound_order_id", Integer),
+)
+
+_outbound_order_allocation_tbl = table(
+    "outbound_order_allocation",
+    column("outbound_order_detail_id", Integer),
+    column("status", String),
+)
+
+def _outbound_order_allocation_exists_for_order(order_id_col, *criteria):
+    return exists(
+        select(1)
+        .select_from(
+            _outbound_order_allocation_tbl.join(
+                _outbound_order_detail_tbl,
+                _outbound_order_allocation_tbl.c.outbound_order_detail_id
+                == _outbound_order_detail_tbl.c.id,
+            )
+        )
+        .where(
+            _outbound_order_detail_tbl.c.outbound_order_id == order_id_col,
+            *criteria,
+        )
+        .correlate_except(_outbound_order_allocation_tbl, _outbound_order_detail_tbl)
+    )
+
+def _outbound_order_allocation_exists(detail_id_col, *criteria):
+    return exists(
+        select(1)
+        .where(
+            _outbound_order_allocation_tbl.c.outbound_order_detail_id == detail_id_col,
+            *criteria,
+        )
+        .correlate_except(_outbound_order_allocation_tbl)
+    )
 
 
 class OutboundOrder(Base):
-    """Inbound order header."""
+    """Outbound order header."""
     
     __tablename__ = "outbound_order"
     
     id = Column(Integer, primary_key=True, index=True)
     order_code = Column(String(50), unique=True, nullable=False, index=True)
-    status = Column(String(20), default="initialize", nullable=False, index=True)
     note = Column(Text)
     created_by_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     warehouse_id = Column(Integer, ForeignKey("warehouse.id"), nullable=False, index=True)
@@ -29,9 +68,25 @@ class OutboundOrder(Base):
     created_by = relationship("User", foreign_keys=[created_by_id], lazy="joined")
     warehouse = relationship("Warehouse", foreign_keys=[warehouse_id], lazy="joined")
 
+    status = column_property(
+        case(
+            (
+                and_(
+                    _outbound_order_allocation_exists_for_order(id),
+                    ~_outbound_order_allocation_exists_for_order(id, _outbound_order_allocation_tbl.c.status != "completed"),
+                ),
+                "completed",
+            ),
+            (
+                _outbound_order_allocation_exists_for_order(id, _outbound_order_allocation_tbl.c.status != "initialize"),
+                "in_progress",
+            ),
+            else_="initialize",
+        )
+    )
 
 class OutboundOrderDetail(Base):
-    """Inbound order detail line items."""
+    """Outbound order detail line items."""
 
     __tablename__ = "outbound_order_detail"
 
@@ -45,7 +100,6 @@ class OutboundOrderDetail(Base):
     item_id = Column(Integer, ForeignKey("item.id"), nullable=False)
     quantity = Column(Integer, nullable=False, default=0)
     unit = Column(String(50), nullable=False)
-    status = Column(String(20), default="initialize", nullable=False, index=True)
     detail_type = Column(String(50), nullable=False, index=True)
 
     details = Column(
@@ -59,23 +113,51 @@ class OutboundOrderDetail(Base):
 
     outbound_order = relationship("OutboundOrder", foreign_keys=[outbound_order_id], lazy="joined")
     item = relationship("Item", foreign_keys=[item_id], lazy="joined")
+    allocations = relationship(
+        "OutboundOrderAllocation",
+        back_populates="outbound_order_detail",
+        lazy="selectin",
+    )
+
+    status = column_property(
+        case(
+            (
+                and_(
+                    _outbound_order_allocation_exists(id),
+                    ~_outbound_order_allocation_exists(id, _outbound_order_allocation_tbl.c.status != "completed"),
+                ),
+                "completed",
+            ),
+            (
+                _outbound_order_allocation_exists(id, _outbound_order_allocation_tbl.c.status != "initialize"),
+                "in_progress",
+            ),
+            else_="initialize",
+        )
+    )
 
 class OutboundOrderAllocation(Base):
     """Outbound order allocation."""
 
     __tablename__ = "outbound_order_allocation"
-    
     id = Column(Integer, primary_key=True, index=True)
     outbound_order_detail_id = Column(Integer, ForeignKey("outbound_order_detail.id"), nullable=False, index=True)
     item_stock_id = Column(Integer, ForeignKey("item_stock.id"), nullable=False, index=True)
     quantity = Column(Integer, nullable=False, default=0)
     status = Column(String(20), default="initialize", nullable=False, index=True)
-    from_location_id = Column(Integer, ForeignKey("location.id"), nullable=False, index=True)
-    to_location_id = Column(Integer, ForeignKey("location.id"), nullable=False, index=True)
+    from_location_id = Column(Integer, ForeignKey("location.id"), nullable=True, index=True)
+    to_location_id = Column(Integer, ForeignKey("location.id"), nullable=True, index=True)
+    robot_task_id = Column(Integer, ForeignKey("robot_task.id"), nullable=True, index=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
-    outbound_order_detail = relationship("OutboundOrderDetail", foreign_keys=[outbound_order_detail_id], lazy="joined")
+    outbound_order_detail = relationship(
+        "OutboundOrderDetail",
+        foreign_keys=[outbound_order_detail_id],
+        back_populates="allocations",
+        lazy="joined",
+    )
+    robot_task = relationship("RobotTask", foreign_keys=[robot_task_id], lazy="joined")
     item_stock = relationship("ItemStock", foreign_keys=[item_stock_id], lazy="joined")
     from_location = relationship("Location", foreign_keys=[from_location_id], lazy="joined")
     to_location = relationship("Location", foreign_keys=[to_location_id], lazy="joined")

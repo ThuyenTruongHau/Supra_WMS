@@ -45,12 +45,7 @@ class RobotTask(Base):
         nullable=True,
         index=True,
     )
-    outbound_order_detail_id = Column(
-        Integer,
-        ForeignKey("outbound_order_detail.id"),
-        nullable=True,
-        index=True,
-    )
+
     # Parent order id (inbound_order.id or outbound_order.id); no single FK table.
     order_id = Column(String(50), nullable=False, index=True)
     process_code = Column(String(50), nullable=False)
@@ -63,10 +58,10 @@ class RobotTask(Base):
         foreign_keys=[inbound_order_detail_id],
         lazy="joined",
     )
-    outbound_order_detail = relationship(
-        "OutboundOrderDetail",
-        foreign_keys=[outbound_order_detail_id],
-        lazy="joined",
+    outbound_order_allocations = relationship(
+        "OutboundOrderAllocation",
+        primaryjoin="RobotTask.order_id == foreign(OutboundOrderAllocation.robot_task_id)",
+        viewonly=True,
     )
 
     task_statuses = relationship(

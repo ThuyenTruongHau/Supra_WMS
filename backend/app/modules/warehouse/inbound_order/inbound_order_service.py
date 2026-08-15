@@ -22,6 +22,7 @@ from app.modules.warehouse.inbound_order.inbound_order_schema import (
     InboundOrderUpdate,
     InboundOrderDetailUpdate,
     InboundOrderAllocationUpdate,
+    InboundOrderListSummary,
     SuggestAdditionalResponse,
 )
 from app.modules.warehouse.location_map.location_model import Location
@@ -255,6 +256,14 @@ def _delete_allocation(db: Session, allocation: InboundOrderAllocation) -> None:
 
 
 def _purge_detail(db: Session, detail: InboundOrderDetail) -> None:
+    robot_tasks = (
+        db.query(RobotTask)
+        .filter(RobotTask.inbound_order_detail_id == detail.id)
+        .all()
+    )
+    for task in robot_tasks:
+        db.delete(task)
+
     for allocation in list(detail.allocations):
         _delete_allocation(db, allocation)
 
@@ -270,6 +279,42 @@ def _purge_detail(db: Session, detail: InboundOrderDetail) -> None:
     cache_delete(f"inbound:reserved:{detail.to_location_id}")
     db.flush()
     db.delete(detail)
+
+
+def _delete_inbound_order_history(db: Session, inbound_order_id: int) -> None:
+    db.query(History).filter(
+        History.inbound_order_id == inbound_order_id
+    ).delete(synchronize_session=False)
+
+
+def delete_inbound_order(db: Session, order_code: str) -> None:
+    order = (
+        db.query(InboundOrder)
+        .filter(InboundOrder.order_code == order_code)
+        .first()
+    )
+    if not order:
+        raise ValueError("Inbound order not found")
+
+    if order.status != "initialize":
+        raise ValueError("Only initialize order can be deleted")
+
+    existing_details = (
+        db.query(InboundOrderDetail)
+        .options(selectinload(InboundOrderDetail.allocations))
+        .filter(InboundOrderDetail.inbound_order_id == order.id)
+        .all()
+    )
+    for detail in existing_details:
+        _purge_detail(db, detail)
+
+    _delete_inbound_order_history(db, order.id)
+    db.delete(order)
+    try:
+        db.commit()
+    except IntegrityError as e:
+        db.rollback()
+        raise ValueError(f"Database conflict: {e.orig}") from e
 
 
 def update_inbound_order(db: Session, order_code: str, body: InboundOrderUpdate, inbound_type: str, user_id: int) -> InboundOrder:
@@ -292,32 +337,6 @@ def update_inbound_order(db: Session, order_code: str, body: InboundOrderUpdate,
         order.details = payload["details"] or {}
 
     if "line_items" in payload and body.line_items is not None:
-        delete_ids = {
-            line.id for line in body.line_items if line.id and line.delete
-        }
-        if delete_ids:
-            existing_details = (
-                db.query(InboundOrderDetail)
-                .options(selectinload(InboundOrderDetail.allocations))
-                .filter(InboundOrderDetail.inbound_order_id == order.id)
-                .all()
-            )
-            existing_ids = {detail.id for detail in existing_details}
-            has_non_delete_lines = any(
-                not line.delete for line in body.line_items
-            )
-
-            if delete_ids == existing_ids and not has_non_delete_lines:
-                for detail in existing_details:
-                    _purge_detail(db, detail)
-                db.delete(order)
-                try:
-                    db.commit()
-                except IntegrityError as e:
-                    db.rollback()
-                    raise ValueError(f"Database conflict: {e.orig}") from e
-                return order
-
         for line in body.line_items:
             line_data = line.model_dump(exclude_unset=True)
 
@@ -598,6 +617,15 @@ def execute_inbound_task(db: Session, detail_id: int) -> RobotTask | InboundOrde
         raise
 
 
+def _build_inbound_list_summary(query) -> InboundOrderListSummary:
+    return InboundOrderListSummary(
+        total=query.count(),
+        initialize=query.filter(InboundOrder.status == "initialize").count(),
+        in_progress=query.filter(InboundOrder.status == "in_progress").count(),
+        completed=query.filter(InboundOrder.status == "completed").count(),
+    )
+
+
 def get_inbound_order(
     db: Session,
     warehouse_id: int,
@@ -606,28 +634,33 @@ def get_inbound_order(
     q: Optional[str] = None,
     status: Optional[str] = None,
 ):
-    query = db.query(InboundOrder).filter(InboundOrder.warehouse_id == warehouse_id)
+    base_query = db.query(InboundOrder).filter(
+        InboundOrder.warehouse_id == warehouse_id
+    )
 
     if q and q.strip():
         term = f"%{q.strip()}%"
-        query = query.join(InboundOrder.created_by).filter(
+        base_query = base_query.join(InboundOrder.created_by).filter(
             or_(
                 InboundOrder.order_code.ilike(term),
                 User.username.ilike(term),
             )
         )
 
-    if status:
-        query = query.filter(InboundOrder.status == status)
+    summary = _build_inbound_list_summary(base_query)
 
-    total = query.count()
+    filtered_query = base_query
+    if status:
+        filtered_query = filtered_query.filter(InboundOrder.status == status)
+
+    total = filtered_query.count()
     items = (
-        query.order_by(InboundOrder.created_at.desc(), InboundOrder.id.desc())
+        filtered_query.order_by(InboundOrder.created_at.desc(), InboundOrder.id.desc())
         .offset((page - 1) * page_size)
         .limit(page_size)
         .all()
     )
-    return items, total
+    return items, total, summary
 
 
 def caller_inbound_order(db: Session, body: InboundOrderCreate, user_id: int, inbound_type: str):

@@ -36,6 +36,12 @@ import { formatQuantity } from "@/utils/formatQuantity";
 import dayjs from "dayjs";
 import type { AxiosError } from "axios";
 import type { ApiErrorResponse } from "@/types/apiError";
+import KeyValueDetailsEditor from "@/components/shared/KeyValueDetailsEditor";
+import {
+  detailsToEntries,
+  entriesToDetails,
+  type KeyValueEntry,
+} from "@/utils/keyValueDetails";
 
 /** Một SKU trong nhóm. */
 export interface ImportItemDraft {
@@ -62,6 +68,7 @@ export interface ImportGroupDraft {
   to_location_name?: string;
   status?: string;
   items: ImportItemDraft[];
+  detailEntries?: KeyValueEntry[];
 }
 
 interface CreateImportModalProps {
@@ -72,6 +79,7 @@ interface CreateImportModalProps {
   editOrderCode?: string;
   initialNote?: string;
   initialGroups?: ImportGroupDraft[];
+  initialDetails?: Record<string, unknown>;
 }
 
 let draftSeq = 0;
@@ -103,6 +111,7 @@ export default function CreateImportModal({
   editOrderCode,
   initialNote,
   initialGroups,
+  initialDetails,
 }: CreateImportModalProps) {
   const isEdit = mode === "edit";
   const selectedWarehouseId = useAppStore((s) => s.selectedWarehouseId);
@@ -111,6 +120,7 @@ export default function CreateImportModal({
   const [step, setStep] = useState(0);
   const [orderCode, setOrderCode] = useState("");
   const [note, setNote] = useState("");
+  const [detailEntries, setDetailEntries] = useState<KeyValueEntry[]>([]);
   const [groups, setGroups] = useState<ImportGroupDraft[]>([createEmptyGroup()]);
   const [originalGroups, setOriginalGroups] = useState<ImportGroupDraft[]>([]);
   const [suggested, setSuggested] = useState<
@@ -156,13 +166,15 @@ export default function CreateImportModal({
     if (isEdit) {
       setOrderCode(editOrderCode ?? "");
       setNote(initialNote ?? "");
+      setDetailEntries(detailsToEntries(initialDetails));
       setOriginalGroups(seed);
     } else {
       setOrderCode(`IN-${dayjs().format("YYYYMMDD-HHmmss")}`);
       setNote("");
+      setDetailEntries([]);
       setOriginalGroups([]);
     }
-  }, [open, isEdit, editOrderCode, initialNote, initialGroups]);
+  }, [open, isEdit, editOrderCode, initialNote, initialGroups, initialDetails]);
 
   const releaseSuggestedLocations = async () => {
     const ids = suggested
@@ -249,6 +261,52 @@ export default function CreateImportModal({
     });
     return available;
   };
+
+  useEffect(() => {
+    if (!open || !isEdit || !initialGroups?.length) return;
+
+    let cancelled = false;
+
+    void (async () => {
+      try {
+        const entries = await Promise.all(
+          initialGroups.flatMap((group) =>
+            group.items
+              .filter((item) => item.item_id)
+              .map(async (item) => {
+                const available = await getItemAvailableUnitsApi(item.item_id!);
+                return {
+                  groupKey: group.key,
+                  itemKey: item.key,
+                  unit_options: available.units.map((u) => ({
+                    value: u.unit_id,
+                    label: u.unit_name,
+                  })),
+                };
+              }),
+          ),
+        );
+        if (cancelled) return;
+        setGroups((prev) =>
+          prev.map((g) => ({
+            ...g,
+            items: g.items.map((i) => {
+              const loaded = entries.find(
+                (e) => e.groupKey === g.key && e.itemKey === i.key,
+              );
+              return loaded ? { ...i, unit_options: loaded.unit_options } : i;
+            }),
+          })),
+        );
+      } catch (err) {
+        if (!cancelled) message.error(errorMessage(err));
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [open, isEdit, initialGroups]);
 
   const handleAddGroup = () => {
     if (isEdit) return;
@@ -338,14 +396,7 @@ export default function CreateImportModal({
             unit_id: i.unit_id!,
             lot_number: i.lot_number?.trim() || null,
           })),
-          details: {
-            items: g.items.map((i) => ({
-              sku: i.sku,
-              item_name: i.item_name,
-              lot_number: i.lot_number?.trim() || null,
-              expiry_date: i.expiry_date || null,
-            })),
-          },
+          details: entriesToDetails(g.detailEntries ?? []),
         })),
       });
       setSuggested(res.line_items);
@@ -413,6 +464,7 @@ export default function CreateImportModal({
           ...(g.from_location_id
             ? { from_location_id: g.from_location_id }
             : {}),
+          details: entriesToDetails(g.detailEntries ?? []),
           allocations: [...deletedAllocations, ...upsertAllocations],
         };
       });
@@ -433,6 +485,7 @@ export default function CreateImportModal({
           inboundType,
           data: {
             note: note.trim() || null,
+            details: entriesToDetails(detailEntries),
             line_items: buildUpdatePayload(),
           },
         });
@@ -464,16 +517,11 @@ export default function CreateImportModal({
           order_code: orderCode.trim(),
           note: note.trim() || null,
           warehouse_id: selectedWarehouseId,
-          details: {},
+          details: entriesToDetails(detailEntries),
           line_items: groups.map((g) => ({
             from_location_id: g.from_location_id!,
             to_location_id: g.to_location_id!,
-            details: {
-              items: g.items.map((i) => ({
-                sku: i.sku,
-                item_name: i.item_name,
-              })),
-            },
+            details: entriesToDetails(g.detailEntries ?? []),
             allocations: g.items.map((i) => ({
               item_id: i.item_id!,
               quantity: i.quantity,
@@ -718,6 +766,13 @@ export default function CreateImportModal({
       >
         Thêm SKU vào nhóm này
       </AntButton>
+      <KeyValueDetailsEditor
+        entries={group.detailEntries ?? []}
+        onChange={(entries) => updateGroup(group.key, { detailEntries: entries })}
+        label="Thông tin bổ sung nhóm"
+        addButtonText="Thêm trường nhóm"
+        className="mt-3 border-t border-stripe-hairline pt-3"
+      />
     </div>
   );
 
@@ -831,7 +886,7 @@ export default function CreateImportModal({
         />
       )}
 
-      <Form layout="vertical" className="mb-4">
+      <Form layout="vertical" className="mb-2">
         {(step === 0 && !isEdit) || isEdit ? (
           <Form.Item label="Mã đơn" required className="mb-0">
             <Input
@@ -854,9 +909,24 @@ export default function CreateImportModal({
         </Form.Item>
       </Form>
 
-      {step === 0 && !isEdit && (
-        <div className="space-y-4">
+      {((step === 0 && !isEdit) || isEdit) && (
+        <>
           <Divider titlePlacement="left" className="!text-sm text-slate-400">
+            THÔNG TIN BỔ SUNG ĐƠN
+          </Divider>
+          <KeyValueDetailsEditor
+            entries={detailEntries}
+            onChange={setDetailEntries}
+            label="Thông tin bổ sung đơn"
+            addButtonText="Thêm trường đơn"
+            className="mb-2"
+          />
+        </>
+      )}
+
+      {((step === 0 && !isEdit) || isEdit) && (
+        <div className="space-y-4">
+          <Divider titlePlacement="left" className="!mt-6 !text-sm text-slate-400">
             DỮ LIỆU HÀNG HÓA — MỖI NHÓM LÀ MỘT VỊ TRÍ ĐÍCH
           </Divider>
 
@@ -867,55 +937,14 @@ export default function CreateImportModal({
                 className="p-4 bg-slate-50 border border-stripe-hairline rounded-lg space-y-3"
               >
                 <div className="flex items-center justify-between gap-3">
-                  <span className="font-semibold text-brand-dark">
-                    Nhóm {groupIndex + 1}
-                  </span>
-                  {groups.length > 1 && (
-                    <Button
-                      variant="dangerText"
-                      icon={<DeleteOutlined />}
-                      onClick={() => handleRemoveGroup(group.key)}
-                    />
-                  )}
-                </div>
-
-                {renderGroupItemsEditor(group)}
-              </div>
-            ))}
-          </div>
-
-          <AntButton
-            type="dashed"
-            icon={<PlusOutlined />}
-            className="w-full h-11"
-            onClick={handleAddGroup}
-          >
-            Thêm nhóm (vị trí đích mới)
-          </AntButton>
-        </div>
-      )}
-
-      {isEdit && (
-        <div className="space-y-4">
-          <Divider titlePlacement="left" className="!text-sm text-slate-400">
-            DỮ LIỆU HÀNG HÓA — MỖI NHÓM LÀ MỘT VỊ TRÍ ĐÍCH
-          </Divider>
-
-          <div className="space-y-4 max-h-[55vh] overflow-y-auto pr-1">
-            {groups.map((group, groupIndex) => (
-              <div
-                key={group.key}
-                className="p-4 bg-slate-50 border border-stripe-hairline rounded-lg space-y-3"
-              >
-                <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-semibold text-brand-dark">
                       Nhóm {groupIndex + 1}
                     </span>
-                    {group.to_location_name && (
+                    {isEdit && group.to_location_name && (
                       <Tag color="green">Đích: {group.to_location_name}</Tag>
                     )}
-                    {group.status && <Tag>{group.status}</Tag>}
+                    {isEdit && group.status && <Tag>{group.status}</Tag>}
                   </div>
                   {groups.length > 1 && (
                     <Button
@@ -926,30 +955,43 @@ export default function CreateImportModal({
                   )}
                 </div>
 
-                <Select
-                  className="w-full"
-                  showSearch
-                  optionFilterProp="label"
-                  placeholder="Chọn điểm cấp (buffer)..."
-                  value={group.from_location_id}
-                  options={bufferLocationOptions}
-                  loading={bufferLocationsLoading}
-                  notFoundContent={
-                    bufferLocationsLoading
-                      ? "Đang tải..."
-                      : bufferLocationsError
-                        ? "Không tải được điểm cấp"
-                        : "Không có điểm cấp"
-                  }
-                  onChange={(val) =>
-                    updateGroup(group.key, { from_location_id: Number(val) })
-                  }
-                />
+                {isEdit && (
+                  <Select
+                    className="w-full"
+                    showSearch
+                    optionFilterProp="label"
+                    placeholder="Chọn điểm cấp (buffer)..."
+                    value={group.from_location_id}
+                    options={bufferLocationOptions}
+                    loading={bufferLocationsLoading}
+                    notFoundContent={
+                      bufferLocationsLoading
+                        ? "Đang tải..."
+                        : bufferLocationsError
+                          ? "Không tải được điểm cấp"
+                          : "Không có điểm cấp"
+                    }
+                    onChange={(val) =>
+                      updateGroup(group.key, { from_location_id: Number(val) })
+                    }
+                  />
+                )}
 
                 {renderGroupItemsEditor(group)}
               </div>
             ))}
           </div>
+
+          {!isEdit && (
+            <AntButton
+              type="dashed"
+              icon={<PlusOutlined />}
+              className="w-full h-11"
+              onClick={handleAddGroup}
+            >
+              Thêm nhóm (vị trí đích mới)
+            </AntButton>
+          )}
         </div>
       )}
 
