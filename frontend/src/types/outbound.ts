@@ -83,8 +83,8 @@ export interface OutboundOrderAllocation {
   item_stock_id: number;
   quantity: number;
   status: string;
-  from_location_id: number;
-  to_location_id: number;
+  from_location_id?: number | null;
+  to_location_id?: number | null;
   from_location_code: string | null;
   from_location_name: string | null;
   to_location_code: string | null;
@@ -147,4 +147,13 @@ export interface CalculateOutboundResponse {
   outbound_order_id: number;
   is_fully_allocated: boolean;
   lacked: LackedDetail[];
+}
+
+export interface OutboundRobotTask {
+  order_id: string;
+  task_path: string | null;
+  task_type: "outbound" | "return";
+  status: string;
+  quantity: number;
+  allocations: OutboundOrderAllocation[];
 }

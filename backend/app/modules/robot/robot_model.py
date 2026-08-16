@@ -60,7 +60,7 @@ class RobotTask(Base):
     )
     outbound_order_allocations = relationship(
         "OutboundOrderAllocation",
-        primaryjoin="RobotTask.order_id == foreign(OutboundOrderAllocation.robot_task_id)",
+        primaryjoin="RobotTask.id == foreign(OutboundOrderAllocation.robot_task_id)",
         viewonly=True,
     )
 

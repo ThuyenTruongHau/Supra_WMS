@@ -12,6 +12,7 @@ MAPPING_LOCATION_STATUS = {
     "in_progress": "in_transit",
     "issued": "in_transit",
     "initialize": "reserved",
+    "reserved": "reserved",
 }
 
 

@@ -3,6 +3,8 @@ import { cn } from "@/components/ui";
 const STATUS_STYLES: Record<string, string> = {
   initialize:
     "bg-slate-100 text-slate-700 border-slate-200 shadow-sm shadow-slate-200/60",
+  reserved:
+    "bg-cyan-100 text-cyan-800 border-cyan-200 shadow-sm shadow-cyan-200/60",
   in_progress:
     "bg-orange-100 text-orange-800 border-orange-200 shadow-sm shadow-orange-200/60",
   completed:

@@ -10,6 +10,7 @@ import {
 import type { CreateZoneInput, UpdateZoneInput, Zone } from '@/types/zone';
 import { AxiosError } from 'axios';
 import { ApiErrorResponse } from '@/types/apiError';
+import { LIVE_QUERY_OPTIONS } from '@/utils/liveQueryOptions';
 
 export const useZones = (warehouseId?: number) => {
   return useQuery({
@@ -41,7 +42,7 @@ export const useWarehouseLocations = (
       return data.items;
     },
     enabled: (warehouseId ?? 0) > 0,
-    staleTime: 60 * 1000,
+    ...LIVE_QUERY_OPTIONS,
   });
 };
 

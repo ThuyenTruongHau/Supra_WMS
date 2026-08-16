@@ -81,6 +81,10 @@ class OutboundOrder(Base):
                 _outbound_order_allocation_exists_for_order(id, _outbound_order_allocation_tbl.c.status != "initialize"),
                 "in_progress",
             ),
+            (
+                _outbound_order_allocation_exists_for_order(id, _outbound_order_allocation_tbl.c.status == "initialize"),
+                "reserved",
+            ),
             else_="initialize",
         )
     )
@@ -132,6 +136,10 @@ class OutboundOrderDetail(Base):
                 _outbound_order_allocation_exists(id, _outbound_order_allocation_tbl.c.status != "initialize"),
                 "in_progress",
             ),
+            (
+                _outbound_order_allocation_exists(id, _outbound_order_allocation_tbl.c.status == "initialize"),
+                "reserved",
+            ),
             else_="initialize",
         )
     )
@@ -147,6 +155,7 @@ class OutboundOrderAllocation(Base):
     status = Column(String(20), default="initialize", nullable=False, index=True)
     from_location_id = Column(Integer, ForeignKey("location.id"), nullable=True, index=True)
     to_location_id = Column(Integer, ForeignKey("location.id"), nullable=True, index=True)
+    allocation_type = Column(String(20), default="outbound", nullable=False, index=True)
     robot_task_id = Column(Integer, ForeignKey("robot_task.id"), nullable=True, index=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())

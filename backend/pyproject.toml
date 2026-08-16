@@ -21,4 +21,5 @@ dependencies = [
     "redis==5.0.8",
     "sqlalchemy==2.0.35",
     "uvicorn[standard]==0.30.6",
+    "prometheus-fastapi-instrumentator==7.1.0",
 ]

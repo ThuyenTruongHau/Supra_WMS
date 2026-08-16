@@ -305,7 +305,7 @@ export default function StocktakePage() {
   // Management Columns
   const planColumns = [
     {
-      title: 'Mã phiếu',
+      title: 'Mã đơn',
       dataIndex: 'id',
       key: 'id',
       render: (text: string) => <strong style={{ color: '#1890ff' }}>{text}</strong>

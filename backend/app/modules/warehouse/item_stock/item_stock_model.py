@@ -10,11 +10,32 @@ from sqlalchemy import (
     String,
     func,
     Boolean,
+    case,
+    or_,
+    func,
+    select,
+    and_,
 )
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, column_property
 from sqlalchemy.dialects.postgresql import UUID
 import uuid
 from app.core.database import Base
+from app.modules.warehouse.outbound_order.outbound_order_model import OutboundOrderAllocation
+
+_NON_COUNTABLE_ALLOCATION_STATUSES = ("completed", "failed")
+def countable_allocation_quantity():
+    return case(
+        (
+            and_(
+                OutboundOrderAllocation.allocation_type == "outbound",
+                OutboundOrderAllocation.status.notin_(_NON_COUNTABLE_ALLOCATION_STATUSES),
+            ),
+            OutboundOrderAllocation.quantity,
+        ),
+        else_=0,
+    )
+def pick_allocated_sum():
+    return func.coalesce(func.sum(countable_allocation_quantity()), 0)
 
 
 class ItemStock(Base):
@@ -56,6 +77,18 @@ class ItemStock(Base):
         lazy="joined"
     )
     inbound_order_detail = relationship("InboundOrderDetail", foreign_keys=[inbound_order_detail_id], lazy="joined")
+    available_quantity = column_property(
+        quantity
+        - select(
+            func.coalesce(
+                func.sum(countable_allocation_quantity()),
+                0,
+            )
+        )
+        .where(OutboundOrderAllocation.item_stock_id == id)
+        .correlate_except(OutboundOrderAllocation)
+        .scalar_subquery()
+    )
 
     __table_args__ = (
         CheckConstraint("quantity >= 0", name="ck_item_stock_quantity_non_negative"),

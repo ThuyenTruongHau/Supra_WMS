@@ -8,6 +8,7 @@ from app.modules.robot.robot_model import RobotTask, TaskStatus, MAPPING_STATUS
 from app.modules.warehouse.inbound_order.inbound_order_model import InboundOrderDetail
 from app.modules.warehouse.item_stock.item_stock_model import ItemStock
 from app.modules.warehouse.inbound_order.inbound_order_schema import InboundOrderDetailResponse
+from app.modules.warehouse.outbound_order.outbound_order_model import OutboundOrderAllocation
 from app.modules.warehouse.transaction_history.history_model import Transaction, History
 from app.core.logger import get_logger
 logger = get_logger("main")
@@ -33,7 +34,7 @@ class TaskStatusService:
             logger.error(f"ICS connection error: {e}")
             raise HTTPException(status_code=503, detail="Cannot reach ICS server") from e
 
-    def create_robot_task(self, db: Session, task: RobotTask) -> RobotTask:
+    def create_robot_task(self, db: Session, task: RobotTask, not_inserted: bool = True) -> RobotTask:
         payload = {
             "orderId": task.order_id,
             "modelProcessCode": task.process_code,
@@ -42,9 +43,10 @@ class TaskStatusService:
         }
         try:
             self.add_task(payload)
-            db.add(task)
-            db.commit()
-            db.refresh(task)
+            if not_inserted:
+                db.add(task)
+                db.commit()
+                db.refresh(task)
             return task
         except Exception:
             db.rollback()
@@ -87,6 +89,48 @@ class TaskStatusService:
             db.rollback()
             raise
 
+    def _settle_outbound_stock(self, db: Session, allocations: list[OutboundOrderAllocation]) -> None:
+        if not allocations:
+            return
+        stock = allocations[0].item_stock
+        stock.location_id = allocations[0].to_location_id
+        stock.status = "available"
+        stock.is_active = True
+        db.add(Transaction(
+            from_location_id=allocations[0].from_location_id,
+            to_location_id=allocations[0].to_location_id,
+            transaction_type="outbound",
+            item_stock_id=stock.id,
+            quantity=int(stock.quantity),
+            created_by_id=allocations[0].outbound_order_detail.outbound_order.created_by_id,
+        ))
+
+        details = {
+            "allocations": [
+                {
+                    "allocation_id": a.id,
+                    "part_number": a.item_stock.item.sku if a.item_stock and a.item_stock.item else None,
+                    "lot_number": a.item_stock.lot_number if a.item_stock else None,
+                    "quantity": int(a.quantity),
+                }
+                for a in allocations
+            ],
+        }
+
+        db.add(History(
+            outbound_order_id = allocations[0].outbound_order_detail.outbound_order_id,
+            old_status="in_progress",
+            new_status="completed",
+            description=f"Outbound order {allocations[0].outbound_order_detail.outbound_order_id} completed",
+            details=details,
+            created_by_id=allocations[0].outbound_order_detail.outbound_order.created_by_id,
+        ))
+        try:
+            db.commit()
+        except Exception:
+            db.rollback()
+            raise
+
     def receive_task_status(self, db: Session, payload: dict) -> TaskStatus:
         order_id = payload.get("orderId")
         if not order_id:
@@ -97,28 +141,24 @@ class TaskStatusService:
             raise HTTPException(status_code=404, detail="Robot task not found")
 
         if robot_task.inbound_order_detail_id is not None:
-            detail = (
-                db.query(InboundOrderDetail)
-                .filter(InboundOrderDetail.id == robot_task.inbound_order_detail_id)
-                .first()
-            )
-        # elif robot_task.outbound_order_detail_id is not None:
-        #     detail = (
-        #         db.query(OutboundOrderDetail)
-        #         .filter(OutboundOrderDetail.id == robot_task.outbound_order_detail_id)
-        #         .first()
-        #     )
+            detail = robot_task.inbound_order_detail
+        elif robot_task.outbound_order_allocations is not None:
+            allocations = robot_task.outbound_order_allocations
+            
         else:
             raise HTTPException(status_code=400, detail="Order not found")
 
-        if not detail:
-            raise HTTPException(status_code=404, detail="Order detail not found")
-
         ics_status = str(payload.get("status"))
         if ics_status in MAPPING_STATUS:
-            detail.status = MAPPING_STATUS[ics_status]
-            if robot_task.inbound_order_detail_id is not None and detail.status == "completed":
-                self._settle_inbound_stock(db, detail)
+            if robot_task.inbound_order_detail_id is not None:
+                detail.status = MAPPING_STATUS[ics_status]
+                if MAPPING_STATUS[ics_status] == "completed":
+                    self._settle_inbound_stock(db, detail)
+            else:
+                for allocation in allocations:
+                    allocation.status = MAPPING_STATUS[ics_status]
+                if MAPPING_STATUS[ics_status] == "completed":
+                    self._settle_outbound_stock(db, allocations)   
 
         record = TaskStatus(
             sub_task_status=payload.get("subTaskStatus"),
@@ -139,5 +179,4 @@ class TaskStatusService:
             raise
 
     
-
 task_status_service = TaskStatusService()

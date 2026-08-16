@@ -31,6 +31,7 @@ import CreateImportModal, {
   type ImportGroupDraft,
 } from "./components/CreateImportModal";
 import { detailsToEntries } from "@/utils/keyValueDetails";
+import { computeDetailProgress } from "@/utils/detailProgress";
 
 const TABLE_CLASS =
   "[&_.ant-table-thead_th]:!bg-slate-50 [&_.ant-table-thead_th]:!text-slate-600 [&_.ant-table-thead_th]:!font-semibold [&_.ant-table-thead_th]:!text-base [&_.ant-table-tbody_td]:!text-base [&_.ant-table-thead_th]:!py-3 [&_.ant-table-tbody_td]:!py-3 [&_.ant-table-row]:hover:bg-slate-50/50";
@@ -129,6 +130,17 @@ function formatLocationLabel(
   return locationLabelById.get(locationId) ?? `#${locationId}`;
 }
 
+function displayLocationName(
+  name: string | null | undefined,
+  code: string | null | undefined,
+  id: number | null | undefined,
+): string {
+  if (name) return name;
+  if (code) return code;
+  if (id) return `#${id}`;
+  return "—";
+}
+
 export default function ImportDetailPage() {
   const { id: orderCode } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -157,7 +169,7 @@ export default function ImportDetailPage() {
     () =>
       (bufferLocationsData?.items ?? []).map((loc) => ({
         value: loc.id,
-        label: `${loc.location_code}${loc.location_name ? ` — ${loc.location_name}` : ""}`,
+        label: loc.location_name || loc.location_code,
       })),
     [bufferLocationsData],
   );
@@ -165,10 +177,10 @@ export default function ImportDetailPage() {
   const locationLabelById = useMemo(() => {
     const map = new Map<number, string>();
     for (const loc of fullLocations?.locations ?? []) {
-      map.set(loc.id, loc.location_code);
+      map.set(loc.id, loc.location_name || loc.location_code);
     }
     for (const loc of bufferLocationsData?.items ?? []) {
-      map.set(loc.id, loc.location_code);
+      map.set(loc.id, loc.location_name || loc.location_code);
     }
     return map;
   }, [fullLocations, bufferLocationsData]);
@@ -212,18 +224,8 @@ export default function ImportDetailPage() {
     }));
   }, [details]);
 
-  const { completedCount, totalCount, progressPercent, allInitialize } =
-    useMemo(() => {
-      const total = details.length;
-      const completed = details.filter((d) => d.status === "completed").length;
-      return {
-        totalCount: total,
-        completedCount: completed,
-        progressPercent: total > 0 ? Math.round((completed / total) * 100) : 0,
-        allInitialize:
-          total > 0 && details.every((d) => d.status === "initialize"),
-      };
-    }, [details]);
+  const { completedCount, totalCount, progressPercent, allInitialize, statusCounts } =
+    useMemo(() => computeDetailProgress(details), [details]);
 
   const handleDelete = () => {
     if (!orderCode) return;
@@ -300,25 +302,16 @@ export default function ImportDetailPage() {
       ),
     },
     {
-      title: "Tổng SL",
-      key: "total_quantity",
-      width: 110,
-      render: (_, record) => (
-        <span className="font-semibold">
-          {(record.allocations ?? []).reduce((sum, a) => sum + a.quantity, 0)}
-        </span>
-      ),
-    },
-    {
       title: "Điểm cấp",
       key: "from_location",
       width: 240,
       render: (_, record) => {
         const editable = record.status === "initialize";
         if (!editable) {
-          return (
-            record.from_location_code ??
-            formatLocationLabel(record.from_location_id, locationLabelById)
+          return displayLocationName(
+            record.from_location_name,
+            record.from_location_code,
+            record.from_location_id,
           );
         }
         return (
@@ -342,9 +335,22 @@ export default function ImportDetailPage() {
       title: "Điểm trả",
       key: "to_location",
       width: 140,
-      render: (_, record) =>
-        record.to_location_code ??
-        formatLocationLabel(record.to_location_id, locationLabelById),
+      render: (_, record) => {
+        const label = displayLocationName(
+          record.to_location_name,
+          record.to_location_code,
+          record.to_location_id,
+        );
+        if (label !== "—") return label;
+        return formatLocationLabel(record.to_location_id, locationLabelById);
+      },
+    },
+    {
+      title: "Cập nhật",
+      dataIndex: "updated_at",
+      key: "updated_at",
+      width: 160,
+      render: (value: string | null) => formatDateTime(value),
     },
     {
       title: "Trạng thái",
@@ -461,7 +467,8 @@ export default function ImportDetailPage() {
               <span className="text-brand-primary">{orderCode}</span>
             </h2>
             <div className="text-slate-400 text-sm mt-1">
-              {completedCount} / {totalCount} nhóm hoàn thành
+              Tiến độ {progressPercent}% · {completedCount}/{totalCount} nhóm
+              hoàn thành
             </div>
           </div>
         </div>
@@ -551,9 +558,20 @@ export default function ImportDetailPage() {
               <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-400">
                 Tiến độ chi tiết
               </div>
-              <div className="text-sm text-slate-600">
-                % nhóm có status = completed
-              </div>
+              <ul className="space-y-0.5 text-xs text-slate-500">
+                <li>
+                  Còn {statusCounts.initialize} nhóm khởi tạo (initialize)
+                </li>
+                <li>
+                  Có {statusCounts.reserved} nhóm đã được giữ chỗ (reserved)
+                </li>
+                <li>
+                  Đang nhập {statusCounts.in_progress} nhóm (in_progress)
+                </li>
+                <li>
+                  Hoàn thành {statusCounts.completed} nhóm (completed)
+                </li>
+              </ul>
             </div>
             <div className="flex flex-col items-center justify-center rounded-lg border border-stripe-hairline bg-slate-50 p-3">
               <Progress
@@ -563,7 +581,7 @@ export default function ImportDetailPage() {
                 strokeColor="var(--color-brand-primary)"
               />
               <div className="mt-2 text-xs font-bold text-slate-500">
-                {completedCount} / {totalCount}
+                {progressPercent}%
               </div>
             </div>
           </div>

@@ -8,6 +8,7 @@ import {
   createOutboundOrderApi,
   updateOutboundOrderApi,
   deleteOutboundOrderApi,
+  getOutboundRobotTasksApi,
 } from "@/api/outboundOrder";
 import type {
   CalculateOutboundRequest,
@@ -18,13 +19,14 @@ import type {
 } from "@/types/outbound";
 import type { AxiosError } from "axios";
 import type { ApiErrorResponse } from "@/types/apiError";
+import { LIVE_QUERY_OPTIONS } from "@/utils/liveQueryOptions";
 
 export const useGetOutboundOrders = (params: GetOutboundOrdersParams) => {
   return useQuery({
     queryKey: ["outboundOrders", params],
     queryFn: () => getOutboundOrdersApi(params),
     enabled: params.warehouse_id > 0,
-    staleTime: 5 * 60 * 1000,
+    ...LIVE_QUERY_OPTIONS,
   });
 };
 
@@ -33,7 +35,7 @@ export const useGetOutboundOrderById = (orderId: number | undefined) => {
     queryKey: ["outboundOrder", orderId],
     queryFn: () => getOutboundOrderByIdApi(orderId!),
     enabled: !!orderId && orderId > 0,
-    staleTime: 5 * 60 * 1000,
+    ...LIVE_QUERY_OPTIONS,
   });
 };
 
@@ -42,7 +44,7 @@ export const useGetOutboundOrderDetails = (orderId: number | undefined) => {
     queryKey: ["outboundOrderDetails", orderId],
     queryFn: () => getOutboundOrderDetailsApi(orderId!),
     enabled: !!orderId && orderId > 0,
-    staleTime: 5 * 60 * 1000,
+    ...LIVE_QUERY_OPTIONS,
   });
 };
 
@@ -51,7 +53,7 @@ export const useGetOutboundLackedDetails = (orderId: number | undefined) => {
     queryKey: ["outboundOrderLacked", orderId],
     queryFn: () => getOutboundLackedDetailsApi(orderId!),
     enabled: !!orderId && orderId > 0,
-    staleTime: 60 * 1000,
+    ...LIVE_QUERY_OPTIONS,
   });
 };
 
@@ -74,7 +76,22 @@ export const useCalculateOutboundOrder = () => {
       queryClient.invalidateQueries({
         queryKey: ["outboundOrderLacked", variables.body.outbound_order_id],
       });
+      queryClient.invalidateQueries({
+        queryKey: ["outboundRobotTasks", variables.body.outbound_order_id],
+      });
     },
+  });
+};
+
+export const useGetOutboundRobotTasks = (
+  orderId: number | undefined,
+  enabled: boolean,
+) => {
+  return useQuery({
+    queryKey: ["outboundRobotTasks", orderId],
+    queryFn: () => getOutboundRobotTasksApi(orderId!),
+    enabled: !!orderId && orderId > 0 && enabled,
+    ...LIVE_QUERY_OPTIONS,
   });
 };
 
@@ -124,6 +141,26 @@ export const useDeleteOutboundOrder = () => {
     mutationFn: deleteOutboundOrderApi,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["outboundOrders"] });
+    },
+  });
+};
+
+export const useExecuteOutboundRobotTasks = () => {
+  const queryClient = useQueryClient();
+  return useMutation<
+    Awaited<ReturnType<typeof getOutboundRobotTasksApi>>,
+    AxiosError<ApiErrorResponse>,
+    number
+  >({
+    mutationFn: getOutboundRobotTasksApi,
+    onSuccess: (_, orderId) => {
+      queryClient.invalidateQueries({ queryKey: ["outboundOrder", orderId] });
+      queryClient.invalidateQueries({
+        queryKey: ["outboundOrderDetails", orderId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["outboundRobotTasks", orderId],
+      });
     },
   });
 };

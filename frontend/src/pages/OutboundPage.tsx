@@ -87,7 +87,7 @@ export default function OutboundPage() {
 
   const columns: ColumnsType<OutboundOrder> = [
     {
-      title: "Mã phiếu",
+      title: "Mã đơn",
       dataIndex: "order_code",
       key: "order_code",
       render: (text: string, record: OutboundOrder) => (

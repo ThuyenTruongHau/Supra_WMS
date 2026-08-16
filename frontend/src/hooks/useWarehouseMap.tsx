@@ -15,13 +15,14 @@ import type {
 } from '@/types/warehouseMap';
 import { AxiosError } from 'axios';
 import { ApiErrorResponse } from '@/types/apiError';
+import { LIVE_QUERY_OPTIONS } from '@/utils/liveQueryOptions';
 
 export const useActiveWarehouseMap = (warehouseId: number) => {
   return useQuery<MapData, AxiosError<ApiErrorResponse>>({
     queryKey: ['warehouse-map', warehouseId],
     queryFn: () => getActiveWarehouseMapApi(warehouseId),
-    staleTime: 5 * 60 * 1000,
     enabled: warehouseId > 0,
+    ...LIVE_QUERY_OPTIONS,
   });
 };
 
@@ -29,8 +30,8 @@ export const useFullLocations = (warehouseId: number) => {
   return useQuery<FullLocationsResponse, AxiosError<ApiErrorResponse>>({
     queryKey: ['full-locations', warehouseId],
     queryFn: () => getFullLocationsApi(warehouseId),
-    staleTime: 2 * 60 * 1000,
     enabled: warehouseId > 0,
+    ...LIVE_QUERY_OPTIONS,
   });
 };
 
@@ -41,9 +42,20 @@ export const useInboundBufferLocations = (
   return useQuery({
     queryKey: ['inbound-buffer-locations', warehouseId],
     queryFn: () => getLocationsByLogicApi(warehouseId, 'inbound_buffer'),
-    staleTime: 2 * 60 * 1000,
     enabled: enabled && warehouseId > 0,
-    refetchOnMount: true,
+    ...LIVE_QUERY_OPTIONS,
+  });
+};
+
+export const useOutboundBufferLocations = (
+  warehouseId: number,
+  enabled = true,
+) => {
+  return useQuery({
+    queryKey: ['outbound-buffer-locations', warehouseId],
+    queryFn: () => getLocationsByLogicApi(warehouseId, 'outbound_buffer'),
+    enabled: enabled && warehouseId > 0,
+    ...LIVE_QUERY_OPTIONS,
   });
 };
 
@@ -92,7 +104,7 @@ export const useLocationDetail = (locationId: number | undefined) => {
   >({
     queryKey: ['location-detail', locationId],
     queryFn: () => getLocationDetailByIdApi(locationId as number),
-    staleTime: 60 * 1000,
     enabled: !!locationId && locationId > 0,
+    ...LIVE_QUERY_OPTIONS,
   });
 };

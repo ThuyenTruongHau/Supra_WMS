@@ -115,8 +115,8 @@ class OutboundOrderAllocationResponse(BaseModel):
     item_stock_id: int
     quantity: int
     status: str
-    from_location_id: int
-    to_location_id: int
+    from_location_id: Optional[int] = None
+    to_location_id: Optional[int] = None
     from_location_code: Optional[str] = None
     from_location_name: Optional[str] = None
     to_location_code: Optional[str] = None
@@ -129,6 +129,15 @@ class OutboundOrderAllocationResponse(BaseModel):
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
     model_config = ConfigDict(from_attributes=True)
+
+
+class OutboundRobotTaskResponse(BaseModel):
+    order_id: str
+    task_path: Optional[str] = None
+    task_type: str
+    status: str
+    quantity: int = 0
+    allocations: list[OutboundOrderAllocationResponse] = Field(default_factory=list)
 
 
 class OutboundOrderDetailResponse(BaseModel):
@@ -168,3 +177,14 @@ class OutboundOrderListResponse(BaseModel):
     page: int
     page_size: int
     summary: OutboundOrderListSummary
+
+class AllocationOutboundTaskExecute(BaseModel):
+    allocation_id: int
+
+
+class OutboundRobotTaskCreate(BaseModel):
+    robot_task_id: int
+    from_location_id: int
+    to_location_id: int
+    allocations: list[AllocationOutboundTaskExecute]
+    

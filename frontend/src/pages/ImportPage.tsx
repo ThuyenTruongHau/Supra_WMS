@@ -250,7 +250,7 @@ export default function ImportPage() {
 
   const columns: ColumnsType<InboundOrder> = [
     {
-      title: "Mã phiếu",
+      title: "Mã đơn",
       dataIndex: "order_code",
       key: "order_code",
       render: (text: string) => (

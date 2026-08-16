@@ -611,8 +611,7 @@ def export_warehouse_map(db: Session, warehouse_id: int) -> tuple[bytes, str]:
     filename = f"warehouse-map-{warehouse_id}.zip"
     return content, filename
 
-def get_inbound_buffer_locations(db: Session, warehouse_id: int) -> list[Location]:
-    zone_keys = settings.zone_inbound
+def get_buffer_locations(db: Session, warehouse_id: int, zone_keys: list[str]) -> list[Location]:
     return (
         db.query(Location)
         .join(Zone, Location.zone_id == Zone.id)
@@ -627,5 +626,9 @@ def get_inbound_buffer_locations(db: Session, warehouse_id: int) -> list[Locatio
 
 def get_locations_by_logic(db: Session, warehouse_id: int, type: str) -> list[Location]:
     if type == "inbound_buffer":
-        return get_inbound_buffer_locations(db, warehouse_id)
+        zone_keys = settings.zone_inbound
+        return get_buffer_locations(db, warehouse_id, zone_keys)
+    elif type == "outbound_buffer":
+        zone_keys = settings.zone_outbound
+        return get_buffer_locations(db, warehouse_id, zone_keys)
     raise ValueError(f"Unsupported location type: {type}")

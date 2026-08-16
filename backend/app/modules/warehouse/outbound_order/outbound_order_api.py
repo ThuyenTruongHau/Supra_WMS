@@ -18,6 +18,7 @@ from app.modules.warehouse.outbound_order.outbound_order_schema import (
     CalculateOutboundDetail,
     CalculateOutboundResponse,
     LackedDetailResponse,
+    OutboundRobotTaskResponse,
 )
 from app.modules.warehouse.outbound_order import outbound_order_service
 
@@ -100,6 +101,17 @@ def get_outbound_order_by_id(db: DbSession, order_id: int):
     if not order:
         raise HTTPException(status_code=404, detail="Outbound order not found")
     return OutboundOrderUpdateResponse.model_validate(order)
+
+@router.get(
+    "/robot-tasks/{order_id}",
+    response_model=list[OutboundRobotTaskResponse],
+    dependencies=[Depends(_OUTBOUND_READ)],
+)
+def get_outbound_robot_tasks(db: DbSession, order_id: int):
+    robot_tasks = outbound_order_service.get_outbound_robot_tasks(db, order_id)
+    if not robot_tasks:
+        raise HTTPException(status_code=404, detail="Robot tasks not found")
+    return robot_tasks
 
 
 @router.get(

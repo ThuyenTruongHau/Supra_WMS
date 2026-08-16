@@ -60,7 +60,6 @@ export function SkuSearchSelect({
     page: queryParams?.page ?? 1,
     page_size: queryParams?.page_size ?? BROWSE_PAGE_SIZE,
     enabled: queryParams !== null && warehouseId > 0,
-    staleTime: 0,
   });
 
   const options: SkuSearchOption[] = isFetching

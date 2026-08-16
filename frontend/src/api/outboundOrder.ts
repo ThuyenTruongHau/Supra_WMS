@@ -1,4 +1,5 @@
 import axiosInstance from "./axiosInstance";
+import { isAxiosError } from "axios";
 import type {
   CalculateOutboundRequest,
   CalculateOutboundResponse,
@@ -10,6 +11,7 @@ import type {
   OutboundOrderDetail,
   OutboundOrderListResponse,
   OutboundOrderUpdateRequest,
+  OutboundRobotTask,
 } from "@/types/outbound";
 
 const BASE = "/api/v1/outbound-orders";
@@ -92,4 +94,20 @@ export const calculateOutboundOrderApi = async (
     { params: { strategy } },
   );
   return data;
+};
+
+export const getOutboundRobotTasksApi = async (
+  orderId: number,
+): Promise<OutboundRobotTask[]> => {
+  try {
+    const { data } = await axiosInstance.get<OutboundRobotTask[]>(
+      `/api/v1/robot-tasks/${orderId}`,
+    );
+    return Array.isArray(data) ? data : [];
+  } catch (err) {
+    if (isAxiosError(err) && err.response?.status === 404) {
+      return [];
+    }
+    throw err;
+  }
 };

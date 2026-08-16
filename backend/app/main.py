@@ -16,6 +16,7 @@ from app.modules.robot.robot_api import router as robot_router
 from app.core.logger import setup_logger
 from app.core.cache import close_redis, get_redis
 import redis
+from prometheus_fastapi_instrumentator import Instrumentator
 
 logger = setup_logger(
     name="main",
@@ -58,6 +59,8 @@ app.add_middleware(
     allow_headers=["*"],   # allow all headers
     max_age=3600,
 )
+
+Instrumentator().instrument(app).expose(app)
 
 app.include_router(inbound_order_router, prefix="/api/v1")
 app.include_router(outbound_order_router, prefix="/api/v1")

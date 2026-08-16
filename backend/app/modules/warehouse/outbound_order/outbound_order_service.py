@@ -4,9 +4,10 @@ from typing import Optional
 from decimal import Decimal
 from collections import defaultdict
 
+
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload, selectinload
-from sqlalchemy import case, func
+from sqlalchemy import case, func, exists, select
 
 from app.core.config import settings
 from app.modules.warehouse.item.item_model import Item
@@ -29,11 +30,17 @@ from app.modules.warehouse.outbound_order.outbound_order_schema import (
     AllocationResult,
     DetailForCalculate,
     LackedDetailResponse,
+    OutboundRobotTaskResponse,
+    OutboundRobotTaskCreate,
 )
 from app.modules.warehouse.unit.unit_model import Unit
+from app.modules.warehouse.location_map.location_model import Location
+from app.modules.warehouse.warehouse_zone.warehouse_model import Zone
 from app.modules.warehouse.item_stock.item_stock_model import ItemStock
 from app.modules.robot.robot_model import RobotTask
+from app.modules.robot.robot_service import task_status_service
 from app.modules.warehouse.transaction_history.history_model import History
+
 from app.core.logger import get_logger
 
 logger = get_logger("main")
@@ -192,6 +199,7 @@ def _build_detail_response(
         allocations=[
             _build_allocation_response(allocation)
             for allocation in sorted(detail.allocations, key=lambda a: a.id)
+            if allocation.allocation_type == "outbound"
         ],
     )
 
@@ -387,10 +395,13 @@ def delete_outbound_order(db: Session, order_code: str) -> None:
 def _strategy_loading_stocks(db: Session, item_id: int, strategy: str):
     q = (
         db.query(ItemStock)
+        .join(Location, Location.id == ItemStock.location_id)
+        .join(Zone, Zone.id == Location.zone_id)
         .filter(
             ItemStock.item_id == item_id,
             ItemStock.status == "available",
-            ItemStock.quantity > 0,
+            Zone.code.in_(settings.zone_storage),
+            ItemStock.available_quantity > 0,
             ItemStock.is_active.is_(True),
         )
     )
@@ -401,32 +412,38 @@ def _strategy_loading_stocks(db: Session, item_id: int, strategy: str):
         q = q.order_by(ItemStock.created_at.asc(), ItemStock.id.asc())
     return q.all()
 
+def _check_stock_in_task(db: Session, stock_id: int, outbound_order_id: int) -> bool:
+    allocation = (
+        db.query(OutboundOrderAllocation)
+        .join(OutboundOrderDetail, OutboundOrderDetail.id == OutboundOrderAllocation.outbound_order_detail_id)
+        .filter(
+            OutboundOrderAllocation.item_stock_id == stock_id,
+            OutboundOrderDetail.outbound_order_id == outbound_order_id,
+        )
+        .first()
+    )
+    if allocation:
+        return allocation.robot_task_id
+    return None
+
 def greedy_allocate_stocks_to_lines(
     db: Session,
     stocks: list[ItemStock],
     lines: list[DetailForCalculate],
+    outbound_order_id: int,
 ) -> tuple[list[StockLineAllocation], dict[int, Decimal]]:
 
-    allocations: list[StockLineAllocation] = []
     line_remaining = [Decimal(str(line.quantity))  for line in lines]
-    stock_remaining = [Decimal(str(stock.quantity)) for stock in stocks]
+    stock_remaining = [Decimal(str(stock.available_quantity)) for stock in stocks]
 
     i = j = 0
-    current_robot_task = None
+    has_task = _check_stock_in_task(db, stocks[j].id, outbound_order_id)
     while i < len(lines) and j < len(stocks): 
         take = min(line_remaining[i], stock_remaining[j])
         stock_remaining[j] -= take
         line_remaining[i] -= take
 
-        allocations.append({
-            "stock_id": stocks[j].id,
-            "line_index": i,
-            "taken_quantity": take,
-            "from_location_id": stocks[j].location_id,
-            "return_quantity": stock_remaining[j],  
-        })
-
-        if current_robot_task is None:
+        if not has_task:
             order_id = f"TDS_Outbound_{uuid.uuid4().hex[:8]}"
             robot_task = RobotTask(
                 order_id=order_id,
@@ -436,14 +453,15 @@ def greedy_allocate_stocks_to_lines(
             )
             db.add(robot_task)
             db.flush()
-            current_robot_task = robot_task
+            has_task = robot_task.id
 
         allocation = OutboundOrderAllocation(
             outbound_order_detail_id=lines[i].id,
             item_stock_id=stocks[j].id,
             quantity=int(take),
             from_location_id=stocks[j].location_id,
-            robot_task_id=current_robot_task.id,
+            robot_task_id=has_task,
+            allocation_type="outbound",
         )
         db.add(allocation)
         db.flush()
@@ -452,39 +470,14 @@ def greedy_allocate_stocks_to_lines(
             i += 1
         if stock_remaining[j] <= 0:
             j += 1
-            current_robot_task = None
-
-    if allocations:
-        return_quantity = allocations[-1]["return_quantity"]
-        if return_quantity > 0:
-            last_line_index = allocations[-1]["line_index"]
-            order_id = f"TDS_Return_{uuid.uuid4().hex[:8]}"
-            robot_task = RobotTask(
-                order_id=order_id,
-                process_code=settings.inbound_process_code,
-                system_code="Thadosoft",
-                task_order_detail=json.dumps([{"taskPath": "None"}]),
-            )
-            db.add(robot_task)
-            db.flush()
-
-            allocation = OutboundOrderAllocation(
-                outbound_order_detail_id=lines[last_line_index].id,
-                item_stock_id=allocations[-1]["stock_id"],
-                quantity=int(return_quantity),
-                to_location_id=allocations[-1]["from_location_id"],
-                robot_task_id=robot_task.id,
-            )
-            db.add(allocation)
-            db.flush()
+            has_task = _check_stock_in_task(db, stocks[j].id, outbound_order_id) if j < len(stocks) else None
 
     lacked = {
         lines[idx].id: qty
         for idx, qty in enumerate(line_remaining)
         if qty > 0
     }
-    return allocations, lacked
-
+    return len(lines), lacked
 
 def calculate_outbound_order(
     db: Session,
@@ -505,7 +498,7 @@ def calculate_outbound_order(
     try:
         for item_id, lines in lines_by_item_id.items():
             stocks = _strategy_loading_stocks(db, item_id, strategy)
-            greedy_allocate_stocks_to_lines(db, stocks, lines)
+            greedy_allocate_stocks_to_lines(db, stocks, lines, body.outbound_order_id)
         db.commit()
     except Exception:
         db.rollback()
@@ -518,18 +511,16 @@ def calculate_outbound_order(
         lacked=lacked,
     )
 
-
 def _pick_allocated_sum():
     return func.coalesce(
         func.sum(
             case(
-                (RobotTask.order_id.like("TDS_Return%"), 0),
+                (OutboundOrderAllocation.allocation_type == "return", 0),
                 else_=OutboundOrderAllocation.quantity,
             )
         ),
         0,
     )
-
 
 def _validate_calculate_outbound_lines(
     db: Session,
@@ -555,9 +546,6 @@ def _validate_calculate_outbound_lines(
         raise ValueError(
             f"Outbound order {outbound_order_id} not found in warehouse {warehouse_id}"
         )
-
-    if order.status != "initialize":
-        raise ValueError("Only initialize order can be calculated")
 
     requested_ids = {li.id for li in line_items}
     db_details = (
@@ -609,7 +597,6 @@ def _validate_calculate_outbound_lines(
 
 
 def lacked_details(db: Session, order_id: int) -> list[LackedDetailResponse]:
-    """Return lacked lines with detail id for re-submitting to calculate."""
     unit_by_name = {
         unit.name: unit.id
         for unit in (
@@ -624,27 +611,47 @@ def lacked_details(db: Session, order_id: int) -> list[LackedDetailResponse]:
         )
     }
 
-    rows = (
+    allocated_rows = (
         db.query(
-            OutboundOrderDetail,
+            OutboundOrderAllocation.outbound_order_detail_id,
             _pick_allocated_sum().label("allocated"),
         )
-        .outerjoin(
-            OutboundOrderAllocation,
-            OutboundOrderAllocation.outbound_order_detail_id == OutboundOrderDetail.id,
+        .join(
+            OutboundOrderDetail,
+            OutboundOrderDetail.id == OutboundOrderAllocation.outbound_order_detail_id,
         )
         .outerjoin(
             RobotTask,
             RobotTask.id == OutboundOrderAllocation.robot_task_id,
         )
         .filter(OutboundOrderDetail.outbound_order_id == order_id)
-        .group_by(OutboundOrderDetail.id)
+        .group_by(OutboundOrderAllocation.outbound_order_detail_id)
+        .all()
+    )
+    allocated_by_detail_id = {
+        detail_id: int(allocated) for detail_id, allocated in allocated_rows
+    }
+
+    details = (
+        db.query(OutboundOrderDetail)
+        .options(joinedload(OutboundOrderDetail.item))
+        .filter(OutboundOrderDetail.outbound_order_id == order_id)
+        .filter(
+            exists(
+                select(1)
+                .where(
+                    OutboundOrderAllocation.outbound_order_detail_id
+                    == OutboundOrderDetail.id
+                )
+            )
+        )
         .order_by(OutboundOrderDetail.id)
         .all()
     )
 
     lacked_lines: list[LackedDetailResponse] = []
-    for detail, allocated in rows:
+    for detail in details:
+        allocated = allocated_by_detail_id.get(detail.id, 0)
         remaining = int(detail.quantity - allocated)
         if remaining <= 0:
             continue
@@ -667,3 +674,146 @@ def lacked_details(db: Session, order_id: int) -> list[LackedDetailResponse]:
             )
         )
     return lacked_lines
+
+
+def _parse_task_path(task_order_detail: str) -> Optional[str]:
+    try:
+        parsed = json.loads(task_order_detail)
+    except (json.JSONDecodeError, TypeError):
+        return None
+    if isinstance(parsed, list) and parsed:
+        first = parsed[0]
+        if isinstance(first, dict):
+            return first.get("taskPath")
+    return None
+
+
+def get_outbound_robot_tasks(
+    db: Session, order_id: int
+) -> list[OutboundRobotTaskResponse]:
+    robot_tasks = (
+        db.query(RobotTask)
+        .join(
+            OutboundOrderAllocation,
+            OutboundOrderAllocation.robot_task_id == RobotTask.id,
+        )
+        .join(
+            OutboundOrderDetail,
+            OutboundOrderDetail.id == OutboundOrderAllocation.outbound_order_detail_id,
+        )
+        .filter(OutboundOrderDetail.outbound_order_id == order_id)
+        .order_by(RobotTask.id)
+        .distinct()
+        .all()
+    )
+
+    if not robot_tasks:
+        return []
+
+    task_ids = [task.id for task in robot_tasks]
+    allocations = (
+        db.query(OutboundOrderAllocation)
+        .join(
+            OutboundOrderDetail,
+            OutboundOrderDetail.id == OutboundOrderAllocation.outbound_order_detail_id,
+        )
+        .filter(
+            OutboundOrderDetail.outbound_order_id == order_id,
+            OutboundOrderAllocation.robot_task_id.in_(task_ids),
+        )
+        .options(
+            joinedload(OutboundOrderAllocation.item_stock).joinedload(ItemStock.item),
+            joinedload(OutboundOrderAllocation.from_location),
+            joinedload(OutboundOrderAllocation.to_location),
+        )
+        .order_by(OutboundOrderAllocation.id)
+        .all()
+    )
+
+    allocations_by_task_id: dict[int, list[OutboundOrderAllocationResponse]] = (
+        defaultdict(list)
+    )
+    raw_allocations_by_task_id: dict[int, list[OutboundOrderAllocation]] = (
+        defaultdict(list)
+    )
+    for allocation in allocations:
+        if allocation.robot_task_id is None:
+            continue
+        raw_allocations_by_task_id[allocation.robot_task_id].append(allocation)
+        allocations_by_task_id[allocation.robot_task_id].append(
+            _build_allocation_response(allocation)
+        )
+
+    def _resolve_task_type(
+        task: RobotTask, raw_allocs: list[OutboundOrderAllocation]
+    ) -> str:
+        if raw_allocs:
+            return raw_allocs[0].allocation_type
+        if task.process_code == settings.outbound_process_code:
+            return "outbound"
+        return "return"
+
+    def _resolve_task_quantity(raw_allocs: list[OutboundOrderAllocation]) -> int:
+        if not raw_allocs:
+            return 0
+        first = raw_allocs[0]
+        if first.allocation_type == "return":
+            return int(first.quantity)
+        stock_quantities: dict[int, int] = {}
+        for allocation in raw_allocs:
+            stock = allocation.item_stock
+            if stock is None:
+                continue
+            stock_quantities[allocation.item_stock_id] = int(stock.quantity)
+        return sum(stock_quantities.values())
+
+    return [
+        OutboundRobotTaskResponse(
+            order_id=task.order_id,
+            task_path=_parse_task_path(task.task_order_detail),
+            task_type=_resolve_task_type(
+                task, raw_allocations_by_task_id.get(task.id, [])
+            ),
+            status=task.status or "initialize",
+            quantity=_resolve_task_quantity(
+                raw_allocations_by_task_id.get(task.id, [])
+            ),
+            allocations=allocations_by_task_id.get(task.id, []),
+        )
+        for task in robot_tasks
+    ]
+
+def execute_outbound_task(db: Session, body: OutboundRobotTaskCreate):
+    robot_task = db.query(RobotTask).filter(RobotTask.id == body.robot_task_id).first()
+    if not robot_task:
+        raise ValueError("Robot task not found")
+
+    if robot_task.status != "initialize":
+        raise ValueError("Robot task is not initialize")
+
+    if not body.from_location_id or not body.to_location_id:
+        raise ValueError("From location and to location are required")
+
+    for item in body.allocations:
+        allocation = db.query(OutboundOrderAllocation).filter(OutboundOrderAllocation.id == item.allocation_id).first()
+        if not allocation:
+            raise ValueError(f"Allocation not found: {allocation.allocation_id}")
+        allocation.from_location_id = body.from_location_id
+        allocation.to_location_id = body.to_location_id
+        allocation.status = "issued"
+        db.flush()
+
+    start = db.query(Location).filter(Location.id == body.from_location_id).first()
+    target = db.query(Location).filter(Location.id == body.to_location_id).first()
+
+    robot_task.task_order_detail = json.dumps([{"taskPath": f"{start.location_code},{target.location_code}"}])  
+    
+    try:
+        task_status_service.create_robot_task(db, robot_task, not_inserted=False)
+        db.commit()
+        db.refresh(robot_task)
+    except Exception as e:
+        db.rollback()
+        raise e
+
+    return robot_task

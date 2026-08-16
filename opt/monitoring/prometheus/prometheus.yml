@@ -1,0 +1,27 @@
+global:
+  scrape_interval: 15s      # Lấy metrics mỗi 15 giây
+  evaluation_interval: 15s
+
+scrape_configs:
+  # Prometheus tự monitor chính nó
+  - job_name: "prometheus"
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  # Backend WMS (sau khi bạn thêm endpoint /metrics)
+  - job_name: "wms-backend"
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["host.docker.internal:8001"]
+        labels:
+          service: "wms-backend"
+
+  # PostgreSQL (cần thêm postgres-exporter)
+  - job_name: "postgres"
+    static_configs:
+      - targets: ["postgres-exporter:9187"]
+
+  # Redis (cần thêm redis-exporter)
+  - job_name: "redis"
+    static_configs:
+      - targets: ["redis-exporter:9121"]

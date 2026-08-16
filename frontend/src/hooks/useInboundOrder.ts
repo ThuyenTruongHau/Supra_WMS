@@ -19,13 +19,14 @@ import type {
 } from "@/types/inboundOrder";
 import type { AxiosError } from "axios";
 import type { ApiErrorResponse } from "@/types/apiError";
+import { LIVE_QUERY_OPTIONS } from "@/utils/liveQueryOptions";
 
 export const useGetInboundOrders = (params: GetInboundOrdersParams) => {
   return useQuery({
     queryKey: ["inboundOrders", params],
     queryFn: () => getInboundOrdersApi(params),
     enabled: params.warehouse_id > 0,
-    staleTime: 5 * 60 * 1000,
+    ...LIVE_QUERY_OPTIONS,
   });
 };
 
@@ -34,7 +35,7 @@ export const useGetInboundOrderDetails = (orderCode: string | undefined) => {
     queryKey: ["inboundOrderDetails", orderCode],
     queryFn: () => getInboundOrderDetailsApi(orderCode!),
     enabled: !!orderCode,
-    staleTime: 5 * 60 * 1000,
+    ...LIVE_QUERY_OPTIONS,
   });
 };
 

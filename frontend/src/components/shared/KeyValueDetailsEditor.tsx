@@ -38,13 +38,13 @@ export default function KeyValueDetailsEditor({
           {entries.map((entry) => (
             <div key={entry.id} className="flex w-full items-start gap-2">
               <Input
-                placeholder="Tên (vd: supplier)"
+                placeholder="Tên (vd: Customer)"
                 value={entry.key}
                 onChange={(e) => updateEntry(entry.id, { key: e.target.value })}
                 className="flex-1"
               />
               <Input
-                placeholder="Giá trị (vd: Honda VN)"
+                placeholder="Giá trị (vd: Bình Minh)"
                 value={entry.value}
                 onChange={(e) => updateEntry(entry.id, { value: e.target.value })}
                 className="flex-1"
