@@ -183,8 +183,7 @@ class AllocationOutboundTaskExecute(BaseModel):
 
 
 class OutboundRobotTaskCreate(BaseModel):
-    robot_task_id: int
+    order_id: str = Field(..., min_length=1, max_length=50)
     from_location_id: int
     to_location_id: int
     allocations: list[AllocationOutboundTaskExecute]
-    

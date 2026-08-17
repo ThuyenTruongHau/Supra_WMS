@@ -31,6 +31,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
+    image: wms-backend:latest
     container_name: wms-backend
     ports:
       - "8001:8000"
@@ -40,6 +41,56 @@ services:
       db:
         condition: service_healthy
       redis:
+        condition: service_started
+    restart: unless-stopped
+
+  celery-worker-logic:
+    image: wms-backend:latest
+    container_name: wms-celery-logic
+    command: >
+      celery -A app.core.celery_app.celery_app worker
+      -Q logic
+      --loglevel=INFO
+      --concurrency=4
+      --prefetch-multiplier=1
+      --max-tasks-per-child=200
+      -n logic@%h
+    env_file:
+      - ./backend/.env
+    environment:
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_BROKER_RESULT_URL: redis://redis:6379/2
+    volumes:
+      - ./backend/logs:/app/logs
+    depends_on:
+      redis:
+        condition: service_healthy
+      backend:
+        condition: service_started
+    restart: unless-stopped
+
+  celery-worker-status:
+    image: wms-backend:latest
+    container_name: wms-celery-status
+    command: >
+      celery -A app.core.celery_app.celery_app worker
+      -Q status
+      --loglevel=INFO
+      --concurrency=2
+      --prefetch-multiplier=1
+      --max-tasks-per-child=500
+      -n status@%h
+    env_file:
+      - ./backend/.env
+    environment:
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_BROKER_RESULT_URL: redis://redis:6379/2
+    volumes:
+      - ./backend/logs:/app/logs
+    depends_on:
+      redis:
+        condition: service_healthy
+      backend:
         condition: service_started
     restart: unless-stopped
 

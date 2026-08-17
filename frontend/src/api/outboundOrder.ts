@@ -12,6 +12,7 @@ import type {
   OutboundOrderListResponse,
   OutboundOrderUpdateRequest,
   OutboundRobotTask,
+  OutboundRobotTaskExecuteRequest,
 } from "@/types/outbound";
 
 const BASE = "/api/v1/outbound-orders";
@@ -110,4 +111,13 @@ export const getOutboundRobotTasksApi = async (
     }
     throw err;
   }
+};
+
+export const executeOutboundRobotTaskApi = async (
+  body: OutboundRobotTaskExecuteRequest,
+  detailType = "auto",
+): Promise<void> => {
+  await axiosInstance.post(`${BASE}/execute`, body, {
+    params: { detail_type: detailType },
+  });
 };

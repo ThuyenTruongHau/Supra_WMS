@@ -30,6 +30,10 @@ class Settings(BaseSettings):
     redis_cache_ttl: int = 300
     redis_key_prefix: str = "wms"
 
+    # Redis Celery
+    celery_broker_url: str = "redis://10.73.231.5:6379/1"
+    celery_broker_result_url: str = "redis://10.73.231.5:6379/2"
+
 
     class Config:
         env_file = ".env"

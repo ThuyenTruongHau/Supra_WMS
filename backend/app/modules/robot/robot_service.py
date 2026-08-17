@@ -1,5 +1,4 @@
 import httpx
-from fastapi import HTTPException
 from sqlalchemy.orm import Session
 import json
 
@@ -15,6 +14,11 @@ logger = get_logger("main")
 
 ICS_ADD_TASK_PATH = f"{settings.ics_base_url.rstrip('/')}:7000/ics/taskOrder/addTask"
 
+class IcsError(Exception):
+    def __init__(self, message: str, *, retryable: bool = True):
+        super().__init__(message)
+        self.retryable = retryable
+
 class TaskStatusService:
     def __init__(self):
         self.current = None
@@ -28,11 +32,10 @@ class TaskStatusService:
             logger.info(f"ICS addTask response: {data}")
             return data
         except httpx.HTTPStatusError as e:
-            logger.error(f"ICS HTTP error: {e.response.text}")
-            raise HTTPException(status_code=502, detail="ICS server error") from e
+            retryable = e.response.status_code >= 500
+            raise IcsError("ICS server error", retryable=retryable) from e
         except httpx.RequestError as e:
-            logger.error(f"ICS connection error: {e}")
-            raise HTTPException(status_code=503, detail="Cannot reach ICS server") from e
+            raise IcsError("Cannot reach ICS server", retryable=True) from e
 
     def create_robot_task(self, db: Session, task: RobotTask, not_inserted: bool = True) -> RobotTask:
         payload = {
@@ -134,11 +137,11 @@ class TaskStatusService:
     def receive_task_status(self, db: Session, payload: dict) -> TaskStatus:
         order_id = payload.get("orderId")
         if not order_id:
-            raise HTTPException(status_code=400, detail="orderId is required")
+            raise ValueError("orderId is required")
 
         robot_task = db.query(RobotTask).filter(RobotTask.order_id == order_id).first()
         if not robot_task:
-            raise HTTPException(status_code=404, detail="Robot task not found")
+            raise ValueError("Robot task not found")
 
         if robot_task.inbound_order_detail_id is not None:
             detail = robot_task.inbound_order_detail
@@ -146,7 +149,7 @@ class TaskStatusService:
             allocations = robot_task.outbound_order_allocations
             
         else:
-            raise HTTPException(status_code=400, detail="Order not found")
+            raise ValueError("Order not found")
 
         ics_status = str(payload.get("status"))
         if ics_status in MAPPING_STATUS:

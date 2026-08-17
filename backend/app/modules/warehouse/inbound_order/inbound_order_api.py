@@ -3,8 +3,10 @@ from typing import Annotated, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
+from app.core.celery_app import run_logic_task
 from app.core.database import get_db
 from app.core.dependencies import require_permission
+from app.modules.robot.robot_service import IcsError
 from app.modules.auth.auth_model import User
 from app.modules.warehouse.inbound_order import inbound_order_model
 from app.modules.warehouse.inbound_order.inbound_order_schema import (
@@ -20,6 +22,13 @@ from app.modules.warehouse.inbound_order.inbound_order_schema import (
     InboundOrderDeleteResponse,
 )
 from app.modules.warehouse.inbound_order import inbound_order_service
+from app.modules.warehouse.inbound_order.inbound_celery_task import (
+    accept_inbound_task_task,
+    caller_inbound_order_task,
+    create_inbound_order_task,
+    get_inbound_order_details_task,
+    update_inbound_order_task,
+)
 
 _INBOUND_READ = require_permission("inbound:read")
 _INBOUND_CREATE = require_permission("inbound:create")
@@ -73,8 +82,11 @@ def create_inbound_order(
     inbound_type: str,
 ):
     try:
-        order = inbound_order_service.create_inbound_order(
-            db, body, user_id=current_user.id, inbound_type=inbound_type
+        order = run_logic_task(
+            create_inbound_order_task,
+            body=body.model_dump(mode="json"),
+            user_id=current_user.id,
+            inbound_type=inbound_type,
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
@@ -117,7 +129,10 @@ def list_inbound_orders(
     dependencies=[Depends(_INBOUND_READ)],
 )
 def get_inbound_order_details(db: DbSession, order_code: str):
-    details = inbound_order_service.get_inbound_order_detail(db, order_code)
+    try:
+        details = run_logic_task(get_inbound_order_details_task, order_code=order_code)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
     if details is None:
         raise HTTPException(status_code=404, detail="Inbound order not found")
     return details
@@ -129,9 +144,11 @@ def get_inbound_order_details(db: DbSession, order_code: str):
 )
 def accept_inbound_task(db: DbSession, detail_id: int):
     try:
-        task = inbound_order_service.execute_inbound_task(db, detail_id)
+        task = run_logic_task(accept_inbound_task_task, detail_id=detail_id)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e)) from e 
+    except IcsError as e:
+        raise HTTPException(status_code=503 if "reach" in str(e).lower() else 502, detail=str(e)) from e
     return task
 
 @router.patch(
@@ -141,7 +158,13 @@ def accept_inbound_task(db: DbSession, detail_id: int):
 )
 def update_inbound_order(order_code: str, body: InboundOrderUpdate, db: DbSession, inbound_type: str, current_user: Annotated[User, Depends(_INBOUND_UPDATE)],):
     try:
-        order = inbound_order_service.update_inbound_order(db, order_code, body, inbound_type, user_id=current_user.id)
+        order = run_logic_task(
+            update_inbound_order_task,
+            order_code=order_code,
+            body=body.model_dump(mode="json"),
+            inbound_type=inbound_type,
+            user_id=current_user.id,
+        )
     except ValueError as e:
         msg = str(e)
         code = 404 if "not found" in msg.lower() else 400
@@ -179,8 +202,11 @@ def caller_inbound_order(
     inbound_type: str,
 ):
     try:
-        order = inbound_order_service.caller_inbound_order(
-            db, body, user_id=current_user.id, inbound_type=inbound_type
+        order = run_logic_task(
+            caller_inbound_order_task,
+            body=body.model_dump(mode="json"),
+            user_id=current_user.id,
+            inbound_type=inbound_type,
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e

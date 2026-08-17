@@ -9,6 +9,7 @@ import {
   updateOutboundOrderApi,
   deleteOutboundOrderApi,
   getOutboundRobotTasksApi,
+  executeOutboundRobotTaskApi,
 } from "@/api/outboundOrder";
 import type {
   CalculateOutboundRequest,
@@ -16,6 +17,7 @@ import type {
   OutboundOrderCreateRequest,
   OutboundOrderDeleteResponse,
   OutboundOrderUpdateRequest,
+  OutboundRobotTaskExecuteRequest,
 } from "@/types/outbound";
 import type { AxiosError } from "axios";
 import type { ApiErrorResponse } from "@/types/apiError";
@@ -145,21 +147,28 @@ export const useDeleteOutboundOrder = () => {
   });
 };
 
-export const useExecuteOutboundRobotTasks = () => {
+export const useExecuteOutboundRobotTask = () => {
   const queryClient = useQueryClient();
   return useMutation<
-    Awaited<ReturnType<typeof getOutboundRobotTasksApi>>,
+    void,
     AxiosError<ApiErrorResponse>,
-    number
+    {
+      orderId: number;
+      body: OutboundRobotTaskExecuteRequest;
+      detailType?: string;
+    }
   >({
-    mutationFn: getOutboundRobotTasksApi,
-    onSuccess: (_, orderId) => {
-      queryClient.invalidateQueries({ queryKey: ["outboundOrder", orderId] });
+    mutationFn: ({ body, detailType }) =>
+      executeOutboundRobotTaskApi(body, detailType),
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({
-        queryKey: ["outboundOrderDetails", orderId],
+        queryKey: ["outboundOrder", variables.orderId],
       });
       queryClient.invalidateQueries({
-        queryKey: ["outboundRobotTasks", orderId],
+        queryKey: ["outboundOrderDetails", variables.orderId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["outboundRobotTasks", variables.orderId],
       });
     },
   });

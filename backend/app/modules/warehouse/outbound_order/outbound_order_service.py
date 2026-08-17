@@ -783,8 +783,13 @@ def get_outbound_robot_tasks(
         for task in robot_tasks
     ]
 
-def execute_outbound_task(db: Session, body: OutboundRobotTaskCreate):
-    robot_task = db.query(RobotTask).filter(RobotTask.id == body.robot_task_id).first()
+
+def execute_outbound_task(
+    db: Session, body: OutboundRobotTaskCreate, detail_type
+) -> None:
+    robot_task = (
+        db.query(RobotTask).filter(RobotTask.order_id == body.order_id).first()
+    )
     if not robot_task:
         raise ValueError("Robot task not found")
 
@@ -794,26 +799,82 @@ def execute_outbound_task(db: Session, body: OutboundRobotTaskCreate):
     if not body.from_location_id or not body.to_location_id:
         raise ValueError("From location and to location are required")
 
+    first_allocation: OutboundOrderAllocation | None = None
+    taken = 0
     for item in body.allocations:
-        allocation = db.query(OutboundOrderAllocation).filter(OutboundOrderAllocation.id == item.allocation_id).first()
+        allocation = (
+            db.query(OutboundOrderAllocation)
+            .options(
+                joinedload(OutboundOrderAllocation.outbound_order_detail).joinedload(
+                    OutboundOrderDetail.outbound_order
+                ),
+            )
+            .filter(OutboundOrderAllocation.id == item.allocation_id)
+            .first()
+        )
         if not allocation:
-            raise ValueError(f"Allocation not found: {allocation.allocation_id}")
+            raise ValueError(f"Allocation not found: {item.allocation_id}")
+        if allocation.robot_task_id != robot_task.id:
+            raise ValueError(
+                f"Allocation {item.allocation_id} does not belong to robot task"
+            )
         allocation.from_location_id = body.from_location_id
         allocation.to_location_id = body.to_location_id
         allocation.status = "issued"
+        taken += int(allocation.quantity)
+        if first_allocation is None:
+            first_allocation = allocation
         db.flush()
 
     start = db.query(Location).filter(Location.id == body.from_location_id).first()
     target = db.query(Location).filter(Location.id == body.to_location_id).first()
+    if not start or not target:
+        raise ValueError("From location or to location not found")
 
-    robot_task.task_order_detail = json.dumps([{"taskPath": f"{start.location_code},{target.location_code}"}])  
-    
+    task_path = f"{start.location_code},{target.location_code}"
+    robot_task.task_order_detail = json.dumps([{"taskPath": task_path}])
+
+    #Calculate return task
+    return_quantity = first_allocation.item_stock.quantity - taken
+    if return_quantity > 0:
+        order_id = f"TDS_Return_{uuid.uuid4().hex[:8]}"
+        robot_task = RobotTask(
+            order_id=order_id,
+            process_code=settings.inbound_process_code,
+            system_code="Thadosoft",
+            task_order_detail=json.dumps([{"taskPath": f"{target.location_code},{start.location_code}"}])
+        )
+        db.add(return_task)
+        db.flush()
+        return_allocation = OutboundOrderAllocation(
+            outbound_order_detail_id=first_allocation.outbound_order_detail_id,
+            item_stock_id=first_allocation.item_stock_id,
+            quantity=return_quantity,
+            status="initialize",
+            from_location_id=target.id,
+            to_location_id=start.id,
+            robot_task_id=return_task.id,
+            allocation_type="return",
+        )
+        db.add(return_allocation)
+        db.flush()
+
+    if first_allocation is not None:
+        outbound_order = first_allocation.outbound_order_detail.outbound_order
+        db.add(
+            History(
+                outbound_order_id=outbound_order.id,
+                old_status="initialize",
+                new_status="issued",
+                description=f"Outbound order {outbound_order.id} in progress",
+                details=json.dumps([{"taskPath": task_path}]),
+                created_by_id=outbound_order.created_by_id,
+            )
+        )
+
     try:
         task_status_service.create_robot_task(db, robot_task, not_inserted=False)
         db.commit()
-        db.refresh(robot_task)
-    except Exception as e:
+    except Exception:
         db.rollback()
-        raise e
-
-    return robot_task
+        raise

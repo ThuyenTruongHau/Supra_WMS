@@ -3,10 +3,12 @@ from typing import Annotated, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
+from app.core.celery_app import run_logic_task
 from app.core.database import get_db
 from app.core.dependencies import require_permission
+from app.modules.robot.robot_service import IcsError
 from app.modules.auth.auth_model import User
-from app.modules.warehouse.outbound_order import outbound_order_model  # noqa: F401
+from app.modules.warehouse.outbound_order import outbound_order_model  
 from app.modules.warehouse.outbound_order.outbound_order_schema import (
     OutboundOrderCreate,
     OutboundOrderCreateResponse,
@@ -19,8 +21,19 @@ from app.modules.warehouse.outbound_order.outbound_order_schema import (
     CalculateOutboundResponse,
     LackedDetailResponse,
     OutboundRobotTaskResponse,
+    OutboundRobotTaskCreate,
 )
 from app.modules.warehouse.outbound_order import outbound_order_service
+from app.modules.warehouse.outbound_order.outbound_celery_task import (
+    calculate_outbound_order_task,
+    create_outbound_order_task,
+    execute_outbound_task_task,
+    get_outbound_lacked_details_task,
+    get_outbound_order_by_id_task,
+    get_outbound_order_details_task,
+    get_outbound_robot_tasks_task,
+    update_outbound_order_task,
+)
 
 _OUTBOUND_READ = require_permission("outbound:read")
 _OUTBOUND_CREATE = require_permission("outbound:create")
@@ -54,8 +67,10 @@ def create_outbound_order(
     outbound_type: str,
 ):
     try:
-        return outbound_order_service.create_outbound_order(
-            db, body, user_id=current_user.id
+        return run_logic_task(
+            create_outbound_order_task,
+            body=body.model_dump(mode="json"),
+            user_id=current_user.id,
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
@@ -97,7 +112,10 @@ def list_outbound_orders(
     dependencies=[Depends(_OUTBOUND_READ)],
 )
 def get_outbound_order_by_id(db: DbSession, order_id: int):
-    order = outbound_order_service.get_outbound_order_by_id(db, order_id)
+    try:
+        order = run_logic_task(get_outbound_order_by_id_task, order_id=order_id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
     if not order:
         raise HTTPException(status_code=404, detail="Outbound order not found")
     return OutboundOrderUpdateResponse.model_validate(order)
@@ -108,7 +126,10 @@ def get_outbound_order_by_id(db: DbSession, order_id: int):
     dependencies=[Depends(_OUTBOUND_READ)],
 )
 def get_outbound_robot_tasks(db: DbSession, order_id: int):
-    robot_tasks = outbound_order_service.get_outbound_robot_tasks(db, order_id)
+    try:
+        robot_tasks = run_logic_task(get_outbound_robot_tasks_task, order_id=order_id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
     if not robot_tasks:
         raise HTTPException(status_code=404, detail="Robot tasks not found")
     return robot_tasks
@@ -120,7 +141,10 @@ def get_outbound_robot_tasks(db: DbSession, order_id: int):
     dependencies=[Depends(_OUTBOUND_READ)],
 )
 def get_outbound_order_details(db: DbSession, order_id: int):
-    details = outbound_order_service.get_outbound_order_detail(db, order_id)
+    try:
+        details = run_logic_task(get_outbound_order_details_task, order_id=order_id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
     if details is None:
         raise HTTPException(status_code=404, detail="Outbound order not found")
     return details
@@ -132,13 +156,13 @@ def get_outbound_order_details(db: DbSession, order_id: int):
     dependencies=[Depends(_OUTBOUND_READ)],
 )
 def get_outbound_lacked_details(db: DbSession, order_id: int):
-    order = outbound_order_service.get_outbound_order_by_id(db, order_id)
-    if not order:
-        raise HTTPException(status_code=404, detail="Outbound order not found")
     try:
-        return outbound_order_service.lacked_details(db, order_id)
+        lacked = run_logic_task(get_outbound_lacked_details_task, order_id=order_id)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
+    if lacked is None:
+        raise HTTPException(status_code=404, detail="Outbound order not found")
+    return lacked
 
 
 @router.post(
@@ -152,9 +176,34 @@ def calculate_outbound_order(
     strategy: str = Query("fefo"),
 ):
     try:
-        return outbound_order_service.calculate_outbound_order(db, body, strategy=strategy)
+        return run_logic_task(
+            calculate_outbound_order_task,
+            body=body.model_dump(mode="json"),
+            strategy=strategy,
+        )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
+
+@router.post(
+    "/outbound-orders/execute",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(_OUTBOUND_UPDATE)],
+)
+def execute_outbound_task(
+    body: OutboundRobotTaskCreate,
+    db: DbSession,
+    detail_type: str = Query("auto"),
+):
+    try:
+        run_logic_task(
+            execute_outbound_task_task,
+            body=body.model_dump(mode="json"),
+            detail_type=detail_type,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    except IcsError as e:
+        raise HTTPException(status_code=503 if "reach" in str(e).lower() else 502, detail=str(e)) from e
 
 
 @router.patch(
@@ -170,8 +219,12 @@ def update_outbound_order(
     current_user: Annotated[User, Depends(_OUTBOUND_UPDATE)],
 ):
     try:
-        order = outbound_order_service.update_outbound_order(
-            db, order_id, body, outbound_type, user_id=current_user.id
+        order = run_logic_task(
+            update_outbound_order_task,
+            order_id=order_id,
+            body=body.model_dump(mode="json"),
+            outbound_type=outbound_type,
+            user_id=current_user.id,
         )
     except ValueError as e:
         msg = str(e)

@@ -17,6 +17,7 @@ import {
   useGetOutboundRobotTasks,
   useDeleteOutboundOrder,
   useCalculateOutboundOrder,
+  useExecuteOutboundRobotTask,
 } from "@/hooks/useOutbound";
 import { useAppStore } from "@/store/useAppStore";
 import type {
@@ -206,6 +207,7 @@ export default function OutboundDetailPage() {
   } = useGetOutboundRobotTasks(orderId, activeTab === "allocation");
   const deleteMutation = useDeleteOutboundOrder();
   const calculateMutation = useCalculateOutboundOrder();
+  const executeRobotTaskMutation = useExecuteOutboundRobotTask();
   const { data: users = [] } = useUser();
 
   const warehouseId = order?.warehouse_id ?? selectedWarehouseId ?? 0;
@@ -407,15 +409,28 @@ export default function OutboundDetailPage() {
     const { startId, endId, needsStartPick, needsEndPick } =
       getTaskLocationIds(record);
     if ((needsStartPick && !startId) || (needsEndPick && !endId)) return;
+    if (!orderId) return;
+    if (record.allocations.length === 0) {
+      message.error("Task không có allocation để thực thi");
+      return;
+    }
 
     try {
       setExecutingTaskOrderId(record.order_id);
       message.loading({ content: "Đang gửi lệnh...", key: "execute" });
-      // TODO: wire outbound robot task execute API
+      await executeRobotTaskMutation.mutateAsync({
+        orderId,
+        body: {
+          order_id: record.order_id,
+          from_location_id: startId!,
+          to_location_id: endId!,
+          allocations: record.allocations.map((allocation) => ({
+            allocation_id: allocation.id,
+          })),
+        },
+        detailType: outboundType,
+      });
       message.success({ content: "Đã thực thi task", key: "execute" });
-      void refetchOrder();
-      void refetchDetails();
-      void refetchRobotTasks();
     } catch (err) {
       message.error({ content: apiError(err), key: "execute" });
     } finally {

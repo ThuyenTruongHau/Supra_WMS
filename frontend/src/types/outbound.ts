@@ -157,3 +157,14 @@ export interface OutboundRobotTask {
   quantity: number;
   allocations: OutboundOrderAllocation[];
 }
+
+export interface AllocationOutboundTaskExecute {
+  allocation_id: number;
+}
+
+export interface OutboundRobotTaskExecuteRequest {
+  order_id: string;
+  from_location_id: number;
+  to_location_id: number;
+  allocations: AllocationOutboundTaskExecute[];
+}
