@@ -419,6 +419,7 @@ def _check_stock_in_task(db: Session, stock_id: int, outbound_order_id: int) -> 
         .filter(
             OutboundOrderAllocation.item_stock_id == stock_id,
             OutboundOrderDetail.outbound_order_id == outbound_order_id,
+            OutboundOrderAllocation.status == "initialize",
         )
         .first()
     )
@@ -447,6 +448,7 @@ def greedy_allocate_stocks_to_lines(
             order_id = f"TDS_Outbound_{uuid.uuid4().hex[:8]}"
             robot_task = RobotTask(
                 order_id=order_id,
+                quantity=int(stocks[j].quantity),
                 process_code=settings.outbound_process_code,
                 system_code="Thadosoft",
                 task_order_detail=json.dumps([{"taskPath": "None"}])
@@ -498,6 +500,8 @@ def calculate_outbound_order(
     try:
         for item_id, lines in lines_by_item_id.items():
             stocks = _strategy_loading_stocks(db, item_id, strategy)
+            if not stocks:
+                raise ValueError(f"No enough stock for item {item_id}")
             greedy_allocate_stocks_to_lines(db, stocks, lines, body.outbound_order_id)
         db.commit()
     except Exception:
@@ -753,20 +757,6 @@ def get_outbound_robot_tasks(
             return "outbound"
         return "return"
 
-    def _resolve_task_quantity(raw_allocs: list[OutboundOrderAllocation]) -> int:
-        if not raw_allocs:
-            return 0
-        first = raw_allocs[0]
-        if first.allocation_type == "return":
-            return int(first.quantity)
-        stock_quantities: dict[int, int] = {}
-        for allocation in raw_allocs:
-            stock = allocation.item_stock
-            if stock is None:
-                continue
-            stock_quantities[allocation.item_stock_id] = int(stock.quantity)
-        return sum(stock_quantities.values())
-
     return [
         OutboundRobotTaskResponse(
             order_id=task.order_id,
@@ -775,9 +765,7 @@ def get_outbound_robot_tasks(
                 task, raw_allocations_by_task_id.get(task.id, [])
             ),
             status=task.status or "initialize",
-            quantity=_resolve_task_quantity(
-                raw_allocations_by_task_id.get(task.id, [])
-            ),
+            quantity=int(task.quantity),
             allocations=allocations_by_task_id.get(task.id, []),
         )
         for task in robot_tasks
@@ -818,6 +806,10 @@ def execute_outbound_task(
             raise ValueError(
                 f"Allocation {item.allocation_id} does not belong to robot task"
             )
+        if allocation.status != "initialize":
+            raise ValueError(
+                f"Allocation {item.allocation_id} is not initialize"
+            )
         allocation.from_location_id = body.from_location_id
         allocation.to_location_id = body.to_location_id
         allocation.status = "issued"
@@ -834,12 +826,19 @@ def execute_outbound_task(
     task_path = f"{start.location_code},{target.location_code}"
     robot_task.task_order_detail = json.dumps([{"taskPath": task_path}])
 
-    #Calculate return task
-    return_quantity = first_allocation.item_stock.quantity - taken
+    # Leftover return task is created only when executing an outbound pick.
+    return_quantity = 0
+    if (
+        first_allocation is not None
+        and first_allocation.allocation_type != "return"
+        and first_allocation.item_stock is not None
+    ):
+        return_quantity = int(first_allocation.item_stock.quantity) - taken
     if return_quantity > 0:
         order_id = f"TDS_Return_{uuid.uuid4().hex[:8]}"
-        robot_task = RobotTask(
+        return_task = RobotTask(
             order_id=order_id,
+            quantity=return_quantity,
             process_code=settings.inbound_process_code,
             system_code="Thadosoft",
             task_order_detail=json.dumps([{"taskPath": f"{target.location_code},{start.location_code}"}])

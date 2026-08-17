@@ -42,6 +42,11 @@ import {
   entriesToDetails,
   type KeyValueEntry,
 } from "@/utils/keyValueDetails";
+import {
+  normalizeLotNumber,
+  validateGroupsLotNumbers,
+  type LotNumberValidationOptions,
+} from "@/utils/lotNumberValidation";
 
 /** Một SKU trong nhóm. */
 export interface ImportItemDraft {
@@ -80,6 +85,8 @@ interface CreateImportModalProps {
   initialNote?: string;
   initialGroups?: ImportGroupDraft[];
   initialDetails?: Record<string, unknown>;
+  /** Quy tắc số lô — bỏ qua hoặc để mặc định nếu bài toán không cần lô. */
+  lotNumberValidation?: LotNumberValidationOptions;
 }
 
 let draftSeq = 0;
@@ -87,7 +94,7 @@ const nextKey = (prefix: string) => `${prefix}-${Date.now()}-${draftSeq++}`;
 
 export const createEmptyItem = (): ImportItemDraft => ({
   key: nextKey("item"),
-  quantity: 1,
+  quantity: 0,
 });
 
 export const createEmptyGroup = (): ImportGroupDraft => ({
@@ -112,6 +119,7 @@ export default function CreateImportModal({
   initialNote,
   initialGroups,
   initialDetails,
+  lotNumberValidation = { required: true },
 }: CreateImportModalProps) {
   const isEdit = mode === "edit";
   const selectedWarehouseId = useAppStore((s) => s.selectedWarehouseId);
@@ -364,6 +372,13 @@ export default function CreateImportModal({
         }
       }
     }
+    if (lotNumberValidation) {
+      const lotResult = validateGroupsLotNumbers(groups, lotNumberValidation);
+      if (!lotResult.valid) {
+        message.error(lotResult.message ?? "Số lô không hợp lệ");
+        return false;
+      }
+    }
     return true;
   };
 
@@ -394,7 +409,7 @@ export default function CreateImportModal({
             item_id: i.item_id!,
             quantity: i.quantity,
             unit_id: i.unit_id!,
-            lot_number: i.lot_number?.trim() || null,
+            lot_number: normalizeLotNumber(i.lot_number),
           })),
           details: entriesToDetails(g.detailEntries ?? []),
         })),
@@ -454,7 +469,7 @@ export default function CreateImportModal({
             item_id: i.item_id,
             quantity: i.quantity,
             unit_id: i.unit_id,
-            lot_number: i.lot_number?.trim() || null,
+            lot_number: normalizeLotNumber(i.lot_number),
             expiry_date: i.expiry_date || null,
           }),
         );
@@ -526,7 +541,7 @@ export default function CreateImportModal({
               item_id: i.item_id!,
               quantity: i.quantity,
               unit_id: i.unit_id!,
-              lot_number: i.lot_number?.trim() || null,
+              lot_number: normalizeLotNumber(i.lot_number),
               expiry_date: i.expiry_date || null,
             })),
           })),
@@ -679,13 +694,20 @@ export default function CreateImportModal({
             <div className="grid grid-cols-3 gap-3">
               <Input
                 type="number"
-                min={1}
+                min={0}
                 prefix={<span className="text-xs text-slate-400">SL:</span>}
-                value={item.quantity}
+                value={item.quantity > 0 ? item.quantity : ""}
+                placeholder="SL"
                 onChange={(e) => {
-                  const quantity = Number(e.target.value) || 0;
+                  const raw = e.target.value;
+                  if (raw === "") {
+                    updateItem(group.key, item.key, { quantity: 0 });
+                    return;
+                  }
+                  const quantity = Number(raw);
+                  if (Number.isNaN(quantity)) return;
                   updateItem(group.key, item.key, { quantity });
-                  if (item.item_id && item.unit_id) {
+                  if (item.item_id && item.unit_id && quantity > 0) {
                     void refreshConvertedQuantity(
                       group.key,
                       item.key,
@@ -735,7 +757,7 @@ export default function CreateImportModal({
             </div>
             <div className="grid grid-cols-2 gap-3">
               <Input
-                placeholder="LOT"
+                placeholder="Số lô *"
                 value={item.lot_number || ""}
                 onChange={(e) =>
                   updateItem(group.key, item.key, {

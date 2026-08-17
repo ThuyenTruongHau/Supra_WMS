@@ -72,7 +72,8 @@ def init_worker_logging(**_kwargs):
     )
 
 def run_logic_task(task: Task, /, **kwargs: Any) -> Any:
-    """Run a logic-queue task synchronously and propagate worker exceptions."""
+    if settings.debug:  
+        return task.apply(kwargs=kwargs).get(propagate=True)
     return task.apply_async(kwargs=kwargs).get(
         timeout=CELERY_LOGIC_TIMEOUT,
         propagate=True,

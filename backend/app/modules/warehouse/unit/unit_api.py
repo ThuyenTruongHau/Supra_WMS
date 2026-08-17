@@ -33,7 +33,6 @@ DbSession = Annotated[Session, Depends(get_db)]
 @router.get(
     "/units",
     response_model=UnitListResponse,
-    dependencies=[Depends(require_permission("unit:read"))],
 )
 def list_units(
     db: DbSession,
@@ -125,8 +124,7 @@ def list_item_units(
 
 @router.get(
     "/item-units/by-item/{item_id}",
-    response_model=ItemAvailableUnitsResponse,
-    dependencies=[Depends(require_permission("item_unit:read"))],
+    response_model=ItemAvailableUnitsResponse
 )
 def get_item_units_by_item(item_id: int, db: DbSession):
     try:
@@ -138,7 +136,6 @@ def get_item_units_by_item(item_id: int, db: DbSession):
 @router.post(
     "/item-units/convert-quantity",
     response_model=ConvertQuantityResponse,
-    dependencies=[Depends(require_permission("item_unit:read"))],
 )
 def convert_item_quantity(body: ConvertQuantityRequest, db: DbSession):
     try:

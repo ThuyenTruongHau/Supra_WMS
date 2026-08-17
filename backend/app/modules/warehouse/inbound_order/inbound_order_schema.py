@@ -150,3 +150,28 @@ class InboundOrderUpdate(BaseModel):
 class InboundOrderDeleteResponse(BaseModel):
     order_code: str
     message: str
+
+
+class RobotTaskResponse(BaseModel):
+    id: int
+    order_id: str
+    quantity: int
+    process_code: str
+    system_code: str
+    task_order_detail: str
+    inbound_order_detail_id: Optional[int] = None
+    status: str = "initialize"
+    created_at: Optional[datetime] = None
+    model_config = ConfigDict(from_attributes=True)
+
+
+class InboundExecuteDetailResult(BaseModel):
+    """Một nhóm hàng + robot task (nếu auto)."""
+    detail: InboundOrderDetailResponse
+    robot_task: Optional[RobotTaskResponse] = None
+
+
+class InboundCallerResponse(BaseModel):
+    order: InboundOrderResponse
+    line_items: list[InboundExecuteDetailResult] = Field(default_factory=list)
+    robot_tasks: list[RobotTaskResponse] = Field(default_factory=list)

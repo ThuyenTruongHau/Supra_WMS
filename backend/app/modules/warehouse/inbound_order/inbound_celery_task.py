@@ -19,6 +19,8 @@ logger = get_logger("main")
 def _dump(result: Any) -> Any:
     if result is None:
         return None
+    if hasattr(result, "model_dump"):
+        return jsonable_encoder(result.model_dump(mode="json"))
     return jsonable_encoder(result)
 
 

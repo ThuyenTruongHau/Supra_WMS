@@ -25,7 +25,6 @@ DbSession = Annotated[Session, Depends(get_db)]
 @router.get(
     "/items",
     response_model=ItemListResponse,
-    dependencies=[Depends(require_permission("item:read"))],
 )
 def list_items(
     db: DbSession,
@@ -61,7 +60,6 @@ def analyze_items(warehouse_id: int, db: DbSession):
     "/items",
     response_model=ItemResponse,
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(require_permission("item:create"))],
 )
 def create_item(body: ItemCreate, db: DbSession):
     try:

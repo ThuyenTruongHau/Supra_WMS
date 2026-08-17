@@ -37,6 +37,7 @@ import CreateOutboundModal, {
 } from "./components/CreateOutboundModal";
 import { detailsToEntries } from "@/utils/keyValueDetails";
 import { computeDetailProgress } from "@/utils/detailProgress";
+import { formatOutboundCalculateError } from "@/utils/outboundErrors";
 
 const TABLE_CLASS =
   "[&_.ant-table-thead_th]:!bg-slate-50 [&_.ant-table-thead_th]:!text-slate-600 [&_.ant-table-thead_th]:!font-semibold [&_.ant-table-thead_th]:!text-base [&_.ant-table-tbody_td]:!text-base [&_.ant-table-thead_th]:!py-3 [&_.ant-table-tbody_td]:!py-3 [&_.ant-table-row]:hover:bg-slate-50/50";
@@ -88,6 +89,12 @@ const TASK_TYPE_LABEL: Record<OutboundRobotTask["task_type"], string> = {
   outbound: "XUẤT",
   return: "TRẢ",
 };
+
+function getRobotTaskDisplayStatus(record: OutboundRobotTask): string {
+  if (record.task_type !== "return") return record.status;
+  if (record.status && record.status !== "initialize") return record.status;
+  return record.allocations[0]?.status || record.status;
+}
 
 function displayValue(value: unknown): string {
   if (value === null || value === undefined || value === "") return "—";
@@ -181,6 +188,9 @@ export default function OutboundDetailPage() {
   const [selectedDetailIds, setSelectedDetailIds] = useState<Set<number>>(
     () => new Set(),
   );
+  const [selectedLackedIds, setSelectedLackedIds] = useState<Set<number>>(
+    () => new Set(),
+  );
   const [taskLocationDraft, setTaskLocationDraft] = useState<
     Record<string, { startLocationId?: number; endLocationId?: number }>
   >({});
@@ -271,12 +281,6 @@ export default function OutboundDetailPage() {
 
   const editInitialItems = useMemo(() => toEditItems(details), [details]);
 
-  const lackedByDetailId = useMemo(() => {
-    const map = new Map<number, LackedDetail>();
-    for (const item of lackedDetails) map.set(item.id, item);
-    return map;
-  }, [lackedDetails]);
-
   const selectableDetails = useMemo(
     () => details.filter((d) => d.status === "initialize"),
     [details],
@@ -290,8 +294,17 @@ export default function OutboundDetailPage() {
     selectableDetails.some((d) => selectedDetailIds.has(d.id)) &&
     !allSelectableSelected;
 
+  const selectedLackedCount = selectedLackedIds.size;
+  const allLackedSelected =
+    lackedDetails.length > 0 &&
+    lackedDetails.every((l) => selectedLackedIds.has(l.id));
+  const someLackedSelected =
+    lackedDetails.some((l) => selectedLackedIds.has(l.id)) &&
+    !allLackedSelected;
+
   useEffect(() => {
     setSelectedDetailIds(new Set());
+    setSelectedLackedIds(new Set());
     setTaskLocationDraft({});
     setActiveTab("list");
   }, [orderId]);
@@ -461,6 +474,84 @@ export default function OutboundDetailPage() {
     [selectableDetails],
   );
 
+  const toggleLackedSelection = useCallback(
+    (detailId: number, checked: boolean) => {
+      setSelectedLackedIds((prev) => {
+        const next = new Set(prev);
+        if (checked) next.add(detailId);
+        else next.delete(detailId);
+        return next;
+      });
+    },
+    [],
+  );
+
+  const handleSelectAllLacked = useCallback(
+    (checked: boolean) => {
+      if (checked) {
+        setSelectedLackedIds(new Set(lackedDetails.map((l) => l.id)));
+      } else {
+        setSelectedLackedIds(new Set());
+      }
+    },
+    [lackedDetails],
+  );
+
+  const runCalculate = async (
+    lineItems: {
+      id: number;
+      item_id: number;
+      quantity: number;
+      unit_id: number;
+      detail_type: string;
+      details?: Record<string, unknown>;
+    }[],
+    onSuccessClearSelection: () => void,
+  ) => {
+    if (!orderId || !order) return;
+
+    const warehouseId = order.warehouse_id || selectedWarehouseId;
+    if (!warehouseId) {
+      message.error("Thiếu thông tin kho");
+      return;
+    }
+
+    try {
+      message.loading({ content: "Đang phân bổ...", key: "calculate" });
+      const result = await calculateMutation.mutateAsync({
+        body: {
+          warehouse_id: warehouseId,
+          outbound_order_id: orderId,
+          line_items: lineItems,
+        },
+      });
+      onSuccessClearSelection();
+      void refetchOrder();
+      void refetchDetails();
+      void refetchLacked();
+      void refetchRobotTasks();
+      setActiveTab("allocation");
+
+      if (result.is_fully_allocated) {
+        message.success({
+          content: "Phân bổ thành công toàn bộ dòng đã chọn",
+          key: "calculate",
+        });
+      } else {
+        message.warning({
+          content: `Phân bổ một phần, còn thiếu ${result.lacked.length} dòng`,
+          key: "calculate",
+        });
+      }
+    } catch (err) {
+      message.error({
+        content: formatOutboundCalculateError(err, [...details, ...lackedDetails]),
+        key: "calculate",
+      });
+      throw err;
+    }
+  };
+
   const handleConfirmOutbound = () => {
     if (selectedCount === 0) {
       message.warning("Vui lòng chọn ít nhất một dòng hàng để xác nhận xuất");
@@ -487,44 +578,48 @@ export default function OutboundDetailPage() {
       okText: "Xác nhận",
       cancelText: "Hủy",
       onOk: async () => {
-        try {
-          message.loading({ content: "Đang phân bổ...", key: "calculate" });
-          const result = await calculateMutation.mutateAsync({
-            body: {
-              warehouse_id: warehouseId,
-              outbound_order_id: orderId,
-              line_items: selectedDetails.map((d) => ({
-                id: d.id,
-                item_id: d.item_id,
-                quantity: d.quantity,
-                unit_id: d.unit_id!,
-                detail_type: d.detail_type || outboundType,
-                details: d.details,
-              })),
-            },
-          });
-          setSelectedDetailIds(new Set());
-          void refetchOrder();
-          void refetchDetails();
-          void refetchLacked();
-          void refetchRobotTasks();
-          setActiveTab("allocation");
+        await runCalculate(
+          selectedDetails.map((d) => ({
+            id: d.id,
+            item_id: d.item_id,
+            quantity: d.quantity,
+            unit_id: d.unit_id!,
+            detail_type: d.detail_type || outboundType,
+            details: d.details,
+          })),
+          () => setSelectedDetailIds(new Set()),
+        );
+      },
+    });
+  };
 
-          if (result.is_fully_allocated) {
-            message.success({
-              content: "Phân bổ thành công toàn bộ dòng đã chọn",
-              key: "calculate",
-            });
-          } else {
-            message.warning({
-              content: `Phân bổ một phần, còn thiếu ${result.lacked.length} dòng`,
-              key: "calculate",
-            });
-          }
-        } catch (err) {
-          message.error({ content: apiError(err), key: "calculate" });
-          throw err;
-        }
+  const handleConfirmLackedReallocate = () => {
+    if (selectedLackedCount === 0) {
+      message.warning("Vui lòng chọn ít nhất một dòng thiếu để phân bổ lại");
+      return;
+    }
+
+    const selectedLacked = lackedDetails.filter((l) =>
+      selectedLackedIds.has(l.id),
+    );
+
+    Modal.confirm({
+      title: "Phân bổ lại phần thiếu",
+      content: `Bạn có chắc muốn phân bổ lại ${selectedLackedCount} dòng thiếu đã chọn?`,
+      okText: "Xác nhận",
+      cancelText: "Hủy",
+      onOk: async () => {
+        await runCalculate(
+          selectedLacked.map((l) => ({
+            id: l.id,
+            item_id: l.item_id,
+            quantity: l.quantity,
+            unit_id: l.unit_id,
+            detail_type: l.detail_type || outboundType,
+            details: l.details,
+          })),
+          () => setSelectedLackedIds(new Set()),
+        );
       },
     });
   };
@@ -734,8 +829,9 @@ export default function OutboundDetailPage() {
       dataIndex: "status",
       key: "status",
       width: 150,
-      render: (status: string, record) => {
-        if (status === "initialize") {
+      render: (_, record) => {
+        const displayStatus = getRobotTaskDisplayStatus(record);
+        if (displayStatus === "initialize") {
           const { startId, endId, needsStartPick, needsEndPick } =
             getTaskLocationIds(record);
           const missingStart = needsStartPick && !startId;
@@ -758,7 +854,7 @@ export default function OutboundDetailPage() {
             </Button>
           );
         }
-        return <OutboundStatusTag status={status} size="sm" />;
+        return <OutboundStatusTag status={displayStatus} size="sm" />;
       },
     },
   ];
@@ -809,23 +905,11 @@ export default function OutboundDetailPage() {
     </div>
   );
 
-  const renderExpandedRow = (record: OutboundOrderDetail) => {
-    const lacked = lackedByDetailId.get(record.id);
-    return (
-      <div className="mx-2 my-1 space-y-2 rounded-lg bg-slate-50/60 px-3 py-2">
-        {lacked && (
-          <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
-            <span className="font-semibold">Còn thiếu phân bổ: </span>
-            {lacked.quantity} / {lacked.requested_quantity}{" "}
-            {lacked.unit ?? record.unit}
-            <span className="ml-2 text-xs text-amber-700">
-              (Dòng #{lacked.id})
-            </span>
-          </div>
-        )}
-        <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-          Phân bổ xuất
-        </div>
+  const renderExpandedRow = (record: OutboundOrderDetail) => (
+    <div className="mx-2 my-1 space-y-2 rounded-lg bg-slate-50/60 px-3 py-2">
+      <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+        Phân bổ xuất
+      </div>
         {record.allocations.length > 0 ? (
           <Table
             columns={allocationColumns}
@@ -842,12 +926,30 @@ export default function OutboundDetailPage() {
           formatKey={formatDetailLineKey}
           title="Chi tiết dòng"
           emptyText="Không có dữ liệu bổ sung"
-        />
-      </div>
-    );
-  };
+      />
+    </div>
+  );
 
   const lackedColumns: ColumnsType<LackedDetail> = [
+    {
+      title: (
+        <Checkbox
+          checked={allLackedSelected}
+          indeterminate={someLackedSelected}
+          disabled={lackedDetails.length === 0}
+          onChange={(e) => handleSelectAllLacked(e.target.checked)}
+        />
+      ),
+      key: "select",
+      width: 48,
+      align: "center",
+      render: (_, record) => (
+        <Checkbox
+          checked={selectedLackedIds.has(record.id)}
+          onChange={(e) => toggleLackedSelection(record.id, e.target.checked)}
+        />
+      ),
+    },
     {
       title: "Mã dòng",
       dataIndex: "id",
@@ -1141,18 +1243,32 @@ export default function OutboundDetailPage() {
       </div>
 
       {activeTab === "list" && lackedDetails.length > 0 && (
-        <Card className="p-6">
-          <h3 className="mb-4 text-lg font-bold text-amber-800">
-            Hàng đã phân bổ nhưng thiếu
-          </h3>
-          <Table
-            columns={lackedColumns}
-            dataSource={lackedDetails}
-            pagination={false}
-            rowKey="id"
-            size="middle"
-            className={TABLE_CLASS}
-          />
+        <Card className="overflow-hidden p-0">
+          <div className="flex flex-wrap items-center justify-between gap-4 border-b border-amber-100 bg-amber-50/60 px-5 py-4">
+            <h3 className="text-base font-semibold text-amber-900">
+              Hàng đã phân bổ nhưng thiếu ({lackedDetails.length})
+            </h3>
+            <Button
+              variant="primary"
+              icon={<CheckCircleOutlined />}
+              disabled={selectedLackedCount === 0}
+              loading={calculateMutation.isPending}
+              onClick={handleConfirmLackedReallocate}
+            >
+              Phân bổ lại
+              {selectedLackedCount > 0 ? ` (${selectedLackedCount})` : ""}
+            </Button>
+          </div>
+          <div className="p-5">
+            <Table
+              columns={lackedColumns}
+              dataSource={lackedDetails}
+              pagination={false}
+              rowKey="id"
+              size="middle"
+              className={TABLE_CLASS}
+            />
+          </div>
         </Card>
       )}
 

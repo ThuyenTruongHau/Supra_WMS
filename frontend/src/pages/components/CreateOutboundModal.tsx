@@ -64,7 +64,7 @@ const nextKey = (prefix: string) => `${prefix}-${Date.now()}-${draftSeq++}`;
 
 export const createEmptyItem = (): OutboundItemDraft => ({
   key: nextKey("item"),
-  quantity: 1,
+  quantity: 0,
 });
 
 function errorMessage(err: unknown): string {
@@ -492,13 +492,20 @@ export default function CreateOutboundModal({
       <div className="grid grid-cols-3 gap-3">
         <Input
           type="number"
-          min={1}
+          min={0}
           prefix={<span className="text-xs text-slate-400">SL:</span>}
-          value={item.quantity}
+          value={item.quantity > 0 ? item.quantity : ""}
+          placeholder="SL"
           onChange={(e) => {
-            const quantity = Math.max(1, Number(e.target.value) || 1);
+            const raw = e.target.value;
+            if (raw === "") {
+              updateItem(item.key, { quantity: 0 });
+              return;
+            }
+            const quantity = Number(raw);
+            if (Number.isNaN(quantity)) return;
             updateItem(item.key, { quantity });
-            if (item.item_id && item.unit_id) {
+            if (item.item_id && item.unit_id && quantity > 0) {
               void refreshConvertedQuantity(
                 item.key,
                 item.item_id,

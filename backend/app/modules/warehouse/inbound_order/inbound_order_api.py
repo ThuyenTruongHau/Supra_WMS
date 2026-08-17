@@ -16,6 +16,7 @@ from app.modules.warehouse.inbound_order.inbound_order_schema import (
     InboundReleaseLocationsResponse,
     InboundOrderCreate,
     InboundOrderResponse,
+    InboundCallerResponse,
     InboundOrderListResponse,
     InboundOrderDetailResponse,
     InboundOrderUpdate,
@@ -194,6 +195,7 @@ def delete_inbound_order(
 @router.post(
     "/inbound-orders/caller",
     status_code=status.HTTP_201_CREATED,
+    response_model=InboundCallerResponse,
 )
 def caller_inbound_order(
     body: InboundOrderCreate,
@@ -210,4 +212,4 @@ def caller_inbound_order(
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
-    return InboundOrderResponse.model_validate(order)
+    return InboundCallerResponse.model_validate(order)

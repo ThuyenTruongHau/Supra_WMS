@@ -199,9 +199,12 @@ def export_warehouse_map(warehouse_id: int, db: DbSession):
         },
     )
 
-router.get(
+@router.get(
     "/locations/by-logic/storage-area",
     response_model=LocationsByLogicResponse,
 )
-def list_locations_by_storage_area(db: DbSession, warehouse_id: int = Query(...)):
-    return location_service.get_locations_by_logic(db, warehouse_id, "storage_area")
+def list_locations_by_storage_area(db: DbSession, warehouse_id: int = Query(...), type: str = Query(...)):
+    locations = location_service.get_locations_by_logic(db, warehouse_id, type)
+    return LocationsByLogicResponse(
+        items=[LocationResponse.model_validate(loc) for loc in locations]
+    )

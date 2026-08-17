@@ -13,6 +13,7 @@ from app.modules.warehouse.inbound_order.inbound_order_model import (
 )
 from app.modules.warehouse.inbound_order.inbound_order_schema import (
     InboundOrderCreate,
+    InboundOrderResponse,
     InboundOrderAllocationCreate,
     InboundSuggestAllocation,
     InboundSuggestAllocationResponse,
@@ -24,6 +25,9 @@ from app.modules.warehouse.inbound_order.inbound_order_schema import (
     InboundOrderAllocationUpdate,
     InboundOrderListSummary,
     SuggestAdditionalResponse,
+    InboundExecuteDetailResult,
+    InboundCallerResponse,
+    RobotTaskResponse,
 )
 from app.modules.warehouse.location_map.location_model import Location
 from app.modules.warehouse.item.item_model import Item
@@ -561,13 +565,19 @@ def get_inbound_order_detail(db: Session, order_code: str) -> Optional[list[Inbo
     return [_build_detail_response(d) for d in details]
 
 
-def execute_inbound_task(db: Session, detail_id: int) -> RobotTask | InboundOrderDetail:
+def execute_inbound_task(db: Session, detail_id: int) -> InboundExecuteDetailResult:
     detail = (
         db.query(InboundOrderDetail)
         .options(
-            selectinload(InboundOrderDetail.allocations),
+            selectinload(InboundOrderDetail.allocations).joinedload(
+                InboundOrderAllocation.item_stock
+            ).joinedload(ItemStock.item),
+            selectinload(InboundOrderDetail.allocations).joinedload(
+                InboundOrderAllocation.unit
+            ),
             joinedload(InboundOrderDetail.from_location),
             joinedload(InboundOrderDetail.to_location),
+            joinedload(InboundOrderDetail.inbound_order),
         )
         .filter(InboundOrderDetail.id == detail_id)
         .first()
@@ -575,46 +585,54 @@ def execute_inbound_task(db: Session, detail_id: int) -> RobotTask | InboundOrde
     if not detail:
         raise ValueError("Detail not found")
 
+    robot_task: RobotTask | None = None
+
     if detail.detail_type == "manual":
         detail.status = "issued"
         db.commit()
         db.refresh(detail)
-        return detail
+    else:
+        if not detail.from_location_id or not detail.from_location:
+            raise ValueError("From location is required before accepting task")
+        if not detail.to_location_id or not detail.to_location:
+            raise ValueError("To location is required before accepting task")
 
-    if not detail.from_location_id or not detail.from_location:
-        raise ValueError("From location is required before accepting task")
-    if not detail.to_location_id or not detail.to_location:
-        raise ValueError("To location is required before accepting task")
+        start = detail.from_location.location_code
+        target = detail.to_location.location_code
+        order_id = f"TDS_Inbound_{uuid.uuid4().hex[:8]}"
+        robot_task = RobotTask(
+            inbound_order_detail_id=detail.id,
+            order_id=order_id,
+            quantity=sum(int(a.quantity) for a in detail.allocations),
+            process_code=settings.inbound_process_code,
+            system_code="Thadosoft",
+            task_order_detail=json.dumps([{"taskPath": f"{start},{target}"}]),
+        )
 
-    start = detail.from_location.location_code
-    target = detail.to_location.location_code
-    order_id = f"TDS_Inbound_{uuid.uuid4().hex[:8]}"
-    robot_task = RobotTask(
-        inbound_order_detail_id=detail.id,
-        order_id=order_id,
-        process_code=settings.inbound_process_code,
-        system_code="Thadosoft",
-        task_order_detail=json.dumps([{"taskPath": f"{start},{target}"}])
+        db.add(History(
+            inbound_order_id=detail.inbound_order_id,
+            old_status=detail.status,
+            new_status="issued",
+            description=f"Inbound order detail {detail.id} issued",
+            details=_build_detail_response(detail).model_dump(mode="json"),
+            created_by_id=detail.inbound_order.created_by_id,
+        ))
+
+        try:
+            task_status_service.create_robot_task(db, robot_task)
+            detail.status = "issued"
+            db.commit()
+            db.refresh(detail)
+        except Exception:
+            db.rollback()
+            raise
+
+    return InboundExecuteDetailResult(
+        detail=_build_detail_response(detail),
+        robot_task=(
+            RobotTaskResponse.model_validate(robot_task) if robot_task else None
+        ),
     )
-
-    db.add(History(
-        inbound_order_id=detail.inbound_order_id,
-        old_status=detail.status,
-        new_status="issued",
-        description=f"Inbound order detail {detail.id} issued",
-        details=InboundOrderDetailResponse.model_validate(detail).model_dump(mode="json"),
-        created_by_id=detail.inbound_order.created_by_id,
-    ))
-
-    try:
-        task_status_service.create_robot_task(db, robot_task)
-        detail.status = "issued"
-        db.commit()
-        db.refresh(detail)
-        return robot_task
-    except Exception:
-        db.rollback()
-        raise
 
 
 def _build_inbound_list_summary(query) -> InboundOrderListSummary:
@@ -663,18 +681,31 @@ def get_inbound_order(
     return items, total, summary
 
 
-def caller_inbound_order(db: Session, body: InboundOrderCreate, user_id: int, inbound_type: str):
+def caller_inbound_order(
+    db: Session, body: InboundOrderCreate, user_id: int, inbound_type: str
+) -> InboundCallerResponse:
     try:
         inbound_order = create_inbound_order(db, body, user_id, inbound_type)
 
         details = (
             db.query(InboundOrderDetail)
             .filter(InboundOrderDetail.inbound_order_id == inbound_order.id)
+            .order_by(InboundOrderDetail.id)
             .all()
         )
 
+        line_items: list[InboundExecuteDetailResult] = []
         for detail in details:
-            execute_inbound_task(db, detail.id)
-        return inbound_order
+            line_items.append(execute_inbound_task(db, detail.id))
+
+        db.refresh(inbound_order)
+
+        return InboundCallerResponse(
+            order=InboundOrderResponse.model_validate(inbound_order),
+            line_items=line_items,
+            robot_tasks=[
+                item.robot_task for item in line_items if item.robot_task is not None
+            ],
+        )
     except Exception as e:
         raise ValueError(f"Error calling inbound order: {e}") from e

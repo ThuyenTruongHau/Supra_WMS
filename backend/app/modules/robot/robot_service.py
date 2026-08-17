@@ -99,26 +99,42 @@ class TaskStatusService:
         stock.location_id = allocations[0].to_location_id
         stock.status = "available"
         stock.is_active = True
-        db.add(Transaction(
-            from_location_id=allocations[0].from_location_id,
-            to_location_id=allocations[0].to_location_id,
-            transaction_type="outbound",
-            item_stock_id=stock.id,
-            quantity=int(stock.quantity),
-            created_by_id=allocations[0].outbound_order_detail.outbound_order.created_by_id,
-        ))
 
+        allocation_rows = []
+        flag = 0
+        for allocation in allocations:
+            if allocation.allocation_type == "outbound":
+                flag = 1
+                stock.quantity -= allocation.quantity 
+            allocation_rows.append({
+                "allocation_id": allocation.id,
+                "part_number": allocation.item_stock.item.sku if allocation.item_stock and allocation.item_stock.item else None,
+                "lot_number": allocation.item_stock.lot_number if allocation.item_stock else None,
+                "quantity": int(allocation.quantity),
+            })
+
+        if flag == 1:
+            db.add(Transaction(
+                from_location_id=allocations[0].from_location_id,
+                to_location_id=allocations[0].to_location_id,
+                transaction_type="outbound",
+                item_stock_id=stock.id,
+                quantity=int(stock.quantity),
+                created_by_id=allocations[0].outbound_order_detail.outbound_order.created_by_id,
+            ))
+        else:
+            db.add(Transaction(
+                from_location_id=allocations[0].from_location_id,
+                to_location_id=allocations[0].to_location_id,
+                transaction_type="return",
+                item_stock_id=stock.id,
+                quantity=int(stock.quantity),
+                created_by_id=allocations[0].outbound_order_detail.outbound_order.created_by_id,
+            ))
         details = {
-            "allocations": [
-                {
-                    "allocation_id": a.id,
-                    "part_number": a.item_stock.item.sku if a.item_stock and a.item_stock.item else None,
-                    "lot_number": a.item_stock.lot_number if a.item_stock else None,
-                    "quantity": int(a.quantity),
-                }
-                for a in allocations
-            ],
+            "allocations": allocation_rows,
         }
+        
 
         db.add(History(
             outbound_order_id = allocations[0].outbound_order_detail.outbound_order_id,
@@ -143,6 +159,9 @@ class TaskStatusService:
         if not robot_task:
             raise ValueError("Robot task not found")
 
+        if robot_task.status == "completed":
+            return
+
         if robot_task.inbound_order_detail_id is not None:
             detail = robot_task.inbound_order_detail
         elif robot_task.outbound_order_allocations is not None:
@@ -156,11 +175,13 @@ class TaskStatusService:
             if robot_task.inbound_order_detail_id is not None:
                 detail.status = MAPPING_STATUS[ics_status]
                 if MAPPING_STATUS[ics_status] == "completed":
+                    logger.info(f"Receive completed for {order_id}")
                     self._settle_inbound_stock(db, detail)
             else:
                 for allocation in allocations:
                     allocation.status = MAPPING_STATUS[ics_status]
                 if MAPPING_STATUS[ics_status] == "completed":
+                    logger.info(f"Receive completed for {order_id}")
                     self._settle_outbound_stock(db, allocations)   
 
         record = TaskStatus(

@@ -20,7 +20,10 @@ def persist_task_status(self, payload: dict) -> int:
     try:
         with db_session() as db:
             record = task_status_service.receive_task_status(db, payload)
-            return record.id
+            if record:
+                return record.order_id
+            else:
+                return None
 
     except ValueError as exc:
         logger.error("Invalid task status payload (order_id=%s): %s", order_id, exc)

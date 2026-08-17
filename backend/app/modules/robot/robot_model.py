@@ -48,6 +48,7 @@ class RobotTask(Base):
 
     # Parent order id (inbound_order.id or outbound_order.id); no single FK table.
     order_id = Column(String(50), nullable=False, index=True)
+    quantity = Column(Integer, nullable=False)
     process_code = Column(String(50), nullable=False)
     system_code = Column(String(50), nullable=False)
     task_order_detail = Column(String(255), nullable=False)
