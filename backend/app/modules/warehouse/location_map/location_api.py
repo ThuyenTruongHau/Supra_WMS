@@ -198,3 +198,10 @@ def export_warehouse_map(warehouse_id: int, db: DbSession):
             "Content-Disposition": f'attachment; filename="{filename}"',
         },
     )
+
+router.get(
+    "/locations/by-logic/storage-area",
+    response_model=LocationsByLogicResponse,
+)
+def list_locations_by_storage_area(db: DbSession, warehouse_id: int = Query(...)):
+    return location_service.get_locations_by_logic(db, warehouse_id, "storage_area")

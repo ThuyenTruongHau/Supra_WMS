@@ -631,4 +631,7 @@ def get_locations_by_logic(db: Session, warehouse_id: int, type: str) -> list[Lo
     elif type == "outbound_buffer":
         zone_keys = settings.zone_outbound
         return get_buffer_locations(db, warehouse_id, zone_keys)
+    elif type == "storage_area":
+        zone_keys = settings.zone_storage
+        return get_buffer_locations(db, warehouse_id, zone_keys)
     raise ValueError(f"Unsupported location type: {type}")

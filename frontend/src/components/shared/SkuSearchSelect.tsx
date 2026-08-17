@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { AutoComplete } from "antd";
 import { SearchOutlined } from "@ant-design/icons";
 import { Button, Input } from "@/components/ui";
@@ -8,6 +8,24 @@ import { cn } from "@/components/ui/utils/cn";
 const BROWSE_PAGE_SIZE = 40;
 const SEARCH_PAGE_SIZE = 100;
 const DROPDOWN_MIN_WIDTH = 560;
+
+/** Ensure only one SKU dropdown is open at a time across all rows/modals. */
+const openSkuSelectRegistry = new Map<string, () => void>();
+
+function closeOtherSkuSelects(exceptId: string) {
+  openSkuSelectRegistry.forEach((close, id) => {
+    if (id !== exceptId) close();
+  });
+}
+
+function registerOpenSkuSelect(id: string, close: () => void) {
+  closeOtherSkuSelects(id);
+  openSkuSelectRegistry.set(id, close);
+}
+
+function unregisterSkuSelect(id: string) {
+  openSkuSelectRegistry.delete(id);
+}
 
 export type SkuSearchOption = {
   value: string;
@@ -46,13 +64,30 @@ export function SkuSearchSelect({
   className,
   disabled,
 }: SkuSearchSelectProps) {
+  const instanceId = useId();
   const [searchInput, setSearchInput] = useState(value ?? "");
   const [queryParams, setQueryParams] = useState<ItemQueryParams | null>(null);
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const setDropdownOpenRef = useRef(setDropdownOpen);
+  setDropdownOpenRef.current = setDropdownOpen;
+
+  const closeDropdown = useCallback(() => {
+    setDropdownOpenRef.current(false);
+    unregisterSkuSelect(instanceId);
+  }, [instanceId]);
+
+  const openDropdown = useCallback(() => {
+    registerOpenSkuSelect(instanceId, () => setDropdownOpenRef.current(false));
+    setDropdownOpenRef.current(true);
+  }, [instanceId]);
 
   useEffect(() => {
     setSearchInput(value ?? "");
   }, [value]);
+
+  useEffect(() => {
+    return () => unregisterSkuSelect(instanceId);
+  }, [instanceId]);
 
   const { data, isFetching, isError, refetch } = useGetItems({
     warehouse_id: warehouseId,
@@ -73,12 +108,6 @@ export function SkuSearchSelect({
         base_quantity: it.base_quantity,
       })) ?? []);
 
-  useEffect(() => {
-    if (queryParams && !isFetching) {
-      setDropdownOpen(true);
-    }
-  }, [queryParams, isFetching, data]);
-
   const loadBrowse = () => {
     if (warehouseId <= 0) return;
     setQueryParams({ page: 1, page_size: BROWSE_PAGE_SIZE });
@@ -89,7 +118,7 @@ export function SkuSearchSelect({
     if (queryParams === null) {
       loadBrowse();
     }
-    setDropdownOpen(true);
+    openDropdown();
   };
 
   const handleSearch = async () => {
@@ -107,7 +136,7 @@ export function SkuSearchSelect({
       queryParams?.page_size === next.page_size;
 
     setQueryParams(next);
-    setDropdownOpen(true);
+    openDropdown();
 
     if (sameQuery) {
       await refetch();
@@ -117,7 +146,7 @@ export function SkuSearchSelect({
   const handleClear = () => {
     setSearchInput("");
     setQueryParams(null);
-    setDropdownOpen(false);
+    closeDropdown();
     onChange?.(undefined);
     onSelectOption?.(null);
   };
@@ -130,10 +159,17 @@ export function SkuSearchSelect({
           disabled={disabled}
           open={dropdownOpen}
           onDropdownVisibleChange={(open) => {
-            setDropdownOpen(open);
-            if (open && queryParams === null && warehouseId > 0) {
-              loadBrowse();
+            if (open) {
+              registerOpenSkuSelect(instanceId, () =>
+                setDropdownOpenRef.current(false),
+              );
+              if (queryParams === null && warehouseId > 0) {
+                loadBrowse();
+              }
+            } else {
+              unregisterSkuSelect(instanceId);
             }
+            setDropdownOpen(open);
           }}
           value={searchInput}
           options={options.map((o) => ({
@@ -167,7 +203,7 @@ export function SkuSearchSelect({
               base_quantity?: number;
             };
             setSearchInput(selected);
-            setDropdownOpen(false);
+            closeDropdown();
             onChange?.(selected);
             onSelectOption?.({
               value: selected,
@@ -223,6 +259,7 @@ export function SkuSearchSelect({
         disabled={disabled || warehouseId <= 0}
         title={warehouseId <= 0 ? "Vui lòng chọn kho trước" : undefined}
         className="!h-11 !w-[72px] shrink-0"
+        onMouseDown={(e) => e.preventDefault()}
         onClick={() => void handleSearch()}
       >
         Tìm
