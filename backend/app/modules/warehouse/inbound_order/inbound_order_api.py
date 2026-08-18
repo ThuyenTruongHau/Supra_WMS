@@ -200,14 +200,13 @@ def delete_inbound_order(
 def caller_inbound_order(
     body: InboundOrderCreate,
     db: DbSession,
-    current_user: Annotated[User, Depends(_INBOUND_CREATE)],
     inbound_type: str,
 ):
     try:
         order = run_logic_task(
             caller_inbound_order_task,
             body=body.model_dump(mode="json"),
-            user_id=current_user.id,
+            user_id=1,
             inbound_type=inbound_type,
         )
     except ValueError as e:

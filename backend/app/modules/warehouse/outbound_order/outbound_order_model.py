@@ -1,5 +1,5 @@
 from sqlalchemy import (
-    Column, Integer, String, Text, DateTime, ForeignKey, Numeric, func, JSON, select, table, column, and_, exists, case
+    Column, Integer, String, Text, DateTime, ForeignKey, Numeric, func, JSON, select, table, column, and_, exists, case, or_
 )
 from sqlalchemy.orm import relationship, column_property
 from sqlalchemy.dialects.postgresql import JSONB
@@ -10,29 +10,159 @@ _outbound_order_detail_tbl = table(
     "outbound_order_detail",
     column("id", Integer),
     column("outbound_order_id", Integer),
+    column("quantity", Integer),
 )
 
 _outbound_order_allocation_tbl = table(
     "outbound_order_allocation",
     column("outbound_order_detail_id", Integer),
     column("status", String),
+    column("quantity", Integer),           
+    column("allocation_type", String),
 )
 
-def _outbound_order_allocation_exists_for_order(order_id_col, *criteria):
+def _outbound_order_has_detail_status(order_id_col, status_value: str):
     return exists(
         select(1)
-        .select_from(
-            _outbound_order_allocation_tbl.join(
-                _outbound_order_detail_tbl,
-                _outbound_order_allocation_tbl.c.outbound_order_detail_id
-                == _outbound_order_detail_tbl.c.id,
+        .select_from(_outbound_order_detail_tbl)
+        .where(
+            _outbound_order_detail_tbl.c.outbound_order_id == order_id_col,
+            _outbound_detail_status_expr(
+                _outbound_order_detail_tbl.c.id,
+                _outbound_order_detail_tbl.c.quantity,
+            ) == status_value,
+        )
+        .correlate_except(_outbound_order_detail_tbl)
+    )
+
+def _outbound_order_all_details_status(order_id_col, status_value: str):
+    return and_(
+        exists(
+            select(1)
+            .select_from(_outbound_order_detail_tbl)
+            .where(_outbound_order_detail_tbl.c.outbound_order_id == order_id_col)
+            .correlate_except(_outbound_order_detail_tbl)
+        ),
+        ~exists(
+            select(1)
+            .select_from(_outbound_order_detail_tbl)
+            .where(
+                _outbound_order_detail_tbl.c.outbound_order_id == order_id_col,
+                _outbound_detail_status_expr(
+                    _outbound_order_detail_tbl.c.id,
+                    _outbound_order_detail_tbl.c.quantity,
+                ) != status_value,
+            )
+            .correlate_except(_outbound_order_detail_tbl)
+        ),
+    )
+
+def _outbound_detail_status_expr(detail_id_col, quantity_col):
+    return case(
+        (
+            or_(
+                and_(
+                    _outbound_order_allocation_exists(detail_id_col),
+                    quantity_col != _outbound_allocated_quantity(detail_id_col),
+                ),
+                and_(
+                    _outbound_order_allocation_exists(
+                        detail_id_col,
+                        _outbound_order_allocation_tbl.c.status != "initialize",
+                    ),
+                    _outbound_order_allocation_exists(
+                        detail_id_col,
+                        _outbound_order_allocation_tbl.c.status != "completed",
+                    ),
+                ),
+            ),
+            "in_progress",
+        ),
+        (
+            and_(
+                _outbound_order_allocation_exists(detail_id_col),
+                ~_outbound_order_allocation_exists(
+                    detail_id_col,
+                    _outbound_order_allocation_tbl.c.status != "completed",
+                ),
+            ),
+            "completed",
+        ),
+        (
+            _outbound_order_allocation_exists(
+                detail_id_col,
+                _outbound_order_allocation_tbl.c.status == "initialize",
+            ),
+            "reserved",
+        ),
+        else_="initialize",
+    )
+
+def _outbound_order_has_any_detail(order_id_col):
+    return exists(
+        select(1)
+        .select_from(_outbound_order_detail_tbl)
+        .where(_outbound_order_detail_tbl.c.outbound_order_id == order_id_col)
+        .correlate_except(_outbound_order_detail_tbl)
+    )
+
+def _outbound_order_has_detail_status(order_id_col, status_value: str):
+    return exists(
+        select(1)
+        .select_from(_outbound_order_detail_tbl)
+        .where(
+            _outbound_order_detail_tbl.c.outbound_order_id == order_id_col,
+            _outbound_detail_status_expr(
+                _outbound_order_detail_tbl.c.id,
+                _outbound_order_detail_tbl.c.quantity,
+            ) == status_value,
+        )
+        .correlate_except(_outbound_order_detail_tbl)
+    )
+
+def _outbound_order_all_details_status(order_id_col, status_value: str):
+    return and_(
+        exists(
+            select(1)
+            .select_from(_outbound_order_detail_tbl)
+            .where(_outbound_order_detail_tbl.c.outbound_order_id == order_id_col)
+            .correlate_except(_outbound_order_detail_tbl)
+        ),
+        ~exists(
+            select(1)
+            .select_from(_outbound_order_detail_tbl)
+            .where(
+                _outbound_order_detail_tbl.c.outbound_order_id == order_id_col,
+                _outbound_detail_status_expr(
+                    _outbound_order_detail_tbl.c.id,
+                    _outbound_order_detail_tbl.c.quantity,
+                ) != status_value,
+            )
+            .correlate_except(_outbound_order_detail_tbl)
+        ),
+    )
+
+def _outbound_allocated_quantity(detail_id_col):
+    return (
+        select(
+            func.coalesce(
+                func.sum(
+                    case(
+                        (
+                            _outbound_order_allocation_tbl.c.allocation_type == "return",
+                            0,
+                        ),
+                        else_=_outbound_order_allocation_tbl.c.quantity,
+                    )
+                ),
+                0,
             )
         )
         .where(
-            _outbound_order_detail_tbl.c.outbound_order_id == order_id_col,
-            *criteria,
+            _outbound_order_allocation_tbl.c.outbound_order_detail_id == detail_id_col,
         )
-        .correlate_except(_outbound_order_allocation_tbl, _outbound_order_detail_tbl)
+        .correlate_except(_outbound_order_allocation_tbl)
+        .scalar_subquery()
     )
 
 def _outbound_order_allocation_exists(detail_id_col, *criteria):
@@ -71,18 +201,23 @@ class OutboundOrder(Base):
     status = column_property(
         case(
             (
-                and_(
-                    _outbound_order_allocation_exists_for_order(id),
-                    ~_outbound_order_allocation_exists_for_order(id, _outbound_order_allocation_tbl.c.status != "completed"),
+                or_(
+                    _outbound_order_has_detail_status(id, "in_progress"),
+                    and_(
+                        _outbound_order_has_any_detail(id),
+                        ~_outbound_order_all_details_status(id, "completed"),
+                        ~_outbound_order_all_details_status(id, "reserved"),
+                        ~_outbound_order_all_details_status(id, "initialize"),
+                    ),
                 ),
-                "completed",
-            ),
-            (
-                _outbound_order_allocation_exists_for_order(id, _outbound_order_allocation_tbl.c.status != "initialize"),
                 "in_progress",
             ),
             (
-                _outbound_order_allocation_exists_for_order(id, _outbound_order_allocation_tbl.c.status == "initialize"),
+                _outbound_order_all_details_status(id, "completed"),
+                "completed",
+            ),
+            (
+                _outbound_order_all_details_status(id, "reserved"),
                 "reserved",
             ),
             else_="initialize",
@@ -123,26 +258,7 @@ class OutboundOrderDetail(Base):
         lazy="selectin",
     )
 
-    status = column_property(
-        case(
-            (
-                and_(
-                    _outbound_order_allocation_exists(id),
-                    ~_outbound_order_allocation_exists(id, _outbound_order_allocation_tbl.c.status != "completed"),
-                ),
-                "completed",
-            ),
-            (
-                _outbound_order_allocation_exists(id, _outbound_order_allocation_tbl.c.status != "initialize"),
-                "in_progress",
-            ),
-            (
-                _outbound_order_allocation_exists(id, _outbound_order_allocation_tbl.c.status == "initialize"),
-                "reserved",
-            ),
-            else_="initialize",
-        )
-    )
+    status = column_property(_outbound_detail_status_expr(id, quantity))
 
 class OutboundOrderAllocation(Base):
     """Outbound order allocation."""
