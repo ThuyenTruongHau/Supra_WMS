@@ -40,6 +40,7 @@ from app.modules.warehouse.item_stock.item_stock_model import ItemStock
 from app.modules.robot.robot_model import RobotTask
 from app.modules.robot.robot_service import task_status_service
 from app.modules.warehouse.transaction_history.history_model import History
+from app.modules.warehouse.lot_number_utils import format_lot_number_display
 
 from app.core.logger import get_logger
 
@@ -170,7 +171,13 @@ def _build_allocation_response(
         item_id=stock.item_id if stock else None,
         sku=item.sku if item else None,
         item_name=item.name if item else None,
-        lot_number=stock.lot_number if stock else None,
+        lot_number_from=stock.lot_number_from if stock else None,
+        lot_number_to=stock.lot_number_to if stock else None,
+        lot_number=(
+            format_lot_number_display(stock.lot_number_from, stock.lot_number_to)
+            if stock
+            else None
+        ),
         expiry_date=stock.expiry_date if stock else None,
         created_at=allocation.created_at,
         updated_at=allocation.updated_at,
@@ -405,9 +412,25 @@ def _strategy_loading_stocks(db: Session, item_id: int, strategy: str):
             ItemStock.is_active.is_(True),
         )
     )
-    lot_date = func.to_date(ItemStock.lot_number, "DDMMYY")
+    
     if strategy == "fefo":
-        q = q.order_by(lot_date.asc(), ItemStock.id.asc())
+        lot_from = ItemStock.lot_number_from
+        lot_to = ItemStock.lot_number_to
+        lot_date_from = case(
+            (
+                lot_from.op("~")(r"^\d{2}/\d{2}/\d{2}$"),
+                func.to_date(lot_from, "DD/MM/YY"),
+            ),
+            else_=func.to_date(lot_from, "DDMMYY"),
+        )
+        lot_date_to = case(
+            (
+                lot_to.op("~")(r"^\d{2}/\d{2}/\d{2}$"),
+                func.to_date(lot_to, "DD/MM/YY"),
+            ),
+            else_=func.to_date(lot_to, "DDMMYY"),
+        )
+        q = q.order_by(lot_date_from.asc(), lot_date_to.asc(), ItemStock.id.asc())
     else:
         q = q.order_by(ItemStock.created_at.asc(), ItemStock.id.asc())
     return q.all()

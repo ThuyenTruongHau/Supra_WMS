@@ -101,7 +101,35 @@ export interface ItemImportJobStatus {
   processed: number
   total: number
   created: number
+  updated?: number
   error_count: number
   errors: ItemImportErrorItem[]
   message: string
+}
+
+export type QRCodeStatus = 'expired' | 'stocked' | 'available'
+
+export interface QRCodeRecent {
+  id: number
+  code: string
+  item_id: number
+  item_sku?: string | null
+  item_name?: string | null
+  item_stock_id: number | null
+  created_at: string | null
+  status: QRCodeStatus
+}
+
+export interface QRCodeRecentListResponse {
+  items: QRCodeRecent[]
+  total: number
+  page: number
+  page_size: number
+}
+
+export interface GenerateQrCodesResponse {
+  html: string
+  quantity: number
+  page_count: number
+  qr_ids: string[]
 }

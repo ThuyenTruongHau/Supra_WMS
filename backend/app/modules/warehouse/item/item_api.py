@@ -2,7 +2,8 @@
 
 from typing import Annotated, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -12,9 +13,16 @@ from app.modules.warehouse.item.item_schema import (
     ItemAnalyzeResponse,
     ItemCreate,
     ItemDetailResponse,
+    ItemImportJobAccepted,
+    ItemImportJobStatus,
     ItemListResponse,
     ItemResponse,
     ItemUpdate,
+    QRCodeCreate,
+    QRCodeListResponse,
+    QRCodeRecentListResponse,
+    QRCodeResponse,
+    QRCodeUpdate,
 )
 
 router = APIRouter(tags=["Item"])
@@ -52,6 +60,54 @@ def list_items(
 def analyze_items(warehouse_id: int, db: DbSession):
     try:
         return item_service.analyze_items(db, warehouse_id)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e)) from e
+
+
+@router.post(
+    "/items/import",
+    response_model=ItemImportJobAccepted,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_permission("item:create"))],
+)
+async def import_items_masan(
+    db: DbSession,
+    warehouse_id: int = Form(...),
+    file: UploadFile = File(...),
+):
+    try:
+        return await item_service.start_item_masan_import(db, warehouse_id, file)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
+
+@router.get(
+    "/items/import/file",
+    dependencies=[Depends(require_permission("item:read"))],
+)
+def download_last_import_item_file(
+    db: DbSession,
+    warehouse_id: int = Query(..., gt=0),
+):
+    try:
+        file_path, filename = item_service.get_last_import_item_file(db, warehouse_id)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e)) from e
+    return FileResponse(
+        path=file_path,
+        media_type="text/csv",
+        filename=filename,
+    )
+
+
+@router.get(
+    "/items/import/{job_id}",
+    response_model=ItemImportJobStatus,
+    dependencies=[Depends(require_permission("item:create"))],
+)
+def get_import_items_job(job_id: str):
+    try:
+        return item_service.get_item_import_job_status(job_id)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e)) from e
 
@@ -108,4 +164,163 @@ def delete_item(item_id: int, db: DbSession):
         raise HTTPException(status_code=400, detail=str(e)) from e
     if not deleted:
         raise HTTPException(status_code=404, detail="Item not found")
+    return None
+
+
+# --- QR Code ---
+
+@router.get(
+    "/qr-codes",
+    response_model=QRCodeListResponse,
+    dependencies=[Depends(require_permission("item:read"))],
+)
+def list_qr_codes(
+    db: DbSession,
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    item_id: Optional[int] = Query(None),
+    item_stock_id: Optional[int] = Query(None),
+    q: Optional[str] = Query(None),
+):
+    return item_service.list_qr_codes(
+        db,
+        page=page,
+        page_size=page_size,
+        item_id=item_id,
+        item_stock_id=item_stock_id,
+        q=q,
+    )
+
+
+@router.get(
+    "/qr-codes/by-item/{item_id}/recent",
+    response_model=QRCodeRecentListResponse,
+    dependencies=[Depends(require_permission("item:read"))],
+)
+def list_recent_qr_codes_by_item(item_id: int, db: DbSession):
+    try:
+        return item_service.list_recent_qr_codes_by_item(db, item_id)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e)) from e
+
+
+@router.get(
+    "/qr-codes/recent",
+    response_model=QRCodeRecentListResponse,
+    dependencies=[Depends(require_permission("item:read"))],
+)
+def list_recent_qr_codes(
+    db: DbSession,
+    warehouse_id: Optional[int] = Query(None),
+    item_id: Optional[int] = Query(None),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+):
+    return item_service.list_recent_qr_codes(
+        db,
+        warehouse_id=warehouse_id,
+        item_id=item_id,
+        page=page,
+        page_size=page_size,
+    )
+
+
+@router.post(
+    "/qr-codes/preview",
+    dependencies=[Depends(require_permission("item:read"))],
+)
+def preview_qr_codes(
+    db: DbSession,
+    item_id: int = Query(..., gt=0),
+    quantity: int = Query(..., gt=0, le=50),
+):
+    try:
+        return item_service.preview_qr_codes(db, item_id, quantity)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
+
+@router.post(
+    "/qr-codes/create",
+    dependencies=[Depends(require_permission("item:create"))],
+)
+def create_qr_codes_batch(
+    db: DbSession,
+    item_id: int = Query(..., gt=0),
+    quantity: int = Query(..., gt=0, le=50),
+):
+    try:
+        return item_service.create_qr_codes(db, item_id, quantity)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
+
+@router.post(
+    "/qr-codes/generate",
+    dependencies=[Depends(require_permission("item:create"))],
+)
+def generate_qr_codes(
+    db: DbSession,
+    item_id: int = Query(..., gt=0),
+    quantity: int = Query(..., gt=0, le=50),
+):
+    try:
+        return item_service.create_qr_codes(db, item_id, quantity)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
+
+@router.post(
+    "/qr-codes",
+    response_model=QRCodeResponse,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_permission("item:create"))],
+)
+def create_qr_code(body: QRCodeCreate, db: DbSession):
+    try:
+        qr_code = item_service.create_qr_code(db, body)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    return QRCodeResponse.model_validate(qr_code)
+
+
+@router.get(
+    "/qr-codes/{qr_code_id}",
+    response_model=QRCodeResponse,
+    dependencies=[Depends(require_permission("item:read"))],
+)
+def get_qr_code(qr_code_id: int, db: DbSession):
+    qr_code = item_service.get_qr_code_by_id(db, qr_code_id)
+    if not qr_code:
+        raise HTTPException(status_code=404, detail="QR code not found")
+    return QRCodeResponse.model_validate(qr_code)
+
+
+@router.patch(
+    "/qr-codes/{qr_code_id}",
+    response_model=QRCodeResponse,
+    dependencies=[Depends(require_permission("item:update"))],
+)
+def update_qr_code(qr_code_id: int, body: QRCodeUpdate, db: DbSession):
+    try:
+        qr_code = item_service.update_qr_code(db, qr_code_id, body)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    if not qr_code:
+        raise HTTPException(status_code=404, detail="QR code not found")
+    return QRCodeResponse.model_validate(qr_code)
+
+
+@router.delete(
+    "/qr-codes/{qr_code_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(require_permission("item:delete"))],
+)
+def delete_qr_code(qr_code_id: int, db: DbSession):
+    try:
+        deleted = item_service.delete_qr_code(db, qr_code_id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    if not deleted:
+        raise HTTPException(status_code=404, detail="QR code not found")
     return None

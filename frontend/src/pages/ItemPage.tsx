@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import {
   PlusOutlined,
   SearchOutlined,
-  FileExcelOutlined,
+  DownloadOutlined,
   UploadOutlined,
   MinusCircleOutlined,
 } from "@ant-design/icons";
@@ -25,17 +25,24 @@ import {
   useCreateItem,
   useItemAnalyze,
   useImportItems,
+  useDownloadLastImportItemFile,
 } from "@/hooks/useItem";
 import { useAppStore } from "@/store/useAppStore";
 import { useNavigate } from "react-router-dom";
 import { useZone } from "@/hooks/useZone";
 import { useUnits } from "@/hooks/useUnit";
-import { getItemsForExport, downloadItemExcel } from "@/utils/itemExport";
-import dayjs from "dayjs";
 import { formatQuantity, parseQuantity } from "@/utils/formatQuantity";
+import dayjs from "dayjs";
 
 const PAGE_SIZE = 20;
 const ITEM_FETCH_LIMIT = 100;
+const ITEM_IMPORT_ACCEPT = ".csv";
+const ITEM_IMPORT_REQUIRED_COLUMNS = [
+  "Item No",
+  "Item Name",
+  "UOM1",
+  "UOM Conversion / Pallet",
+];
 
 type CreateItemFormValues = Omit<CreateItemInput, "details"> & {
   detailEntries?: { key: string; value: string }[];
@@ -81,6 +88,7 @@ export default function ItemPage() {
   const itemList = data?.items ?? [];
   const createMutation = useCreateItem();
   const importMutation = useImportItems();
+  const downloadImportFileMutation = useDownloadLastImportItemFile();
   const { data: analyze, isLoading: isAnalyzeLoading } =
     useItemAnalyze(selectedWarehouseId);
 
@@ -154,14 +162,24 @@ export default function ItemPage() {
     );
   };
 
-  const handleExportExcel = () => {
-    const exportList = getItemsForExport(itemList);
-    if (exportList.length === 0) {
-      message.warning("Không có sản phẩm để xuất!");
+  const handleDownloadImportFile = () => {
+    if (!selectedWarehouseId) {
+      message.error("Vui lòng chọn kho trước khi tải file.");
       return;
     }
-    downloadItemExcel(exportList, selectedWarehouseName);
-    message.success(`Đã tải ${exportList.length} sản phẩm`);
+    downloadImportFileMutation.mutate(
+      { warehouseId: selectedWarehouseId },
+      {
+        onSuccess: () => {
+          message.success("Đã tải file CSV import gần nhất");
+        },
+        onError: (err) => {
+          message.error(
+            err.response?.data?.detail ?? "Không thể tải file import",
+          );
+        },
+      },
+    );
   };
 
   const handleImportClick = () => {
@@ -181,8 +199,8 @@ export default function ItemPage() {
       return;
     }
     const lower = file.name.toLowerCase();
-    if (!lower.endsWith(".xlsx") && !lower.endsWith(".xlsm")) {
-      message.error("Chỉ hỗ trợ file Excel .xlsx/.xlsm");
+    if (!lower.endsWith(".csv")) {
+      message.error("Chỉ hỗ trợ file CSV (.csv) theo format Masan");
       return;
     }
 
@@ -198,7 +216,11 @@ export default function ItemPage() {
         onSuccess: (job) => {
           setImportJob(job);
           if (job.status === "completed") {
-            message.success(job.message || `Đã import ${job.created} sản phẩm`);
+            const summary =
+              job.updated != null && job.updated > 0
+                ? `${job.created} mới, ${job.updated} cập nhật`
+                : `${job.created} sản phẩm`;
+            message.success(job.message || `Đã import ${summary}`);
             setPage(1);
           } else {
             message.error(job.message || "Import thất bại");
@@ -337,7 +359,7 @@ export default function ItemPage() {
             <input
               ref={fileInputRef}
               type="file"
-              accept=".xlsx,.xlsm"
+              accept={ITEM_IMPORT_ACCEPT}
               className="hidden"
               onChange={handleImportFileChange}
             />
@@ -347,14 +369,15 @@ export default function ItemPage() {
               onClick={handleImportClick}
               loading={importMutation.isPending}
             >
-              Import Excel
+              Import CSV
             </Button>
             <Button
               variant="secondary"
-              icon={<FileExcelOutlined />}
-              onClick={handleExportExcel}
+              icon={<DownloadOutlined />}
+              onClick={handleDownloadImportFile}
+              loading={downloadImportFileMutation.isPending}
             >
-              Xuất Excel
+              Tải CSV import
             </Button>
             <Button
               variant="primary"
@@ -562,7 +585,7 @@ export default function ItemPage() {
         mask={{ closable: !importMutation.isPending }}
         title={
           <span className="text-brand-dark font-semibold">
-            Import sản phẩm từ Excel
+            Import sản phẩm từ CSV (Masan)
           </span>
         }
       >
@@ -575,6 +598,10 @@ export default function ItemPage() {
                 · File: <strong>{importJob.filename}</strong>
               </>
             ) : null}
+          </p>
+          <p className="text-xs text-slate-500">
+            File CSV cần có header (dòng 2 nếu có dòng tiêu đề):{" "}
+            <strong>{ITEM_IMPORT_REQUIRED_COLUMNS.join(", ")}</strong>
           </p>
           <Progress
             percent={importPercent}
@@ -597,6 +624,7 @@ export default function ItemPage() {
               Status: {importJob.status} · processed {importJob.processed}
               {importJob.total ? ` / ${importJob.total}` : ""} · created{" "}
               {importJob.created}
+              {importJob.updated ? ` · updated ${importJob.updated}` : ""}
               {importJob.error_count
                 ? ` · errors ${importJob.error_count}`
                 : ""}

@@ -46,6 +46,12 @@ def cache_get(key: str) -> Optional[Any]:
 
 
 def cache_set(key: str, value: Any, ttl: int | None = None) -> None:
+    payload = json.dumps(value, default=str)
+    prefixed = _prefixed_key(key)
+    if ttl == -1:
+        get_redis().set(prefixed, payload)
+        return
+
     get_redis().setex(
         _prefixed_key(key),
         ttl or settings.redis_cache_ttl,

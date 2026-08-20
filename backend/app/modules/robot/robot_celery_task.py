@@ -21,7 +21,7 @@ def persist_task_status(self, payload: dict) -> int:
         with db_session() as db:
             record = task_status_service.receive_task_status(db, payload)
             if record:
-                return record.order_id
+                return {"code": 1000, "order_id": order_id}
             else:
                 return None
 

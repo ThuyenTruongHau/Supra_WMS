@@ -6,6 +6,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
 from app.core.config import settings
+from app.modules.warehouse.lot_number_utils import format_lot_number_display
 
 from app.modules.warehouse.location_map.location_model import Location, WarehouseMap
 from decimal import Decimal
@@ -143,7 +144,12 @@ def list_locations_for_map(db: Session, warehouse_id: int) -> LocationsForMapRes
         stocks = [
             MapLocationStockItem(
                 sku=stock.item.sku if stock.item else "",
-                lot_number=stock.lot_number,
+                lot_number_from=stock.lot_number_from,
+                lot_number_to=stock.lot_number_to,
+                lot_number=format_lot_number_display(
+                    stock.lot_number_from,
+                    stock.lot_number_to,
+                ),
                 quantity=str(stock.quantity),
             )
             for stock in (loc.stocks or [])
@@ -191,7 +197,12 @@ def get_location_detail(db: Session, location_id: int) -> LocationDetailResponse
                 id=stock.id,
                 item_id=stock.item_id,
                 sku=stock.item.sku if stock.item else "",
-                lot_number=stock.lot_number,
+                lot_number_from=stock.lot_number_from,
+                lot_number_to=stock.lot_number_to,
+                lot_number=format_lot_number_display(
+                    stock.lot_number_from,
+                    stock.lot_number_to,
+                ),
                 expiry_date=stock.expiry_date,
                 quantity=str(qty),
                 status=stock.status,

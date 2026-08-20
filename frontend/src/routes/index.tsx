@@ -14,6 +14,7 @@ import ImportPage from "@/pages/ImportPage";
 import ImportDetailPage from "@/pages/ImportDetailPage";
 import ZoneSettingPage from "@/pages/ZoneSettingPage";
 import UnitSettingPage from "@/pages/UnitSettingPage";
+import QrCodeSettingPage from "@/pages/QrCodeSettingPage";
 import OutboundDetailPage from "@/pages/OutboundDetailPage";
 // import ItemSettingPage from "@/pages/ItemSettingPage";
 // import StocktakePage from "@/pages/StocktakePage";
@@ -70,6 +71,7 @@ export default function AppRoutes() {
         <Route path="setting/warehouse" element={<WarehouseSettingPage />} />
         <Route path="setting/zones" element={<Navigate to="/zones" replace />} />
         <Route path="setting/units" element={<UnitSettingPage />} />
+        <Route path="setting/qr-codes" element={<QrCodeSettingPage />} />
         <Route path="setting/entry-points" element={<Navigate to="/zones" replace />} />
         <Route path="setting/exit-points" element={<Navigate to="/setting/units" replace />} />
         {/* <Route path="setting/items" element={<ItemSettingPage />} /> */}

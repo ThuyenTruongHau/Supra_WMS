@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 import json
 
 from app.core.config import settings
+from app.modules.warehouse.lot_number_utils import format_lot_number_display
 from app.modules.robot.robot_model import RobotTask, TaskStatus, MAPPING_STATUS
 from app.modules.warehouse.inbound_order.inbound_order_model import InboundOrderDetail
 from app.modules.warehouse.item_stock.item_stock_model import ItemStock
@@ -109,7 +110,16 @@ class TaskStatusService:
             allocation_rows.append({
                 "allocation_id": allocation.id,
                 "part_number": allocation.item_stock.item.sku if allocation.item_stock and allocation.item_stock.item else None,
-                "lot_number": allocation.item_stock.lot_number if allocation.item_stock else None,
+                "lot_number_from": allocation.item_stock.lot_number_from if allocation.item_stock else None,
+                "lot_number_to": allocation.item_stock.lot_number_to if allocation.item_stock else None,
+                "lot_number": (
+                    format_lot_number_display(
+                        allocation.item_stock.lot_number_from,
+                        allocation.item_stock.lot_number_to,
+                    )
+                    if allocation.item_stock
+                    else None
+                ),
                 "quantity": int(allocation.quantity),
             })
 

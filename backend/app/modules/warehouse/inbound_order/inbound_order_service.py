@@ -4,8 +4,10 @@ import json
 from sqlalchemy import cast, Integer, or_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload, joinedload
+from zoneinfo import ZoneInfo
 
 from app.modules.auth.auth_model import User
+from app.modules.warehouse.item.item_service import get_qr_code_by_code
 from app.modules.warehouse.inbound_order.inbound_order_model import (
     InboundOrder,
     InboundOrderDetail,
@@ -28,6 +30,8 @@ from app.modules.warehouse.inbound_order.inbound_order_schema import (
     InboundExecuteDetailResult,
     InboundCallerResponse,
     RobotTaskResponse,
+    format_lot_number_display,
+    _resolve_lot_number_fields,
 )
 from app.modules.warehouse.location_map.location_model import Location
 from app.modules.warehouse.item.item_model import Item
@@ -86,7 +90,12 @@ def suggest_allocation_inbound(db: Session, body: InboundSuggestAllocation):
                 item_id=item.item_id,
                 quantity=item.quantity,
                 unit_id=item.unit_id,
-                lot_number=item.lot_number,
+                lot_number_from=item.lot_number_from,
+                lot_number_to=item.lot_number_to,
+                lot_number=format_lot_number_display(
+                    item.lot_number_from,
+                    item.lot_number_to,
+                ),
             )
             for item in detail_group.items
         ]
@@ -123,6 +132,14 @@ def _create_stock_and_allocation(
         raise ValueError("Allocation requires unit_id")
     if payload.quantity is None:
         raise ValueError("Allocation requires quantity")
+    try:
+        lot_number_from, lot_number_to = _resolve_lot_number_fields(
+            lot_number_from=getattr(payload, "lot_number_from", None),
+            lot_number_to=getattr(payload, "lot_number_to", None),
+            lot_number=getattr(payload, "lot_number", None),
+        )
+    except ValueError as exc:
+        raise ValueError("Allocation requires lot_number_from and lot_number_to") from exc
     if not detail.from_location_id:
         raise ValueError("Detail requires from_location_id to create stock")
 
@@ -152,7 +169,8 @@ def _create_stock_and_allocation(
         inbound_order_detail_id=detail.id,
         unit_id=item.base_unit_id,
         quantity=calculated_quantity,
-        lot_number=payload.lot_number,
+        lot_number_from=lot_number_from,
+        lot_number_to=lot_number_to,
         expiry_date=payload.expiry_date,
         status="in_transit",
         is_active=True,
@@ -198,6 +216,7 @@ def create_inbound_order(db: Session, body: InboundOrderCreate, user_id: int, in
                 _create_stock_and_allocation(db, detail, allocation_payload)
 
             cache_delete(f"inbound:reserved:{detail.to_location_id}")
+            cache_delete_pattern(f"inbound:assign:location:{detail.from_location_id}:*")
 
         db.add(History(
             inbound_order_id=inbound_order.id,
@@ -425,8 +444,22 @@ def _patch_allocation(db: Session, allocation: InboundOrderAllocation, data: dic
         stock.item_id = data["item_id"]
     if "quantity" in data:
         stock.quantity = allocation.quantity
-    if "lot_number" in data:
-        stock.lot_number = data["lot_number"]
+    lot_fields = (
+        "lot_number_from" in data
+        or "lot_number_to" in data
+        or "lot_number" in data
+    )
+    if lot_fields:
+        try:
+            lot_number_from, lot_number_to = _resolve_lot_number_fields(
+                lot_number_from=data.get("lot_number_from"),
+                lot_number_to=data.get("lot_number_to"),
+                lot_number=data.get("lot_number"),
+            )
+        except ValueError as exc:
+            raise ValueError("lot_number_from and lot_number_to are required") from exc
+        stock.lot_number_from = lot_number_from
+        stock.lot_number_to = lot_number_to
     if "expiry_date" in data:
         stock.expiry_date = data["expiry_date"]
 
@@ -508,7 +541,13 @@ def _build_allocation_response(
         sku=item.sku if item else None,
         item_name=item.name if item else None,
         unit_name=unit.name if unit else None,
-        lot_number=stock.lot_number if stock else None,
+        lot_number_from=stock.lot_number_from if stock else None,
+        lot_number_to=stock.lot_number_to if stock else None,
+        lot_number=(
+            format_lot_number_display(stock.lot_number_from, stock.lot_number_to)
+            if stock
+            else None
+        ),
         expiry_date=stock.expiry_date if stock else None,
         created_at=allocation.created_at,
         updated_at=allocation.updated_at,
@@ -709,3 +748,29 @@ def caller_inbound_order(
         )
     except Exception as e:
         raise ValueError(f"Error calling inbound order: {e}") from e
+
+def asign_item_stock(db: Session, qr_code: str, location_id: int, quantity: int, unit_id: int):
+    qr_record = get_qr_code_by_code(db, qr_code)
+    location = db.query(Location).filter(Location.id == location_id).first()
+    if not location:
+        raise ValueError(f"Location not found: {location_id}")
+
+    VN = ZoneInfo("Asia/Ho_Chi_Minh")
+
+    cache_set(
+        f"inbound:assign:location:{location_id}:{qr_record.id}",
+        {
+            "qr_code_id": qr_record.id,
+            "code": qr_record.code,
+            "lot_number_to": qr_record.created_at.astimezone(VN).strftime("%d/%m/%y"),
+            "unit_id": unit_id,
+            "quantity": quantity,
+            "item_id": qr_record.item_id,
+            "item_sku": qr_record.item.sku,
+        },
+        ttl=-1,
+    )
+    return {
+        "part_number": qr_record.item.sku,
+        "location": location.location_name,
+    }

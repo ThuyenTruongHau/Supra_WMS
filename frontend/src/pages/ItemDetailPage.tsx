@@ -118,48 +118,23 @@ export const itemDetailFields: DetailFieldSchema<Item>[] = [
 
 type ItemFormValues = {
   name: string;
-  sku: string; // chỉ hiển thị, disabled
+  sku: string;
   base_unit: number;
   base_quantity: number;
   description: string;
   min_quantity: number;
   max_quantity: number;
-  quantity: number; // chỉ hiển thị, disabled
+  quantity: number;
   detailEntries?: { key: string; value: string }[];
 };
-
-// function getLotStatus(lotDate: string): "expired" | "expiring_soon" | "normal" {
-//   const lot = new Date(lotDate);
-//   const today = new Date();
-//   today.setHours(0, 0, 0, 0);
-//   lot.setHours(0, 0, 0, 0);
-//   if (lot < today) return "expired";
-//   return "normal";
-// }
-
-// function LotStatusTag({ lotDate }: { lotDate: string }) {
-//   const status = getLotStatus(lotDate);
-//   if (status === "expired") {
-//     return (
-//       <span className="ml-2 rounded px-1.5 py-0.5 text-[10px] font-bold uppercase bg-red-100 text-red-600">
-//         Quá hạn
-//       </span>
-//     );
-//   }
-//   if (status === "expiring_soon") {
-//     return (
-//       <span className="ml-2 rounded px-1.5 py-0.5 text-[10px] font-bold uppercase bg-orange-100 text-orange-600">
-//         Sắp hết
-//       </span>
-//     );
-//   }
-//   return null;
-// }
 
 function formatDate(date?: string | null) {
   if (!date) return "—";
   return dayjs(date).format("DD/MM/YYYY");
 }
+
+const TABLE_CLASS =
+  "[&_.ant-table-thead_th]:!bg-slate-50 [&_.ant-table-thead_th]:!text-slate-600 [&_.ant-table-thead_th]:!font-semibold [&_.ant-table-thead_th]:!text-base [&_.ant-table-tbody_td]:!text-base [&_.ant-table-thead_th]:!py-3 [&_.ant-table-tbody_td]:!py-3 [&_.ant-table-row]:hover:bg-slate-50/50";
 
 const locationColumns: ColumnsType<ItemStock> = [
   {
@@ -264,7 +239,6 @@ export default function ItemDetailPage() {
           base_quantity: Number(values.base_quantity),
           min_quantity: Number(values.min_quantity),
           max_quantity: Number(values.max_quantity),
-          // Không gửi quantity — BE tính từ ItemStock
           ...(Object.keys(details).length > 0 ? { details } : {}),
         },
       },
@@ -345,7 +319,7 @@ export default function ItemDetailPage() {
         </div>
       </div>
 
-      <Card className="rounded-xl">
+      <Card className="rounded-xl overflow-hidden">
         <div className="flex items-center justify-between gap-4 border-b border-gray-100 px-5 py-4">
           <div className="min-w-0">
             <p className="text-lg font-semibold text-brand-primary">
@@ -383,10 +357,12 @@ export default function ItemDetailPage() {
         </div>
         <Table<ItemStock>
           columns={locationColumns}
-          dataSource={stocks || []}
+          dataSource={stocks}
           rowKey="id"
           pagination={false}
-          className="[&_.ant-table-thead_th]:!bg-slate-50 [&_.ant-table-thead_th]:!text-slate-600 [&_.ant-table-thead_th]:!font-semibold [&_.ant-table-row]:hover:bg-slate-50/50"
+          size="middle"
+          className={TABLE_CLASS}
+          locale={{ emptyText: "Chưa có tồn kho tại vị trí nào" }}
         />
       </Card>
 

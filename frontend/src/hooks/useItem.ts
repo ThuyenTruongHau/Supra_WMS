@@ -8,6 +8,11 @@ import {
   analyzeItemsApi,
   importItemsApi,
   getItemImportJobApi,
+  downloadLastImportItemFileApi,
+  listRecentQrCodesByItemApi,
+  listRecentQrCodesApi,
+  previewQrCodesApi,
+  createQrCodesApi,
 } from "@/api/item";
 import {
   Item,
@@ -19,6 +24,8 @@ import {
   ItemListResponse,
   ItemImportJobAccepted,
   ItemImportJobStatus,
+  QRCodeRecentListResponse,
+  GenerateQrCodesResponse,
 } from "@/types/item";
 import { AxiosError } from "axios";
 import { ApiErrorResponse } from "@/types/apiError";
@@ -69,6 +76,72 @@ export const useItemById = (itemId: number) =>
     enabled: itemId > 0,
     ...LIVE_QUERY_OPTIONS,
   });
+
+export const useRecentQrCodesByItem = (
+  itemId: number,
+  enabled = true,
+) =>
+  useQuery<QRCodeRecentListResponse, Error>({
+    queryKey: ["qr_codes_recent", itemId],
+    queryFn: () => listRecentQrCodesByItemApi(itemId),
+    enabled: itemId > 0 && enabled,
+    ...LIVE_QUERY_OPTIONS,
+  });
+
+export const useRecentQrCodes = (
+  warehouseId: number,
+  params: {
+    itemId?: number | null
+    page?: number
+    pageSize?: number
+    enabled?: boolean
+  } = {},
+) => {
+  const page = params.page ?? 1
+  const pageSize = params.pageSize ?? 20
+  const itemId = params.itemId ?? undefined
+  const enabled = params.enabled ?? true
+
+  return useQuery<QRCodeRecentListResponse, Error>({
+    queryKey: ["qr_codes_recent_all", warehouseId, itemId, page, pageSize],
+    queryFn: () =>
+      listRecentQrCodesApi({
+        warehouseId,
+        itemId,
+        page,
+        pageSize,
+      }),
+    enabled: warehouseId > 0 && enabled,
+    ...LIVE_QUERY_OPTIONS,
+  })
+};
+
+export const usePreviewQrCodes = () =>
+  useMutation<
+    GenerateQrCodesResponse,
+    AxiosError<ApiErrorResponse>,
+    { itemId: number; quantity: number }
+  >({
+    mutationFn: ({ itemId, quantity }) => previewQrCodesApi(itemId, quantity),
+  });
+
+export const useCreateQrCodes = () => {
+  const queryClient = useQueryClient();
+  return useMutation<
+    GenerateQrCodesResponse,
+    AxiosError<ApiErrorResponse>,
+    { itemId: number; quantity: number }
+  >({
+    mutationFn: ({ itemId, quantity }) => createQrCodesApi(itemId, quantity),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["qr_codes_recent"] });
+      queryClient.invalidateQueries({ queryKey: ["qr_codes_recent_all"] });
+    },
+  });
+};
+
+/** @deprecated Dùng useCreateQrCodes */
+export const useGenerateQrCodes = useCreateQrCodes;
 
 export const useCreateItem = () => {
   const queryClient = useQueryClient();
@@ -156,5 +229,11 @@ export const useImportItems = () => {
         queryClient.invalidateQueries({ queryKey: ["item_analyze"] });
       }
     },
+  });
+};
+
+export const useDownloadLastImportItemFile = () => {
+  return useMutation<void, AxiosError<ApiErrorResponse>, { warehouseId: number }>({
+    mutationFn: ({ warehouseId }) => downloadLastImportItemFileApi(warehouseId),
   });
 };

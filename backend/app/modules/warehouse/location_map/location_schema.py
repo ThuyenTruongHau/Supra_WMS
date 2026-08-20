@@ -77,6 +77,8 @@ class MapDataResponse(BaseModel):
 
 class MapLocationStockItem(BaseModel):
     sku: str
+    lot_number_from: Optional[str] = None
+    lot_number_to: Optional[str] = None
     lot_number: Optional[str] = None
     quantity: str
 
@@ -102,6 +104,8 @@ class LocationDetailStockItem(BaseModel):
     id: int
     item_id: int
     sku: str
+    lot_number_from: Optional[str] = None
+    lot_number_to: Optional[str] = None
     lot_number: Optional[str] = None
     expiry_date: Optional[str] = None
     quantity: str

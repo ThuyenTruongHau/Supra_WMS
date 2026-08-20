@@ -37,6 +37,9 @@ services:
       - "8001:8000"
     env_file:
       - ./backend/.env
+    volumes:
+      - ./backend/logs:/app/logs
+      - ./backend/static/file_import_item:/app/static/file_import_item
     depends_on:
       db:
         condition: service_healthy
@@ -62,6 +65,7 @@ services:
       CELERY_BROKER_RESULT_URL: redis://redis:6379/2
     volumes:
       - ./backend/logs:/app/logs
+      - ./backend/static/file_import_item:/app/static/file_import_item
     depends_on:
       redis:
         condition: service_healthy

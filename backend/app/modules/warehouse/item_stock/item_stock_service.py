@@ -107,7 +107,8 @@ def create_item_stock(db: Session, body: ItemStockCreate) -> ItemStock:
         location_id=body.location_id,
         unit_id=_resolve_stock_unit_id(db, item, body.unit_id),
         quantity=body.quantity,
-        lot_number=body.lot_number,
+        lot_number_from=body.lot_number_from,
+        lot_number_to=body.lot_number_to,
         expiry_date=body.expiry_date,
         status=body.status,
         is_active=True,
@@ -150,7 +151,7 @@ def update_item_stock(
         if data["quantity"] is not None and data["quantity"] < 0:
             raise ValueError("Quantity must be >= 0")
         stock.quantity = data["quantity"]
-    for field in ("lot_number", "expiry_date", "status", "is_active"):
+    for field in ("lot_number_from", "lot_number_to", "expiry_date", "status", "is_active"):
         if field in data:
             setattr(stock, field, data[field])
     try:

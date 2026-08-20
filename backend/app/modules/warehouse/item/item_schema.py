@@ -1,6 +1,6 @@
 from datetime import datetime
 from decimal import Decimal
-from typing import Any, Optional
+from typing import Any, Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -117,6 +117,8 @@ class ItemStockInDetail(BaseModel):
     location_id: int
     unit_id: int
     location_code: Optional[str] = None
+    lot_number_from: Optional[str] = None
+    lot_number_to: Optional[str] = None
     lot_number: Optional[str] = None
     expiry_date: Optional[str] = None
     quantity: Decimal
@@ -128,3 +130,91 @@ class ItemStockInDetail(BaseModel):
 class ItemDetailResponse(BaseModel):
     item: ItemResponse
     stocks: list[ItemStockInDetail]
+
+
+# --- QR Code ---
+
+class QRCodeCreate(BaseModel):
+    code: str = Field(..., min_length=1, max_length=50)
+    item_id: int = Field(..., gt=0)
+    item_stock_id: Optional[int] = Field(None, gt=0)
+
+
+class QRCodeUpdate(BaseModel):
+    code: Optional[str] = Field(None, min_length=1, max_length=50)
+    item_id: Optional[int] = Field(None, gt=0)
+    item_stock_id: Optional[int] = None
+
+
+class QRCodeResponse(BaseModel):
+    id: int
+    code: str
+    item_id: int
+    item_stock_id: Optional[int] = None
+    created_at: Optional[datetime] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class QRCodeListResponse(BaseModel):
+    items: list[QRCodeResponse]
+    total: int
+    page: int
+    page_size: int
+
+
+QRCodeStatus = Literal["expired", "stocked", "available"]
+
+
+class QRCodeRecentResponse(BaseModel):
+    id: int
+    code: str
+    item_id: int
+    item_sku: Optional[str] = None
+    item_name: Optional[str] = None
+    item_stock_id: Optional[int] = None
+    created_at: Optional[datetime] = None
+    status: QRCodeStatus
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class QRCodeRecentListResponse(BaseModel):
+    items: list[QRCodeRecentResponse]
+    total: int
+    page: int
+    page_size: int
+
+
+class ItemImportErrorItem(BaseModel):
+    row: int
+    sku: str = ""
+    message: str
+
+
+class ItemImportJobAccepted(BaseModel):
+    job_id: str
+    status: str
+    message: str
+
+
+class ItemImportJobStatus(BaseModel):
+    job_id: str
+    status: str
+    warehouse_id: Optional[int] = None
+    filename: Optional[str] = None
+    processed: int = 0
+    total: int = 0
+    created: int = 0
+    updated: int = 0
+    error_count: int = 0
+    errors: list[ItemImportErrorItem] = Field(default_factory=list)
+    message: str = ""
+
+
+class ItemUploadResponse(BaseModel):
+    filename: str
+    saved_path: str
+    size_bytes: int
+    warehouse_id: int
+    message: str = "Upload thành công"

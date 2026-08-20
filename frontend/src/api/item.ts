@@ -1,4 +1,5 @@
 import axiosInstance from './axiosInstance'
+import { downloadBlobFromResponse } from '@/utils/downloadBlob'
 import type {
   Item, ItemListParams, ItemListResponse,
   CreateItemInput, UpdateItemInput,
@@ -6,9 +7,12 @@ import type {
   ItemDetails,
   ItemImportJobAccepted,
   ItemImportJobStatus,
+  QRCodeRecentListResponse,
+  GenerateQrCodesResponse,
 } from '@/types/item'
 
 const BASE = '/api/v1/items'
+const QR_BASE = '/api/v1/qr-codes'
 
 export const listItemsApi = async (params: ItemListParams) => {
   const { warehouse_id, q, page, page_size, limit, is_active } = params
@@ -75,3 +79,72 @@ export const getItemImportJobApi = async (
   )
   return data
 }
+
+export const downloadLastImportItemFileApi = async (
+  warehouseId: number,
+): Promise<void> => {
+  const response = await axiosInstance.get(`${BASE}/import/file`, {
+    params: { warehouse_id: warehouseId },
+    responseType: 'blob',
+    timeout: 5 * 60 * 1000,
+  })
+
+  downloadBlobFromResponse(
+    response.data,
+    response.headers['content-disposition'] as string | undefined,
+    `${warehouseId}_Masan_Item_data.csv`,
+  )
+}
+
+export const listRecentQrCodesByItemApi = async (itemId: number) => {
+  const { data } = await axiosInstance.get<QRCodeRecentListResponse>(
+    `${QR_BASE}/by-item/${itemId}/recent`,
+  )
+  return data
+}
+
+export const listRecentQrCodesApi = async (params: {
+  warehouseId?: number
+  itemId?: number
+  page?: number
+  pageSize?: number
+}) => {
+  const { warehouseId, itemId, page = 1, pageSize = 20 } = params
+  const { data } = await axiosInstance.get<QRCodeRecentListResponse>(
+    `${QR_BASE}/recent`,
+    {
+      params: {
+        warehouse_id: warehouseId,
+        item_id: itemId,
+        page,
+        page_size: pageSize,
+      },
+    },
+  )
+  return data
+}
+
+export const previewQrCodesApi = async (itemId: number, quantity: number) => {
+  const { data } = await axiosInstance.post<GenerateQrCodesResponse>(
+    `${QR_BASE}/preview`,
+    null,
+    {
+      params: { item_id: itemId, quantity },
+    },
+  )
+  return data
+}
+
+export const createQrCodesApi = async (itemId: number, quantity: number) => {
+  const { data } = await axiosInstance.post<GenerateQrCodesResponse>(
+    `${QR_BASE}/create`,
+    null,
+    {
+      params: { item_id: itemId, quantity },
+    },
+  )
+  return data
+}
+
+/** @deprecated Dùng createQrCodesApi */
+export const generateQrCodesApi = createQrCodesApi

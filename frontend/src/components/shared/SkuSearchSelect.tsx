@@ -44,6 +44,10 @@ type SkuSearchSelectProps = {
   placeholder?: string;
   className?: string;
   disabled?: boolean;
+  /** Số SKU hiển thị khi focus / browse (mặc định 40) */
+  browsePageSize?: number;
+  /** Số SKU tối đa khi bấm Tìm (mặc định 100) */
+  searchPageSize?: number;
 };
 
 type ItemQueryParams = {
@@ -63,6 +67,8 @@ export function SkuSearchSelect({
   placeholder = "Tìm theo tên, Part_number, mã...",
   className,
   disabled,
+  browsePageSize = BROWSE_PAGE_SIZE,
+  searchPageSize = SEARCH_PAGE_SIZE,
 }: SkuSearchSelectProps) {
   const instanceId = useId();
   const [searchInput, setSearchInput] = useState(value ?? "");
@@ -93,7 +99,7 @@ export function SkuSearchSelect({
     warehouse_id: warehouseId,
     q: queryParams?.q,
     page: queryParams?.page ?? 1,
-    page_size: queryParams?.page_size ?? BROWSE_PAGE_SIZE,
+    page_size: queryParams?.page_size ?? browsePageSize,
     enabled: queryParams !== null && warehouseId > 0,
   });
 
@@ -110,7 +116,7 @@ export function SkuSearchSelect({
 
   const loadBrowse = () => {
     if (warehouseId <= 0) return;
-    setQueryParams({ page: 1, page_size: BROWSE_PAGE_SIZE });
+    setQueryParams({ page: 1, page_size: browsePageSize });
   };
 
   const handleFocus = () => {
@@ -126,7 +132,7 @@ export function SkuSearchSelect({
     const q = searchInput.trim();
     const next: ItemQueryParams = {
       page: 1,
-      page_size: SEARCH_PAGE_SIZE,
+      page_size: searchPageSize,
       q: q || undefined,
     };
 
@@ -158,7 +164,7 @@ export function SkuSearchSelect({
           className="!w-full"
           disabled={disabled}
           open={dropdownOpen}
-          onDropdownVisibleChange={(open) => {
+          onOpenChange={(open) => {
             if (open) {
               registerOpenSkuSelect(instanceId, () =>
                 setDropdownOpenRef.current(false),
@@ -215,10 +221,6 @@ export function SkuSearchSelect({
             });
           }}
           popupMatchSelectWidth={false}
-          dropdownStyle={{
-            minWidth: DROPDOWN_MIN_WIDTH,
-            width: DROPDOWN_MIN_WIDTH,
-          }}
           styles={{
             popup: {
               root: {

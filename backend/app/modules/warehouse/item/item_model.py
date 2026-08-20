@@ -1,6 +1,6 @@
 """Item model for warehouse inventory."""
 
-from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, JSON, String, Text, func, or_, select
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, BigInteger, JSON, String, Text, func, or_, select
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import column_property
@@ -20,7 +20,7 @@ class Item(Base):
     sku = Column(String(50), unique=True, nullable=False, index=True)
     name = Column(String(255), nullable=False)
     description = Column(Text)
-    base_quantity = Column(Integer, nullable=False, default=1, server_default="1")
+    base_quantity = Column(BigInteger, nullable=False, default=1, server_default="1")
     base_unit_id = Column("base_unit", Integer, ForeignKey("unit.id"), nullable=False)
     max_quantity = Column(Integer, nullable=False)
     min_quantity = Column(Integer, nullable=False)
@@ -58,3 +58,15 @@ class Item(Base):
         .correlate_except(ItemStock)
         .scalar_subquery()
     )
+
+class QR_Code(Base):
+    __tablename__ = "qr_code"
+
+    id = Column(Integer, primary_key=True, index=True)
+    code = Column(String(50), unique=True, nullable=False, index=True)
+    item_id = Column(Integer, ForeignKey("item.id"), nullable=False, index=True)
+    item_stock_id = Column(Integer, ForeignKey("item_stock.id"), nullable=True, index=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    item = relationship("Item", lazy="joined")
+    item_stock = relationship("ItemStock", foreign_keys=[item_stock_id], lazy="joined")

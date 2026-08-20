@@ -24,6 +24,7 @@ celery_app = Celery(
         "app.modules.robot.robot_celery_task",
         "app.modules.warehouse.inbound_order.inbound_celery_task",
         "app.modules.warehouse.outbound_order.outbound_celery_task",
+        "app.modules.warehouse.item.item_celery_task",
     ],
 )
 
@@ -57,6 +58,7 @@ celery_app.conf.update(
         "robot.persist_task_status": {"queue": QUEUE_STATUS},
         "inbound.*": {"queue": QUEUE_LOGIC},
         "outbound.*": {"queue": QUEUE_LOGIC},
+        "item.*": {"queue": QUEUE_LOGIC},
     },
 )
 

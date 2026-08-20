@@ -56,7 +56,8 @@ class ItemStock(Base):
     inbound_order_detail_id = Column(Integer, ForeignKey("inbound_order_detail.id"), nullable=True, index=True)
     unit_id = Column(Integer, ForeignKey("unit.id"), nullable=False, index=True)
     quantity = Column(Numeric(12, 3), nullable=False, default=0)
-    lot_number = Column(String(50), nullable=True, index=True)
+    lot_number_from = Column(String(50), nullable=True, index=True)
+    lot_number_to = Column(String(50), nullable=True, index=True)
     expiry_date = Column(String(50), nullable=True, index=True)
     status = Column(
         String(20),
@@ -98,6 +99,5 @@ class ItemStock(Base):
         #     name="ck_item_stock_status",
         # ),
     )
-
 
 

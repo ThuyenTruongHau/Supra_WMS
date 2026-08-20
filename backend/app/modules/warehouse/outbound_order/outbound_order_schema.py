@@ -124,6 +124,8 @@ class OutboundOrderAllocationResponse(BaseModel):
     item_id: Optional[int] = None
     sku: Optional[str] = None
     item_name: Optional[str] = None
+    lot_number_from: Optional[str] = None
+    lot_number_to: Optional[str] = None
     lot_number: Optional[str] = None
     expiry_date: Optional[str] = None
     created_at: Optional[datetime] = None

@@ -18,6 +18,7 @@ import {
   RightOutlined,
   UserOutlined,
   HomeOutlined,
+  QrcodeOutlined,
 } from "@ant-design/icons";
 
 interface SidebarLinkProps {
@@ -281,6 +282,11 @@ export default function Sidebar() {
               to: "/setting/units",
               icon: <ExportOutlined />,
               label: "Đơn vị",
+            },
+            {
+              to: "/setting/qr-codes",
+              icon: <QrcodeOutlined />,
+              label: "Quản lý QR",
             },
             // { to: "/setting/items", icon: <BoxPlotOutlined />, label: "Sản phẩm" },
           ]}
