@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <title>In mã QR vị trí</title>
+  <!--
+    Template in mã QR vị trí — 2 vị trí / trang A4 (mỗi slot nửa trang).
+    Nếu chỉ 1 vị trí: vẫn chiếm nửa trên trang.
+
+    Backend truyền dữ liệu qua window.__LOCATION_PRINT_DATA__ rồi gọi LocationPrint.init().
+
+    Payload:
+    {
+      "labels": [
+        {
+          "location_id": 1,
+          "location_code": "...",
+          "location_name": "MC02_TP_PT",
+          "qr_data": "..."
+        }
+      ]
+    }
+
+    Hiển thị tên: bỏ đoạn cuối sau dấu "_" cuối cùng (MC02_TP_PT → MC02_TP).
+    Số trang = Math.ceil(labels.length / 2)
+  -->
+  <style>
+    :root {
+      --page-width: 194mm;
+      --page-height: 281mm;
+      --page-margin: 7mm;
+      --sheet-padding: 6mm;
+      --labels-per-page: 2;
+      --slot-gap: 4mm;
+    }
+
+    @page {
+      size: A4 portrait;
+      margin: var(--page-margin);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      padding: 8mm;
+      font-family: "Times New Roman", Times, serif;
+      color: #000;
+      background: #f3f4f6;
+    }
+
+    .toolbar {
+      max-width: calc(var(--page-width) + 16mm);
+      margin: 0 auto 6mm;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: #475569;
+    }
+
+    .toolbar button {
+      padding: 8px 16px;
+      font-size: 14px;
+      cursor: pointer;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      background: #fff;
+    }
+
+    .print-root {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10mm;
+    }
+
+    .print-root.is-empty {
+      min-height: 40mm;
+      justify-content: center;
+      color: #64748b;
+      font-size: 14px;
+    }
+
+    .sheet-page {
+      width: var(--page-width);
+      height: var(--page-height);
+      background: #fff;
+      padding: var(--sheet-padding);
+      display: grid;
+      grid-template-rows: 1fr 1fr;
+      gap: var(--slot-gap);
+      page-break-after: always;
+      break-after: page;
+    }
+
+    .sheet-page:last-child {
+      page-break-after: auto;
+      break-after: auto;
+    }
+
+    .location-slot {
+      width: 100%;
+      height: 100%;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      page-break-inside: avoid;
+      break-inside: avoid;
+      overflow: hidden;
+    }
+
+    .location-slot.is-empty {
+      visibility: hidden;
+    }
+
+    /* Logo trái + tên căn giữa tuyệt đối theo hàng (không bị logo đẩy lệch) */
+    .location-header {
+      position: relative;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 18mm;
+      padding: 2mm 0;
+    }
+
+    .location-logo {
+      position: absolute;
+      left: 0;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 26mm;
+      height: 14mm;
+      object-fit: contain;
+      object-position: left center;
+      display: block;
+    }
+
+    .location-name {
+      margin: 0;
+      max-width: calc(100% - 56mm);
+      font-size: 36px;
+      font-weight: 700;
+      line-height: 1.1;
+      text-align: center;
+      word-break: break-word;
+    }
+
+    .location-body {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2mm 4mm 4mm;
+    }
+
+    .location-qr {
+      width: 100%;
+      height: 100%;
+      max-width: 110mm;
+      max-height: 110mm;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .location-qr img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      display: block;
+    }
+
+    @media print {
+      body {
+        padding: 0;
+        background: #fff;
+      }
+      .toolbar { display: none; }
+      .print-root { gap: 0; }
+      .print-root.is-empty { display: none; }
+      .sheet-page {
+        box-shadow: none;
+        margin: 0;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="toolbar">
+    <span id="page-info">Chưa có dữ liệu in</span>
+    <button type="button" id="toolbar-print-btn">In / Lưu PDF</button>
+  </div>
+
+  <div class="print-root is-empty" id="print-root">Chưa có dữ liệu in.</div>
+
+  <!-- Mock preview: mở file với ?mock=1 hoặc chạy scripts/mock_print_export.py -->
+  <script>
+    (function () {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("mock") !== "1" && !window.__LOCATION_PRINT_DATA__) return;
+      window.__LOCATION_PRINT_DATA__ = window.__LOCATION_PRINT_DATA__ || {
+        __mock: true,
+        labels: [
+          {
+            location_id: 1,
+            location_code: "R01_C01_L01_MC02_TP_PT",
+            location_name: "MC02_TP_PT",
+            qr_data: "R01_C01_L01_MC02_TP_PT",
+          },
+          {
+            location_id: 2,
+            location_code: "R02_C03_L02_MC05_KH_PT",
+            location_name: "MC05_KH_PT",
+            qr_data: "R02_C03_L02_MC05_KH_PT",
+          },
+          {
+            location_id: 3,
+            location_code: "R05_C10_L01_INBOUND-A",
+            location_name: "INBOUND-A",
+            qr_data: "R05_C10_L01_INBOUND-A",
+          },
+        ],
+      };
+    })();
+  </script>
+
+  <script>
+    (function () {
+      "use strict";
+
+      const LABELS_PER_PAGE = 2;
+      /** Logo VCC — được backend thay bằng data URI khi render */
+      const VCC_LOGO_SRC = "__VCC_LOGO_DATA_URI__";
+
+      function escapeHtml(value) {
+        return String(value ?? "")
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;");
+      }
+
+      /**
+       * Bỏ đoạn cuối sau dấu "_" cuối cùng.
+       * VD: MC02_TP_PT → MC02_TP
+       */
+      function formatLocationDisplayName(name) {
+        const raw = String(name ?? "").trim();
+        if (!raw) return "";
+        const idx = raw.lastIndexOf("_");
+        if (idx <= 0) return raw;
+        return raw.slice(0, idx);
+      }
+
+      function qrImageUrl(qrData) {
+        return (
+          "https://api.qrserver.com/v1/create-qr-code/?size=1000x1000&margin=0&data=" +
+          encodeURIComponent(String(qrData ?? ""))
+        );
+      }
+
+      /**
+       * @param {{ labels?: object[] }} data
+       */
+      function buildLabels(data) {
+        const labels = Array.isArray(data?.labels) ? data.labels : [];
+        return labels.map((label) => ({
+          location_id: Number(label?.location_id) || 0,
+          location_code: String(label?.location_code ?? ""),
+          location_name: String(label?.location_name ?? ""),
+          qr_data: String(label?.qr_data ?? label?.location_code ?? ""),
+        }));
+      }
+
+      function countPages(labelCount) {
+        const total = Math.max(Number(labelCount) || 0, 0);
+        return total === 0 ? 0 : Math.ceil(total / LABELS_PER_PAGE);
+      }
+
+      /**
+       * @param {{ location_name: string, qr_data: string } | null} label
+       */
+      function renderSlot(label) {
+        if (!label) {
+          return `<div class="location-slot is-empty" aria-hidden="true"></div>`;
+        }
+
+        const displayName = escapeHtml(formatLocationDisplayName(label.location_name));
+        const qrData = label.qr_data;
+        const logoSrc = VCC_LOGO_SRC.startsWith("data:") ? VCC_LOGO_SRC : "";
+        const logoHtml = logoSrc
+          ? `<img class="location-logo" src="${logoSrc}" alt="VCC" />`
+          : "";
+
+        return `
+          <div class="location-slot">
+            <div class="location-header">
+              ${logoHtml}
+              <h1 class="location-name">${displayName}</h1>
+            </div>
+            <div class="location-body">
+              <div class="location-qr">
+                <img src="${qrImageUrl(qrData)}" alt="${displayName}" />
+              </div>
+            </div>
+          </div>
+        `;
+      }
+
+      /**
+       * @param {{ location_name: string, qr_data: string }[]} labels
+       */
+      function renderPages(labels) {
+        if (!labels.length) return "";
+
+        const pages = [];
+        for (let i = 0; i < labels.length; i += LABELS_PER_PAGE) {
+          const slotA = labels[i] ?? null;
+          const slotB = labels[i + 1] ?? null;
+          pages.push(`
+            <div class="sheet-page">
+              ${renderSlot(slotA)}
+              ${renderSlot(slotB)}
+            </div>
+          `);
+        }
+        return pages.join("");
+      }
+
+      function updatePageInfo(labelCount, isMock) {
+        const pageInfo = document.getElementById("page-info");
+        if (!pageInfo) return;
+
+        if (labelCount === 0) {
+          pageInfo.textContent = "Chưa có dữ liệu in";
+          return;
+        }
+
+        const pages = countPages(labelCount);
+        const mockTag = isMock ? " · mock preview" : "";
+        pageInfo.textContent =
+          `${labelCount} vị trí · ${pages} trang A4 (${LABELS_PER_PAGE} vị trí/trang)${mockTag}`;
+      }
+
+      /**
+       * @param {{ labels?: object[] }} data
+       * @param {{ isMock?: boolean }} [options]
+       */
+      function init(data, options) {
+        const isMock = options?.isMock === true;
+        const labels = buildLabels(data);
+        const html = renderPages(labels);
+        const root = document.getElementById("print-root");
+
+        if (root) {
+          root.classList.toggle("is-empty", labels.length === 0);
+          root.innerHTML = labels.length === 0 ? "Chưa có dữ liệu in." : html;
+        }
+
+        updatePageInfo(labels.length, isMock);
+
+        return {
+          labels,
+          pageCount: countPages(labels.length),
+          html,
+        };
+      }
+
+      window.LocationPrint = {
+        buildLabels,
+        formatLocationDisplayName,
+        countPages,
+        renderSlot,
+        renderPages,
+        init,
+      };
+
+      document
+        .getElementById("toolbar-print-btn")
+        ?.addEventListener("click", () => window.print());
+
+      if (window.__LOCATION_PRINT_DATA__) {
+        const isMock = window.__LOCATION_PRINT_DATA__.__mock === true;
+        init(window.__LOCATION_PRINT_DATA__, { isMock });
+      }
+    })();
+  </script>
+</body>
+</html>

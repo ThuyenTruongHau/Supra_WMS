@@ -34,19 +34,19 @@ import {
 } from "@/api/itemUnit";
 import { formatQuantity } from "@/utils/formatQuantity";
 import dayjs from "dayjs";
-import type { AxiosError } from "axios";
-import type { ApiErrorResponse } from "@/types/apiError";
 import KeyValueDetailsEditor from "@/components/shared/KeyValueDetailsEditor";
 import {
   detailsToEntries,
   entriesToDetails,
   type KeyValueEntry,
 } from "@/utils/keyValueDetails";
+import { getApiErrorMessage } from "@/utils/apiErrorMessage";
 import {
   normalizeLotNumber,
   validateGroupsLotNumbers,
   type LotNumberValidationOptions,
 } from "@/utils/lotNumberValidation";
+import { translateStatus } from "@/i18n/statusLabels.vi";
 
 /** Một SKU trong nhóm. */
 export interface ImportItemDraft {
@@ -102,14 +102,6 @@ export const createEmptyGroup = (): ImportGroupDraft => ({
   items: [createEmptyItem()],
 });
 
-function errorMessage(err: unknown): string {
-  const ax = err as AxiosError<ApiErrorResponse>;
-  const detail = ax?.response?.data?.detail;
-  if (typeof detail === "string") return detail;
-  if (err instanceof Error) return err.message;
-  return "Có lỗi xảy ra";
-}
-
 export default function CreateImportModal({
   open,
   onCancel,
@@ -119,7 +111,7 @@ export default function CreateImportModal({
   initialNote,
   initialGroups,
   initialDetails,
-  lotNumberValidation = { required: true },
+  lotNumberValidation = { required: true, format: "legacy" },
 }: CreateImportModalProps) {
   const isEdit = mode === "edit";
   const selectedWarehouseId = useAppStore((s) => s.selectedWarehouseId);
@@ -255,7 +247,7 @@ export default function CreateImportModal({
         converted_quantity: undefined,
         converted_unit_name: undefined,
       });
-      message.error(errorMessage(err));
+      message.error(getApiErrorMessage(err));
     }
   };
 
@@ -307,7 +299,7 @@ export default function CreateImportModal({
           })),
         );
       } catch (err) {
-        if (!cancelled) message.error(errorMessage(err));
+        if (!cancelled) message.error(getApiErrorMessage(err));
       }
     })();
 
@@ -362,12 +354,12 @@ export default function CreateImportModal({
         return false;
       }
       if (group.items.length === 0) {
-        message.error(`Nhóm ${index + 1}: cần ít nhất một SKU`);
+        message.error(`Nhóm ${index + 1}: cần ít nhất một mã sản phẩm`);
         return false;
       }
       for (const item of group.items) {
         if (!item.item_id || !item.unit_id || !item.quantity || item.quantity <= 0) {
-          message.error(`Nhóm ${index + 1}: mỗi SKU cần Item, Unit và SL > 0`);
+          message.error(`Nhóm ${index + 1}: mỗi mã sản phẩm cần đơn vị và SL > 0`);
           return false;
         }
       }
@@ -426,7 +418,7 @@ export default function CreateImportModal({
       setStep(1);
       void refetchBufferLocations();
     } catch (err) {
-      message.error({ content: errorMessage(err), key: "suggest" });
+      message.error({ content: getApiErrorMessage(err), key: "suggest" });
     }
   };
 
@@ -510,7 +502,7 @@ export default function CreateImportModal({
         });
         onSuccess();
       } catch (err) {
-        message.error({ content: errorMessage(err), key: "submit" });
+        message.error({ content: getApiErrorMessage(err), key: "submit" });
       }
       return;
     }
@@ -551,7 +543,7 @@ export default function CreateImportModal({
       setSuggested([]);
       onSuccess();
     } catch (err) {
-      message.error({ content: errorMessage(err), key: "submit" });
+      message.error({ content: getApiErrorMessage(err), key: "submit" });
     }
   };
 
@@ -602,7 +594,7 @@ export default function CreateImportModal({
             : "—",
     },
     {
-      title: "Số SKU",
+      title: "Số sản phẩm",
       key: "count",
       width: 90,
       render: (_: unknown, g: ImportGroupDraft) => g.items.length,
@@ -618,7 +610,7 @@ export default function CreateImportModal({
         >
           <div className="mb-2 flex items-center justify-between">
             <span className="text-xs font-medium text-slate-400">
-              SKU {itemIndex + 1}
+              Mã sản phẩm {itemIndex + 1}
             </span>
             {group.items.length > 1 && (
               <Button
@@ -685,7 +677,7 @@ export default function CreateImportModal({
                         quantity,
                       );
                     } catch (err) {
-                      message.error(errorMessage(err));
+                      message.error(getApiErrorMessage(err));
                     }
                   }}
                 />
@@ -730,7 +722,7 @@ export default function CreateImportModal({
                     try {
                       await loadItemUnits(group.key, item.key, item.item_id);
                     } catch (err) {
-                      message.error(errorMessage(err));
+                      message.error(getApiErrorMessage(err));
                       return;
                     }
                   }
@@ -757,7 +749,7 @@ export default function CreateImportModal({
             </div>
             <div className="grid grid-cols-2 gap-3">
               <Input
-                placeholder="Số lô *"
+                placeholder="Số lô * (vd: 09-10/04/26)"
                 value={item.lot_number || ""}
                 onChange={(e) =>
                   updateItem(group.key, item.key, {
@@ -786,7 +778,7 @@ export default function CreateImportModal({
         className="w-full"
         onClick={() => handleAddItem(group.key)}
       >
-        Thêm SKU vào nhóm này
+        Thêm mã sản phẩm vào nhóm này
       </AntButton>
       <KeyValueDetailsEditor
         entries={group.detailEntries ?? []}
@@ -800,7 +792,7 @@ export default function CreateImportModal({
 
   const reviewItemColumns = [
     {
-      title: "Item",
+      title: "Mã sản phẩm",
       key: "item",
       render: (_: unknown, i: ImportItemDraft) =>
         `${i.sku || i.item_id}${i.item_name ? ` — ${i.item_name}` : ""}`,
@@ -966,7 +958,9 @@ export default function CreateImportModal({
                     {isEdit && group.to_location_name && (
                       <Tag color="green">Đích: {group.to_location_name}</Tag>
                     )}
-                    {isEdit && group.status && <Tag>{group.status}</Tag>}
+                    {isEdit && group.status && (
+                      <Tag>{translateStatus(group.status)}</Tag>
+                    )}
                   </div>
                   {groups.length > 1 && (
                     <Button

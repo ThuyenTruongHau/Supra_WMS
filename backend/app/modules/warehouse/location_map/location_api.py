@@ -12,6 +12,8 @@ from app.modules.warehouse.location_map import location_service
 from app.modules.warehouse.location_map.location_schema import (
     LocationDetailResponse,
     LocationListResponse,
+    LocationQrPrintRequest,
+    LocationQrPrintResponse,
     LocationResponse,
     LocationUpdate,
     LocationsByLogicResponse,
@@ -208,3 +210,15 @@ def list_locations_by_storage_area(db: DbSession, warehouse_id: int = Query(...)
     return LocationsByLogicResponse(
         items=[LocationResponse.model_validate(loc) for loc in locations]
     )
+
+
+@router.post(
+    "/locations/qr-codes/print",
+    response_model=LocationQrPrintResponse,
+    dependencies=[Depends(require_permission("location:read"))],
+)
+def print_location_qr_codes(body: LocationQrPrintRequest, db: DbSession):
+    try:
+        return location_service.generate_qr_location_code(db, body.location_ids)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e

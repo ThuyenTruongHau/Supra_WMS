@@ -624,7 +624,7 @@ def _render_print_response(payload: dict, quantity: int, codes: list[str]) -> di
     return {
         "html": render_qr_codes(payload),
         "quantity": quantity,
-        "page_count": math.ceil(quantity / 6),
+        "page_count": math.ceil(quantity / 9),
         "qr_ids": codes,
     }
 

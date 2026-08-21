@@ -16,6 +16,9 @@ export type { FormInstance, FormItemProps, FormProps } from './Form'
 export { Input, TextArea } from './Input'
 export type { InputProps, InputRef, TextAreaProps } from './Input'
 
+export { InputNumber } from './InputNumber'
+export type { InputNumberProps, InputNumberRef } from './InputNumber'
+
 export { Select } from './Select'
 export type { SelectProps, RefSelectProps } from './Select'
 

@@ -237,4 +237,6 @@ scripts/
 scripts/*
 !scripts/seed_outbound_robot_status.py
 !scripts/sync_location_occupancy_from_stock.py
+!scripts/mock_print_export.py
+!scripts/mock_print_layout.py
 tests/

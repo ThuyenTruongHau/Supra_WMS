@@ -1,4 +1,5 @@
 import { cn } from "@/components/ui";
+import { translateStatus } from "@/i18n/statusLabels.vi";
 
 const STATUS_STYLES: Record<string, string> = {
   initialize:
@@ -45,7 +46,7 @@ export default function OutboundStatusTag({
         className,
       )}
     >
-      {label ?? status}
+      {label ?? translateStatus(status)}
     </span>
   );
 }

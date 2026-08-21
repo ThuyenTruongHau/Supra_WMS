@@ -1,4 +1,5 @@
 import { cn } from "@/components/ui";
+import { translateStatus } from "@/i18n/statusLabels.vi";
 
 const ORANGE_STATUS_STYLE =
   "bg-orange-100 text-orange-800 border-orange-200 shadow-sm shadow-orange-200/60";
@@ -45,7 +46,7 @@ export default function InboundStatusTag({
         className,
       )}
     >
-      {label ?? status}
+      {label ?? translateStatus(status)}
     </span>
   );
 }

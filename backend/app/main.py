@@ -15,6 +15,7 @@ from app.modules.warehouse.outbound_order.outbound_order_api import router as ou
 from app.modules.robot.robot_api import router as robot_router
 from app.core.logger import setup_logger
 from app.core.cache import close_redis, get_redis
+from app.socket.ws_manager import ws_manager
 import redis
 from prometheus_fastapi_instrumentator import Instrumentator
 
@@ -36,6 +37,9 @@ async def lifespan(app: FastAPI):
             settings.redis_url,
             settings.redis_key_prefix,
         )
+
+        await ws_manager.start()
+        logger.info("Websocket manager started")
     except redis.RedisError as e:
         logger.error("Redis connection failed: %s", e)
         raise RuntimeError("Cannot connect to Redis") from e
@@ -43,6 +47,8 @@ async def lifespan(app: FastAPI):
     # stop app
     close_redis()
     logger.info("Stopping app")
+    await ws_manager.stop()
+    logger.info("Websocket manager stopped")
 
 app = FastAPI(
     title=settings.app_name,

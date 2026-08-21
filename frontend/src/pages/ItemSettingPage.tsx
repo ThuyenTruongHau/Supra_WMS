@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Card, Table, Button, Modal, Form, Input, Space, message, Select } from '@/components/ui';
+import { Card, Table, Button, Modal, Form, Input, InputNumber, Space, message, Select } from '@/components/ui';
 import { PlusOutlined, SearchOutlined, MinusCircleOutlined, EditOutlined } from '@ant-design/icons';
 import { useZone } from '@/hooks/useZone';
 import { useGetItems, useCreateItem, useUpdateItem } from '@/hooks/useItem';
@@ -289,7 +289,7 @@ export default function ItemSettingPage() {
               { type: 'number', min: 1, message: 'Giá trị phải >= 1' },
             ]}
           >
-            <Input type="number" min={1} placeholder="Ví dụ: 1" />
+            <InputNumber min={1} precision={0} placeholder="Ví dụ: 1" />
           </Form.Item>
 
           <div className="grid grid-cols-2 gap-4">
@@ -301,7 +301,7 @@ export default function ItemSettingPage() {
                 { type: 'number', min: 0, message: 'Giá trị phải >= 0' },
               ]}
             >
-              <Input type="number" min={0} placeholder="Ví dụ: 10" />
+              <InputNumber min={0} precision={0} placeholder="Ví dụ: 10" />
             </Form.Item>
             <Form.Item
               name="max_quantity"
@@ -311,7 +311,7 @@ export default function ItemSettingPage() {
                 { type: 'number', min: 0, message: 'Giá trị phải >= 0' },
               ]}
             >
-              <Input type="number" min={0} placeholder="Ví dụ: 1000" />
+              <InputNumber min={0} precision={0} placeholder="Ví dụ: 1000" />
             </Form.Item>
           </div>
 

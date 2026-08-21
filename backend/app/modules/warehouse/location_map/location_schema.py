@@ -121,3 +121,14 @@ class LocationDetailResponse(BaseModel):
     location: LocationResponse
     item_stock: list[LocationDetailStockItem]
     summary: LocationDetailSummary
+
+
+class LocationQrPrintRequest(BaseModel):
+    location_ids: list[int] = Field(..., min_length=1)
+
+
+class LocationQrPrintResponse(BaseModel):
+    html: str
+    quantity: int
+    page_count: int
+    qr_ids: list[str]

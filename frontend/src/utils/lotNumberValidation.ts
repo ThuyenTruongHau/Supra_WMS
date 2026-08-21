@@ -1,5 +1,15 @@
 /** Định dạng số lô — ddmmyy khớp logic FEFO outbound (6 chữ số). */
-export type LotNumberFormat = "ddmmyy" | "any";
+export type LotNumberFormat = "ddmmyy" | "legacy" | "any";
+
+const LEGACY_DATE = String.raw`\d{2}/\d{2}/\d{2}`;
+const LEGACY_RANGE_RE = new RegExp(
+  `^(${LEGACY_DATE})-(${LEGACY_DATE})$`,
+);
+const LEGACY_DAY_RANGE_RE = /^(\d{1,2})-(\d{1,2})\/(\d{2}\/\d{2})$/;
+const LEGACY_SINGLE_RE = new RegExp(`^(${LEGACY_DATE})$`);
+
+export const LOT_NUMBER_LEGACY_HINT =
+  "DD/MM/YY, DD/MM/YY-DD/MM/YY, hoặc DD-DD/MM/YY (vd: 19/08/26, 30/07/26-01/08/26, 09-10/04/26)";
 
 export interface LotNumberValidationOptions {
   /** Bắt buộc nhập số lô. Mặc định false — tắt khi bài toán không cần lô. */
@@ -20,6 +30,14 @@ export function normalizeLotNumber(
 ): string | null {
   const trimmed = value?.trim();
   return trimmed ? trimmed : null;
+}
+
+function isValidLegacyLotNumber(value: string): boolean {
+  return (
+    LEGACY_RANGE_RE.test(value) ||
+    LEGACY_DAY_RANGE_RE.test(value) ||
+    LEGACY_SINGLE_RE.test(value)
+  );
 }
 
 export function validateLotNumber(
@@ -48,6 +66,13 @@ export function validateLotNumber(
     if (day < 1 || day > 31 || month < 1 || month > 12) {
       return { valid: false, message: `${label} không hợp lệ (DDMMYY)` };
     }
+  }
+
+  if (format === "legacy" && !isValidLegacyLotNumber(normalized)) {
+    return {
+      valid: false,
+      message: `${label} không hợp lệ. Chấp nhận: ${LOT_NUMBER_LEGACY_HINT}`,
+    };
   }
 
   return { valid: true };

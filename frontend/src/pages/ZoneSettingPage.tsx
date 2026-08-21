@@ -15,6 +15,7 @@ import {
   EnvironmentOutlined,
   SearchOutlined,
   EditOutlined,
+  PrinterOutlined,
 } from '@ant-design/icons';
 import { Popconfirm, Tag, Tooltip } from 'antd';
 import Hero from '@/components/shared/Hero';
@@ -32,6 +33,7 @@ import {
 import { useDebounce } from '@/hooks/useDebounce';
 import { useAppStore } from '@/store/useAppStore';
 import { useFullLocations } from '@/hooks/useWarehouseMap';
+import LocationQrPrintModal from '@/pages/components/LocationQrPrintModal';
 
 type ZoneFormValues = {
   code: string;
@@ -47,6 +49,8 @@ export default function ZoneSettingPage() {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isMapModalOpen, setIsMapModalOpen] = useState(false);
+  const [isQrPrintOpen, setIsQrPrintOpen] = useState(false);
+  const [qrPrintZone, setQrPrintZone] = useState<Zone | null>(null);
   const [editingZone, setEditingZone] = useState<Zone | null>(null);
   const [selectedLocationCodes, setSelectedLocationCodes] = useState<string[]>([]);
   const [form] = Form.useForm<ZoneFormValues>();
@@ -199,6 +203,16 @@ export default function ZoneSettingPage() {
     );
   };
 
+  const handleOpenQrPrint = (zone: Zone) => {
+    setQrPrintZone(zone);
+    setIsQrPrintOpen(true);
+  };
+
+  const handleCloseQrPrint = () => {
+    setIsQrPrintOpen(false);
+    setQrPrintZone(null);
+  };
+
   const toggleLocationCode = (code: string) => {
     const normalized = String(code);
     setSelectedLocationCodes((prev) =>
@@ -242,9 +256,17 @@ export default function ZoneSettingPage() {
     {
       title: 'Thao tác',
       key: 'action',
-      width: 120,
+      width: 160,
       render: (_: unknown, record: Zone) => (
         <Space>
+          <Tooltip title="In QR vị trí">
+            <Button
+              variant="edit"
+              icon={<PrinterOutlined className="text-brand-primary" />}
+              disabled={(locationCountByZone.get(record.id) ?? 0) === 0}
+              onClick={() => handleOpenQrPrint(record)}
+            />
+          </Tooltip>
           <Tooltip title="Chỉnh sửa">
             <Button
               variant="edit"
@@ -453,6 +475,15 @@ export default function ZoneSettingPage() {
           />
         </div>
       </Modal>
+
+      {selectedWarehouseId ? (
+        <LocationQrPrintModal
+          open={isQrPrintOpen}
+          onClose={handleCloseQrPrint}
+          zone={qrPrintZone}
+          warehouseId={selectedWarehouseId}
+        />
+      ) : null}
     </div>
   );
 }

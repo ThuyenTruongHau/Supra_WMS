@@ -23,14 +23,13 @@ import {
 } from "@/api/itemUnit";
 import { formatQuantity } from "@/utils/formatQuantity";
 import dayjs from "dayjs";
-import type { AxiosError } from "axios";
-import type { ApiErrorResponse } from "@/types/apiError";
 import KeyValueDetailsEditor from "@/components/shared/KeyValueDetailsEditor";
 import {
   detailsToEntries,
   entriesToDetails,
   type KeyValueEntry,
 } from "@/utils/keyValueDetails";
+import { getApiErrorMessage } from "@/utils/apiErrorMessage";
 
 export interface OutboundItemDraft {
   key: string;
@@ -68,11 +67,7 @@ export const createEmptyItem = (): OutboundItemDraft => ({
 });
 
 function errorMessage(err: unknown): string {
-  const ax = err as AxiosError<ApiErrorResponse>;
-  const detail = ax?.response?.data?.detail;
-  if (typeof detail === "string") return detail;
-  if (err instanceof Error) return err.message;
-  return "Có lỗi xảy ra";
+  return getApiErrorMessage(err);
 }
 
 async function resolveItemsConversion(
@@ -119,7 +114,7 @@ function validateConvertedItems(items: OutboundItemDraft[]): boolean {
   for (const [index, item] of items.entries()) {
     if (item.base_unit_id == null || item.converted_quantity == null) {
       message.error(
-        `Dòng ${index + 1}: không quy đổi được đơn vị cho SKU ${item.sku ?? item.item_id ?? ""}`,
+        `Dòng ${index + 1}: không quy đổi được đơn vị cho mã sản phẩm ${item.sku ?? item.item_id ?? ""}`,
       );
       return false;
     }
@@ -419,6 +414,7 @@ export default function CreateOutboundModal({
       </div>
 
       <div>
+        <p className="mb-2 text-sm font-medium text-slate-600">Mã sản phẩm</p>
         {item.detail_id ? (
           <Input
             value={

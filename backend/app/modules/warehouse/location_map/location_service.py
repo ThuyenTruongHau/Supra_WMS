@@ -31,6 +31,8 @@ from app.modules.warehouse.transaction_history.history_model import Transaction
 from pathlib import Path
 from uuid import uuid4
 from fastapi import UploadFile
+import base64
+import math
 import re
 import zipfile
 from dataclasses import dataclass
@@ -646,3 +648,70 @@ def get_locations_by_logic(db: Session, warehouse_id: int, type: str) -> list[Lo
         zone_keys = settings.zone_storage
         return get_buffer_locations(db, warehouse_id, zone_keys)
     raise ValueError(f"Unsupported location type: {type}")
+
+LOCATION_QR_TEMPLATE_PATH = (
+    Path(__file__).resolve().parents[3] / "static" / "templates" / "template_location.html"
+)
+LOCATION_QR_LOGO_PATH = (
+    Path(__file__).resolve().parents[3] / "static" / "templates" / "logo_vcc.webp"
+)
+
+
+def _vcc_logo_data_uri() -> str:
+    if not LOCATION_QR_LOGO_PATH.is_file():
+        return ""
+    encoded = base64.b64encode(LOCATION_QR_LOGO_PATH.read_bytes()).decode("ascii")
+    return f"data:image/webp;base64,{encoded}"
+
+
+def render_location_qr_codes(payload: dict) -> str:
+    template = LOCATION_QR_TEMPLATE_PATH.read_text(encoding="utf-8")
+    logo_uri = _vcc_logo_data_uri()
+    if logo_uri:
+        template = template.replace("__VCC_LOGO_DATA_URI__", logo_uri)
+    script = (
+        "<script>"
+        f"window.__LOCATION_PRINT_DATA__ = {json.dumps(payload, ensure_ascii=False)};"
+        "</script>\n"
+    )
+    return template.replace(
+        "  <script>\n    (function () {",
+        f"{script}  <script>\n    (function () {{",
+        1,
+    )
+
+
+def generate_qr_location_code(db: Session, location_ids: list[int]) -> dict:
+    if not location_ids:
+        raise ValueError("location_ids must not be empty")
+
+    rows = db.query(Location).filter(Location.id.in_(location_ids)).all()
+    location_by_id = {location.id: location for location in rows}
+
+    labels: list[dict] = []
+    qr_ids: list[str] = []
+    for location_id in location_ids:
+        location = location_by_id.get(location_id)
+        if location is None:
+            raise ValueError(f"Location not found: {location_id}")
+
+        qr_data = location.location_code
+        labels.append(
+            {
+                "location_id": location.id,
+                "location_code": location.location_code,
+                "location_name": location.location_name,
+                "qr_data": qr_data,
+            }
+        )
+        qr_ids.append(qr_data)
+
+    payload = {"labels": labels}
+    quantity = len(labels)
+    return {
+        "html": render_location_qr_codes(payload),
+        "quantity": quantity,
+        "page_count": math.ceil(quantity / 2) if quantity else 0,
+        "qr_ids": qr_ids,
+    }
+

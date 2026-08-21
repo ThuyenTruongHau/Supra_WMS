@@ -41,7 +41,7 @@ from app.modules.robot.robot_service import task_status_service
 from app.modules.robot.robot_model import RobotTask
 from app.modules.warehouse.transaction_history.history_model import History
 from app.core.config import settings
-from app.core.cache import cache_scan_keys, cache_set, cache_delete
+from app.core.cache import cache_scan_keys, cache_set, cache_delete, cache_delete_pattern
 from app.core.logger import get_logger
 
 logger = get_logger("main")

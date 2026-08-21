@@ -37,3 +37,10 @@ export interface LocationListResponse {
   page: number;
   page_size: number;
 }
+
+export interface LocationQrPrintResponse {
+  html: string;
+  quantity: number;
+  page_count: number;
+  qr_ids: string[];
+}

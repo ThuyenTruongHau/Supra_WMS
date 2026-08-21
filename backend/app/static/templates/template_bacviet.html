@@ -4,19 +4,19 @@
   <meta charset="utf-8" />
   <title>Phiếu sản phẩm - Bacviet</title>
   <!--
-    Template in phiếu sản phẩm Bacviet — 6 phiếu / trang A4 (2 cột × 3 hàng).
+    Template in phiếu sản phẩm Bacviet — 9 phiếu / trang A4 (3 cột × 3 hàng).
 
     Backend / FE truyền dữ liệu qua window.__BACVIET_PRINT_DATA__ rồi gọi BacvietPrint.init().
 
     Payload:
     {
-      "quantity": 6,              // số phiếu cần in
+      "quantity": 9,              // số phiếu cần in
       "part_number": "RC6-...",     // mã sản phẩm (dùng chung)
       "part_name": "TN_SP_...",     // tên sản phẩm (dùng chung)
       "qr_ids": ["id-1", "..."]   // mỗi phần tử = 1 QR id riêng, length = quantity
     }
 
-    Số trang = Math.ceil(quantity / 6)
+    Số trang = Math.ceil(quantity / 9)
     In PDF: Scale 100%, margin theo @page.
   -->
   <style>
@@ -24,13 +24,13 @@
     :root {
       --page-width: 194mm;
       --page-height: 281mm;
-      --page-margin: 8mm;
-      --labels-per-page: 6;
-      --label-cols: 2;
+      --page-margin: 7mm;
+      --labels-per-page: 9;
+      --label-cols: 3;
       --label-rows: 3;
-      --sheet-padding: 4mm;
-      --sheet-gap: 5mm;
-      --label-col-width: 24mm;
+      --sheet-padding: 3mm;
+      --sheet-gap: 2.5mm;
+      --label-col-width: 16.5mm;
       --label-width: calc(
         (var(--page-width) - 2 * var(--sheet-padding) - (var(--label-cols) - 1) * var(--sheet-gap))
         / var(--label-cols)
@@ -131,7 +131,7 @@
     }
 
     .ticket-title {
-      padding: 0.8mm 1.5mm;
+      padding: 0.5mm 0.8mm;
       text-align: center;
       display: flex;
       flex-direction: column;
@@ -140,14 +140,14 @@
 
     .ticket-title h1 {
       margin: 0;
-      font-size: 10px;
+      font-size: 9.5px;
       font-weight: 700;
       line-height: 1.05;
     }
 
     .ticket-title p {
       margin: 0;
-      font-size: 8px;
+      font-size: 7.5px;
       font-style: italic;
       font-weight: 700;
       line-height: 1.05;
@@ -160,35 +160,41 @@
       flex-direction: column;
     }
 
-    /* ── Dòng label | value ── */
+    /* ── Dòng label | value — hơi thấp hơn, giữ cỡ chữ ── */
     .row {
       display: grid;
       grid-template-columns: var(--label-col-width) 1fr;
       border-bottom: 1px solid #000;
-      min-height: 5mm;
-      flex-shrink: 0;
+      flex: 0.85 1 0;
+      min-height: 4.6mm;
+      align-items: stretch;
     }
 
     .label {
-      padding: 0.6mm 0.8mm;
+      padding: 0.3mm 0.45mm;
       border-right: 1px solid #000;
-      font-size: 8px;
-      line-height: 1.05;
+      font-size: 7.5px;
+      line-height: 1.1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
     }
 
     .label em {
       display: block;
       font-style: italic;
-      font-size: 7px;
+      font-size: 6.5px;
     }
 
     .value {
-      padding: 0.6mm 0.8mm;
-      font-size: 8.5px;
+      padding: 0.3mm 0.45mm;
+      font-size: 8px;
       font-weight: 600;
-      line-height: 1.1;
+      line-height: 1.15;
       overflow: hidden;
       text-overflow: ellipsis;
+      display: flex;
+      align-items: center;
     }
 
     /* ── Hàng cân nặng / người làm (3 cột) ── */
@@ -196,14 +202,14 @@
       display: grid;
       grid-template-columns: var(--label-col-width) 1fr 1fr;
       border-bottom: 1px solid #000;
-      flex-shrink: 0;
-      min-height: 8mm;
+      flex: 0.95 1 0;
+      min-height: 6.5mm;
     }
 
     .footer-row > div {
-      padding: 0.6mm 0.8mm;
+      padding: 0.3mm 0.45mm;
       border-right: 1px solid #000;
-      font-size: 7.5px;
+      font-size: 7px;
       line-height: 1.1;
     }
 
@@ -211,53 +217,61 @@
 
     .footer-row .weight-fill,
     .footer-row .sign-line {
-      margin-top: 0.6mm;
+      margin-top: 0.35mm;
       border-bottom: 1px dashed #000;
-      min-height: 4mm;
+      min-height: 2.8mm;
     }
 
-    /* ── Ghi chú + QR (cùng lưới 3 cột với footer-row) ── */
+    /* ── Ghi chú + QR: QR cách lề + chỗ cho mã preview ── */
     .remarks-row {
-      flex: 1;
+      flex: 0 0 22mm;
+      height: 22mm;
+      max-height: 22mm;
       min-height: 0;
       display: grid;
       grid-template-columns: var(--label-col-width) 1fr 1fr;
       border-bottom: 1px solid #000;
+      overflow: hidden;
     }
 
     .remarks-content {
       grid-column: 1 / 3;
-      padding: 0.6mm 0.8mm;
-      font-size: 7.5px;
+      padding: 0.3mm 0.4mm;
+      font-size: 6.5px;
       line-height: 1.1;
       border-right: 1px solid #000;
     }
 
     .remarks-content em {
       font-style: italic;
-      font-size: 7px;
+      font-size: 5.5px;
     }
 
     .remarks-body {
-      margin-top: 0.6mm;
+      margin-top: 0.2mm;
       min-height: 0;
-      font-size: 8px;
+      font-size: 6.5px;
     }
 
     .ticket-qr {
       grid-column: 3;
-      padding: 1.5mm;
+      padding: 0.7mm 0.7mm 0.4mm;
       margin: 0;
       display: grid;
-      grid-template-rows: 1fr auto;
+      grid-template-rows: minmax(0, 1fr) 3.2mm;
+      gap: 0.3mm;
       min-height: 0;
       min-width: 0;
       overflow: hidden;
+      align-items: center;
+      justify-items: center;
     }
 
     .ticket-qr img {
-      width: 100%;
-      height: 100%;
+      width: calc(100% - 0.4mm);
+      height: calc(100% - 0.4mm);
+      max-width: 100%;
+      max-height: 100%;
       margin: 0;
       padding: 0;
       object-fit: contain;
@@ -266,19 +280,23 @@
 
     .ticket-qr .qr-text {
       margin: 0;
-      padding: 0;
-      font-size: 5.5px;
+      padding: 0 0.2mm;
+      width: 100%;
+      height: 3.2mm;
+      font-size: 4px;
       word-break: break-all;
-      line-height: 1;
+      line-height: 1.05;
       text-align: center;
+      overflow: hidden;
+      align-self: end;
     }
 
     /* ── Meta cố định trên form ── */
     .meta {
       display: flex;
       justify-content: space-between;
-      font-size: 6.5px;
-      padding: 0.6mm 0.8mm 0.8mm;
+      font-size: 6px;
+      padding: 0.35mm 0.45mm 0.45mm;
       flex-shrink: 0;
     }
 
@@ -305,6 +323,34 @@
 
   <div class="print-root is-empty" id="print-root">Chưa có dữ liệu in.</div>
 
+  <!-- Mock preview: mở file với ?mock=1 hoặc chạy scripts/mock_print_export.py -->
+  <script>
+    (function () {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("mock") !== "1" && !window.__BACVIET_PRINT_DATA__) return;
+      window.__BACVIET_PRINT_DATA__ = window.__BACVIET_PRINT_DATA__ || {
+        __mock: true,
+        mode: "preview",
+        item_id: 1,
+        quantity: 9,
+        part_number: "BGRD00074",
+        part_name: "Thùng carton trà Bupnon TEA365 ô long vị đào (QR) 450ml",
+        qr_ids: [
+          "BGRD00074-20260821-00000001",
+          "BGRD00074-20260821-00000002",
+          "BGRD00074-20260821-00000003",
+          "BGRD00074-20260821-00000004",
+          "BGRD00074-20260821-00000005",
+          "BGRD00074-20260821-00000006",
+          "BGRD00074-20260821-00000007",
+          "BGRD00074-20260821-00000008",
+          "BGRD00074-20260821-00000009",
+        ],
+        display_codes: Array(9).fill("BGRD00074-20260821"),
+      };
+    })();
+  </script>
+
   <!--
     BACKEND (Jinja2 ví dụ):
     <script>window.__BACVIET_PRINT_DATA__ = {{ payload | tojson }};</script>
@@ -315,7 +361,7 @@
       "use strict";
 
       /** Số phiếu trên mỗi trang A4 — đồng bộ với --labels-per-page trong CSS */
-      const LABELS_PER_PAGE = 6;
+      const LABELS_PER_PAGE = 9;
 
       /** Mã biểu mẫu in trên form (không truyền từ backend) */
       const DOCUMENT_CODE = "PR-QĐ01-BM12-R00";

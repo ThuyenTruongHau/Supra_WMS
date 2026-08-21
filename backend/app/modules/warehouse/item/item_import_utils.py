@@ -17,7 +17,7 @@ from app.core.logger import get_logger
 logger = get_logger("main")
 
 # backend/static/file_import_item — khớp volume Docker ./backend/static/file_import_item
-IMPORT_ITEM_DIR = Path(__file__).resolve().parents[4] / "static" / "file_import_item"
+IMPORT_ITEM_DIR = Path(__file__).resolve().parents[3] / "static" / "file_import_item"
 ALLOWED_IMPORT_EXTENSIONS = {".csv"}
 
 

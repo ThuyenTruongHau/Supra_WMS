@@ -5,9 +5,15 @@ import {
   deleteZoneApi,
   listLocationsApi,
   listZonesApi,
+  printLocationQrCodesApi,
   updateZoneApi,
 } from '@/api/zone';
-import type { CreateZoneInput, UpdateZoneInput, Zone } from '@/types/zone';
+import type {
+  CreateZoneInput,
+  LocationQrPrintResponse,
+  UpdateZoneInput,
+  Zone,
+} from '@/types/zone';
 import { AxiosError } from 'axios';
 import { ApiErrorResponse } from '@/types/apiError';
 import { LIVE_QUERY_OPTIONS } from '@/utils/liveQueryOptions';
@@ -94,5 +100,15 @@ export const useAssignZoneLocations = () => {
       queryClient.invalidateQueries({ queryKey: ['locations'] });
       queryClient.invalidateQueries({ queryKey: ['zones'] });
     },
+  });
+};
+
+export const usePrintLocationQrCodes = () => {
+  return useMutation<
+    LocationQrPrintResponse,
+    AxiosError<ApiErrorResponse>,
+    number[]
+  >({
+    mutationFn: printLocationQrCodesApi,
   });
 };

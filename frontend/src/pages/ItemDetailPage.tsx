@@ -13,6 +13,7 @@ import {
   Modal,
   Form,
   Input,
+  InputNumber,
   Space,
   message,
   Select,
@@ -408,7 +409,7 @@ export default function ItemDetailPage() {
             label="Số lượng"
             rules={[{ required: true, message: "Vui lòng nhập số lượng!" }]}
           >
-            <Input type="number" disabled min={0} />
+            <InputNumber disabled min={0} precision={0} />
           </Form.Item>
           <Form.Item
             name="base_quantity"
@@ -418,7 +419,7 @@ export default function ItemDetailPage() {
               { type: "number", min: 1, message: "Giá trị phải >= 1" },
             ]}
           >
-            <Input type="number" min={1} />
+            <InputNumber min={1} precision={0} />
           </Form.Item>
           <div className="grid grid-cols-2 gap-4">
             <Form.Item
@@ -429,7 +430,7 @@ export default function ItemDetailPage() {
                 { type: "number", min: 0, message: "Giá trị phải >= 0" },
               ]}
             >
-              <Input type="number" min={0} />
+              <InputNumber min={0} precision={0} />
             </Form.Item>
             <Form.Item
               name="max_quantity"
@@ -439,7 +440,7 @@ export default function ItemDetailPage() {
                 { type: "number", min: 0, message: "Giá trị phải >= 0" },
               ]}
             >
-              <Input type="number" min={0} />
+              <InputNumber min={0} precision={0} />
             </Form.Item>
           </div>
           <Form.Item

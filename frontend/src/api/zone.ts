@@ -2,6 +2,7 @@ import axiosInstance from './axiosInstance';
 import type {
   CreateZoneInput,
   LocationListResponse,
+  LocationQrPrintResponse,
   UpdateZoneInput,
   Zone,
   ZoneListResponse,
@@ -69,5 +70,15 @@ export const listLocationsApi = async (params?: {
       page_size: params?.page_size ?? 10000,
     },
   });
+  return data;
+};
+
+export const printLocationQrCodesApi = async (
+  locationIds: number[],
+): Promise<LocationQrPrintResponse> => {
+  const { data } = await axiosInstance.post<LocationQrPrintResponse>(
+    `${LOCATIONS_BASE}/qr-codes/print`,
+    { location_ids: locationIds },
+  );
   return data;
 };

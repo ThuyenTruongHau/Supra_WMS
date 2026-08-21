@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import re
+
 
 def normalize_lot_number(value: str | None) -> str | None:
     if value is None:
@@ -7,33 +9,36 @@ def normalize_lot_number(value: str | None) -> str | None:
     trimmed = value.strip()
     return trimmed or None
 
-import re
 
-_DATE = r"\d{2}/\d{2}/\d{2}"  
+_DATE = r"\d{2}/\d{2}/\d{2}"
+
 
 def parse_legacy_lot_number(value: str) -> tuple[str, str]:
     s = value.strip()
 
+    # 30/07/26-01/08/26
     m = re.fullmatch(rf"({_DATE})-({_DATE})", s)
     if m:
         return m.group(1), m.group(2)
 
-    m = re.fullmatch(r"^(\d{1,2})-(\d{1,2})-(\d{2}/\d{2})$", s)
+    # 09-10/04/26  →  09/04/26 .. 10/04/26
+    m = re.fullmatch(r"^(\d{1,2})-(\d{1,2})/(\d{2})/(\d{2})$", s)
     if m:
-        d1, d2, mm_yy = m.group(1), m.group(2), m.group(3)
-        mm, yy = mm_yy.split("/")
+        d1, d2, mm, yy = m.group(1), m.group(2), m.group(3), m.group(4)
         return (
             f"{int(d1):02d}/{mm}/{yy}",
             f"{int(d2):02d}/{mm}/{yy}",
         )
 
+    # 19/08/26
     m = re.fullmatch(rf"^({_DATE})$", s)
     if m:
         return s, s
 
     raise ValueError(
         "lot_number không hợp lệ. "
-        "Chấp nhận: DD/MM/YY, DD/MM/YY-DD/MM/YY, hoặc DD-DD-MM/YY (vd: 19/08/26, 30/07/26-01/08/26, 11-15-08/26)"
+        "Chấp nhận: DD/MM/YY, DD/MM/YY-DD/MM/YY, hoặc DD-DD/MM/YY "
+        "(vd: 19/08/26, 30/07/26-01/08/26, 09-10/04/26)"
     )
 
 

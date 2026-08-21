@@ -1,5 +1,4 @@
-import { isAxiosError } from "axios";
-import type { ApiErrorResponse } from "@/types/apiError";
+import { getApiErrorMessage } from "@/utils/apiErrorMessage";
 
 const NO_STOCK_PATTERN = /^No enough stock for item (\d+)$/;
 
@@ -20,18 +19,11 @@ function resolveItemLabel(
   return `#${itemId}`;
 }
 
-function extractApiDetail(err: unknown): string | null {
-  if (!isAxiosError<ApiErrorResponse>(err)) return null;
-  const detail = err.response?.data?.detail;
-  return typeof detail === "string" ? detail : null;
-}
-
 export function formatOutboundCalculateError(
   err: unknown,
   itemSources: OutboundItemLabelSource[] = [],
 ): string {
-  const message = extractApiDetail(err);
-  if (!message) return "Có lỗi xảy ra khi phân bổ";
+  const message = getApiErrorMessage(err, "Có lỗi xảy ra khi phân bổ");
 
   const noStock = message.match(NO_STOCK_PATTERN);
   if (noStock) {

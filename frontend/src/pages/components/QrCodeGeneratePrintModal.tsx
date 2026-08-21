@@ -14,6 +14,7 @@ import { printBacvietHtml } from "@/utils/printBacvietHtml";
 
 const SKU_BROWSE_PAGE_SIZE = 20;
 const MAX_PRINT_QUANTITY = 50;
+const LABELS_PER_PAGE = 9;
 
 type QrCodeGeneratePrintModalProps = {
   open: boolean;
@@ -37,7 +38,7 @@ export default function QrCodeGeneratePrintModal({
 }: QrCodeGeneratePrintModalProps) {
   const [selectedSku, setSelectedSku] = useState<string | undefined>();
   const [selectedItemId, setSelectedItemId] = useState<number | null>(null);
-  const [quantity, setQuantity] = useState("6");
+  const [quantity, setQuantity] = useState(String(LABELS_PER_PAGE));
   const [previewHtml, setPreviewHtml] = useState<string | null>(null);
   const previewFrameRef = useRef<HTMLIFrameElement>(null);
 
@@ -48,7 +49,7 @@ export default function QrCodeGeneratePrintModal({
     if (open) {
       setSelectedSku(defaultSku);
       setSelectedItemId(defaultItemId);
-      setQuantity("6");
+      setQuantity(String(LABELS_PER_PAGE));
       setPreviewHtml(null);
     }
   }, [open, defaultItemId, defaultSku]);
@@ -182,7 +183,7 @@ export default function QrCodeGeneratePrintModal({
               placeholder="Nhập số phiếu cần in"
             />
             <p className="mt-1 text-xs text-slate-500">
-              6 phiếu / trang A4. Tối đa {MAX_PRINT_QUANTITY} phiếu / lần.
+              {LABELS_PER_PAGE} phiếu / trang A4. Tối đa {MAX_PRINT_QUANTITY} phiếu / lần.
             </p>
           </div>
         </div>

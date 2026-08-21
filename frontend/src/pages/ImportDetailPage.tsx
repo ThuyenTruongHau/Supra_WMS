@@ -22,8 +22,6 @@ import type {
   InboundOrderDetail,
 } from "@/types/inboundOrder";
 import type { ColumnsType } from "antd/es/table";
-import type { AxiosError } from "axios";
-import type { ApiErrorResponse } from "@/types/apiError";
 import { useInboundBufferLocations, useFullLocations } from "@/hooks/useWarehouseMap";
 import { useUser } from "@/hooks/useAuth";
 import dayjs from "dayjs";
@@ -33,13 +31,13 @@ import CreateImportModal, {
 import { detailsToEntries } from "@/utils/keyValueDetails";
 import { computeDetailProgress } from "@/utils/detailProgress";
 
+import { getApiErrorMessage } from "@/utils/apiErrorMessage";
+
 const TABLE_CLASS =
   "[&_.ant-table-thead_th]:!bg-slate-50 [&_.ant-table-thead_th]:!text-slate-600 [&_.ant-table-thead_th]:!font-semibold [&_.ant-table-thead_th]:!text-base [&_.ant-table-tbody_td]:!text-base [&_.ant-table-thead_th]:!py-3 [&_.ant-table-tbody_td]:!py-3 [&_.ant-table-row]:hover:bg-slate-50/50";
 
 function apiError(err: unknown): string {
-  const ax = err as AxiosError<ApiErrorResponse>;
-  const detail = ax?.response?.data?.detail;
-  return typeof detail === "string" ? detail : "Có lỗi xảy ra";
+  return getApiErrorMessage(err);
 }
 
 const DETAIL_LINE_FIELD_LABELS: Record<string, string> = {
