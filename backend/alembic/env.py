@@ -53,6 +53,10 @@ from app.modules.warehouse.outbound_order.outbound_order_model import (  # noqa:
     OutboundOrderDetail,
     OutboundOrderAllocation,
 )
+from app.modules.warehouse.stocktake.stocktake_model import (  # noqa: F401
+    Stocktake,
+    StocktakeItemStock,
+)
 from app.modules.warehouse.transaction_history.history_model import Transaction, History  # noqa: F401
 from app.modules.robot.robot_model import RobotTask, TaskStatus  # noqa: F401
 

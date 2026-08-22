@@ -1,5 +1,5 @@
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
-from typing import Dict, Set
+from typing import Dict, Set, Optional
 from app.core.logger import get_logger
 from sqlalchemy.orm import Session
 import asyncio
@@ -43,7 +43,7 @@ class WebsocketManager:
                 except Exception:
                     self.active_connections.discard(connection)
 
-    async def connect(self, db: Session, websocket: WebSocket, warehouse_id: int):
+    async def connect(self, db: Session, websocket: WebSocket, warehouse_id: Optional[int] = None):
         await websocket.accept()
         self.active_connections.add(websocket)
         warehouse = db.query(Warehouse).filter(Warehouse.id == warehouse_id).first()
@@ -54,10 +54,10 @@ class WebsocketManager:
         self.notification_by_warehouse[warehouse_id].add(websocket)
         logger.info(f"Connected to notification channel for warehouse {warehouse_id}")
 
-    async def disconnect(self, websocket: WebSocket, warehouse_id: int = None):
+    async def disconnect(self, websocket: WebSocket, warehouse_id: Optional[int] = None):
         self.active_connections.discard(websocket)
 
-        if warehouse_id and warehouse_id in self.notification_by_warehouse:
+        if warehouse_id is not None and warehouse_id in self.notification_by_warehouse:
             self.notification_by_warehouse[warehouse_id].discard(websocket)
             if not self.notification_by_warehouse[warehouse_id]:
                 del self.notification_by_warehouse[warehouse_id]

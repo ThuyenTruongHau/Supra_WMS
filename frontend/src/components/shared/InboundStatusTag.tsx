@@ -14,6 +14,8 @@ const STATUS_STYLES: Record<string, string> = {
   in_transit: ORANGE_STATUS_STYLE,
   "in-progress": ORANGE_STATUS_STYLE,
   in_progress: ORANGE_STATUS_STYLE,
+  discrepancy:
+    "bg-rose-100 text-rose-800 border-rose-200 shadow-sm shadow-rose-200/60",
   completed:
     "bg-emerald-100 text-emerald-800 border-emerald-200 shadow-sm shadow-emerald-200/60",
 };

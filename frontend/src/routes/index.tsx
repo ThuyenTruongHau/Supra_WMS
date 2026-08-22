@@ -17,7 +17,8 @@ import UnitSettingPage from "@/pages/UnitSettingPage";
 import QrCodeSettingPage from "@/pages/QrCodeSettingPage";
 import OutboundDetailPage from "@/pages/OutboundDetailPage";
 // import ItemSettingPage from "@/pages/ItemSettingPage";
-// import StocktakePage from "@/pages/StocktakePage";
+import StocktakePage from "@/pages/StocktakePage";
+import StocktakeDetailPage from "@/pages/StocktakeDetailPage";
 import WorkerInboundVehicleListPage from "@/pages/WorkerInboundVehicleListPage";
 import WorkerInboundSkuListPage from "@/pages/WorkerInboundSkuListPage";
 import WorkerInboundPickupPage from "@/pages/WorkerInboundPickupPage";
@@ -62,7 +63,8 @@ export default function AppRoutes() {
         <Route path="import/:id" element={<ImportDetailPage />} />
         <Route path="export" element={<OutboundPage />} />
         <Route path="export/:orderId" element={<OutboundDetailPage />} />
-        {/* <Route path="inventory" element={<StocktakePage />} /> */}
+        <Route path="inventory" element={<StocktakePage />} />
+        <Route path="inventory/:id" element={<StocktakeDetailPage />} />
         {/* Các Route con ngoài WMS dropdown */}
         <Route path="report" element={<ReportPage />} />
         <Route path="notification" element={<div>Trang Thông Báo</div>} />

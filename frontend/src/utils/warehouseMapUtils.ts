@@ -11,7 +11,7 @@ export const HIT_RADIUS = 12; // world-space pixels at scale=1
 export const BASE_NODE_SIZE = 200; // screen-space base size in px
 export const LINE_COLOR = '#d0d0d0';
 export const NODE_NORMAL_COLOR = '#9ca3af';
-export const SHELF_FULL_COLOR = '#0f3d46'; // Kệ có hàng (Màu xanh logo tối emerald)
+export const SHELF_FULL_COLOR = '#3aa6a6'; // Kệ có hàng — xanh brand sáng hơn
 export const SHELF_EMPTY_COLOR = '#66625F'; // Kệ trống xám
 export const SHELF_RESERVED_COLOR = '#06b6d4'; // Giữ chỗ — xanh nước biển
 export const SHELF_IN_TRANSIT_COLOR = '#f97316'; // Đang luân chuyển — cam

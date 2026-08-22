@@ -12,6 +12,7 @@ from app.modules.warehouse.transaction_history.history_api import router as tran
 from app.modules.warehouse.unit.unit_api import router as unit_router
 from app.modules.warehouse.inbound_order.inbound_order_api import router as inbound_order_router
 from app.modules.warehouse.outbound_order.outbound_order_api import router as outbound_order_router
+from app.modules.warehouse.stocktake.stocktake_api import router as stocktake_router
 from app.modules.robot.robot_api import router as robot_router
 from app.core.logger import setup_logger
 from app.core.cache import close_redis, get_redis
@@ -70,6 +71,7 @@ Instrumentator().instrument(app).expose(app)
 
 app.include_router(inbound_order_router, prefix="/api/v1")
 app.include_router(outbound_order_router, prefix="/api/v1")
+app.include_router(stocktake_router, prefix="/api/v1")
 app.include_router(auth_router, prefix="/api/v1")
 app.include_router(warehouse_router, prefix="/api/v1")
 app.include_router(location_router, prefix="/api/v1")

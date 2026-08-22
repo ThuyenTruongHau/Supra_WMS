@@ -1,5 +1,6 @@
 import { isAxiosError } from "axios";
 import type { ApiErrorResponse, ValidationErrorItem } from "@/types/apiError";
+import { translateApiMessage } from "@/i18n/apiMessages.vi";
 
 const VALUE_ERROR_PREFIX = /^Value error,\s*/i;
 const STATUS_CODE_MESSAGE = /^Request failed with status code \d+$/i;
@@ -23,7 +24,7 @@ const FIELD_LABELS: Record<string, string> = {
 };
 
 function cleanMessage(message: string): string {
-  return message.replace(VALUE_ERROR_PREFIX, "").trim();
+  return translateApiMessage(message.replace(VALUE_ERROR_PREFIX, "").trim());
 }
 
 function fieldLabelFromLoc(loc?: (string | number)[]): string | null {
@@ -105,7 +106,7 @@ export function getApiErrorMessage(
     err.message &&
     !STATUS_CODE_MESSAGE.test(err.message)
   ) {
-    return err.message;
+    return translateApiMessage(err.message);
   }
 
   return fallback;
