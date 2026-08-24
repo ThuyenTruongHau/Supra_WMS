@@ -163,15 +163,18 @@ export default function QrTabletPage() {
         <p className="mb-8 text-center text-base text-stripe-ink-mute">
           Quét mã sản phẩm để gán vị trí, hoặc quét vị trí để tạo đơn nhập.
         </p>
-        <Button
-          variant="primary"
-          icon={<ScanOutlined />}
-          className="!h-16 w-full !text-xl"
-          loading={assignMutation.isPending}
-          onClick={() => setScanMode("product")}
-        >
-          Bắt đầu quét mã
-        </Button>
+        <div className="flex flex-col gap-3">
+          <Button
+            variant="primary"
+            icon={<ScanOutlined />}
+            className="!h-16 w-full !text-xl"
+            loading={assignMutation.isPending}
+            onClick={() => setScanMode("product")}
+          >
+            Bắt đầu quét mã
+          </Button>
+          <QrImageImport onDecoded={handleDecoded} />
+        </div>
       </div>
 
       {scanMode === "product" && (
@@ -257,8 +260,6 @@ export default function QrTabletPage() {
           message.success("Hoàn tất đơn nhập");
         }}
       />
-
-      <QrImageImport onDecoded={handleDecoded} />
     </div>
   );
 }

@@ -39,7 +39,7 @@ export function QrImageImport({ onDecoded }: { onDecoded: (text: string) => void
       <Button
         variant="secondary"
         icon={<UploadOutlined />}
-        className="fixed bottom-5 left-1/2 z-[60] w-[min(520px,90vw)] -translate-x-1/2 !h-12"
+        className="!h-12 w-full"
         onClick={() => inputRef.current?.click()}
       >
         Import ảnh QR để test
