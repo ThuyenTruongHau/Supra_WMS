@@ -71,6 +71,56 @@ class InboundReleaseLocationsRequest(BaseModel):
 class InboundReleaseLocationsResponse(BaseModel):
     deleted: int
 
+class AssignOrGetItemStockRequest(BaseModel):
+    qr_code: Optional[str] = Field(None, min_length=1, max_length=50)
+    location_id: Optional[int] = Field(None, gt=0)
+    location_code: Optional[str] = Field(None, min_length=1, max_length=100)
+    quantity: Optional[int] = Field(None, gt=0)
+    unit_id: Optional[int] = Field(None, gt=0)
+    lot_number: Optional[str] = Field(None, max_length=50)
+
+    @model_validator(mode="after")
+    def require_fields_when_assign(self) -> "AssignOrGetItemStockRequest":
+        has_location = self.location_id is not None or bool(self.location_code)
+        if self.qr_code is not None and has_location:
+            if self.quantity is None or self.unit_id is None:
+                raise ValueError(
+                    "quantity and unit_id are required when assigning a QR code to a location"
+                )
+        return self
+
+
+class QrCodePreviewResponse(BaseModel):
+    qr_code_id: int
+    code: str
+    item_id: int
+    item_sku: str
+    item_name: str
+    quantity: int
+    unit_id: int
+    unit_name: str
+    lot_number: str
+
+
+class AssignItemStockMetaResponse(BaseModel):
+    part_number: str
+    location: str
+
+
+class AssignedItemStockResponse(BaseModel):
+    qr_code_id: int
+    code: str
+    lot_number: Optional[str] = None
+    lot_number_to: Optional[str] = None
+    unit_id: int
+    unit_name: str
+    quantity: int
+    item_id: int
+    item_sku: str
+    item_name: Optional[str] = None
+    location_id: Optional[int] = None
+    location_name: Optional[str] = None
+    warehouse_id: Optional[int] = None
 
 class InboundOrderAllocationCreate(BaseModel):
     item_id: int = Field(..., gt=0)
@@ -79,6 +129,7 @@ class InboundOrderAllocationCreate(BaseModel):
     lot_number_from: Optional[str] = Field(None, max_length=50)
     lot_number_to: Optional[str] = Field(None, max_length=50)
     lot_number: Optional[str] = Field(None, max_length=50)
+    qr_code_id: Optional[int] = None
     expiry_date: Optional[str] = None
 
     @model_validator(mode="after")

@@ -44,6 +44,9 @@ from app.modules.warehouse.item.item_import_utils import (
     save_import_item_file,
     save_import_job,
 )
+from app.core.logger import get_logger
+
+logger = get_logger("main")
 
 NEARLY_OUTDATED_DAYS = 30
 RECENT_QR_CODE_DAYS = 2
@@ -489,12 +492,15 @@ def list_qr_codes(
     )
 
 
-def get_qr_code_by_code(db: Session, code: str) -> Optional[QR_Code]:
+def get_qr_code_by_code(db: Session, code: Optional[str] = None) -> Optional[QR_Code]:
+    if not code:
+        return None
+    logger.info(f"Getting QR code by code: {code}")
     get_code = db.query(QR_Code).filter(QR_Code.code == code).first()
     if not get_code:
-        raise ValueError(f"QR code not found: {code}")
+        return None
     if get_code.created_at.date() != date.today():
-        raise ValueError("QR code is expired")
+        raise ValueError("QR code is expired") 
     if get_code.item_stock_id is not None:
         raise ValueError("QR code is already assigned to an item stock")
     return get_code
@@ -626,6 +632,7 @@ def _render_print_response(payload: dict, quantity: int, codes: list[str]) -> di
         "quantity": quantity,
         "page_count": math.ceil(quantity / 9),
         "qr_ids": codes,
+        "display_codes": payload.get("display_codes", []),
     }
 
 
@@ -643,24 +650,36 @@ def preview_qr_codes(db: Session, item_id: int, quantity: int) -> dict:
     return _render_print_response(payload, quantity, codes)
 
 
-def create_qr_codes(db: Session, item_id: int, quantity: int) -> dict:
+def create_qr_codes(
+    db: Session,
+    item_id: int,
+    quantity: int,
+    codes: list[str],
+    display_codes: list[str],
+) -> dict:
     item = _validate_qr_print_request(db, item_id, quantity)
-    codes, display_codes = _build_qr_code_strings(item, quantity)
-    for code in codes:
+    normalized = [str(code).strip() for code in codes if str(code).strip()]
+    displays = [str(value).strip() for value in display_codes if str(value).strip()]
+    if len(normalized) != quantity:
+        raise ValueError("qr_ids length must match quantity")
+    if len(set(normalized)) != len(normalized):
+        raise ValueError("qr_ids must be unique")
+    if any(len(code) > 50 for code in normalized):
+        raise ValueError("qr_ids must not exceed 50 characters")
+    if len(displays) != quantity:
+        raise ValueError("display_codes length must match quantity")
+    existing = db.query(QR_Code.code).filter(QR_Code.code.in_(normalized)).first()
+    if existing:
+        raise ValueError("QR code already exists")
+    for code in normalized:
         db.add(QR_Code(code=code, item_id=item_id, item_stock_id=None))
     db.commit()
-    payload = _build_print_payload(
-        item,
-        quantity,
-        codes,
-        display_codes,
-        mode="create",
-        item_id=item_id,
-    )
-    return _render_print_response(payload, quantity, codes)
+    return {
+        "codes": normalized,
+        "display_codes": displays,
+    }
 
 
-# Giữ alias cũ nếu có chỗ gọi nội bộ
 generate_qr_codes = create_qr_codes
 
 TEMPLATE_PATH = Path(__file__).resolve().parents[3] / "static" / "templates" / "template_bacviet.html"

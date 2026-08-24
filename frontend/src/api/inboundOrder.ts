@@ -1,6 +1,9 @@
 import axiosInstance from "./axiosInstance";
 import type {
+  AssignOrGetItemStockRequest,
+  AssignOrGetItemStockResponse,
   GetInboundOrdersParams,
+  InboundCallerResponse,
   InboundOrder,
   InboundOrderCreateRequest,
   InboundOrderDetail,
@@ -88,6 +91,28 @@ export const deleteInboundOrderApi = async (
 export const acceptInboundTaskApi = async (detailId: number): Promise<unknown> => {
   const { data } = await axiosInstance.post(
     `/api/v1/inbound-allocations/${detailId}/accept-task`,
+  );
+  return data;
+};
+
+export const assignOrGetItemStockApi = async (
+  body: AssignOrGetItemStockRequest,
+): Promise<AssignOrGetItemStockResponse> => {
+  const { data } = await axiosInstance.post<AssignOrGetItemStockResponse>(
+    `${BASE}/assigned-stocks`,
+    body,
+  );
+  return data;
+};
+
+export const callerInboundOrderApi = async (
+  body: InboundOrderCreateRequest,
+  inboundType: string,
+): Promise<InboundCallerResponse> => {
+  const { data } = await axiosInstance.post<InboundCallerResponse>(
+    `${BASE}/caller`,
+    body,
+    { params: { inbound_type: inboundType } },
   );
   return data;
 };

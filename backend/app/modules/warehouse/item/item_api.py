@@ -20,6 +20,7 @@ from app.modules.warehouse.item.item_schema import (
     ItemUpdate,
     QRCodeCreate,
     QRCodeListResponse,
+    QRCodePrintCreateBody,
     QRCodeRecentListResponse,
     QRCodeResponse,
     QRCodeUpdate,
@@ -245,12 +246,19 @@ def preview_qr_codes(
     dependencies=[Depends(require_permission("item:create"))],
 )
 def create_qr_codes_batch(
+    body: QRCodePrintCreateBody,
     db: DbSession,
     item_id: int = Query(..., gt=0),
     quantity: int = Query(..., gt=0, le=50),
 ):
     try:
-        return item_service.create_qr_codes(db, item_id, quantity)
+        return item_service.create_qr_codes(
+            db,
+            item_id,
+            quantity,
+            codes=body.qr_ids,
+            display_codes=body.display_codes,
+        )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
 
@@ -265,7 +273,15 @@ def generate_qr_codes(
     quantity: int = Query(..., gt=0, le=50),
 ):
     try:
-        return item_service.create_qr_codes(db, item_id, quantity)
+        preview = item_service.preview_qr_codes(db, item_id, quantity)
+        item_service.create_qr_codes(
+            db,
+            item_id,
+            quantity,
+            codes=preview["qr_ids"],
+            display_codes=preview["display_codes"],
+        )
+        return preview
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
 

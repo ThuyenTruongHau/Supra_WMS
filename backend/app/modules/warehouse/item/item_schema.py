@@ -140,6 +140,11 @@ class QRCodeCreate(BaseModel):
     item_stock_id: Optional[int] = Field(None, gt=0)
 
 
+class QRCodePrintCreateBody(BaseModel):
+    qr_ids: list[str] = Field(..., min_length=1)
+    display_codes: list[str] = Field(..., min_length=1)
+
+
 class QRCodeUpdate(BaseModel):
     code: Optional[str] = Field(None, min_length=1, max_length=50)
     item_id: Optional[int] = Field(None, gt=0)

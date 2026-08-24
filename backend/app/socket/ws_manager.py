@@ -1,12 +1,17 @@
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect
-from typing import Dict, Set, Optional
-from app.core.logger import get_logger
-from sqlalchemy.orm import Session
 import asyncio
+import contextlib
+import json
+
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect, HTTPException
+from typing import Dict, Set, Optional
+from sqlalchemy.orm import Session
+
+from app.core.logger import get_logger
+from app.modules.warehouse.warehouse_zone.warehouse_model import Warehouse
 
 logger = get_logger("main")
 
-class WebsocketManager:
+class WebsocketManager: 
     def __init__(self):
         self._consumer_task: Optional[asyncio.Task] = None
         self.active_connections: Set[WebSocket] = set()

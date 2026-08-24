@@ -378,7 +378,7 @@
 
       function qrImageUrl(qrId) {
         return (
-          "https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=" +
+          "https://api.qrserver.com/v1/create-qr-code/?size=400x400&margin=8&ecc=M&data=" +
           encodeURIComponent(String(qrId ?? ""))
         );
       }
@@ -572,6 +572,8 @@
               type: "bacviet-qr-print",
               item_id: data.item_id,
               quantity: data.quantity,
+              qr_ids: data.qr_ids,
+              display_codes: data.display_codes,
             },
             "*",
           );

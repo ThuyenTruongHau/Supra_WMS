@@ -258,7 +258,7 @@
 
       function qrImageUrl(qrData) {
         return (
-          "https://api.qrserver.com/v1/create-qr-code/?size=1000x1000&margin=0&data=" +
+          "https://api.qrserver.com/v1/create-qr-code/?size=1000x1000&margin=16&ecc=M&data=" +
           encodeURIComponent(String(qrData ?? ""))
         );
       }

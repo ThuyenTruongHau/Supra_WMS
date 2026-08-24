@@ -131,6 +131,7 @@ export interface InboundOrderAllocationCreate {
   unit_id: number;
   lot_number?: string | null;
   expiry_date?: string | null;
+  qr_code_id?: number | null;
 }
 
 export interface InboundOrderDetailCreate {
@@ -177,4 +178,67 @@ export interface InboundOrderUpdateRequest {
 export interface InboundOrderDeleteResponse {
   order_code: string;
   message: string;
+}
+
+export interface AssignOrGetItemStockRequest {
+  qr_code?: string | null;
+  location_id?: number | null;
+  location_code?: string | null;
+  quantity?: number | null;
+  unit_id?: number | null;
+  lot_number?: string | null;
+}
+
+export interface QrCodePreviewResponse {
+  qr_code_id: number;
+  code: string;
+  item_id: number;
+  item_sku: string;
+  item_name: string;
+  quantity: number;
+  unit_id: number;
+  unit_name: string;
+  lot_number: string;
+}
+
+export interface AssignItemStockMetaResponse {
+  part_number: string;
+  location: string;
+}
+
+export interface AssignedItemStock {
+  qr_code_id: number;
+  code: string;
+  lot_number?: string | null;
+  lot_number_to?: string | null;
+  unit_id: number;
+  unit_name: string;
+  quantity: number;
+  item_id: number;
+  item_sku: string;
+  item_name?: string | null;
+  location_id?: number | null;
+  location_name?: string | null;
+  warehouse_id?: number | null;
+}
+
+export type AssignOrGetItemStockResponse =
+  | QrCodePreviewResponse
+  | AssignItemStockMetaResponse
+  | AssignedItemStock[];
+
+export const isAssignMetaResponse = (
+  value: AssignOrGetItemStockResponse,
+): value is AssignItemStockMetaResponse =>
+  !Array.isArray(value) && "part_number" in value && !("qr_code_id" in value);
+
+export const isQrPreviewResponse = (
+  value: AssignOrGetItemStockResponse,
+): value is QrCodePreviewResponse =>
+  !Array.isArray(value) && "qr_code_id" in value;
+
+export interface InboundCallerResponse {
+  order: InboundOrder;
+  line_items: unknown[];
+  robot_tasks: unknown[];
 }

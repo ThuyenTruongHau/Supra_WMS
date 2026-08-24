@@ -34,14 +34,14 @@ from app.modules.warehouse.inbound_order.inbound_order_schema import (
     _resolve_lot_number_fields,
 )
 from app.modules.warehouse.location_map.location_model import Location
-from app.modules.warehouse.item.item_model import Item
-from app.modules.warehouse.unit.unit_model import ItemUnit
+from app.modules.warehouse.item.item_model import Item, QR_Code
+from app.modules.warehouse.unit.unit_model import ItemUnit, Unit
 from app.modules.warehouse.item_stock.item_stock_model import ItemStock
 from app.modules.robot.robot_service import task_status_service
 from app.modules.robot.robot_model import RobotTask
 from app.modules.warehouse.transaction_history.history_model import History
 from app.core.config import settings
-from app.core.cache import cache_scan_keys, cache_set, cache_delete, cache_delete_pattern
+from app.core.cache import cache_scan_keys, cache_set, cache_delete, cache_delete_pattern, cache_get, get_redis
 from app.core.logger import get_logger
 
 logger = get_logger("main")
@@ -177,6 +177,14 @@ def _create_stock_and_allocation(
     )
     db.add(item_stock)
     db.flush()
+
+    if payload.qr_code_id:
+        qr_code = db.query(QR_Code).filter(QR_Code.id == payload.qr_code_id).first()
+        if not qr_code:
+            raise ValueError(f"QR code {payload.qr_code_id} not found")
+        qr_code.item_stock_id = item_stock.id
+        db.add(qr_code)
+        db.flush()
 
     allocation = InboundOrderAllocation(
         inbound_order_detail_id=detail.id,
@@ -749,28 +757,114 @@ def caller_inbound_order(
     except Exception as e:
         raise ValueError(f"Error calling inbound order: {e}") from e
 
-def asign_item_stock(db: Session, qr_code: str, location_id: int, quantity: int, unit_id: int):
-    qr_record = get_qr_code_by_code(db, qr_code)
-    location = db.query(Location).filter(Location.id == location_id).first()
-    if not location:
-        raise ValueError(f"Location not found: {location_id}")
 
+def _qr_preview_payload(qr_record) -> dict:
+    item = qr_record.item
+    unit = item.unit if item else None
+    return {
+        "qr_code_id": qr_record.id,
+        "code": qr_record.code,
+        "item_id": qr_record.item_id,
+        "item_sku": item.sku if item else "",
+        "item_name": item.name if item else "",
+        "quantity": int(item.base_quantity) if item and item.base_quantity is not None else 1,
+        "unit_id": item.base_unit_id if item else None,
+        "unit_name": unit.name if unit else "",
+        "lot_number": _default_lot_number(qr_record),
+    }
+
+
+def _resolve_location(
+    db: Session,
+    location_code: Optional[str] = None,
+) -> Optional[Location]:
+    if not location_code:
+        return None
+    code = location_code.strip()
+    return db.query(Location).filter(Location.location_code == code).first()
+
+
+def _normalize_assigned_stock(stock: dict) -> dict:
+    if stock.get("lot_number") is None and stock.get("lot_number_to"):
+        stock["lot_number"] = stock["lot_number_to"]
+    return stock
+
+def _default_lot_number(qr_record) -> str:
     VN = ZoneInfo("Asia/Ho_Chi_Minh")
+    created = qr_record.created_at
+    if created is None:
+        return ""
+    if created.tzinfo is None:
+        return created.strftime("%d/%m/%y")
+    return created.astimezone(VN).strftime("%d/%m/%y")
+
+
+def assign_or_get_item_stock(
+    db: Session,
+    location_code: Optional[str] = None,
+    qr_code: Optional[str] = None,
+    quantity: Optional[int] = None,
+    unit_id: Optional[int] = None,
+    lot_number: Optional[str] = None,
+) -> list[dict] | dict:
+    qr_record = get_qr_code_by_code(db, qr_code)
+    location = _resolve_location(db, location_code)
+
+    if qr_record is not None and location is None:
+        return _qr_preview_payload(qr_record)
+
+    if qr_record is None:
+        if location is None:
+            location = _resolve_location(db, qr_code)
+        if location is None:
+            raise ValueError("Mã QR không hợp lệ hoặc không tìm thấy vị trí")
+        return get_assigned_item_stock(db, location.id)
+
+    if quantity is None or unit_id is None:
+        raise ValueError("quantity and unit_id are required when assigning a QR code to a location")
+
+    unit = db.query(Unit).filter(Unit.id == unit_id).first()
+    if not unit:
+        raise ValueError(f"Unit not found: {unit_id}")
+
+    resolved_lot = lot_number
+    item = qr_record.item
 
     cache_set(
-        f"inbound:assign:location:{location_id}:{qr_record.id}",
+        f"inbound:assign:location:{location.id}:{qr_record.id}",
         {
+            "location_id": location.id,
+            "location_name": location.location_name,
+            "warehouse_id": location.warehouse_id,
             "qr_code_id": qr_record.id,
             "code": qr_record.code,
-            "lot_number_to": qr_record.created_at.astimezone(VN).strftime("%d/%m/%y"),
+            "lot_number": resolved_lot,
             "unit_id": unit_id,
+            "unit_name": unit.name,
             "quantity": quantity,
             "item_id": qr_record.item_id,
-            "item_sku": qr_record.item.sku,
+            "item_sku": item.sku if item else "",
+            "item_name": item.name if item else "",
         },
         ttl=-1,
     )
     return {
-        "part_number": qr_record.item.sku,
+        "part_number": item.sku if item else "",
         "location": location.location_name,
     }
+
+
+def get_assigned_item_stock(db: Session, location_id: int) -> list[dict]:
+    keys = cache_scan_keys(f"inbound:assign:location:{location_id}:*")
+    if not keys:
+        return []
+    r = get_redis()
+    values = r.mget(keys)
+    location = db.query(Location).filter(Location.id == location_id).first()
+    stocks = [_normalize_assigned_stock(json.loads(raw)) for raw in values if raw]
+    if location:
+        for stock in stocks:
+            stock.setdefault("location_id", location.id)
+            stock.setdefault("location_name", location.location_name)
+            stock.setdefault("warehouse_id", location.warehouse_id)
+    return stocks

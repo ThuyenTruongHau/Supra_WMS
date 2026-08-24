@@ -20,6 +20,7 @@ import {
   useReleaseInboundLocations,
   useCreateInboundOrder,
   useUpdateInboundOrder,
+  useCallerInboundOrder,
 } from "@/hooks/useInboundOrder";
 import type {
   InboundOrderAllocationUpdate,
@@ -47,6 +48,7 @@ import {
   type LotNumberValidationOptions,
 } from "@/utils/lotNumberValidation";
 import { translateStatus } from "@/i18n/statusLabels.vi";
+import { resolveInboundType } from "@/config/warehouseMode";
 
 /** Một SKU trong nhóm. */
 export interface ImportItemDraft {
@@ -62,6 +64,7 @@ export interface ImportItemDraft {
   converted_unit_name?: string;
   lot_number?: string;
   expiry_date?: string;
+  qr_code_id?: number;
 }
 
 /** Một nhóm/pallet — nhiều SKU dùng chung một vị trí đích. */
@@ -69,6 +72,7 @@ export interface ImportGroupDraft {
   key: string;
   detail_id?: number;
   from_location_id?: number;
+  from_location_name?: string;
   to_location_id?: number;
   to_location_name?: string;
   status?: string;
@@ -87,6 +91,9 @@ interface CreateImportModalProps {
   initialDetails?: Record<string, unknown>;
   /** Quy tắc số lô — bỏ qua hoặc để mặc định nếu bài toán không cần lô. */
   lotNumberValidation?: LotNumberValidationOptions;
+  submitMode?: "create" | "caller";
+  lockFromLocation?: boolean;
+  warehouseIdOverride?: number;
 }
 
 let draftSeq = 0;
@@ -112,10 +119,17 @@ export default function CreateImportModal({
   initialGroups,
   initialDetails,
   lotNumberValidation = { required: true, format: "legacy" },
+  submitMode = "create",
+  lockFromLocation = false,
+  warehouseIdOverride,
 }: CreateImportModalProps) {
   const isEdit = mode === "edit";
   const selectedWarehouseId = useAppStore((s) => s.selectedWarehouseId);
-  const inboundType = useAppStore((s) => s.inboundType);
+  const storeInboundType = useAppStore((s) => s.inboundType);
+  const warehouseId = warehouseIdOverride || selectedWarehouseId;
+  const inboundType = warehouseIdOverride
+    ? resolveInboundType(warehouseIdOverride)
+    : storeInboundType;
 
   const [step, setStep] = useState(0);
   const [orderCode, setOrderCode] = useState("");
@@ -133,7 +147,7 @@ export default function CreateImportModal({
     isLoading: bufferLocationsLoading,
     isError: bufferLocationsError,
     refetch: refetchBufferLocations,
-  } = useInboundBufferLocations(selectedWarehouseId || 0, open);
+  } = useInboundBufferLocations(warehouseId || 0, open);
 
   const bufferLocationOptions = useMemo(
     () =>
@@ -153,6 +167,7 @@ export default function CreateImportModal({
   const releaseMutation = useReleaseInboundLocations();
   const createMutation = useCreateInboundOrder();
   const updateMutation = useUpdateInboundOrder();
+  const callerMutation = useCallerInboundOrder();
 
   useEffect(() => {
     if (!open) return;
@@ -336,7 +351,7 @@ export default function CreateImportModal({
   };
 
   const validateStep0 = () => {
-    if (!selectedWarehouseId) {
+    if (!warehouseId) {
       message.error("Vui lòng chọn kho");
       return false;
     }
@@ -394,7 +409,7 @@ export default function CreateImportModal({
     try {
       message.loading({ content: "Đang gợi ý vị trí...", key: "suggest" });
       const res = await suggestMutation.mutateAsync({
-        warehouse_id: selectedWarehouseId,
+        warehouse_id: warehouseId,
         detail_type: inboundType,
         line_items: groups.map((g) => ({
           items: g.items.map((i) => ({
@@ -480,7 +495,7 @@ export default function CreateImportModal({
   };
 
   const handleSubmit = async () => {
-    if (!selectedWarehouseId) return;
+    if (!warehouseId) return;
 
     if (isEdit) {
       if (!validateStep0() || !editOrderCode) return;
@@ -517,29 +532,42 @@ export default function CreateImportModal({
     if (!validateStep1()) return;
 
     try {
-      message.loading({ content: "Đang tạo đơn nhập...", key: "submit" });
-      await createMutation.mutateAsync({
-        inboundType,
-        data: {
-          order_code: orderCode.trim(),
-          note: note.trim() || null,
-          warehouse_id: selectedWarehouseId,
-          details: entriesToDetails(detailEntries),
-          line_items: groups.map((g) => ({
-            from_location_id: g.from_location_id!,
-            to_location_id: g.to_location_id!,
-            details: entriesToDetails(g.detailEntries ?? []),
-            allocations: g.items.map((i) => ({
-              item_id: i.item_id!,
-              quantity: i.quantity,
-              unit_id: i.unit_id!,
-              lot_number: normalizeLotNumber(i.lot_number),
-              expiry_date: i.expiry_date || null,
-            })),
-          })),
-        },
+      message.loading({
+        content:
+          submitMode === "caller"
+            ? "Đang tạo đơn và gửi lệnh..."
+            : "Đang tạo đơn nhập...",
+        key: "submit",
       });
-      message.success({ content: "Tạo đơn nhập thành công!", key: "submit" });
+      const payload = {
+        order_code: orderCode.trim(),
+        note: note.trim() || null,
+        warehouse_id: warehouseId,
+        details: entriesToDetails(detailEntries),
+        line_items: groups.map((g) => ({
+          from_location_id: g.from_location_id!,
+          to_location_id: g.to_location_id!,
+          details: entriesToDetails(g.detailEntries ?? []),
+          allocations: g.items.map((i) => ({
+            item_id: i.item_id!,
+            quantity: i.quantity,
+            unit_id: i.unit_id!,
+            lot_number: normalizeLotNumber(i.lot_number),
+            expiry_date: i.expiry_date || null,
+            qr_code_id: i.qr_code_id ?? null,
+          })),
+        })),
+      };
+      if (submitMode === "caller") {
+        await callerMutation.mutateAsync({ inboundType, data: payload });
+        message.success({
+          content: "Đã tạo đơn và gửi lệnh!",
+          key: "submit",
+        });
+      } else {
+        await createMutation.mutateAsync({ inboundType, data: payload });
+        message.success({ content: "Tạo đơn nhập thành công!", key: "submit" });
+      }
       setSuggested([]);
       onSuccess();
     } catch (err) {
@@ -547,7 +575,10 @@ export default function CreateImportModal({
     }
   };
 
-  const isSubmitting = createMutation.isPending || updateMutation.isPending;
+  const isSubmitting =
+    createMutation.isPending ||
+    updateMutation.isPending ||
+    callerMutation.isPending;
 
   const reviewColumns = [
     {
@@ -561,27 +592,35 @@ export default function CreateImportModal({
       title: "Điểm cấp",
       key: "from",
       width: 280,
-      render: (_: unknown, g: ImportGroupDraft) => (
-        <Select
-          className="w-full"
-          showSearch
-          optionFilterProp="label"
-          placeholder="Chọn điểm cấp..."
-          value={g.from_location_id}
-          options={bufferLocationOptions}
-          loading={bufferLocationsLoading}
-          notFoundContent={
-            bufferLocationsLoading
-              ? "Đang tải..."
-              : bufferLocationsError
-                ? "Không tải được điểm cấp"
-                : "Không có điểm cấp"
-          }
-          onChange={(val) =>
-            updateGroup(g.key, { from_location_id: Number(val) })
-          }
-        />
-      ),
+      render: (_: unknown, g: ImportGroupDraft) =>
+        lockFromLocation ? (
+          <span>
+            {g.from_location_name ||
+              bufferLocationOptions.find((o) => o.value === g.from_location_id)
+                ?.label ||
+              (g.from_location_id ? `#${g.from_location_id}` : "—")}
+          </span>
+        ) : (
+          <Select
+            className="w-full"
+            showSearch
+            optionFilterProp="label"
+            placeholder="Chọn điểm cấp..."
+            value={g.from_location_id}
+            options={bufferLocationOptions}
+            loading={bufferLocationsLoading}
+            notFoundContent={
+              bufferLocationsLoading
+                ? "Đang tải..."
+                : bufferLocationsError
+                  ? "Không tải được điểm cấp"
+                  : "Không có điểm cấp"
+            }
+            onChange={(val) =>
+              updateGroup(g.key, { from_location_id: Number(val) })
+            }
+          />
+        ),
     },
     {
       title: "Vị trí đích (gợi ý)",
@@ -633,7 +672,7 @@ export default function CreateImportModal({
                 />
               ) : (
                 <SkuSearchSelect
-                  warehouseId={selectedWarehouseId || 0}
+                  warehouseId={warehouseId || 0}
                   value={item.sku}
                   onChange={(sku) => {
                     if (!sku) {
@@ -843,7 +882,9 @@ export default function CreateImportModal({
                       ...g,
                       to_location_id: undefined,
                       to_location_name: undefined,
-                      from_location_id: undefined,
+                      from_location_id: lockFromLocation
+                        ? g.from_location_id
+                        : undefined,
                     })),
                   );
                   setStep(0);
@@ -883,6 +924,7 @@ export default function CreateImportModal({
                 onClick={() => void handleSubmit()}
               >
                 Xác nhận Tạo Đơn
+                {submitMode === "caller" ? " & Gửi lệnh" : ""}
               </AntButton>
             )}
           </Space>

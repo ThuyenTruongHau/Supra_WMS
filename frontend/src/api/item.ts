@@ -9,6 +9,7 @@ import type {
   ItemImportJobStatus,
   QRCodeRecentListResponse,
   GenerateQrCodesResponse,
+  CreateQrCodesResponse,
 } from '@/types/item'
 
 const BASE = '/api/v1/items'
@@ -135,10 +136,15 @@ export const previewQrCodesApi = async (itemId: number, quantity: number) => {
   return data
 }
 
-export const createQrCodesApi = async (itemId: number, quantity: number) => {
-  const { data } = await axiosInstance.post<GenerateQrCodesResponse>(
+export const createQrCodesApi = async (
+  itemId: number,
+  quantity: number,
+  qrIds: string[],
+  displayCodes: string[],
+) => {
+  const { data } = await axiosInstance.post<CreateQrCodesResponse>(
     `${QR_BASE}/create`,
-    null,
+    { qr_ids: qrIds, display_codes: displayCodes },
     {
       params: { item_id: itemId, quantity },
     },

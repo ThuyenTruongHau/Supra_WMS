@@ -8,8 +8,11 @@ import {
   updateInboundOrderApi,
   deleteInboundOrderApi,
   acceptInboundTaskApi,
+  assignOrGetItemStockApi,
+  callerInboundOrderApi,
 } from "@/api/inboundOrder";
 import type {
+  AssignOrGetItemStockRequest,
   GetInboundOrdersParams,
   InboundOrderCreateRequest,
   InboundOrderDeleteResponse,
@@ -106,6 +109,28 @@ export const useAcceptInboundTask = () => {
     mutationFn: (detailId: number) => acceptInboundTaskApi(detailId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["inboundOrderDetails"] });
+      queryClient.invalidateQueries({ queryKey: ["inboundOrders"] });
+    },
+  });
+};
+
+export const useAssignOrGetItemStock = () => {
+  return useMutation({
+    mutationFn: (body: AssignOrGetItemStockRequest) =>
+      assignOrGetItemStockApi(body),
+  });
+};
+
+export const useCallerInboundOrder = () => {
+  const queryClient = useQueryClient();
+  return useMutation<
+    Awaited<ReturnType<typeof callerInboundOrderApi>>,
+    AxiosError<ApiErrorResponse>,
+    { data: InboundOrderCreateRequest; inboundType: string }
+  >({
+    mutationFn: ({ data, inboundType }) =>
+      callerInboundOrderApi(data, inboundType),
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["inboundOrders"] });
     },
   });

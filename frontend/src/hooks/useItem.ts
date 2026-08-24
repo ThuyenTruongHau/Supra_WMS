@@ -26,6 +26,7 @@ import {
   ItemImportJobStatus,
   QRCodeRecentListResponse,
   GenerateQrCodesResponse,
+  CreateQrCodesResponse,
 } from "@/types/item";
 import { AxiosError } from "axios";
 import { ApiErrorResponse } from "@/types/apiError";
@@ -128,11 +129,17 @@ export const usePreviewQrCodes = () =>
 export const useCreateQrCodes = () => {
   const queryClient = useQueryClient();
   return useMutation<
-    GenerateQrCodesResponse,
+    CreateQrCodesResponse,
     AxiosError<ApiErrorResponse>,
-    { itemId: number; quantity: number }
+    {
+      itemId: number;
+      quantity: number;
+      qrIds: string[];
+      displayCodes: string[];
+    }
   >({
-    mutationFn: ({ itemId, quantity }) => createQrCodesApi(itemId, quantity),
+    mutationFn: ({ itemId, quantity, qrIds, displayCodes }) =>
+      createQrCodesApi(itemId, quantity, qrIds, displayCodes),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["qr_codes_recent"] });
       queryClient.invalidateQueries({ queryKey: ["qr_codes_recent_all"] });

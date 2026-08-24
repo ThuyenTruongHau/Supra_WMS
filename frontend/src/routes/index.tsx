@@ -23,6 +23,7 @@ import WorkerInboundVehicleListPage from "@/pages/WorkerInboundVehicleListPage";
 import WorkerInboundSkuListPage from "@/pages/WorkerInboundSkuListPage";
 import WorkerInboundPickupPage from "@/pages/WorkerInboundPickupPage";
 import WorkerInboundConfirmPage from "@/pages/WorkerInboundConfirmPage";
+import QrTabletPage from "@/pages/QrTabletPage";
 
 
 export default function AppRoutes() {
@@ -36,6 +37,8 @@ export default function AppRoutes() {
           </PublicRoute>
         }
       />
+
+      <Route path="/qrtablet" element={<QrTabletPage />} />
 
       {/* ── Worker routes (full-screen, no sidebar) ── */}
       <Route path="/worker" element={<ProtectedRoute><Outlet /></ProtectedRoute>}>

@@ -82,14 +82,29 @@ export default function QrCodeGeneratePrintModal({
   };
 
   const handlePrintRequest = useCallback(
-    async (itemId: number, printQuantity: number) => {
+    async (
+      itemId: number,
+      printQuantity: number,
+      qrIds: string[],
+      displayCodes: string[],
+    ) => {
       if (createQrCodes.isPending) return;
+      if (!previewHtml) {
+        message.warning("Chưa có bản xem trước để in");
+        return;
+      }
+      if (!qrIds.length || qrIds.length !== printQuantity) {
+        message.warning("Thiếu metadata mã QR từ bản xem trước");
+        return;
+      }
       try {
-        const result = await createQrCodes.mutateAsync({
+        await createQrCodes.mutateAsync({
           itemId,
           quantity: printQuantity,
+          qrIds,
+          displayCodes,
         });
-        const printed = printBacvietHtml(result.html);
+        const printed = printBacvietHtml(previewHtml);
         if (!printed) {
           message.warning("Không thể mở hộp thoại in");
           return;
@@ -99,7 +114,7 @@ export default function QrCodeGeneratePrintModal({
         message.error(getErrorMessage(err, "Không thể tạo mã QR để in"));
       }
     },
-    [createQrCodes, onClose],
+    [createQrCodes, onClose, previewHtml],
   );
 
   useEffect(() => {
@@ -110,8 +125,14 @@ export default function QrCodeGeneratePrintModal({
       if (event.data?.type !== "bacviet-qr-print") return;
       const itemId = Number(event.data.item_id);
       const printQuantity = Number(event.data.quantity);
+      const qrIds = Array.isArray(event.data.qr_ids)
+        ? event.data.qr_ids.map(String)
+        : [];
+      const displayCodes = Array.isArray(event.data.display_codes)
+        ? event.data.display_codes.map(String)
+        : [];
       if (!itemId || !printQuantity) return;
-      void handlePrintRequest(itemId, printQuantity);
+      void handlePrintRequest(itemId, printQuantity, qrIds, displayCodes);
     };
 
     window.addEventListener("message", onMessage);

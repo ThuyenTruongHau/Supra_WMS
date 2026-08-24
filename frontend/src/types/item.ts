@@ -132,4 +132,10 @@ export interface GenerateQrCodesResponse {
   quantity: number
   page_count: number
   qr_ids: string[]
+  display_codes: string[]
+}
+
+export interface CreateQrCodesResponse {
+  codes: string[]
+  display_codes: string[]
 }

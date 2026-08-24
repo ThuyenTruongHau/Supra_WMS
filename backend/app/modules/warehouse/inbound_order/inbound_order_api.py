@@ -1,4 +1,4 @@
-from typing import Annotated, Optional
+from typing import Annotated, Optional, Union
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
@@ -21,6 +21,10 @@ from app.modules.warehouse.inbound_order.inbound_order_schema import (
     InboundOrderDetailResponse,
     InboundOrderUpdate,
     InboundOrderDeleteResponse,
+    AssignedItemStockResponse,
+    AssignItemStockMetaResponse,
+    AssignOrGetItemStockRequest,
+    QrCodePreviewResponse,
 )
 from app.modules.warehouse.inbound_order import inbound_order_service
 from app.modules.warehouse.inbound_order.inbound_celery_task import (
@@ -212,3 +216,55 @@ def caller_inbound_order(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
     return InboundCallerResponse.model_validate(order)
+
+@router.post(
+    "/inbound-orders/assigned-stocks",
+    response_model=Union[
+        QrCodePreviewResponse,
+        AssignItemStockMetaResponse,
+        list[AssignedItemStockResponse],
+    ],
+)
+def assign_or_get_item_stocks(
+    body: AssignOrGetItemStockRequest,
+    db: DbSession,
+):
+    return _assign_or_get_item_stocks(db, body)
+
+
+@router.post(
+    "/inbound-orders/locations/{location_id}/assigned-stocks",
+    response_model=Union[
+        QrCodePreviewResponse,
+        AssignItemStockMetaResponse,
+        list[AssignedItemStockResponse],
+    ],
+)
+def assign_or_get_item_stocks_by_location(
+    location_id: int,
+    body: AssignOrGetItemStockRequest,
+    db: DbSession,
+):
+    payload = body.model_copy(update={"location_id": location_id})
+    return _assign_or_get_item_stocks(db, payload)
+
+
+def _assign_or_get_item_stocks(db: Session, body: AssignOrGetItemStockRequest):
+    try:
+        result = inbound_order_service.assign_or_get_item_stock(
+            db=db,
+            location_code=body.location_code,
+            qr_code=body.qr_code,
+            quantity=body.quantity,
+            unit_id=body.unit_id,
+            lot_number=body.lot_number,
+        )
+    except ValueError as e:
+        msg = str(e)
+        code = 404 if "not found" in msg.lower() else 400
+        raise HTTPException(status_code=code, detail=msg) from e
+    if isinstance(result, list):
+        return [AssignedItemStockResponse.model_validate(s) for s in result]
+    if "part_number" in result and "qr_code_id" not in result:
+        return AssignItemStockMetaResponse.model_validate(result)
+    return QrCodePreviewResponse.model_validate(result)
