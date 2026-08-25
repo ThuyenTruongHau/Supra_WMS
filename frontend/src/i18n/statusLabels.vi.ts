@@ -22,6 +22,7 @@ export const STATUS_LABELS_VI: Record<string, string> = {
   in_progress: "Đang thực hiện",
   "in-progress": "Đang thực hiện",
   in_transit: "Đang vận chuyển",
+  pre_completed: "Chờ quét mã",
   completed: "Hoàn thành",
   discrepancy: "Chênh lệch",
   failed: "Thất bại",

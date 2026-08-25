@@ -26,6 +26,7 @@ from app.modules.auth.auth_schema import (
     UserResponse,
     UserSignupResponse,
     UserUpdate,
+    StaffUsernamesResponse,
 )
 from app.modules.warehouse.warehouse_zone.warehouse_model import Warehouse
 
@@ -306,6 +307,17 @@ def list_users(db: Session, page: int = 1, page_size: int = 20) -> UserListRespo
         page=page,
         page_size=page_size,
     )
+
+
+def list_staff_usernames(db: Session) -> StaffUsernamesResponse:
+    """Active non-admin usernames (UI role 'Nhân viên')."""
+    users = _user_query(db).order_by(User.username).all()
+    usernames = [
+        u.username
+        for u in users
+        if not any(r.name == "admin" for r in (u.roles or []))
+    ]
+    return StaffUsernamesResponse(usernames=usernames)
 
 
 def get_user_by_id(db: Session, user_id: int) -> Optional[User]:

@@ -58,5 +58,11 @@ class LocationLayout:
         return self.page_height_mm - 2 * self.sheet_padding_mm
 
 
+@dataclass(frozen=True)
+class TransferLayout(BacvietLayout):
+    """Phiếu di chuyển — cùng lưới 3×3 / A4 như Bacviet."""
+
+
 BACVIET_LAYOUT = BacvietLayout()
 LOCATION_LAYOUT = LocationLayout()
+TRANSFER_LAYOUT = TransferLayout()

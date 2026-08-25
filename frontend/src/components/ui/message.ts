@@ -1,11 +1,24 @@
 import { message as antMessage, type MessageArgsProps } from 'antd'
 import type { JointContent, TypeOpen } from 'antd/es/message/interface'
 
-antMessage.config({
-  top: '50vh',
+const DEFAULT_MESSAGE_CONFIG = {
+  /** Ant Design default is 8; 24 keeps clear of slim desktop chrome. */
+  top: 24 as string | number,
   duration: 5,
   maxCount: 5,
-})
+  stack: false as boolean | { threshold?: number },
+}
+
+export function configureAppMessage(
+  options?: Partial<typeof DEFAULT_MESSAGE_CONFIG>,
+) {
+  antMessage.config({
+    ...DEFAULT_MESSAGE_CONFIG,
+    ...options,
+  })
+}
+
+configureAppMessage()
 
 const success: TypeOpen = (content, duration, onClose) =>
   antMessage.success(content, duration, onClose)
@@ -30,6 +43,7 @@ export const message = {
   loading,
   destroy: antMessage.destroy,
   open: antMessage.open,
+  config: configureAppMessage,
 }
 
 export type { MessageArgsProps, JointContent }

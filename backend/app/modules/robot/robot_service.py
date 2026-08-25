@@ -11,6 +11,7 @@ from app.modules.warehouse.inbound_order.inbound_order_schema import InboundOrde
 from app.modules.warehouse.outbound_order.outbound_order_model import OutboundOrderAllocation
 from app.modules.warehouse.transaction_history.history_model import Transaction, History
 from app.core.logger import get_logger
+from app.core.cache import cache_set
 logger = get_logger("main")
 
 ICS_ADD_TASK_PATH = f"{settings.ics_base_url.rstrip('/')}:7000/ics/taskOrder/addTask"
@@ -93,73 +94,6 @@ class TaskStatusService:
             db.rollback()
             raise
 
-    def _settle_outbound_stock(self, db: Session, allocations: list[OutboundOrderAllocation]) -> None:
-        if not allocations:
-            return
-        stock = allocations[0].item_stock
-        stock.location_id = allocations[0].to_location_id
-        stock.status = "available"
-        stock.is_active = True
-
-        allocation_rows = []
-        flag = 0
-        for allocation in allocations:
-            if allocation.allocation_type == "outbound":
-                flag = 1
-                stock.quantity -= allocation.quantity 
-            allocation_rows.append({
-                "allocation_id": allocation.id,
-                "part_number": allocation.item_stock.item.sku if allocation.item_stock and allocation.item_stock.item else None,
-                "lot_number_from": allocation.item_stock.lot_number_from if allocation.item_stock else None,
-                "lot_number_to": allocation.item_stock.lot_number_to if allocation.item_stock else None,
-                "lot_number": (
-                    format_lot_number_display(
-                        allocation.item_stock.lot_number_from,
-                        allocation.item_stock.lot_number_to,
-                    )
-                    if allocation.item_stock
-                    else None
-                ),
-                "quantity": int(allocation.quantity),
-            })
-
-        if flag == 1:
-            db.add(Transaction(
-                from_location_id=allocations[0].from_location_id,
-                to_location_id=allocations[0].to_location_id,
-                transaction_type="outbound",
-                item_stock_id=stock.id,
-                quantity=int(stock.quantity),
-                created_by_id=allocations[0].outbound_order_detail.outbound_order.created_by_id,
-            ))
-        else:
-            db.add(Transaction(
-                from_location_id=allocations[0].from_location_id,
-                to_location_id=allocations[0].to_location_id,
-                transaction_type="return",
-                item_stock_id=stock.id,
-                quantity=int(stock.quantity),
-                created_by_id=allocations[0].outbound_order_detail.outbound_order.created_by_id,
-            ))
-        details = {
-            "allocations": allocation_rows,
-        }
-        
-
-        db.add(History(
-            outbound_order_id = allocations[0].outbound_order_detail.outbound_order_id,
-            old_status="in_progress",
-            new_status="completed",
-            description=f"Outbound order {allocations[0].outbound_order_detail.outbound_order_id} completed",
-            details=details,
-            created_by_id=allocations[0].outbound_order_detail.outbound_order.created_by_id,
-        ))
-        try:
-            db.commit()
-        except Exception:
-            db.rollback()
-            raise
-
     def receive_task_status(self, db: Session, payload: dict) -> TaskStatus:
         order_id = payload.get("orderId")
         if not order_id:
@@ -189,11 +123,27 @@ class TaskStatusService:
                     self._settle_inbound_stock(db, detail)
             else:
                 for allocation in allocations:
-                    allocation.status = MAPPING_STATUS[ics_status]
-                if MAPPING_STATUS[ics_status] == "completed":
-                    logger.info(f"Receive completed for {order_id}")
-                    self._settle_outbound_stock(db, allocations)   
+                    allocation.status = (
+                        "pre_completed"
+                        if MAPPING_STATUS[ics_status] == "completed" and allocation.allocation_type == "outbound"
+                        else MAPPING_STATUS[ics_status]
+                    )
 
+                    if allocation.status == "completed":
+                        from app.modules.warehouse.outbound_order.outbound_order_service import (
+                            _settle_outbound_stock,
+                        )
+                        _settle_outbound_stock(db, [allocation])
+
+                if MAPPING_STATUS[ics_status] == "completed":
+                    stock = allocations[0].item_stock
+                    logger.info(f"-------Stock: {stock.id}")
+                    if stock and allocations[0].to_location_id:
+                        logger.info(f"----------To location: {allocations[0].to_location_id}")
+                        stock.location_id = allocations[0].to_location_id
+                        stock.status = "available"
+                        stock.is_active = True
+                
         record = TaskStatus(
             sub_task_status=payload.get("subTaskStatus"),
             order_id=str(order_id),

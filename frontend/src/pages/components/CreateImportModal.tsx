@@ -23,6 +23,7 @@ import {
   useCallerInboundOrder,
 } from "@/hooks/useInboundOrder";
 import type {
+  InboundCallerResponse,
   InboundOrderAllocationUpdate,
   InboundOrderDetailUpdate,
   InboundSuggestAllocationGroupResponse,
@@ -83,7 +84,7 @@ export interface ImportGroupDraft {
 interface CreateImportModalProps {
   open: boolean;
   onCancel: () => void;
-  onSuccess: () => void;
+  onSuccess: (result?: InboundCallerResponse) => void;
   mode?: "create" | "edit";
   editOrderCode?: string;
   initialNote?: string;
@@ -559,17 +560,22 @@ export default function CreateImportModal({
         })),
       };
       if (submitMode === "caller") {
-        await callerMutation.mutateAsync({ inboundType, data: payload });
+        const callerResult = await callerMutation.mutateAsync({
+          inboundType,
+          data: payload,
+        });
         message.success({
           content: "Đã tạo đơn và gửi lệnh!",
           key: "submit",
         });
+        setSuggested([]);
+        onSuccess(callerResult);
       } else {
         await createMutation.mutateAsync({ inboundType, data: payload });
         message.success({ content: "Tạo đơn nhập thành công!", key: "submit" });
+        setSuggested([]);
+        onSuccess();
       }
-      setSuggested([]);
-      onSuccess();
     } catch (err) {
       message.error({ content: getApiErrorMessage(err), key: "submit" });
     }

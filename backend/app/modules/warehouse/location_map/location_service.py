@@ -653,7 +653,7 @@ LOCATION_QR_TEMPLATE_PATH = (
     Path(__file__).resolve().parents[3] / "static" / "templates" / "template_location.html"
 )
 LOCATION_QR_LOGO_PATH = (
-    Path(__file__).resolve().parents[3] / "static" / "templates" / "logo_vcc.webp"
+    Path(__file__).resolve().parents[3] / "static" / "templates" / "logo_vcc_plastic.jpg"
 )
 
 

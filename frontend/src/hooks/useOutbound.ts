@@ -10,6 +10,7 @@ import {
   deleteOutboundOrderApi,
   getOutboundRobotTasksApi,
   executeOutboundRobotTaskApi,
+  confirmOutboundOrderQrApi,
 } from "@/api/outboundOrder";
 import type {
   CalculateOutboundRequest,
@@ -170,6 +171,30 @@ export const useExecuteOutboundRobotTask = () => {
       queryClient.invalidateQueries({
         queryKey: ["outboundRobotTasks", variables.orderId],
       });
+    },
+  });
+};
+
+export const useConfirmOutboundOrderQr = () => {
+  const queryClient = useQueryClient();
+  return useMutation<
+    Awaited<ReturnType<typeof confirmOutboundOrderQrApi>>,
+    AxiosError<ApiErrorResponse>,
+    { orderId: number; qrCode: string }
+  >({
+    mutationFn: ({ orderId, qrCode }) =>
+      confirmOutboundOrderQrApi(orderId, qrCode),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["outboundOrder", variables.orderId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["outboundOrderDetails", variables.orderId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["outboundRobotTasks", variables.orderId],
+      });
+      queryClient.invalidateQueries({ queryKey: ["outboundOrders"] });
     },
   });
 };

@@ -138,6 +138,10 @@ class UserListResponse(BaseModel):
     page_size: int
 
 
+class StaffUsernamesResponse(BaseModel):
+    usernames: list[str]
+
+
 class RefreshTokenRequest(BaseModel):
     refresh_token: str
 

@@ -252,8 +252,15 @@ export default function ImportDetailPage() {
       await acceptMutation.mutateAsync(detailId);
       message.success({ content: "Đã thực thi task", key: "execute" });
       void refetch();
+      void refetchOrders();
     } catch (err) {
       message.error({ content: apiError(err), key: "execute" });
+    }
+  };
+
+  const handleDetailRowExpand = (expanded: boolean) => {
+    if (expanded) {
+      void refetch();
     }
   };
 
@@ -628,6 +635,7 @@ export default function ImportDetailPage() {
               </div>
             ),
             rowExpandable: () => true,
+            onExpand: handleDetailRowExpand,
           }}
         />
       </Card>

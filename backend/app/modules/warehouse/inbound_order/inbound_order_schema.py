@@ -78,6 +78,7 @@ class AssignOrGetItemStockRequest(BaseModel):
     quantity: Optional[int] = Field(None, gt=0)
     unit_id: Optional[int] = Field(None, gt=0)
     lot_number: Optional[str] = Field(None, max_length=50)
+    assigned_by: Optional[str] = Field(None, max_length=100)
 
     @model_validator(mode="after")
     def require_fields_when_assign(self) -> "AssignOrGetItemStockRequest":
@@ -112,6 +113,7 @@ class AssignedItemStockResponse(BaseModel):
     code: str
     lot_number: Optional[str] = None
     lot_number_to: Optional[str] = None
+    assigned_by: Optional[str] = Field(None, max_length=100)
     unit_id: int
     unit_name: str
     quantity: int

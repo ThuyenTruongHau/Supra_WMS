@@ -23,7 +23,11 @@ import WorkerInboundVehicleListPage from "@/pages/WorkerInboundVehicleListPage";
 import WorkerInboundSkuListPage from "@/pages/WorkerInboundSkuListPage";
 import WorkerInboundPickupPage from "@/pages/WorkerInboundPickupPage";
 import WorkerInboundConfirmPage from "@/pages/WorkerInboundConfirmPage";
-import QrTabletPage from "@/pages/QrTabletPage";
+import QrTabletLayout from "@/pages/qrtablet/QrTabletLayout";
+import QrTabletInboundPage from "@/pages/qrtablet/QrTabletInboundPage";
+import QrTabletOutboundPage from "@/pages/qrtablet/QrTabletOutboundPage";
+import QrTabletOutboundDetailPage from "@/pages/qrtablet/QrTabletOutboundDetailPage";
+import QrTabletStocktakePage from "@/pages/qrtablet/QrTabletStocktakePage";
 
 
 export default function AppRoutes() {
@@ -38,7 +42,20 @@ export default function AppRoutes() {
         }
       />
 
-      <Route path="/qrtablet" element={<QrTabletPage />} />
+      <Route
+        path="/qrtablet"
+        element={
+          <ProtectedRoute>
+            <QrTabletLayout />
+          </ProtectedRoute>
+        }
+      >
+        <Route index element={<Navigate to="import" replace />} />
+        <Route path="import" element={<QrTabletInboundPage />} />
+        <Route path="export" element={<QrTabletOutboundPage />} />
+        <Route path="export/:orderId" element={<QrTabletOutboundDetailPage />} />
+        <Route path="inventory" element={<QrTabletStocktakePage />} />
+      </Route>
 
       {/* ── Worker routes (full-screen, no sidebar) ── */}
       <Route path="/worker" element={<ProtectedRoute><Outlet /></ProtectedRoute>}>
@@ -70,7 +87,7 @@ export default function AppRoutes() {
         <Route path="inventory/:id" element={<StocktakeDetailPage />} />
         {/* Các Route con ngoài WMS dropdown */}
         <Route path="report" element={<ReportPage />} />
-        <Route path="notification" element={<div>Trang Thông Báo</div>} />
+        <Route path="notification" element={<div>Trang Thông báo</div>} />
         <Route path="setting" element={<div>Trang Cài Đặt</div>} />
         <Route path="setting/users" element={<UserSettingPage />} />
         <Route path="setting/warehouse" element={<WarehouseSettingPage />} />

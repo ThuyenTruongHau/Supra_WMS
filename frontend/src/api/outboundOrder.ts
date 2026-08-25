@@ -121,3 +121,22 @@ export const executeOutboundRobotTaskApi = async (
     params: { detail_type: detailType },
   });
 };
+
+export type OutboundConfirmQrResponse = {
+  outbound_order_id: number;
+  status: string;
+  message: string;
+  overall: number;
+  return_quantity: number;
+};
+
+export const confirmOutboundOrderQrApi = async (
+  orderId: number,
+  qrCode: string,
+): Promise<OutboundConfirmQrResponse> => {
+  const { data } = await axiosInstance.post<OutboundConfirmQrResponse>(
+    `${BASE}/id/${orderId}/confirm-qr`,
+    { qr_code: qrCode },
+  );
+  return data;
+};

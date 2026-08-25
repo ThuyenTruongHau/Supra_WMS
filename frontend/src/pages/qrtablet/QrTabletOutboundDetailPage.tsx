@@ -9,6 +9,7 @@ import {
   EditOutlined,
   CheckCircleOutlined,
   PlayCircleOutlined,
+  ScanOutlined,
 } from "@ant-design/icons";
 import {
   useGetOutboundOrderById,
@@ -18,6 +19,7 @@ import {
   useDeleteOutboundOrder,
   useCalculateOutboundOrder,
   useExecuteOutboundRobotTask,
+  useConfirmOutboundOrderQr,
 } from "@/hooks/useOutbound";
 import { useAppStore } from "@/store/useAppStore";
 import type {
@@ -32,11 +34,12 @@ import { useOutboundBufferLocations } from "@/hooks/useWarehouseMap";
 import dayjs from "dayjs";
 import CreateOutboundModal, {
   type OutboundItemDraft,
-} from "./components/CreateOutboundModal";
+} from "@/pages/components/CreateOutboundModal";
 import { detailsToEntries } from "@/utils/keyValueDetails";
 import { computeDetailProgress } from "@/utils/detailProgress";
 import { formatOutboundCalculateError } from "@/utils/outboundErrors";
 import { getApiErrorMessage } from "@/utils/apiErrorMessage";
+import { QrCameraOverlay } from "@/components/qr-scan";
 
 const TABLE_CLASS =
   "[&_.ant-table-thead_th]:!bg-slate-50 [&_.ant-table-thead_th]:!text-slate-600 [&_.ant-table-thead_th]:!font-semibold [&_.ant-table-thead_th]:!text-base [&_.ant-table-tbody_td]:!text-base [&_.ant-table-thead_th]:!py-3 [&_.ant-table-tbody_td]:!py-3 [&_.ant-table-row]:hover:bg-slate-50/50";
@@ -176,7 +179,7 @@ function toEditItems(details: OutboundOrderDetail[]): OutboundItemDraft[] {
   }));
 }
 
-export default function OutboundDetailPage() {
+export default function QrTabletOutboundDetailPage() {
   const { orderId: orderIdParam } = useParams<{ orderId: string }>();
   const orderId = orderIdParam ? Number(orderIdParam) : undefined;
   const navigate = useNavigate();
@@ -184,6 +187,7 @@ export default function OutboundDetailPage() {
   const selectedWarehouseId = useAppStore((s) => s.selectedWarehouseId);
 
   const [isEditOpen, setIsEditOpen] = useState(false);
+  const [qrScanOpen, setQrScanOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"list" | "allocation">("list");
   const [selectedDetailIds, setSelectedDetailIds] = useState<Set<number>>(
     () => new Set(),
@@ -218,6 +222,7 @@ export default function OutboundDetailPage() {
   const deleteMutation = useDeleteOutboundOrder();
   const calculateMutation = useCalculateOutboundOrder();
   const executeRobotTaskMutation = useExecuteOutboundRobotTask();
+  const confirmQrMutation = useConfirmOutboundOrderQr();
   const { data: users = [] } = useUser();
 
   const warehouseId = order?.warehouse_id ?? selectedWarehouseId ?? 0;
@@ -658,6 +663,78 @@ export default function OutboundDetailPage() {
   const { completedCount, totalCount, progressPercent, allInitialize, statusCounts } =
     useMemo(() => computeDetailProgress(details), [details]);
 
+  const hasPreCompletedAllocation = useMemo(
+    () =>
+      robotTasks.some((task) =>
+        task.allocations.some((a) => a.status === "pre_completed"),
+      ) ||
+      details.some((d) =>
+        d.allocations?.some((a) => a.status === "pre_completed"),
+      ),
+    [details, robotTasks],
+  );
+
+  const handleConfirmQrScan = useCallback(
+    async (scanned: string) => {
+      if (!orderId) return;
+      setQrScanOpen(false);
+      try {
+        const result = await confirmQrMutation.mutateAsync({
+          orderId,
+          qrCode: scanned,
+        });
+        const overall = Number(result.overall ?? 0);
+        const returnQty = Number(result.return_quantity ?? 0);
+        void refetchOrder();
+        void refetchDetails();
+        void refetchRobotTasks();
+        void refetchLacked();
+
+        if (returnQty > 0) {
+          Modal.success({
+            title: "Xác nhận xuất kho thành công",
+            content: (
+              <div className="space-y-2 text-base text-slate-700">
+                <p>
+                  Đã xuất <strong>{overall}</strong> đơn vị.
+                </p>
+                <p>
+                  Còn lại <strong>{returnQty}</strong> đơn vị trên pallet —
+                  hãy thực hiện lệnh <strong>TRẢ</strong> để đưa hàng dư về vị
+                  trí gốc.
+                </p>
+              </div>
+            ),
+            okText: "Đã hiểu",
+          });
+        } else {
+          Modal.success({
+            title: "Xác nhận xuất kho thành công",
+            content: (
+              <div className="space-y-2 text-base text-slate-700">
+                <p>
+                  Đã xuất hết <strong>{overall}</strong> đơn vị trên pallet.
+                </p>
+                <p>Không còn hàng dư cần trả về vị trí gốc.</p>
+              </div>
+            ),
+            okText: "Đã hiểu",
+          });
+        }
+      } catch (err) {
+        message.error(getApiErrorMessage(err));
+      }
+    },
+    [
+      confirmQrMutation,
+      orderId,
+      refetchDetails,
+      refetchLacked,
+      refetchOrder,
+      refetchRobotTasks,
+    ],
+  );
+
   const isLoading = isOrderLoading || isDetailsLoading || isLackedLoading;
 
   const handleDelete = () => {
@@ -669,7 +746,7 @@ export default function OutboundDetailPage() {
           deleteMutation.mutate(order.order_code, {
             onSuccess: () => {
               message.success("Xóa đơn xuất thành công!");
-              navigate("/export");
+              navigate("/qrtablet/export");
               resolve();
             },
             onError: (err) => {
@@ -1039,22 +1116,22 @@ export default function OutboundDetailPage() {
     return (
       <div className="flex flex-col justify-center items-center h-64 text-slate-500 font-medium gap-4">
         <div>Không tìm thấy đơn xuất hợp lệ!</div>
-        <Button onClick={() => navigate("/export")}>Quay lại danh sách</Button>
+        <Button onClick={() => navigate("/qrtablet/export")}>Quay lại danh sách</Button>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between gap-4">
+    <div className="space-y-4 md:space-y-6">
+      <div className="flex flex-col items-stretch justify-between gap-4 sm:flex-row sm:items-center">
         <div className="flex items-center gap-4 min-w-0">
           <Button
             variant="text"
             icon={<ArrowLeftOutlined />}
-            onClick={() => navigate("/export")}
+            onClick={() => navigate("/qrtablet/export")}
           />
           <div className="min-w-0">
-            <h2 className="text-2xl font-bold text-slate-800">
+            <h2 className="text-xl font-bold text-slate-800 md:text-2xl">
               Đơn xuất kho:{" "}
               <span className="text-brand-primary">{order.order_code}</span>
             </h2>
@@ -1064,10 +1141,26 @@ export default function OutboundDetailPage() {
             </div>
           </div>
         </div>
-        <Space className="shrink-0">
+        <Space className="flex shrink-0 flex-wrap justify-end" wrap>
+          <Button
+            variant="primary"
+            icon={<ScanOutlined />}
+            className="!h-11"
+            loading={confirmQrMutation.isPending}
+            disabled={!hasPreCompletedAllocation}
+            title={
+              !hasPreCompletedAllocation
+                ? "Chỉ quét khi có allocation đang chờ quét mã"
+                : undefined
+            }
+            onClick={() => setQrScanOpen(true)}
+          >
+            Quét QR
+          </Button>
           <Button
             variant="edit"
             icon={<EditOutlined />}
+            className="!h-11"
             disabled={!allInitialize}
             title={
               !allInitialize
@@ -1081,6 +1174,7 @@ export default function OutboundDetailPage() {
           <Button
             variant="dangerText"
             icon={<DeleteOutlined />}
+            className="!h-11"
             disabled={!allInitialize || details.length === 0}
             loading={deleteMutation.isPending}
             title={
@@ -1320,6 +1414,14 @@ export default function OutboundDetailPage() {
           void refetchDetails();
         }}
       />
+
+      {qrScanOpen && (
+        <QrCameraOverlay
+          title="Quét QR xác nhận xuất"
+          onScan={(text) => void handleConfirmQrScan(text)}
+          onClose={() => setQrScanOpen(false)}
+        />
+      )}
     </div>
   );
 }

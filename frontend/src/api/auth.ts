@@ -53,6 +53,14 @@ export const getUsersApi = async (params?: {
   return response.data;
 };
 
+/** Active non-admin usernames for tablet assign-by picker */
+export const getStaffUsernamesApi = async (): Promise<string[]> => {
+  const response = await axiosInstance.get<{ usernames: string[] }>(
+    '/api/v1/users/staff-usernames',
+  );
+  return response.data.usernames;
+};
+
 /** @deprecated use getUsersApi — kept for older callers expecting an array */
 export const getUserApi = async (): Promise<User[]> => {
   const data = await getUsersApi();

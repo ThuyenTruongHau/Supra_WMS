@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Mock dữ liệu in Bacviet / Location, xuất PDF và/hoặc Excel cùng khổ A4.
+Mock dữ liệu in Bacviet / Location / Phiếu di chuyển, xuất PDF và/hoặc Excel cùng khổ A4.
 
 Cài đặt (một lần):
     pip install playwright pillow
@@ -9,16 +9,20 @@ Cài đặt (một lần):
 Usage (từ thư mục backend/):
     python scripts/mock_print_export.py
     python scripts/mock_print_export.py --template location --format both
+    python scripts/mock_print_export.py --template location --zone Zone_1.1 --title-mc-to-ms --format pdf --output docs/location_zone_1_1_ms
     python scripts/mock_print_export.py --template bacviet --quantity 12 --format xlsx
+    python scripts/mock_print_export.py --template transfer --format pdf --output docs/phieu_di_chuyen_9_mock
     python scripts/mock_print_export.py --format pdf --keep-html
 """
 
 from __future__ import annotations
 
 import argparse
+import base64
 import io
 import json
 import math
+import os
 import sys
 import urllib.parse
 import urllib.request
@@ -32,6 +36,7 @@ if str(SCRIPT_DIR) not in sys.path:
 from mock_print_layout import (
     BACVIET_LAYOUT,
     LOCATION_LAYOUT,
+    TRANSFER_LAYOUT,
     mm_to_col_width,
     mm_to_row_height,
 )
@@ -47,6 +52,7 @@ DEFAULT_OUTPUT_DIR = BACKEND_ROOT / "scripts" / "output"
 
 BACVIET_TEMPLATE = TEMPLATE_DIR / "template_bacviet.html"
 LOCATION_TEMPLATE = TEMPLATE_DIR / "template_location.html"
+TRANSFER_TEMPLATE = TEMPLATE_DIR / "template_phieu_di_chuyen.html"
 
 QR_API = "https://api.qrserver.com/v1/create-qr-code/"
 
@@ -73,7 +79,30 @@ def build_bacviet_payload(
     }
 
 
+def build_transfer_payload(
+    quantity: int,
+    *,
+    sku: str,
+    name: str,
+    cavity: str = "",
+) -> dict:
+    date_part = datetime.now().strftime("%Y%m%d")
+    display_code = f"{sku}-{date_part}"
+    qr_ids = [f"{sku}-{date_part}-{index:08d}" for index in range(1, quantity + 1)]
+    return {
+        "mode": "preview",
+        "__mock": True,
+        "quantity": quantity,
+        "part_number": sku,
+        "part_name": name,
+        "cavity": cavity,
+        "qr_ids": qr_ids,
+        "display_codes": [display_code] * quantity,
+    }
+
+
 def build_location_payload() -> dict:
+    """Fallback mock cứng (không DB)."""
     return {
         "__mock": True,
         "labels": [
@@ -99,14 +128,104 @@ def build_location_payload() -> dict:
     }
 
 
-def _vcc_logo_data_uri() -> str:
-    logo_path = TEMPLATE_DIR / "logo_vcc.webp"
-    if not logo_path.is_file():
-        return ""
-    import base64
+def _resolve_database_url() -> str:
+    env_url = os.getenv("DATABASE_URL")
+    if env_url:
+        return env_url
 
-    encoded = base64.b64encode(logo_path.read_bytes()).decode("ascii")
-    return f"data:image/webp;base64,{encoded}"
+    env_path = BACKEND_ROOT / ".env"
+    if env_path.is_file():
+        for line in env_path.read_text(encoding="utf-8").splitlines():
+            raw = line.strip()
+            if not raw or raw.startswith("#") or "=" not in raw:
+                continue
+            key, value = raw.split("=", 1)
+            if key.strip().lower() == "database_url":
+                return value.strip().strip('"').strip("'")
+
+    raise SystemExit(
+        "Không tìm thấy DATABASE_URL (env hoặc backend/.env) để mock location theo zone."
+    )
+
+
+def _title_prefix_swap(name: str, *, from_prefix: str, to_prefix: str) -> str:
+    """Đổi 2 ký tự đầu tiêu đề (VD: MC_02_PT → MS_02_PT). QR data không đổi."""
+    raw = str(name or "")
+    if (
+        from_prefix
+        and to_prefix
+        and len(from_prefix) == 2
+        and len(to_prefix) == 2
+        and raw.upper().startswith(from_prefix.upper())
+    ):
+        return to_prefix + raw[2:]
+    return raw
+
+
+def build_location_payload_from_zone(
+    zone_code: str,
+    *,
+    title_mc_to_ms: bool = False,
+    active_only: bool = True,
+) -> dict:
+    """Lấy toàn bộ location thuộc zone (theo zone.code) từ DB."""
+    try:
+        from sqlalchemy import create_engine, text
+    except ImportError as exc:
+        raise SystemExit("Thiếu sqlalchemy để mock location từ DB.") from exc
+
+    database_url = _resolve_database_url()
+    engine = create_engine(database_url)
+    sql = """
+        select l.id, l.location_code, l.location_name
+        from location l
+        join zone z on z.id = l.zone_id
+        where z.code = :zone_code
+    """
+    if active_only:
+        sql += " and l.is_active is true"
+    sql += " order by l.location_name, l.location_code, l.id"
+
+    with engine.connect() as conn:
+        rows = conn.execute(text(sql), {"zone_code": zone_code}).fetchall()
+
+    if not rows:
+        raise SystemExit(f"Không có location nào thuộc zone code={zone_code!r}")
+
+    labels: list[dict] = []
+    for row in rows:
+        location_id, location_code, location_name = row
+        display_name = str(location_name)
+        if title_mc_to_ms:
+            display_name = _title_prefix_swap(display_name, from_prefix="MC", to_prefix="MS")
+        labels.append(
+            {
+                "location_id": int(location_id),
+                "location_code": str(location_code),
+                "location_name": display_name,
+                "qr_data": str(location_code),
+            }
+        )
+
+    return {
+        "__mock": True,
+        "zone_code": zone_code,
+        "title_mc_to_ms": title_mc_to_ms,
+        "labels": labels,
+    }
+
+
+def _vcc_logo_data_uri() -> str:
+    candidates = (
+        (TEMPLATE_DIR / "logo_vcc_plastic.jpg", "image/jpeg"),
+        (TEMPLATE_DIR / "logo_vcc.webp", "image/webp"),
+    )
+    for logo_path, mime in candidates:
+        if not logo_path.is_file():
+            continue
+        encoded = base64.b64encode(logo_path.read_bytes()).decode("ascii")
+        return f"data:{mime};base64,{encoded}"
+    return ""
 
 
 def render_template_html(template_path: Path, payload: dict, data_key: str) -> str:
@@ -355,10 +474,12 @@ def export_pdf(html: str, output_path: Path) -> Path:
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Mock in Bacviet/Location → PDF và/hoặc Excel A4.")
+    parser = argparse.ArgumentParser(
+        description="Mock in Bacviet/Location/Phiếu di chuyển → PDF và/hoặc Excel A4."
+    )
     parser.add_argument(
         "--template",
-        choices=("bacviet", "location"),
+        choices=("bacviet", "location", "transfer"),
         default="bacviet",
         help="Template cần mock (mặc định: bacviet)",
     )
@@ -368,14 +489,35 @@ def parse_args() -> argparse.Namespace:
         default="both",
         help="Định dạng output (mặc định: both)",
     )
-    parser.add_argument("--quantity", type=int, default=9, help="Số phiếu Bacviet (mặc định: 9)")
-    parser.add_argument("--sku", default="BGRD00074", help="Part number mock Bacviet")
+    parser.add_argument(
+        "--quantity",
+        type=int,
+        default=9,
+        help="Số phiếu Bacviet/Transfer (mặc định: 9)",
+    )
+    parser.add_argument("--sku", default="BGRD00074", help="Part number mock")
     parser.add_argument(
         "--name",
         default="Thùng carton trà Bupnon TEA365 ô long vị đào (QR) 450ml",
-        help="Tên sản phẩm mock Bacviet",
+        help="Tên sản phẩm mock",
     )
+    parser.add_argument("--cavity", default="", help="Số cavity mock (transfer)")
     parser.add_argument("--item-id", type=int, default=1, help="Item id mock Bacviet")
+    parser.add_argument(
+        "--zone",
+        default=None,
+        help="Zone code lấy location từ DB (VD: Zone_1.1). Chỉ dùng với --template location",
+    )
+    parser.add_argument(
+        "--title-mc-to-ms",
+        action="store_true",
+        help="Tiêu đề QR: đổi 2 ký tự đầu MC → MS (QR data vẫn dùng location_code)",
+    )
+    parser.add_argument(
+        "--include-inactive",
+        action="store_true",
+        help="Kèm location is_active=false khi mock theo zone",
+    )
     parser.add_argument("--output", type=Path, default=None, help="Đường dẫn file output (không gồm đuôi)")
     parser.add_argument("--keep-html", action="store_true", help="Giữ file HTML preview (PDF)")
     return parser.parse_args()
@@ -383,11 +525,17 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
-    if args.template == "bacviet" and args.quantity <= 0:
+    if args.template in {"bacviet", "transfer"} and args.quantity <= 0:
         raise SystemExit("--quantity phải lớn hơn 0")
+    if args.zone and args.template != "location":
+        raise SystemExit("--zone chỉ hỗ trợ với --template location")
+    if args.title_mc_to_ms and args.template != "location":
+        raise SystemExit("--title-mc-to-ms chỉ hỗ trợ với --template location")
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     base_output = args.output or DEFAULT_OUTPUT_DIR / f"{args.template}_mock_{timestamp}"
+    if not base_output.is_absolute():
+        base_output = BACKEND_ROOT / base_output
 
     if args.template == "bacviet":
         payload = build_bacviet_payload(
@@ -398,12 +546,33 @@ def main() -> None:
         )
         html = render_template_html(BACVIET_TEMPLATE, payload, "__BACVIET_PRINT_DATA__")
         page_count = math.ceil(args.quantity / BACVIET_LAYOUT.labels_per_page)
+    elif args.template == "transfer":
+        payload = build_transfer_payload(
+            args.quantity,
+            sku=args.sku,
+            name=args.name,
+            cavity=args.cavity,
+        )
+        html = render_template_html(TRANSFER_TEMPLATE, payload, "__TRANSFER_PRINT_DATA__")
+        page_count = math.ceil(args.quantity / TRANSFER_LAYOUT.labels_per_page)
     else:
-        payload = build_location_payload()
+        if args.zone:
+            payload = build_location_payload_from_zone(
+                args.zone,
+                title_mc_to_ms=args.title_mc_to_ms,
+                active_only=not args.include_inactive,
+            )
+        else:
+            payload = build_location_payload()
         html = render_template_html(LOCATION_TEMPLATE, payload, "__LOCATION_PRINT_DATA__")
         page_count = math.ceil(len(payload["labels"]) / 2) if payload["labels"] else 0
 
     print(f"Template : {args.template}")
+    if args.template == "location" and args.zone:
+        print(f"Zone     : {args.zone}")
+        print(f"Labels   : {len(payload['labels'])}")
+        if args.title_mc_to_ms:
+            print("Title    : MC -> MS (2 ky tu dau)")
     print(f"Pages    : {page_count}")
 
     html_path: Path | None = None
@@ -416,12 +585,15 @@ def main() -> None:
             html_path = None
 
     if args.format in {"xlsx", "both"}:
-        xlsx_path = base_output.with_suffix(".xlsx")
-        if args.template == "bacviet":
-            export_bacviet_xlsx(payload, xlsx_path)
+        if args.template == "transfer":
+            print("Excel    : (bỏ qua — transfer chưa hỗ trợ xlsx)")
         else:
-            export_location_xlsx(payload, xlsx_path)
-        print(f"Excel    : {xlsx_path.resolve()}")
+            xlsx_path = base_output.with_suffix(".xlsx")
+            if args.template == "bacviet":
+                export_bacviet_xlsx(payload, xlsx_path)
+            else:
+                export_location_xlsx(payload, xlsx_path)
+            print(f"Excel    : {xlsx_path.resolve()}")
 
     if args.keep_html and html_path is not None:
         print(f"HTML     : {html_path.resolve()}")

@@ -187,6 +187,7 @@ export interface AssignOrGetItemStockRequest {
   quantity?: number | null;
   unit_id?: number | null;
   lot_number?: string | null;
+  assigned_by?: string | null;
 }
 
 export interface QrCodePreviewResponse {
@@ -211,6 +212,7 @@ export interface AssignedItemStock {
   code: string;
   lot_number?: string | null;
   lot_number_to?: string | null;
+  assigned_by?: string | null;
   unit_id: number;
   unit_name: string;
   quantity: number;
@@ -239,6 +241,37 @@ export const isQrPreviewResponse = (
 
 export interface InboundCallerResponse {
   order: InboundOrder;
-  line_items: unknown[];
-  robot_tasks: unknown[];
+  line_items: InboundCallerLineItem[];
+  robot_tasks: RobotTaskInfo[];
+}
+
+export interface RobotTaskInfo {
+  id: number;
+  order_id: string;
+  quantity: number;
+  process_code: string;
+  system_code: string;
+  task_order_detail: string;
+  inbound_order_detail_id?: number | null;
+  status: string;
+}
+
+export interface InboundCallerLineItem {
+  detail: InboundOrderDetail;
+  robot_task?: RobotTaskInfo | null;
+}
+
+export interface TaskAddPayload {
+  order_id: string;
+  start_point: string;
+  target_point: string;
+  move_mode: string;
+  metadata: {
+    order_code: string;
+    inbound_order_id: number;
+    detail_id: number;
+    from_location_id: number | null;
+    to_location_id: number | null;
+    allocations: InboundOrderAllocation[];
+  };
 }

@@ -67,6 +67,7 @@ class QR_Code(Base):
     item_id = Column(Integer, ForeignKey("item.id"), nullable=False, index=True)
     item_stock_id = Column(Integer, ForeignKey("item_stock.id"), nullable=True, index=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+    # qr_type = Column(String(50), nullable=False, default="item")
 
     item = relationship("Item", lazy="joined")
     item_stock = relationship("ItemStock", foreign_keys=[item_stock_id], lazy="joined")

@@ -10,6 +10,8 @@ const STATUS_STYLES: Record<string, string> = {
     "bg-indigo-100 text-indigo-800 border-indigo-200 shadow-sm shadow-indigo-200/60",
   in_progress:
     "bg-orange-100 text-orange-800 border-orange-200 shadow-sm shadow-orange-200/60",
+  pre_completed:
+    "bg-amber-100 text-amber-900 border-amber-300 shadow-sm shadow-amber-200/60",
   completed:
     "bg-emerald-100 text-emerald-800 border-emerald-200 shadow-sm shadow-emerald-200/60",
   failed:

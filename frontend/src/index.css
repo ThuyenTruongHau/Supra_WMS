@@ -94,7 +94,28 @@
       rgba(15, 61, 70, 0.04) 50px);
 }
 
-.ant-message {
-  top: 50% !important;
-  transform: translate(-50%, -50%) !important;
+/* Ant Design 6: offset via --notification-top. Do not use translateY — it breaks placement. */
+.ant-message,
+.ant-message-top {
+  --notification-top: 24px;
+  left: 50% !important;
+  right: auto !important;
+  top: var(--notification-top) !important;
+  bottom: auto !important;
+  transform: translateX(-50%) !important;
+  z-index: 1100 !important;
+}
+
+.ant-message .ant-message-notice,
+.ant-message-top .ant-message-notice {
+  clip-path: none !important;
+  opacity: 1 !important;
+}
+
+/* /qrtablet: just below browser chrome (not mid-screen). ~56–72px is typical URL/search bar. */
+body.qrtablet-route .ant-message,
+body.qrtablet-route .ant-message-top {
+  --notification-top: max(72px, calc(env(safe-area-inset-top, 0px) + 56px));
+  top: var(--notification-top) !important;
+  z-index: 1200 !important;
 }

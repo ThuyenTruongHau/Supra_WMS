@@ -39,7 +39,8 @@ from app.modules.warehouse.warehouse_zone.warehouse_model import Zone
 from app.modules.warehouse.item_stock.item_stock_model import ItemStock
 from app.modules.robot.robot_model import RobotTask
 from app.modules.robot.robot_service import task_status_service
-from app.modules.warehouse.transaction_history.history_model import History
+from app.modules.warehouse.transaction_history.history_model import History, Transaction
+from app.modules.warehouse.item.item_model import QR_Code
 from app.modules.warehouse.lot_number_utils import format_lot_number_display
 
 from app.core.logger import get_logger
@@ -435,12 +436,12 @@ def _strategy_loading_stocks(db: Session, item_id: int, strategy: str):
         q = q.order_by(ItemStock.created_at.asc(), ItemStock.id.asc())
     return q.all()
 
-def _check_stock_in_task(db: Session, stock_id: int, outbound_order_id: int) -> bool:
+def _check_stock_in_task(db: Session, from_location_id: int, outbound_order_id: int) -> bool:
     allocation = (
         db.query(OutboundOrderAllocation)
         .join(OutboundOrderDetail, OutboundOrderDetail.id == OutboundOrderAllocation.outbound_order_detail_id)
         .filter(
-            OutboundOrderAllocation.item_stock_id == stock_id,
+            OutboundOrderAllocation.from_location_id == from_location_id,
             OutboundOrderDetail.outbound_order_id == outbound_order_id,
             OutboundOrderAllocation.status == "initialize",
         )
@@ -461,7 +462,9 @@ def greedy_allocate_stocks_to_lines(
     stock_remaining = [Decimal(str(stock.available_quantity)) for stock in stocks]
 
     i = j = 0
-    has_task = _check_stock_in_task(db, stocks[j].id, outbound_order_id)
+    
+    has_task = _check_stock_in_task(db, stocks[j].location_id, outbound_order_id)
+
     while i < len(lines) and j < len(stocks): 
         take = min(line_remaining[i], stock_remaining[j])
         stock_remaining[j] -= take
@@ -471,7 +474,7 @@ def greedy_allocate_stocks_to_lines(
             order_id = f"TDS_Outbound_{uuid.uuid4().hex[:8]}"
             robot_task = RobotTask(
                 order_id=order_id,
-                quantity=int(stocks[j].quantity),
+                quantity=0,
                 process_code=settings.outbound_process_code,
                 system_code="Thadosoft",
                 task_order_detail=json.dumps([{"taskPath": "None"}])
@@ -479,7 +482,11 @@ def greedy_allocate_stocks_to_lines(
             db.add(robot_task)
             db.flush()
             has_task = robot_task.id
+            
+            logger.info(f"Robot task created: {robot_task.id}")
 
+        robot_task = db.get(RobotTask, has_task)
+        robot_task.quantity = int(robot_task.quantity or 0) + int(take)
         allocation = OutboundOrderAllocation(
             outbound_order_detail_id=lines[i].id,
             item_stock_id=stocks[j].id,
@@ -495,7 +502,8 @@ def greedy_allocate_stocks_to_lines(
             i += 1
         if stock_remaining[j] <= 0:
             j += 1
-            has_task = _check_stock_in_task(db, stocks[j].id, outbound_order_id) if j < len(stocks) else None
+            has_task = _check_stock_in_task(db, stocks[j].location_id, outbound_order_id) if j < len(stocks) else None
+            logger.info(f"Has task: {has_task}")
 
     lacked = {
         lines[idx].id: qty
@@ -810,8 +818,9 @@ def execute_outbound_task(
     if not body.from_location_id or not body.to_location_id:
         raise ValueError("From location and to location are required")
 
-    first_allocation: OutboundOrderAllocation | None = None
     taken = 0
+    full_quantity = 0
+    last_allocation = None
     for item in body.allocations:
         allocation = (
             db.query(OutboundOrderAllocation)
@@ -837,8 +846,8 @@ def execute_outbound_task(
         allocation.to_location_id = body.to_location_id
         allocation.status = "issued"
         taken += int(allocation.quantity)
-        if first_allocation is None:
-            first_allocation = allocation
+        full_quantity += int(allocation.item_stock.quantity)
+        last_allocation = allocation
         db.flush()
 
     start = db.query(Location).filter(Location.id == body.from_location_id).first()
@@ -851,12 +860,8 @@ def execute_outbound_task(
 
     # Leftover return task is created only when executing an outbound pick.
     return_quantity = 0
-    if (
-        first_allocation is not None
-        and first_allocation.allocation_type != "return"
-        and first_allocation.item_stock is not None
-    ):
-        return_quantity = int(first_allocation.item_stock.quantity) - taken
+    if full_quantity > taken:
+        return_quantity = full_quantity - taken
     if return_quantity > 0:
         order_id = f"TDS_Return_{uuid.uuid4().hex[:8]}"
         return_task = RobotTask(
@@ -869,8 +874,8 @@ def execute_outbound_task(
         db.add(return_task)
         db.flush()
         return_allocation = OutboundOrderAllocation(
-            outbound_order_detail_id=first_allocation.outbound_order_detail_id,
-            item_stock_id=first_allocation.item_stock_id,
+            outbound_order_detail_id=last_allocation.outbound_order_detail_id,
+            item_stock_id=last_allocation.item_stock_id,
             quantity=return_quantity,
             status="initialize",
             from_location_id=target.id,
@@ -881,8 +886,8 @@ def execute_outbound_task(
         db.add(return_allocation)
         db.flush()
 
-    if first_allocation is not None:
-        outbound_order = first_allocation.outbound_order_detail.outbound_order
+    if last_allocation is not None:
+        outbound_order = last_allocation.outbound_order_detail.outbound_order
         db.add(
             History(
                 outbound_order_id=outbound_order.id,
@@ -900,3 +905,106 @@ def execute_outbound_task(
     except Exception:
         db.rollback()
         raise
+
+def _settle_outbound_stock(
+    db: Session, allocations: list[OutboundOrderAllocation]
+) -> dict[str, int] | None:
+    if not allocations:
+        return
+
+    stock = allocations[0].item_stock
+
+    allocation_rows = []
+    flag = 0
+    overall = 0
+    for allocation in allocations:
+        allocation.status = "completed"
+        if allocation.allocation_type == "outbound":
+            flag = 1
+            stock.quantity -= allocation.quantity 
+            overall += allocation.quantity
+        allocation_rows.append({
+            "allocation_id": allocation.id,
+            "part_number": allocation.item_stock.item.sku if allocation.item_stock and allocation.item_stock.item else None,
+            "lot_number_from": allocation.item_stock.lot_number_from if allocation.item_stock else None,
+            "lot_number_to": allocation.item_stock.lot_number_to if allocation.item_stock else None,
+            "lot_number": (
+                format_lot_number_display(
+                    allocation.item_stock.lot_number_from,
+                    allocation.item_stock.lot_number_to,
+                )
+                if allocation.item_stock
+                else None
+            ),
+            "quantity": int(allocation.quantity),
+        })
+
+    if flag == 1:
+        db.add(Transaction(
+            from_location_id=allocations[0].from_location_id,
+            to_location_id=allocations[0].to_location_id,
+            transaction_type="outbound",
+            item_stock_id=stock.id,
+            quantity=int(stock.quantity) + overall,
+            created_by_id=allocations[0].outbound_order_detail.outbound_order.created_by_id,
+        ))
+    else:
+        db.add(Transaction(
+            from_location_id=allocations[0].from_location_id,
+            to_location_id=allocations[0].to_location_id,
+            transaction_type="return",
+            item_stock_id=stock.id,
+            quantity=int(stock.quantity),
+            created_by_id=allocations[0].outbound_order_detail.outbound_order.created_by_id,
+        ))
+    details = {
+        "allocations": allocation_rows,
+    }
+
+    db.add(History(
+        outbound_order_id = allocations[0].outbound_order_detail.outbound_order_id,
+        old_status="in_progress",
+        new_status="completed",
+        description=f"Outbound order {allocations[0].outbound_order_detail.outbound_order_id} completed",
+        details=details,
+        created_by_id=allocations[0].outbound_order_detail.outbound_order.created_by_id,
+    ))
+    try:
+        db.commit()
+        return {
+            "overall": int(overall),
+            "return": int(stock.quantity),
+        }
+    except Exception:
+        db.rollback()
+        raise
+
+def confirm_outbound_order(
+    db: Session, qr_code: str, outbound_order_id: int
+) -> dict[str, int] | None:
+    qr_record = db.query(QR_Code).filter(QR_Code.code == qr_code).first()
+    if not qr_record:
+        raise ValueError("QR code not found")
+    item_stock = db.query(ItemStock).filter(ItemStock.id == qr_record.item_stock_id).first()
+    if not item_stock:
+        raise ValueError("Item stock not found")
+
+    outbound_order = db.query(OutboundOrder).filter(OutboundOrder.id == outbound_order_id).first()
+    if not outbound_order:
+        raise ValueError("Outbound order not found")
+    allocations = (
+        db.query(OutboundOrderAllocation)
+        .join(OutboundOrderDetail)
+        .filter(
+            OutboundOrderAllocation.item_stock_id == item_stock.id,
+            OutboundOrderDetail.outbound_order_id == outbound_order_id,
+            OutboundOrderAllocation.status == "pre_completed",
+            OutboundOrderAllocation.allocation_type == "outbound",
+        )
+        .all()
+    )
+    if not allocations:
+        raise ValueError("No pre_completed allocations to confirm")
+
+    result = _settle_outbound_stock(db, allocations)
+    return result

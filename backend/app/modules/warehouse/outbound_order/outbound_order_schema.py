@@ -189,3 +189,15 @@ class OutboundRobotTaskCreate(BaseModel):
     from_location_id: int
     to_location_id: int
     allocations: list[AllocationOutboundTaskExecute]
+
+
+class OutboundConfirmQrRequest(BaseModel):
+    qr_code: str = Field(..., min_length=1, max_length=50)
+
+
+class OutboundConfirmQrResponse(BaseModel):
+    outbound_order_id: int
+    status: str
+    message: str
+    overall: int = 0
+    return_quantity: int = 0

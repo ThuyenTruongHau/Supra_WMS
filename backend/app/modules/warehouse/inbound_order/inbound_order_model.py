@@ -54,7 +54,10 @@ class InboundOrder(Base):
                 "completed",
             ),
             (
-                _inbound_order_detail_exists(id, _inbound_order_detail_tbl.c.status != "initialize"),
+                _inbound_order_detail_exists(
+                    id,
+                    _inbound_order_detail_tbl.c.status.notin_(("initialize", "cancelled")),
+                ),
                 "in_progress",
             ),
             else_="initialize",

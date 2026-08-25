@@ -1,6 +1,7 @@
 export type OutboundOrderStatus =
   | "initialize"
   | "in_progress"
+  | "pre_completed"
   | "completed"
   | string;
 

@@ -22,6 +22,8 @@ from app.modules.warehouse.outbound_order.outbound_order_schema import (
     LackedDetailResponse,
     OutboundRobotTaskResponse,
     OutboundRobotTaskCreate,
+    OutboundConfirmQrRequest,
+    OutboundConfirmQrResponse,
 )
 from app.modules.warehouse.outbound_order import outbound_order_service
 from app.modules.warehouse.outbound_order.outbound_celery_task import (
@@ -249,4 +251,31 @@ def delete_outbound_order(order_code: str, db: DbSession):
         order_code=order_code,
         status="deleted",
         message="Outbound order deleted",
+    )
+
+
+@router.post(
+    "/outbound-orders/id/{order_id}/confirm-qr",
+    response_model=OutboundConfirmQrResponse,
+    dependencies=[Depends(_OUTBOUND_UPDATE)],
+)
+def confirm_outbound_order_qr(
+    order_id: int,
+    body: OutboundConfirmQrRequest,
+    db: DbSession,
+):
+    try:
+        settle = outbound_order_service.confirm_outbound_order(
+            db, body.qr_code, order_id
+        )
+    except ValueError as e:
+        msg = str(e)
+        code = 404 if "not found" in msg.lower() else 400
+        raise HTTPException(status_code=code, detail=msg) from e
+    return OutboundConfirmQrResponse(
+        outbound_order_id=order_id,
+        status="completed",
+        message="Outbound order confirmed by QR",
+        overall=int(settle.get("overall", 0) if settle else 0),
+        return_quantity=int(settle.get("return", 0) if settle else 0),
     )

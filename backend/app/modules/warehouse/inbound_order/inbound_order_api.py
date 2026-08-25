@@ -258,6 +258,7 @@ def _assign_or_get_item_stocks(db: Session, body: AssignOrGetItemStockRequest):
             quantity=body.quantity,
             unit_id=body.unit_id,
             lot_number=body.lot_number,
+            assigned_by=body.assigned_by,
         )
     except ValueError as e:
         msg = str(e)

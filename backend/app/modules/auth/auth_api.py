@@ -17,6 +17,7 @@ from app.modules.auth.auth_schema import (
     UserListResponse,
     UserResponse,
     UserUpdate,
+    StaffUsernamesResponse,
 )
 from app.modules.auth import auth_service
 from app.core.logger import get_logger
@@ -60,6 +61,16 @@ def signup(body: UserCreate, db: DbSession):
 @router.get("/users/me", response_model=UserResponse)
 def get_me(current_user: CurrentUser):
     return _user_to_response(current_user)
+
+
+@router.get(
+    "/users/staff-usernames",
+    response_model=StaffUsernamesResponse,
+)
+def list_staff_usernames(_current_user: CurrentUser, db: DbSession):
+    """Username list for tablet assign-by picker (any logged-in user)."""
+    return auth_service.list_staff_usernames(db)
+
 
 @router.get(
     "/users",

@@ -20,6 +20,12 @@ export default defineConfig({
         changeOrigin: true,
         secure: false,
       },
+      // Orchestrator local — tránh Mixed Content khi FE chạy HTTPS
+      '/task': {
+        target: 'http://localhost:6868',
+        changeOrigin: true,
+        secure: false,
+      },
     },
   },
 })

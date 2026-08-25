@@ -112,6 +112,11 @@ def suggest_allocation_inbound(db: Session, body: InboundSuggestAllocation):
 
     return InboundSuggestAllocationResponse(line_items=line_items)
 
+def _delete_item_stock(db: Session, stock: ItemStock) -> None:
+    qrs = db.query(QR_Code).filter(QR_Code.item_stock_id == stock.id).all()
+    for qr in qrs:
+        db.delete(qr)
+    db.delete(stock)
 
 def delete_allocated_locations(location_ids: list[int]):
     for location_id in location_ids:
@@ -283,7 +288,7 @@ def _delete_allocation(db: Session, allocation: InboundOrderAllocation) -> None:
     )
     db.delete(allocation)
     if stock:
-        db.delete(stock)
+        _delete_item_stock(db, stock)
 
 
 def _purge_detail(db: Session, detail: InboundOrderDetail) -> None:
@@ -305,7 +310,7 @@ def _purge_detail(db: Session, detail: InboundOrderDetail) -> None:
         .all()
     )
     for stock in stocks:
-        db.delete(stock)
+        _delete_item_stock(db, stock)
 
     cache_delete(f"inbound:reserved:{detail.to_location_id}")
     db.flush()
@@ -328,7 +333,7 @@ def delete_inbound_order(db: Session, order_code: str) -> None:
         raise ValueError("Inbound order not found")
 
     if order.status != "initialize":
-        raise ValueError("Only initialize order can be deleted")
+        raise ValueError("Only initialize and cancelled order can be deleted")
 
     existing_details = (
         db.query(InboundOrderDetail)
@@ -806,6 +811,7 @@ def assign_or_get_item_stock(
     quantity: Optional[int] = None,
     unit_id: Optional[int] = None,
     lot_number: Optional[str] = None,
+    assigned_by: Optional[str] = None,
 ) -> list[dict] | dict:
     qr_record = get_qr_code_by_code(db, qr_code)
     location = _resolve_location(db, location_code)
@@ -836,6 +842,7 @@ def assign_or_get_item_stock(
             "location_id": location.id,
             "location_name": location.location_name,
             "warehouse_id": location.warehouse_id,
+            "assigned_by": assigned_by,
             "qr_code_id": qr_record.id,
             "code": qr_record.code,
             "lot_number": resolved_lot,
