@@ -79,6 +79,7 @@ class AssignOrGetItemStockRequest(BaseModel):
     unit_id: Optional[int] = Field(None, gt=0)
     lot_number: Optional[str] = Field(None, max_length=50)
     assigned_by: Optional[str] = Field(None, max_length=100)
+    cavity_number: Optional[str] = Field(None, max_length=50)
 
     @model_validator(mode="after")
     def require_fields_when_assign(self) -> "AssignOrGetItemStockRequest":
@@ -101,6 +102,7 @@ class QrCodePreviewResponse(BaseModel):
     unit_id: int
     unit_name: str
     lot_number: str
+    cavity_numbers: list[str] = Field(default_factory=list)
 
 
 class AssignItemStockMetaResponse(BaseModel):
@@ -123,6 +125,7 @@ class AssignedItemStockResponse(BaseModel):
     location_id: Optional[int] = None
     location_name: Optional[str] = None
     warehouse_id: Optional[int] = None
+    cavity_number: Optional[str] = None
 
 class InboundOrderAllocationCreate(BaseModel):
     item_id: int = Field(..., gt=0)

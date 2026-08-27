@@ -108,6 +108,7 @@ export interface ItemImportJobStatus {
 }
 
 export type QRCodeStatus = 'expired' | 'stocked' | 'available'
+export type QrPrintType = 'item' | 'transit'
 
 export interface QRCodeRecent {
   id: number
@@ -116,6 +117,7 @@ export interface QRCodeRecent {
   item_sku?: string | null
   item_name?: string | null
   item_stock_id: number | null
+  qr_type?: QrPrintType | string | null
   created_at: string | null
   status: QRCodeStatus
 }
@@ -133,9 +135,11 @@ export interface GenerateQrCodesResponse {
   page_count: number
   qr_ids: string[]
   display_codes: string[]
+  qr_type?: QrPrintType
 }
 
 export interface CreateQrCodesResponse {
   codes: string[]
   display_codes: string[]
+  qr_type?: QrPrintType
 }

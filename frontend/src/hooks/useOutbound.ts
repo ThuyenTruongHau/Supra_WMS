@@ -11,6 +11,7 @@ import {
   getOutboundRobotTasksApi,
   executeOutboundRobotTaskApi,
   confirmOutboundOrderQrApi,
+  confirmOutboundOrderNoQrApi,
 } from "@/api/outboundOrder";
 import type {
   CalculateOutboundRequest,
@@ -193,6 +194,33 @@ export const useConfirmOutboundOrderQr = () => {
       });
       queryClient.invalidateQueries({
         queryKey: ["outboundRobotTasks", variables.orderId],
+      });
+      queryClient.invalidateQueries({ queryKey: ["outboundOrders"] });
+    },
+  });
+};
+
+export const useConfirmOutboundOrderNoQr = () => {
+  const queryClient = useQueryClient();
+  return useMutation<
+    Awaited<ReturnType<typeof confirmOutboundOrderNoQrApi>>,
+    AxiosError<ApiErrorResponse>,
+    { robotTaskOrderId: string; orderId: number }
+  >({
+    mutationFn: ({ robotTaskOrderId }) =>
+      confirmOutboundOrderNoQrApi(robotTaskOrderId),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["outboundOrder", variables.orderId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["outboundOrderDetails", variables.orderId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["outboundRobotTasks", variables.orderId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["outboundOrderLacked", variables.orderId],
       });
       queryClient.invalidateQueries({ queryKey: ["outboundOrders"] });
     },

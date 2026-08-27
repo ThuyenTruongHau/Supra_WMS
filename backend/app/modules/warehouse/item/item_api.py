@@ -234,9 +234,10 @@ def preview_qr_codes(
     db: DbSession,
     item_id: int = Query(..., gt=0),
     quantity: int = Query(..., gt=0, le=50),
+    qr_type: str = Query("item"),
 ):
     try:
-        return item_service.preview_qr_codes(db, item_id, quantity)
+        return item_service.preview_qr_codes(db, item_id, quantity, qr_type)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
 
@@ -258,6 +259,7 @@ def create_qr_codes_batch(
             quantity,
             codes=body.qr_ids,
             display_codes=body.display_codes,
+            qr_type=body.qr_type,
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
@@ -271,15 +273,17 @@ def generate_qr_codes(
     db: DbSession,
     item_id: int = Query(..., gt=0),
     quantity: int = Query(..., gt=0, le=50),
+    qr_type: str = Query("item"),
 ):
     try:
-        preview = item_service.preview_qr_codes(db, item_id, quantity)
+        preview = item_service.preview_qr_codes(db, item_id, quantity, qr_type)
         item_service.create_qr_codes(
             db,
             item_id,
             quantity,
             codes=preview["qr_ids"],
             display_codes=preview["display_codes"],
+            qr_type=qr_type,
         )
         return preview
     except ValueError as e:

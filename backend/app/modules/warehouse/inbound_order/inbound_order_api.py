@@ -26,7 +26,7 @@ from app.modules.warehouse.inbound_order.inbound_order_schema import (
     AssignOrGetItemStockRequest,
     QrCodePreviewResponse,
 )
-from app.modules.warehouse.inbound_order import inbound_order_service
+from app.modules.warehouse.inbound_order import inbound_order_service, qr_code_module
 from app.modules.warehouse.inbound_order.inbound_celery_task import (
     accept_inbound_task_task,
     caller_inbound_order_task,
@@ -251,7 +251,7 @@ def assign_or_get_item_stocks_by_location(
 
 def _assign_or_get_item_stocks(db: Session, body: AssignOrGetItemStockRequest):
     try:
-        result = inbound_order_service.assign_or_get_item_stock(
+        result = qr_code_module.assign_or_get_item_stock(
             db=db,
             location_code=body.location_code,
             qr_code=body.qr_code,
@@ -259,6 +259,7 @@ def _assign_or_get_item_stocks(db: Session, body: AssignOrGetItemStockRequest):
             unit_id=body.unit_id,
             lot_number=body.lot_number,
             assigned_by=body.assigned_by,
+            cavity_number=body.cavity_number,
         )
     except ValueError as e:
         msg = str(e)

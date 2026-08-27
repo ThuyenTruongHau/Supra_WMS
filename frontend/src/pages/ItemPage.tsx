@@ -364,7 +364,7 @@ export default function ItemPage() {
   const handleCreate = (values: CreateItemFormValues) => {
     const details = Object.fromEntries(
       (values.detailEntries ?? [])
-        .map(({ key, value }) => [key.trim(), value.trim()])
+        .map(({ key, value }) => [key.trim(), value.trim()] as const)
         .filter(([key]) => key.length > 0),
     );
     createMutation.mutate(
@@ -979,7 +979,7 @@ export default function ItemPage() {
                         rules={[{ required: true, message: "Nhập tên trường" }]}
                         className="!mb-0 flex-1"
                       >
-                        <Input placeholder="Tên (vd: color)" />
+                        <Input placeholder="Tên (vd: cavity_number)" />
                       </Form.Item>
                       <Form.Item
                         {...restField}
@@ -987,7 +987,7 @@ export default function ItemPage() {
                         rules={[{ required: true, message: "Nhập giá trị" }]}
                         className="!mb-0 flex-1"
                       >
-                        <Input placeholder="Giá trị (vd: đỏ)" />
+                        <Input placeholder="Giá trị (vd: 1, 2, 3)" />
                       </Form.Item>
                       <MinusCircleOutlined
                         className="text-red-400 cursor-pointer"

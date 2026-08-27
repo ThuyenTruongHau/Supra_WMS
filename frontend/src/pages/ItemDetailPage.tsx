@@ -5,6 +5,8 @@ import {
   ArrowLeftOutlined,
   DeleteOutlined,
   EditOutlined,
+  MinusCircleOutlined,
+  PlusOutlined,
 } from "@ant-design/icons";
 import {
   Card,
@@ -33,6 +35,13 @@ import type { Item } from "@/types/item";
 import type { DetailFieldSchema } from "@/components/ui/DetailView";
 import { formatQuantity, parseQuantity } from "@/utils/formatQuantity";
 
+function formatDetailEntryValue(value: unknown): string {
+  if (value === null || value === undefined) return "";
+  if (Array.isArray(value)) return value.map(String).join(", ");
+  if (typeof value === "object") return JSON.stringify(value);
+  return String(value);
+}
+
 function ItemDetailsView({ details }: { details?: Record<string, unknown> }) {
   const entries = Object.entries(details ?? {});
   if (entries.length === 0) {
@@ -44,11 +53,7 @@ function ItemDetailsView({ details }: { details?: Record<string, unknown> }) {
         <div key={key} className="flex flex-wrap gap-x-2 gap-y-1">
           <dt className="text-gray-500">{key}:</dt>
           <dd className="font-medium text-brand-dark">
-            {value === null || value === undefined
-              ? "—"
-              : typeof value === "object"
-                ? JSON.stringify(value)
-                : String(value)}
+            {formatDetailEntryValue(value) || "—"}
           </dd>
         </div>
       ))}
@@ -212,7 +217,7 @@ export default function ItemDetailPage() {
       quantity: parseQuantity(item.quantity),
       detailEntries: Object.entries(item.details ?? {}).map(([key, value]) => ({
         key,
-        value: String(value),
+        value: formatDetailEntryValue(value),
       })),
     });
     setIsEditOpen(true);
@@ -226,7 +231,7 @@ export default function ItemDetailPage() {
 
     const details = Object.fromEntries(
       (values.detailEntries ?? [])
-        .map(({ key, value }) => [key.trim(), value.trim()])
+        .map(({ key, value }) => [key.trim(), value.trim()] as const)
         .filter(([key]) => key.length > 0),
     );
 
@@ -240,7 +245,7 @@ export default function ItemDetailPage() {
           base_quantity: Number(values.base_quantity),
           min_quantity: Number(values.min_quantity),
           max_quantity: Number(values.max_quantity),
-          ...(Object.keys(details).length > 0 ? { details } : {}),
+          details,
         },
       },
       {
@@ -465,6 +470,49 @@ export default function ItemDetailPage() {
             rules={[{ required: true, message: "Vui lòng nhập mô tả!" }]}
           >
             <Input />
+          </Form.Item>
+          <Form.Item label="Thông tin bổ sung (tùy chọn)">
+            <Form.List name="detailEntries">
+              {(fields, { add, remove }) => (
+                <>
+                  {fields.map(({ key, name, ...restField }) => (
+                    <div
+                      key={key}
+                      className="mb-2 flex w-full items-start gap-2"
+                    >
+                      <Form.Item
+                        {...restField}
+                        name={[name, "key"]}
+                        rules={[{ required: true, message: "Nhập tên trường" }]}
+                        className="!mb-0 flex-1"
+                      >
+                        <Input placeholder="Tên (vd: cavity_number)" />
+                      </Form.Item>
+                      <Form.Item
+                        {...restField}
+                        name={[name, "value"]}
+                        rules={[{ required: true, message: "Nhập giá trị" }]}
+                        className="!mb-0 flex-1"
+                      >
+                        <Input placeholder="Giá trị (vd: 1, 2, 3)" />
+                      </Form.Item>
+                      <MinusCircleOutlined
+                        className="mt-2 shrink-0 cursor-pointer text-red-400"
+                        onClick={() => remove(name)}
+                      />
+                    </div>
+                  ))}
+                  <Button
+                    variant="secondary"
+                    onClick={() => add({ key: "", value: "" })}
+                    icon={<PlusOutlined />}
+                    block
+                  >
+                    Thêm trường
+                  </Button>
+                </>
+              )}
+            </Form.List>
           </Form.Item>
           <Form.Item className="mb-0 flex justify-end">
             <Space>

@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from "react";
 import { Form, Input, Modal } from "antd";
-import { ScanOutlined } from "@ant-design/icons";
+import { ScanOutlined, SearchOutlined } from "@ant-design/icons";
 import { useQuery } from "@tanstack/react-query";
 import { Button, Select, message } from "@/components/ui";
 import { QrCameraOverlay, QrImageImport } from "@/components/qr-scan";
@@ -64,6 +64,8 @@ export default function QrTabletInboundPage() {
   const [unitId, setUnitId] = useState<number | undefined>();
   const [lotNumber, setLotNumber] = useState("");
   const [assignedBy, setAssignedBy] = useState<string | undefined>();
+  const [staffKeyword, setStaffKeyword] = useState("");
+  const [cavityNumber, setCavityNumber] = useState<string | undefined>();
   const [unitOptions, setUnitOptions] = useState<
     { value: number; label: string }[]
   >([]);
@@ -71,11 +73,31 @@ export default function QrTabletInboundPage() {
   const [importGroups, setImportGroups] = useState<ImportGroupDraft[]>();
   const [warehouseId, setWarehouseId] = useState<number | undefined>();
 
+  const filteredStaffOptions = useMemo(() => {
+    const keyword = staffKeyword.trim().toLowerCase();
+    if (!keyword) return staffOptions;
+    return staffOptions.filter((opt) =>
+      opt.label.toLowerCase().includes(keyword),
+    );
+  }, [staffKeyword, staffOptions]);
+
+  const cavityOptions = useMemo(
+    () =>
+      (preview?.cavity_numbers ?? []).map((c) => ({
+        value: c,
+        label: c,
+      })),
+    [preview?.cavity_numbers],
+  );
+  const requiresCavity = cavityOptions.length > 0;
+
   const resetPreview = () => {
     setPreview(null);
     setQuantity(1);
     setUnitId(undefined);
     setLotNumber("");
+    setCavityNumber(undefined);
+    setStaffKeyword("");
     setUnitOptions([]);
   };
 
@@ -99,6 +121,7 @@ export default function QrTabletInboundPage() {
           setQuantity(result.quantity);
           setUnitId(result.unit_id);
           setLotNumber(result.lot_number);
+          setCavityNumber(result.cavity_numbers?.[0]);
           setUnitOptions([
             { value: result.unit_id, label: result.unit_name },
           ]);
@@ -137,6 +160,10 @@ export default function QrTabletInboundPage() {
         message.warning("Hãy chọn người thực thi trước khi quét vị trí");
         return;
       }
+      if (requiresCavity && !cavityNumber?.trim()) {
+        message.warning("Hãy chọn số cavity trước khi quét vị trí");
+        return;
+      }
       try {
         const result = await assignMutation.mutateAsync({
           qr_code: preview.code,
@@ -145,6 +172,7 @@ export default function QrTabletInboundPage() {
           unit_id: unitId,
           lot_number: lotNumber || undefined,
           assigned_by: operatorName,
+          cavity_number: cavityNumber || undefined,
         });
         if (isAssignMetaResponse(result)) {
           resetPreview();
@@ -159,7 +187,16 @@ export default function QrTabletInboundPage() {
         message.error(getApiErrorMessage(err));
       }
     },
-    [assignMutation, assignedBy, lotNumber, preview, quantity, unitId],
+    [
+      assignMutation,
+      assignedBy,
+      cavityNumber,
+      lotNumber,
+      preview,
+      quantity,
+      requiresCavity,
+      unitId,
+    ],
   );
 
   const handleDecoded = useCallback(
@@ -251,6 +288,19 @@ export default function QrTabletInboundPage() {
                 onChange={(val) => setUnitId(Number(val))}
               />
             </Form.Item>
+            {requiresCavity && (
+              <Form.Item label="Số cavity" required>
+                <Select
+                  className="w-full"
+                  value={cavityNumber}
+                  options={cavityOptions}
+                  placeholder="Chọn số cavity"
+                  onChange={(val) =>
+                    setCavityNumber(typeof val === "string" ? val : undefined)
+                  }
+                />
+              </Form.Item>
+            )}
             <Form.Item label="Số lô">
               <Input
                 value={lotNumber}
@@ -258,44 +308,55 @@ export default function QrTabletInboundPage() {
               />
             </Form.Item>
             <Form.Item label="Người thực thi" required>
-              <Select
-                className="w-full"
-                showSearch
-                allowClear
-                loading={staffLoading}
-                placeholder={
-                  staffError
-                    ? "Không tải được danh sách nhân viên"
-                    : "Chọn nhân viên"
-                }
-                value={assignedBy}
-                options={staffOptions}
-                optionFilterProp="label"
-                listHeight={280}
-                getPopupContainer={(node) =>
-                  node.parentElement ?? document.body
-                }
-                notFoundContent={
-                  staffLoading
-                    ? "Đang tải..."
-                    : staffError
-                      ? "Lỗi tải danh sách"
-                      : "Không có nhân viên"
-                }
-                filterOption={(input, option) =>
-                  String(option?.label ?? "")
-                    .toLowerCase()
-                    .includes(input.trim().toLowerCase())
-                }
-                onChange={(val) =>
-                  setAssignedBy(typeof val === "string" ? val : undefined)
-                }
-              />
+              <div className="flex flex-col gap-2">
+                <Input
+                  allowClear
+                  prefix={<SearchOutlined className="text-slate-400" />}
+                  placeholder="Tìm nhân viên theo tên..."
+                  value={staffKeyword}
+                  onChange={(e) => setStaffKeyword(e.target.value)}
+                />
+                <Select
+                  className="w-full"
+                  allowClear
+                  loading={staffLoading}
+                  placeholder={
+                    staffError
+                      ? "Không tải được danh sách nhân viên"
+                      : filteredStaffOptions.length === 0
+                        ? "Không có nhân viên khớp từ khóa"
+                        : "Chọn nhân viên"
+                  }
+                  value={assignedBy}
+                  options={filteredStaffOptions}
+                  listHeight={280}
+                  getPopupContainer={(node) =>
+                    node.parentElement ?? document.body
+                  }
+                  notFoundContent={
+                    staffLoading
+                      ? "Đang tải..."
+                      : staffError
+                        ? "Lỗi tải danh sách"
+                        : staffKeyword.trim()
+                          ? "Không tìm thấy nhân viên"
+                          : "Không có nhân viên"
+                  }
+                  onChange={(val) =>
+                    setAssignedBy(typeof val === "string" ? val : undefined)
+                  }
+                />
+              </div>
             </Form.Item>
             <Button
               variant="primary"
               className="!h-12 w-full !text-lg"
-              disabled={!quantity || !unitId || !assignedBy?.trim()}
+              disabled={
+                !quantity ||
+                !unitId ||
+                !assignedBy?.trim() ||
+                (requiresCavity && !cavityNumber?.trim())
+              }
               onClick={() => setScanMode("location")}
             >
               Quét vị trí

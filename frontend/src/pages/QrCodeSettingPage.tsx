@@ -14,6 +14,7 @@ import { useAppStore } from "@/store/useAppStore";
 import type { QRCodeRecent, QRCodeStatus } from "@/types/item";
 import dayjs from "dayjs";
 import QrCodeGeneratePrintModal from "@/pages/components/QrCodeGeneratePrintModal";
+import { translateQrType } from "@/i18n/qrTypeLabels.vi";
 
 const SKU_BROWSE_PAGE_SIZE = 20;
 const PAGE_SIZE = 20;
@@ -83,6 +84,17 @@ export default function QrCodeSettingPage() {
       render: (sku: string | null | undefined, row) => (
         <span className="font-semibold text-brand-primary">
           {sku ?? `#${row.item_id}`}
+        </span>
+      ),
+    },
+    {
+      title: "Loại mã",
+      dataIndex: "qr_type",
+      key: "qr_type",
+      width: 160,
+      render: (qrType: string | null | undefined) => (
+        <span className="font-medium text-slate-700">
+          {translateQrType(qrType ?? "item")}
         </span>
       ),
     },

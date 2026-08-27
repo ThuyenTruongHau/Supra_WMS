@@ -18,6 +18,7 @@ import {
   useDeleteOutboundOrder,
   useCalculateOutboundOrder,
   useExecuteOutboundRobotTask,
+  useConfirmOutboundOrderNoQr,
 } from "@/hooks/useOutbound";
 import { useAppStore } from "@/store/useAppStore";
 import type {
@@ -197,6 +198,9 @@ export default function OutboundDetailPage() {
   const [executingTaskOrderId, setExecutingTaskOrderId] = useState<
     string | null
   >(null);
+  const [confirmingTaskOrderId, setConfirmingTaskOrderId] = useState<
+    string | null
+  >(null);
 
   const {
     data: order,
@@ -218,6 +222,7 @@ export default function OutboundDetailPage() {
   const deleteMutation = useDeleteOutboundOrder();
   const calculateMutation = useCalculateOutboundOrder();
   const executeRobotTaskMutation = useExecuteOutboundRobotTask();
+  const confirmNoQrMutation = useConfirmOutboundOrderNoQr();
   const { data: users = [] } = useUser();
 
   const warehouseId = order?.warehouse_id ?? selectedWarehouseId ?? 0;
@@ -452,6 +457,59 @@ export default function OutboundDetailPage() {
       message.error({ content: apiError(err), key: "execute" });
     } finally {
       setExecutingTaskOrderId(null);
+    }
+  };
+
+  const handleConfirmNoQr = async (record: OutboundRobotTask) => {
+    if (!orderId) return;
+    try {
+      setConfirmingTaskOrderId(record.order_id);
+      const result = await confirmNoQrMutation.mutateAsync({
+        robotTaskOrderId: record.order_id,
+        orderId,
+      });
+      const overall = Number(result.overall ?? 0);
+      const returnQty = Number(result.return_quantity ?? 0);
+      void refetchOrder();
+      void refetchDetails();
+      void refetchRobotTasks();
+      void refetchLacked();
+
+      if (returnQty > 0) {
+        Modal.success({
+          title: "Xác nhận xuất kho thành công",
+          content: (
+            <div className="space-y-2 text-base text-slate-700">
+              <p>
+                Đã xuất <strong>{overall}</strong> đơn vị.
+              </p>
+              <p>
+                Còn lại <strong>{returnQty}</strong> đơn vị trên pallet —
+                hãy thực hiện lệnh <strong>TRẢ</strong> để đưa hàng dư về vị
+                trí gốc.
+              </p>
+            </div>
+          ),
+          okText: "Đã hiểu",
+        });
+      } else {
+        Modal.success({
+          title: "Xác nhận xuất kho thành công",
+          content: (
+            <div className="space-y-2 text-base text-slate-700">
+              <p>
+                Đã xuất hết <strong>{overall}</strong> đơn vị trên pallet.
+              </p>
+              <p>Không còn hàng dư cần trả về vị trí gốc.</p>
+            </div>
+          ),
+          okText: "Đã hiểu",
+        });
+      }
+    } catch (err) {
+      message.error(apiError(err));
+    } finally {
+      setConfirmingTaskOrderId(null);
     }
   };
 
@@ -882,6 +940,18 @@ export default function OutboundDetailPage() {
               onClick={() => void handleExecuteRobotTask(record)}
             >
               Execute
+            </Button>
+          );
+        }
+        if (displayStatus === "pre_completed") {
+          return (
+            <Button
+              variant="primary"
+              icon={<CheckCircleOutlined />}
+              loading={confirmingTaskOrderId === record.order_id}
+              onClick={() => void handleConfirmNoQr(record)}
+            >
+              Xác nhận
             </Button>
           );
         }

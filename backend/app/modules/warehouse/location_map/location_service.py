@@ -1,6 +1,7 @@
 """Location service."""
 
 from typing import Optional
+from app.core.cache import cache_scan_keys, get_redis
 
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -127,6 +128,26 @@ def get_location_by_id(
         .first()
     )
 
+def location_ids_with_assigned_qr() -> set[int]:
+    ids: set[int] = set()
+    for key in cache_scan_keys("inbound:assign:location:*"):
+        parts = key.split(":")
+        try:
+            i = parts.index("location")
+            ids.add(int(parts[i + 1]))
+        except (ValueError, IndexError):
+            continue
+    return ids
+
+def overlay_status_with_assign_cache(
+    db_status: str | None,
+    location_id: int,
+    assigned_ids: set[int],
+) -> str:
+    status = db_status or "empty"
+    if status == "empty" and location_id in assigned_ids:
+        return "has_stock"
+    return status
 
 def list_locations_for_map(db: Session, warehouse_id: int) -> LocationsForMapResponse:
     if not db.query(Warehouse).filter(Warehouse.id == warehouse_id).first():
@@ -141,6 +162,7 @@ def list_locations_for_map(db: Session, warehouse_id: int) -> LocationsForMapRes
 
     items: list[MapLocationItem] = []
     location_codes: list[str] = []
+    assigned_ids = location_ids_with_assigned_qr() 
 
     for loc in locations:
         stocks = [
@@ -157,10 +179,20 @@ def list_locations_for_map(db: Session, warehouse_id: int) -> LocationsForMapRes
             for stock in (loc.stocks or [])
             if stock.is_active and stock.quantity is not None and stock.quantity > 0
         ]
+        for assigned in _assigned_stocks_for_location(loc.id):
+            stocks.append(
+                MapLocationStockItem(
+                    sku=assigned.get("item_sku") or "",
+                    lot_number=assigned.get("lot_number"),
+                    lot_number_from=assigned.get("lot_number"),
+                    lot_number_to=assigned.get("lot_number"),
+                    quantity=str(assigned.get("quantity") or 0),
+                )
+            )
         status = loc.status or ("has_stock" if stocks else "empty")
-        if stocks:
+        status = overlay_status_with_assign_cache(status, loc.id, assigned_ids)
+        if stocks or loc.id in assigned_ids:
             location_codes.append(loc.location_code)
-
         items.append(
             MapLocationItem(
                 id=loc.id,
@@ -180,6 +212,12 @@ def list_locations_for_map(db: Session, warehouse_id: int) -> LocationsForMapRes
         locations=items,
     )
 
+def _assigned_stocks_for_location(location_id: int) -> list[dict]:
+    keys = cache_scan_keys(f"inbound:assign:location:{location_id}:*")
+    if not keys:
+        return []
+    raw_values = get_redis().mget(keys)
+    return [json.loads(raw) for raw in raw_values if raw]
 
 def get_location_detail(db: Session, location_id: int) -> LocationDetailResponse:
     location = get_location_by_id(db, location_id, include_inactive=True)
@@ -211,8 +249,32 @@ def get_location_detail(db: Session, location_id: int) -> LocationDetailResponse
             )
         )
 
+    for assigned in _assigned_stocks_for_location(location_id):
+        qty = Decimal(str(assigned.get("quantity") or 0))
+        total_qty += qty
+        lot = assigned.get("lot_number")
+        qr_id = int(assigned["qr_code_id"])
+        item_stock.append(
+            LocationDetailStockItem(
+                # tránh trùng id stock DB; drawer dùng làm React key
+                id=-qr_id,
+                item_id=int(assigned["item_id"]),
+                sku=assigned.get("item_sku") or "",
+                lot_number_from=lot,
+                lot_number_to=lot,
+                lot_number=lot,
+                expiry_date=None,
+                quantity=str(qty),
+                status="assigned",  # hoặc "staged"
+            )
+        )
+
+    loc_resp = LocationResponse.model_validate(location)
+    if loc_resp.status == "empty" and any(s.status == "assigned" for s in item_stock):
+        loc_resp = loc_resp.model_copy(update={"status": "has_stock"})
+
     return LocationDetailResponse(
-        location=LocationResponse.model_validate(location),
+        location=loc_resp,
         item_stock=item_stock,
         summary=LocationDetailSummary(
             item_stock_count=len(item_stock),

@@ -140,3 +140,21 @@ export const confirmOutboundOrderQrApi = async (
   );
   return data;
 };
+
+export type OutboundConfirmNoQrResponse = {
+  order_id: string;
+  status: string;
+  message: string;
+  overall: number;
+  return_quantity: number;
+};
+
+export const confirmOutboundOrderNoQrApi = async (
+  robotTaskOrderId: string,
+): Promise<OutboundConfirmNoQrResponse> => {
+  const { data } = await axiosInstance.post<OutboundConfirmNoQrResponse>(
+    `${BASE}/confirm-no-qr`,
+    { order_id: robotTaskOrderId },
+  );
+  return data;
+};

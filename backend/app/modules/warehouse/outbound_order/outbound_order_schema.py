@@ -201,3 +201,17 @@ class OutboundConfirmQrResponse(BaseModel):
     message: str
     overall: int = 0
     return_quantity: int = 0
+
+
+class OutboundConfirmNoQrRequest(BaseModel):
+    """Robot task order_id (e.g. TDS_Outbound_...), not outbound order numeric id."""
+
+    order_id: str = Field(..., min_length=1, max_length=50)
+
+
+class OutboundConfirmNoQrResponse(BaseModel):
+    order_id: str
+    status: str
+    message: str
+    overall: int = 0
+    return_quantity: int = 0

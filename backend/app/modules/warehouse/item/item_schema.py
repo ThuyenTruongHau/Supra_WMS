@@ -134,21 +134,27 @@ class ItemDetailResponse(BaseModel):
 
 # --- QR Code ---
 
+QrType = Literal["item", "transit"]
+
+
 class QRCodeCreate(BaseModel):
     code: str = Field(..., min_length=1, max_length=50)
     item_id: int = Field(..., gt=0)
     item_stock_id: Optional[int] = Field(None, gt=0)
+    qr_type: QrType = "item"
 
 
 class QRCodePrintCreateBody(BaseModel):
     qr_ids: list[str] = Field(..., min_length=1)
     display_codes: list[str] = Field(..., min_length=1)
+    qr_type: QrType = "item"
 
 
 class QRCodeUpdate(BaseModel):
     code: Optional[str] = Field(None, min_length=1, max_length=50)
     item_id: Optional[int] = Field(None, gt=0)
     item_stock_id: Optional[int] = None
+    qr_type: Optional[QrType] = None
 
 
 class QRCodeResponse(BaseModel):
@@ -156,6 +162,7 @@ class QRCodeResponse(BaseModel):
     code: str
     item_id: int
     item_stock_id: Optional[int] = None
+    qr_type: str = "item"
     created_at: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)
@@ -178,6 +185,7 @@ class QRCodeRecentResponse(BaseModel):
     item_sku: Optional[str] = None
     item_name: Optional[str] = None
     item_stock_id: Optional[int] = None
+    qr_type: str = "item"
     created_at: Optional[datetime] = None
     status: QRCodeStatus
 

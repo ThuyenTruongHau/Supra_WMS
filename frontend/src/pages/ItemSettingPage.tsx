@@ -46,7 +46,14 @@ export default function ItemSettingPage() {
   const handleOpenEdit = (record: Item) => {
     setEditingItem(record);
     const detailEntries = record.details
-      ? Object.entries(record.details).map(([key, value]) => ({ key, value: String(value) }))
+      ? Object.entries(record.details).map(([key, value]) => ({
+          key,
+          value: Array.isArray(value)
+            ? value.map(String).join(", ")
+            : typeof value === "object" && value !== null
+              ? JSON.stringify(value)
+              : String(value ?? ""),
+        }))
       : [];
     form.setFieldsValue({
       ...record,
@@ -70,7 +77,10 @@ export default function ItemSettingPage() {
 
     const details = Object.fromEntries(
       (values.detailEntries ?? [])
-        .map(({ key, value }: { key: string, value: string }) => [key.trim(), value.trim()])
+        .map(({ key, value }: { key: string; value: string }) => [
+          key.trim(),
+          value.trim(),
+        ])
         .filter(([key]: [string]) => key.length > 0)
     );
 
@@ -331,7 +341,7 @@ export default function ItemSettingPage() {
                         rules={[{ required: true, message: 'Nhập tên trường' }]}
                         className="mb-0 flex-1"
                       >
-                        <Input placeholder="Tên (vd: color)" />
+                        <Input placeholder="Tên (vd: cavity_number)" />
                       </Form.Item>
                       <Form.Item
                         {...restField}
@@ -339,7 +349,7 @@ export default function ItemSettingPage() {
                         rules={[{ required: true, message: 'Nhập giá trị' }]}
                         className="mb-0 flex-1"
                       >
-                        <Input placeholder="Giá trị (vd: đỏ)" />
+                        <Input placeholder="Giá trị (vd: 1, 2, 3)" />
                       </Form.Item>
                       <MinusCircleOutlined
                         className="text-red-400 cursor-pointer"

@@ -188,6 +188,7 @@ export interface AssignOrGetItemStockRequest {
   unit_id?: number | null;
   lot_number?: string | null;
   assigned_by?: string | null;
+  cavity_number?: string | null;
 }
 
 export interface QrCodePreviewResponse {
@@ -200,6 +201,7 @@ export interface QrCodePreviewResponse {
   unit_id: number;
   unit_name: string;
   lot_number: string;
+  cavity_numbers: string[];
 }
 
 export interface AssignItemStockMetaResponse {
@@ -222,6 +224,7 @@ export interface AssignedItemStock {
   location_id?: number | null;
   location_name?: string | null;
   warehouse_id?: number | null;
+  cavity_number?: string | null;
 }
 
 export type AssignOrGetItemStockResponse =

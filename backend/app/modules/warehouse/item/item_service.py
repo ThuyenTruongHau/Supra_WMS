@@ -51,6 +51,17 @@ logger = get_logger("main")
 NEARLY_OUTDATED_DAYS = 30
 RECENT_QR_CODE_DAYS = 2
 MAX_QR_PRINT_QUANTITY = 50
+ALLOWED_QR_TYPES = frozenset({"item", "transit"})
+DEFAULT_QR_TYPE = "item"
+
+
+def _normalize_qr_type(qr_type: Optional[str]) -> str:
+    normalized = str(qr_type or DEFAULT_QR_TYPE).strip().lower()
+    if normalized not in ALLOWED_QR_TYPES:
+        raise ValueError(
+            f"qr_type must be one of: {', '.join(sorted(ALLOWED_QR_TYPES))}"
+        )
+    return normalized
 
 def _validate_quantity_bounds(min_quantity: int, max_quantity: int) -> None:
     if min_quantity > max_quantity:
@@ -396,6 +407,7 @@ def list_recent_qr_codes_by_item(
             item_sku=item.sku,
             item_name=item.name,
             item_stock_id=row.item_stock_id,
+            qr_type=row.qr_type or "item",
             created_at=row.created_at,
             status=_resolve_qr_code_status(row.created_at, row.item_stock_id, today),
         )
@@ -448,6 +460,7 @@ def list_recent_qr_codes(
             item_sku=item_sku,
             item_name=item_name,
             item_stock_id=row.item_stock_id,
+            qr_type=row.qr_type or "item",
             created_at=row.created_at,
             status=_resolve_qr_code_status(row.created_at, row.item_stock_id, today),
         )
@@ -518,6 +531,7 @@ def create_qr_code(db: Session, body: QRCodeCreate) -> QR_Code:
         code=code,
         item_id=body.item_id,
         item_stock_id=body.item_stock_id,
+        qr_type=_normalize_qr_type(body.qr_type),
     )
     try:
         db.add(qr_code)
@@ -562,6 +576,8 @@ def update_qr_code(
         if existing:
             raise ValueError("QR code already exists")
         qr_code.code = code
+    if "qr_type" in data and data["qr_type"] is not None:
+        qr_code.qr_type = _normalize_qr_type(data["qr_type"])
     try:
         db.commit()
         db.refresh(qr_code)
@@ -614,6 +630,7 @@ def _build_print_payload(
     *,
     mode: str,
     item_id: int,
+    qr_type: str,
 ) -> dict:
     return {
         "mode": mode,
@@ -623,6 +640,7 @@ def _build_print_payload(
         "part_name": item.name,
         "qr_ids": codes,
         "display_codes": display_codes,
+        "qr_type": qr_type,
     }
 
 
@@ -633,10 +651,14 @@ def _render_print_response(payload: dict, quantity: int, codes: list[str]) -> di
         "page_count": math.ceil(quantity / 9),
         "qr_ids": codes,
         "display_codes": payload.get("display_codes", []),
+        "qr_type": payload.get("qr_type", DEFAULT_QR_TYPE),
     }
 
 
-def preview_qr_codes(db: Session, item_id: int, quantity: int) -> dict:
+def preview_qr_codes(
+    db: Session, item_id: int, quantity: int, qr_type: str = DEFAULT_QR_TYPE
+) -> dict:
+    normalized_type = _normalize_qr_type(qr_type)
     item = _validate_qr_print_request(db, item_id, quantity)
     codes, display_codes = _build_qr_code_strings(item, quantity)
     payload = _build_print_payload(
@@ -646,6 +668,7 @@ def preview_qr_codes(db: Session, item_id: int, quantity: int) -> dict:
         display_codes,
         mode="preview",
         item_id=item_id,
+        qr_type=normalized_type,
     )
     return _render_print_response(payload, quantity, codes)
 
@@ -656,7 +679,9 @@ def create_qr_codes(
     quantity: int,
     codes: list[str],
     display_codes: list[str],
+    qr_type: str = DEFAULT_QR_TYPE,
 ) -> dict:
+    normalized_type = _normalize_qr_type(qr_type)
     item = _validate_qr_print_request(db, item_id, quantity)
     normalized = [str(code).strip() for code in codes if str(code).strip()]
     displays = [str(value).strip() for value in display_codes if str(value).strip()]
@@ -672,27 +697,58 @@ def create_qr_codes(
     if existing:
         raise ValueError("QR code already exists")
     for code in normalized:
-        db.add(QR_Code(code=code, item_id=item_id, item_stock_id=None))
+        db.add(
+            QR_Code(
+                code=code,
+                item_id=item_id,
+                item_stock_id=None,
+                qr_type=normalized_type,
+            )
+        )
     db.commit()
     return {
         "codes": normalized,
         "display_codes": displays,
+        "qr_type": normalized_type,
     }
 
 
 generate_qr_codes = create_qr_codes
 
-TEMPLATE_PATH = Path(__file__).resolve().parents[3] / "static" / "templates" / "template_bacviet.html"
+BACVIET_TEMPLATE_PATH = (
+    Path(__file__).resolve().parents[3] / "static" / "templates" / "template_bacviet.html"
+)
+TRANSFER_TEMPLATE_PATH = (
+    Path(__file__).resolve().parents[3]
+    / "static"
+    / "templates"
+    / "template_phieu_di_chuyen.html"
+)
+# backward-compatible alias
+TEMPLATE_PATH = BACVIET_TEMPLATE_PATH
+
 
 def render_qr_codes(payload: dict) -> str:
-    template = TEMPLATE_PATH.read_text(encoding="utf-8")
+    qr_type = _normalize_qr_type(payload.get("qr_type"))
+    if qr_type == "transit":
+        template_path = TRANSFER_TEMPLATE_PATH
+        data_key = "__TRANSFER_PRINT_DATA__"
+    else:
+        template_path = BACVIET_TEMPLATE_PATH
+        data_key = "__BACVIET_PRINT_DATA__"
+
+    template = template_path.read_text(encoding="utf-8")
     script = (
         "<script>"
-        f"window.__BACVIET_PRINT_DATA__ = {json.dumps(payload, ensure_ascii=False)};"
+        f"window.{data_key} = {json.dumps(payload, ensure_ascii=False)};"
         "</script>\n"
     )
 
-    return template.replace("  <script>\n    (function () {", f"{script}  <script>\n    (function () {{", 1)
+    return template.replace(
+        "  <script>\n    (function () {",
+        f"{script}  <script>\n    (function () {{",
+        1,
+    )
 
 
 async def start_item_masan_import(

@@ -2,6 +2,7 @@
 
 from sqlalchemy import (
     CheckConstraint,
+    UniqueConstraint,
     Column,
     DateTime,
     ForeignKey,
@@ -70,6 +71,11 @@ class ItemStock(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
+    qc_user = Column(String(50), nullable=True, index=True)
+    manufacturing_user = Column(String(50), nullable=True, index=True)
+    packing_user = Column(String(50), nullable=True, index=True)
+    cavity_number = Column(String(50), nullable=True, index=True)
+
     item = relationship("Item", lazy="joined")
     unit = relationship("Unit", foreign_keys=[unit_id], lazy="joined")
     location = relationship(
@@ -100,4 +106,53 @@ class ItemStock(Base):
         # ),
     )
 
+
+class ItemStockRelation(Base):
+    __tablename__ = "item_stock_relation"
+
+    id = Column(Integer, primary_key=True, index=True)
+    parent_stock_id = Column(
+        Integer,
+        ForeignKey("item_stock.id"),
+        nullable=False,
+        index=True
+    )
+
+    child_stock_id = Column(
+        Integer,
+        ForeignKey("item_stock.id"),
+        nullable=False,
+        index=True
+    )
+
+    relation_type = Column(
+        String(50),
+        nullable=False,
+        index=True
+    )
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    parent_stock = relationship(
+        "ItemStock",
+        foreign_keys=[parent_stock_id]
+    )
+
+    child_stock = relationship(
+        "ItemStock",
+        foreign_keys=[child_stock_id]
+    )
+
+    __table_args__ = (
+        UniqueConstraint(
+            "parent_stock_id",
+            "child_stock_id",
+            "relation_type",
+            name="uq_stock_relation"
+        ),
+        CheckConstraint(
+            "parent_stock_id <> child_stock_id",
+            name="chk_no_self_reference"
+        ),
+    )
 

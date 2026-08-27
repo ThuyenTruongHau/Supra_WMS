@@ -97,14 +97,18 @@ export default function LocationQrPrintModal({
     }
   };
 
-  const handlePrint = () => {
+  const handlePrint = async () => {
     if (!previewHtml) return;
-    const printed = printBacvietHtml(previewHtml);
-    if (!printed) {
-      message.warning('Không thể mở hộp thoại in');
-      return;
+    try {
+      const printed = await printBacvietHtml(previewHtml);
+      if (!printed) {
+        message.warning('Không thể mở hộp thoại in');
+        return;
+      }
+      onClose();
+    } catch {
+      message.error('Không thể chuẩn bị bản in (ảnh QR chưa tải xong)');
     }
-    onClose();
   };
 
   const handleBackToSelect = () => {

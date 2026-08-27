@@ -4,17 +4,25 @@ import {
   Button,
   Input,
   Modal,
+  Select,
   Space,
   message,
 } from "@/components/ui";
 import { SkuSearchSelect } from "@/components/shared/SkuSearchSelect";
 import { useCreateQrCodes, usePreviewQrCodes } from "@/hooks/useItem";
 import type { ApiErrorResponse } from "@/types/apiError";
+import type { QrPrintType } from "@/types/item";
+import { translateQrType } from "@/i18n/qrTypeLabels.vi";
 import { printBacvietHtml } from "@/utils/printBacvietHtml";
 
 const SKU_BROWSE_PAGE_SIZE = 20;
 const MAX_PRINT_QUANTITY = 50;
 const LABELS_PER_PAGE = 9;
+
+const QR_TYPE_OPTIONS: { value: QrPrintType; label: string }[] = [
+  { value: "item", label: translateQrType("item") },
+  { value: "transit", label: translateQrType("transit") },
+];
 
 type QrCodeGeneratePrintModalProps = {
   open: boolean;
@@ -38,6 +46,7 @@ export default function QrCodeGeneratePrintModal({
 }: QrCodeGeneratePrintModalProps) {
   const [selectedSku, setSelectedSku] = useState<string | undefined>();
   const [selectedItemId, setSelectedItemId] = useState<number | null>(null);
+  const [qrType, setQrType] = useState<QrPrintType>("item");
   const [quantity, setQuantity] = useState(String(LABELS_PER_PAGE));
   const [previewHtml, setPreviewHtml] = useState<string | null>(null);
   const previewFrameRef = useRef<HTMLIFrameElement>(null);
@@ -49,6 +58,7 @@ export default function QrCodeGeneratePrintModal({
     if (open) {
       setSelectedSku(defaultSku);
       setSelectedItemId(defaultItemId);
+      setQrType("item");
       setQuantity(String(LABELS_PER_PAGE));
       setPreviewHtml(null);
     }
@@ -74,6 +84,7 @@ export default function QrCodeGeneratePrintModal({
       const result = await previewQrCodes.mutateAsync({
         itemId: selectedItemId,
         quantity: parsedQuantity,
+        qrType,
       });
       setPreviewHtml(result.html);
     } catch (err) {
@@ -87,6 +98,7 @@ export default function QrCodeGeneratePrintModal({
       printQuantity: number,
       qrIds: string[],
       displayCodes: string[],
+      printQrType: QrPrintType,
     ) => {
       if (createQrCodes.isPending) return;
       if (!previewHtml) {
@@ -103,8 +115,9 @@ export default function QrCodeGeneratePrintModal({
           quantity: printQuantity,
           qrIds,
           displayCodes,
+          qrType: printQrType,
         });
-        const printed = printBacvietHtml(previewHtml);
+        const printed = await printBacvietHtml(previewHtml);
         if (!printed) {
           message.warning("Không thể mở hộp thoại in");
           return;
@@ -131,8 +144,16 @@ export default function QrCodeGeneratePrintModal({
       const displayCodes = Array.isArray(event.data.display_codes)
         ? event.data.display_codes.map(String)
         : [];
+      const printQrType: QrPrintType =
+        event.data.qr_type === "transit" ? "transit" : "item";
       if (!itemId || !printQuantity) return;
-      void handlePrintRequest(itemId, printQuantity, qrIds, displayCodes);
+      void handlePrintRequest(
+        itemId,
+        printQuantity,
+        qrIds,
+        displayCodes,
+        printQrType,
+      );
     };
 
     window.addEventListener("message", onMessage);
@@ -140,6 +161,7 @@ export default function QrCodeGeneratePrintModal({
   }, [open, handlePrintRequest]);
 
   const isPreviewStep = previewHtml != null;
+  const modalTitle = `In ${translateQrType(qrType).toLowerCase()}`;
 
   return (
     <Modal
@@ -147,7 +169,7 @@ export default function QrCodeGeneratePrintModal({
       onCancel={onClose}
       width={isPreviewStep ? 820 : 560}
       destroyOnHidden
-      title="In phiếu sản phẩm"
+      title={modalTitle}
       className="[&_.ant-modal-body]:!py-4"
       footer={
         <Space>
@@ -194,6 +216,21 @@ export default function QrCodeGeneratePrintModal({
           </div>
 
           <div>
+            <p className="mb-2 text-sm font-medium text-slate-600">Loại phiếu</p>
+            <Select
+              className="w-full"
+              value={qrType}
+              options={QR_TYPE_OPTIONS}
+              onChange={(value) => setQrType(value as QrPrintType)}
+            />
+            <p className="mt-1 text-xs text-slate-500">
+              {qrType === "transit"
+                ? "Dùng mẫu phiếu di chuyển (transit)."
+                : "Dùng mẫu phiếu sản phẩm Bacviet (item)."}
+            </p>
+          </div>
+
+          <div>
             <p className="mb-2 text-sm font-medium text-slate-600">Số lượng in</p>
             <Input
               type="number"
@@ -204,7 +241,8 @@ export default function QrCodeGeneratePrintModal({
               placeholder="Nhập số phiếu cần in"
             />
             <p className="mt-1 text-xs text-slate-500">
-              {LABELS_PER_PAGE} phiếu / trang A4. Tối đa {MAX_PRINT_QUANTITY} phiếu / lần.
+              {LABELS_PER_PAGE} phiếu / trang A4. Tối đa {MAX_PRINT_QUANTITY} phiếu /
+              lần.
             </p>
           </div>
         </div>

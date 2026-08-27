@@ -24,6 +24,8 @@ from app.modules.warehouse.outbound_order.outbound_order_schema import (
     OutboundRobotTaskCreate,
     OutboundConfirmQrRequest,
     OutboundConfirmQrResponse,
+    OutboundConfirmNoQrRequest,
+    OutboundConfirmNoQrResponse,
 )
 from app.modules.warehouse.outbound_order import outbound_order_service
 from app.modules.warehouse.outbound_order.outbound_celery_task import (
@@ -276,6 +278,30 @@ def confirm_outbound_order_qr(
         outbound_order_id=order_id,
         status="completed",
         message="Outbound order confirmed by QR",
+        overall=int(settle.get("overall", 0) if settle else 0),
+        return_quantity=int(settle.get("return", 0) if settle else 0),
+    )
+
+
+@router.post(
+    "/outbound-orders/confirm-no-qr",
+    response_model=OutboundConfirmNoQrResponse,
+    dependencies=[Depends(_OUTBOUND_UPDATE)],
+)
+def confirm_outbound_order_no_qr(
+    body: OutboundConfirmNoQrRequest,
+    db: DbSession,
+):
+    try:
+        settle = outbound_order_service.confirm_no_qr(db, body.order_id)
+    except ValueError as e:
+        msg = str(e)
+        code = 404 if "not found" in msg.lower() else 400
+        raise HTTPException(status_code=code, detail=msg) from e
+    return OutboundConfirmNoQrResponse(
+        order_id=body.order_id,
+        status="completed",
+        message="Outbound order confirmed without QR",
         overall=int(settle.get("overall", 0) if settle else 0),
         return_quantity=int(settle.get("return", 0) if settle else 0),
     )

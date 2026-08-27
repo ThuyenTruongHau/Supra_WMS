@@ -972,8 +972,8 @@ def _settle_outbound_stock(
     try:
         db.commit()
         return {
-            "overall": int(overall),
-            "return": int(stock.quantity),
+            "overall": overall,
+            "return": stock.quantity
         }
     except Exception:
         db.rollback()
@@ -1008,3 +1008,22 @@ def confirm_outbound_order(
 
     result = _settle_outbound_stock(db, allocations)
     return result
+
+def confirm_no_qr(db: Session, order_id: str) -> dict[str, int] | None:
+    robot_task = db.query(RobotTask).filter(RobotTask.order_id == order_id).first()
+    if not robot_task:
+        raise ValueError("Robot task not found")
+
+    allocations = (
+        db.query(OutboundOrderAllocation)
+        .filter(
+            OutboundOrderAllocation.robot_task_id == robot_task.id,
+            OutboundOrderAllocation.status == "pre_completed",
+            OutboundOrderAllocation.allocation_type == "outbound",
+        )
+        .all()
+    )
+    if not allocations:
+        raise ValueError("No pre_completed allocations to confirm")
+
+    return _settle_outbound_stock(db, allocations)
