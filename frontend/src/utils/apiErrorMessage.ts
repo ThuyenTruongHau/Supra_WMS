@@ -1,6 +1,10 @@
 import { isAxiosError } from "axios";
 import type { ApiErrorResponse, ValidationErrorItem } from "@/types/apiError";
-import { translateApiMessage } from "@/i18n/apiMessages.vi";
+import {
+  isQrTypeLocationConflictMessage,
+  isQrTypeSuggestionBlockedMessage,
+  translateApiMessage,
+} from "@/i18n/apiMessages.vi";
 
 const VALUE_ERROR_PREFIX = /^Value error,\s*/i;
 const STATUS_CODE_MESSAGE = /^Request failed with status code \d+$/i;
@@ -110,4 +114,20 @@ export function getApiErrorMessage(
   }
 
   return fallback;
+}
+
+function extractRawDetailMessage(err: unknown): string | null {
+  if (!isAxiosError<ApiErrorResponse>(err)) return null;
+  const detail = err.response?.data?.detail;
+  return typeof detail === "string" && detail.trim() ? detail.trim() : null;
+}
+
+export function isQrTypeLocationConflictError(err: unknown): boolean {
+  const raw = extractRawDetailMessage(err);
+  return raw ? isQrTypeLocationConflictMessage(raw) : false;
+}
+
+export function isQrTypeSuggestionBlockedError(err: unknown): boolean {
+  const raw = extractRawDetailMessage(err);
+  return raw ? isQrTypeSuggestionBlockedMessage(raw) : false;
 }

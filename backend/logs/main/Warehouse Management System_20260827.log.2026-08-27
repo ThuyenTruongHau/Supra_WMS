@@ -1,0 +1,172 @@
+2026-08-27 08:42:42,853 - main - INFO - Starting app
+2026-08-27 08:42:42,897 - main - INFO - Redis connected: redis://10.73.231.5:6379/0 (prefix=wms)
+2026-08-27 08:42:42,898 - main - INFO - Websocket manager started
+2026-08-27 08:46:48,435 - main - INFO - Stopping app
+2026-08-27 08:46:48,436 - main - INFO - Websocket manager stopped
+2026-08-27 08:47:43,190 - main - INFO - Starting app
+2026-08-27 08:47:43,235 - main - INFO - Redis connected: redis://10.73.231.5:6379/0 (prefix=wms)
+2026-08-27 08:47:43,236 - main - INFO - Websocket manager started
+2026-08-27 08:47:46,177 - main - INFO - Stopping app
+2026-08-27 08:47:46,178 - main - INFO - Websocket manager stopped
+2026-08-27 08:48:27,999 - main - INFO - Starting app
+2026-08-27 08:48:28,036 - main - INFO - Redis connected: redis://10.73.231.5:6379/0 (prefix=wms)
+2026-08-27 08:48:28,037 - main - INFO - Websocket manager started
+2026-08-27 08:49:56,897 - main - INFO - Stopping app
+2026-08-27 08:49:56,898 - main - INFO - Websocket manager stopped
+2026-08-27 08:50:02,257 - main - INFO - Starting app
+2026-08-27 08:50:02,283 - main - INFO - Redis connected: redis://10.73.231.5:6379/0 (prefix=wms)
+2026-08-27 08:50:02,284 - main - INFO - Websocket manager started
+2026-08-27 08:57:24,926 - main - INFO - Stopping app
+2026-08-27 08:57:24,926 - main - INFO - Websocket manager stopped
+2026-08-27 08:57:31,935 - main - INFO - Starting app
+2026-08-27 08:57:31,973 - main - INFO - Redis connected: redis://10.73.231.5:6379/0 (prefix=wms)
+2026-08-27 08:57:31,974 - main - INFO - Websocket manager started
+2026-08-27 09:02:22,876 - main - INFO - Stopping app
+2026-08-27 09:02:22,878 - main - INFO - Websocket manager stopped
+2026-08-27 09:04:01,209 - main - INFO - Starting app
+2026-08-27 09:04:01,244 - main - INFO - Redis connected: redis://10.73.231.5:6379/0 (prefix=wms)
+2026-08-27 09:04:01,244 - main - INFO - Websocket manager started
+2026-08-27 09:20:53,492 - main - INFO - Stopping app
+2026-08-27 09:20:53,493 - main - INFO - Websocket manager stopped
+2026-08-27 09:20:59,205 - main - INFO - Starting app
+2026-08-27 09:20:59,231 - main - INFO - Redis connected: redis://10.73.231.5:6379/0 (prefix=wms)
+2026-08-27 09:20:59,232 - main - INFO - Websocket manager started
+2026-08-27 09:21:40,856 - main - INFO - Stopping app
+2026-08-27 09:21:40,898 - main - INFO - Websocket manager stopped
+2026-08-27 09:21:46,035 - main - INFO - Starting app
+2026-08-27 09:21:46,065 - main - INFO - Redis connected: redis://10.73.231.5:6379/0 (prefix=wms)
+2026-08-27 09:21:46,066 - main - INFO - Websocket manager started
+2026-08-27 09:39:19,314 - main - INFO - Stopping app
+2026-08-27 09:39:19,314 - main - INFO - Websocket manager stopped
+2026-08-27 09:39:25,228 - main - INFO - Starting app
+2026-08-27 09:39:25,267 - main - INFO - Redis connected: redis://10.73.231.5:6379/0 (prefix=wms)
+2026-08-27 09:39:25,269 - main - INFO - Websocket manager started
+2026-08-27 09:39:30,863 - main - INFO - Stopping app
+2026-08-27 09:39:30,866 - main - INFO - Websocket manager stopped
+2026-08-27 09:39:36,350 - main - INFO - Starting app
+2026-08-27 09:39:36,382 - main - INFO - Redis connected: redis://10.73.231.5:6379/0 (prefix=wms)
+2026-08-27 09:39:36,383 - main - INFO - Websocket manager started
+2026-08-27 09:39:41,758 - main - INFO - Starting app
+2026-08-27 09:39:41,797 - main - INFO - Redis connected: redis://10.73.231.5:6379/0 (prefix=wms)
+2026-08-27 09:39:41,800 - main - INFO - Websocket manager started
+2026-08-27 09:54:58,854 - main - INFO - Stopping app
+2026-08-27 09:54:58,857 - main - INFO - Websocket manager stopped
+2026-08-27 09:55:04,568 - main - INFO - Starting app
+2026-08-27 09:55:04,613 - main - INFO - Redis connected: redis://10.73.231.5:6379/0 (prefix=wms)
+2026-08-27 09:55:04,614 - main - INFO - Websocket manager started
+2026-08-27 10:06:47,186 - main - INFO - Getting QR code by code: 4506.325-20260827-26958589
+2026-08-27 10:06:57,865 - main - INFO - Getting QR code by code: 4506.325-20260827-26958589
+2026-08-27 10:13:46,357 - main - INFO - Getting QR code by code: 4506.325-20260827-26958589
+2026-08-27 10:39:21,720 - main - INFO - Stopping app
+2026-08-27 10:39:21,721 - main - INFO - Websocket manager stopped
+2026-08-27 10:40:30,256 - main - INFO - Starting app
+2026-08-27 10:40:30,286 - main - INFO - Redis connected: redis://10.73.231.5:6379/0 (prefix=wms)
+2026-08-27 10:40:30,287 - main - INFO - Websocket manager started
+2026-08-27 10:47:28,623 - main - INFO - Stopping app
+2026-08-27 10:47:28,624 - main - INFO - Websocket manager stopped
+2026-08-27 10:47:33,714 - main - INFO - Starting app
+2026-08-27 10:47:33,748 - main - INFO - Redis connected: redis://10.73.231.5:6379/0 (prefix=wms)
+2026-08-27 10:47:33,749 - main - INFO - Websocket manager started
+2026-08-27 10:48:24,020 - main - INFO - Stopping app
+2026-08-27 10:48:24,021 - main - INFO - Websocket manager stopped
+2026-08-27 10:48:29,435 - main - INFO - Starting app
+2026-08-27 10:48:29,452 - main - INFO - Redis connected: redis://10.73.231.5:6379/0 (prefix=wms)
+2026-08-27 10:48:29,454 - main - INFO - Websocket manager started
+2026-08-27 10:51:29,520 - main - INFO - Stopping app
+2026-08-27 10:51:29,521 - main - INFO - Websocket manager stopped
+2026-08-27 10:51:34,915 - main - INFO - Starting app
+2026-08-27 10:51:34,950 - main - INFO - Redis connected: redis://10.73.231.5:6379/0 (prefix=wms)
+2026-08-27 10:51:34,951 - main - INFO - Websocket manager started
+2026-08-27 10:52:05,941 - main - INFO - Stopping app
+2026-08-27 10:52:05,943 - main - INFO - Websocket manager stopped
+2026-08-27 10:52:11,431 - main - INFO - Starting app
+2026-08-27 10:52:11,476 - main - INFO - Redis connected: redis://10.73.231.5:6379/0 (prefix=wms)
+2026-08-27 10:52:11,477 - main - INFO - Websocket manager started
+2026-08-27 10:59:46,733 - main - INFO - Getting QR code by code: 4506.325-20260827-42015597
+2026-08-27 10:59:59,022 - main - INFO - Getting QR code by code: 4506.325-20260827-26958589
+2026-08-27 11:01:41,994 - main - INFO - Stopping app
+2026-08-27 11:01:41,996 - main - INFO - Websocket manager stopped
+2026-08-27 11:01:47,117 - main - INFO - Starting app
+2026-08-27 11:01:47,141 - main - INFO - Redis connected: redis://10.73.231.5:6379/0 (prefix=wms)
+2026-08-27 11:01:47,142 - main - INFO - Websocket manager started
+2026-08-27 11:06:19,960 - main - INFO - Stopping app
+2026-08-27 11:06:19,961 - main - INFO - Websocket manager stopped
+2026-08-27 11:06:25,226 - main - INFO - Starting app
+2026-08-27 11:06:25,244 - main - INFO - Redis connected: redis://10.73.231.5:6379/0 (prefix=wms)
+2026-08-27 11:06:25,244 - main - INFO - Websocket manager started
+2026-08-27 11:06:33,741 - main - INFO - Getting QR code by code: 4506.325-20260827-07249792
+2026-08-27 11:06:44,896 - main - INFO - Getting QR code by code: 4506.325-20260827-42015597
+2026-08-27 11:14:34,897 - main - INFO - Stopping app
+2026-08-27 11:14:34,899 - main - INFO - Websocket manager stopped
+2026-08-27 11:14:42,033 - main - INFO - Starting app
+2026-08-27 11:14:42,067 - main - INFO - Redis connected: redis://10.73.231.5:6379/0 (prefix=wms)
+2026-08-27 11:14:42,068 - main - INFO - Websocket manager started
+2026-08-27 11:15:42,035 - main - INFO - Stopping app
+2026-08-27 11:15:42,040 - main - INFO - Websocket manager stopped
+2026-08-27 11:15:47,538 - main - INFO - Starting app
+2026-08-27 11:15:47,556 - main - INFO - Redis connected: redis://10.73.231.5:6379/0 (prefix=wms)
+2026-08-27 11:15:47,556 - main - INFO - Websocket manager started
+2026-08-27 11:17:57,793 - main - INFO - Getting QR code by code: 4506.325-20260827-42015597
+2026-08-27 11:18:23,395 - main - INFO - Getting QR code by code: 4506.325-20260827-42015597
+2026-08-27 11:20:00,198 - main - INFO - Getting QR code by code: 4506.325-20260827-42015597
+2026-08-27 11:20:50,431 - main - INFO - Starting app
+2026-08-27 11:20:50,464 - main - INFO - Redis connected: redis://10.73.231.5:6379/0 (prefix=wms)
+2026-08-27 11:20:50,465 - main - INFO - Websocket manager started
+2026-08-27 11:21:05,005 - main - INFO - Getting QR code by code: 4506.325-20260827-42015597
+2026-08-27 11:25:14,076 - main - INFO - Getting QR code by code: 4506.325-20260827-42015597
+2026-08-27 11:27:58,750 - main - INFO - Stopping app
+2026-08-27 11:27:58,751 - main - INFO - Websocket manager stopped
+2026-08-27 11:28:04,242 - main - INFO - Starting app
+2026-08-27 11:28:04,271 - main - INFO - Redis connected: redis://10.73.231.5:6379/0 (prefix=wms)
+2026-08-27 11:28:04,272 - main - INFO - Websocket manager started
+2026-08-27 11:30:29,790 - main - INFO - Getting QR code by code: 4506.325-20260827-42015597
+2026-08-27 11:31:45,754 - main - INFO - Stopping app
+2026-08-27 11:31:45,755 - main - INFO - Websocket manager stopped
+2026-08-27 11:31:52,622 - main - INFO - Starting app
+2026-08-27 11:31:52,655 - main - INFO - Redis connected: redis://10.73.231.5:6379/0 (prefix=wms)
+2026-08-27 11:31:52,656 - main - INFO - Websocket manager started
+2026-08-27 11:32:27,131 - main - INFO - Getting QR code by code: 4506.325-20260827-42015597
+2026-08-27 11:33:11,904 - main - INFO - Getting QR code by code: 4506.325-20260827-42015597
+2026-08-27 11:33:18,444 - main - INFO - Getting QR code by code: 4506.325-20260827-42015597
+2026-08-27 11:40:51,331 - main - INFO - Getting QR code by code: 4506.325-20260827-07249792
+2026-08-27 11:41:01,414 - main - INFO - Getting QR code by code: 4506.325-20260827-42015597
+2026-08-27 11:41:15,620 - main - INFO - Getting QR code by code: 4506.325-20260827-42015597
+2026-08-27 11:49:28,902 - main - INFO - inbound.caller_order order_code=IN-20260827-114723
+2026-08-27 11:49:31,323 - main - INFO - ICS addTask response: {'code': 1000, 'data': 'TDS_Inbound_755d87f0', 'desc': '请求成功'}
+2026-08-27 11:49:32,042 - main - INFO - Processing task status for order_id=TDS_Inbound_755d87f0
+2026-08-27 11:50:11,046 - main - INFO - Processing task status for order_id=TDS_Inbound_755d87f0
+2026-08-27 11:50:11,411 - main - INFO - Processing task status for order_id=TDS_Inbound_755d87f0
+2026-08-27 11:50:18,835 - main - INFO - Processing task status for order_id=TDS_Inbound_755d87f0
+2026-08-27 11:50:18,969 - main - INFO - Processing task status for order_id=TDS_Inbound_755d87f0
+2026-08-27 11:51:41,996 - main - INFO - Processing task status for order_id=TDS_Inbound_755d87f0
+2026-08-27 11:51:42,247 - main - INFO - Processing task status for order_id=TDS_Inbound_755d87f0
+2026-08-27 11:51:48,852 - main - INFO - Processing task status for order_id=TDS_Inbound_755d87f0
+2026-08-27 11:51:49,079 - main - INFO - Receive completed for TDS_Inbound_755d87f0
+2026-08-27 13:55:13,352 - main - INFO - Stopping app
+2026-08-27 13:55:13,354 - main - INFO - Websocket manager stopped
+2026-08-27 13:55:20,228 - main - INFO - Starting app
+2026-08-27 13:55:20,265 - main - INFO - Redis connected: redis://10.73.231.5:6379/0 (prefix=wms)
+2026-08-27 13:55:20,266 - main - INFO - Websocket manager started
+2026-08-27 13:55:44,338 - main - INFO - Getting QR code by code: 10000028
+2026-08-27 14:53:01,716 - main - INFO - inbound.caller_order order_code=IN-20260827-145235
+2026-08-27 14:53:03,881 - main - INFO - ICS addTask response: {'code': 1000, 'data': 'TDS_Inbound_17527991', 'desc': '请求成功'}
+2026-08-27 14:54:43,149 - main - INFO - Processing task status for order_id=TDS_Inbound_17527991
+2026-08-27 14:55:22,414 - main - INFO - Processing task status for order_id=TDS_Inbound_17527991
+2026-08-27 14:55:22,798 - main - INFO - Processing task status for order_id=TDS_Inbound_17527991
+2026-08-27 14:55:30,439 - main - INFO - Processing task status for order_id=TDS_Inbound_17527991
+2026-08-27 14:55:30,527 - main - INFO - Processing task status for order_id=TDS_Inbound_17527991
+2026-08-27 14:56:51,157 - main - INFO - Processing task status for order_id=TDS_Inbound_17527991
+2026-08-27 14:56:51,424 - main - INFO - Processing task status for order_id=TDS_Inbound_17527991
+2026-08-27 14:56:58,002 - main - INFO - Processing task status for order_id=TDS_Inbound_17527991
+2026-08-27 14:56:58,269 - main - INFO - Receive completed for TDS_Inbound_17527991
+2026-08-28 10:19:47,374 - main - INFO - inbound.caller_order order_code=IN-20260828-101945
+2026-08-28 10:19:47,982 - main - INFO - ICS addTask response: {'code': 1000, 'data': 'TDS_Inbound_7835a5e9', 'desc': '请求成功'}
+2026-08-28 10:19:48,932 - main - INFO - Processing task status for order_id=TDS_Inbound_7835a5e9
+2026-08-28 10:20:35,163 - main - INFO - Processing task status for order_id=TDS_Inbound_7835a5e9
+2026-08-28 10:20:35,536 - main - INFO - Processing task status for order_id=TDS_Inbound_7835a5e9
+2026-08-28 10:20:52,205 - main - INFO - Processing task status for order_id=TDS_Inbound_7835a5e9
+2026-08-28 10:20:52,332 - main - INFO - Processing task status for order_id=TDS_Inbound_7835a5e9
+2026-08-28 10:22:10,903 - main - INFO - Processing task status for order_id=TDS_Inbound_7835a5e9
+2026-08-28 10:22:11,192 - main - INFO - Processing task status for order_id=TDS_Inbound_7835a5e9
+2026-08-28 10:22:17,763 - main - INFO - Processing task status for order_id=TDS_Inbound_7835a5e9
+2026-08-28 10:22:18,017 - main - INFO - Receive completed for TDS_Inbound_7835a5e9

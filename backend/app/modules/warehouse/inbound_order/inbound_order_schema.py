@@ -78,8 +78,10 @@ class AssignOrGetItemStockRequest(BaseModel):
     quantity: Optional[int] = Field(None, gt=0)
     unit_id: Optional[int] = Field(None, gt=0)
     lot_number: Optional[str] = Field(None, max_length=50)
-    assigned_by: Optional[str] = Field(None, max_length=100)
     cavity_number: Optional[str] = Field(None, max_length=50)
+    manufacturing_user: Optional[str] = Field(None, max_length=100)
+    qc_user: Optional[str] = Field(None, max_length=100)
+    packing_user: Optional[str] = Field(None, max_length=100)
 
     @model_validator(mode="after")
     def require_fields_when_assign(self) -> "AssignOrGetItemStockRequest":
@@ -103,6 +105,10 @@ class QrCodePreviewResponse(BaseModel):
     unit_name: str
     lot_number: str
     cavity_numbers: list[str] = Field(default_factory=list)
+    cavity_number: Optional[str] = None
+    manufacturing_user: Optional[str] = None
+    qc_user: Optional[str] = None
+    packing_user: Optional[str] = None
 
 
 class AssignItemStockMetaResponse(BaseModel):
@@ -115,7 +121,6 @@ class AssignedItemStockResponse(BaseModel):
     code: str
     lot_number: Optional[str] = None
     lot_number_to: Optional[str] = None
-    assigned_by: Optional[str] = Field(None, max_length=100)
     unit_id: int
     unit_name: str
     quantity: int
@@ -125,7 +130,11 @@ class AssignedItemStockResponse(BaseModel):
     location_id: Optional[int] = None
     location_name: Optional[str] = None
     warehouse_id: Optional[int] = None
+    qr_type: Optional[str] = None
     cavity_number: Optional[str] = None
+    manufacturing_user: Optional[str] = None
+    qc_user: Optional[str] = None
+    packing_user: Optional[str] = None
 
 class InboundOrderAllocationCreate(BaseModel):
     item_id: int = Field(..., gt=0)
@@ -317,3 +326,21 @@ class InboundCallerResponse(BaseModel):
     order: InboundOrderResponse
     line_items: list[InboundExecuteDetailResult] = Field(default_factory=list)
     robot_tasks: list[RobotTaskResponse] = Field(default_factory=list)
+
+
+class RelocateAssignedStockRequest(BaseModel):
+    from_location_code: str = Field(..., min_length=1, max_length=50)
+    to_location_code: str = Field(..., min_length=1, max_length=50)
+
+    @model_validator(mode="after")
+    def validate_distinct_locations(self) -> "RelocateAssignedStockRequest":
+        if self.from_location_code.strip() == self.to_location_code.strip():
+            raise ValueError("from_location_code and to_location_code must be different")
+        return self
+
+
+class RelocateAssignedStockResponse(BaseModel):
+    moved: int
+    from_location_code: str
+    to_location_code: str
+    message: str = "Assigned stock cache relocated"

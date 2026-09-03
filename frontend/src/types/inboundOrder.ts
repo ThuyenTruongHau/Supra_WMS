@@ -187,8 +187,10 @@ export interface AssignOrGetItemStockRequest {
   quantity?: number | null;
   unit_id?: number | null;
   lot_number?: string | null;
-  assigned_by?: string | null;
   cavity_number?: string | null;
+  manufacturing_user?: string | null;
+  qc_user?: string | null;
+  packing_user?: string | null;
 }
 
 export interface QrCodePreviewResponse {
@@ -202,6 +204,12 @@ export interface QrCodePreviewResponse {
   unit_name: string;
   lot_number: string;
   cavity_numbers: string[];
+  cavity_number?: string | null;
+  qr_type?: string | null;
+  /** Present (even as "") => show field on FE */
+  manufacturing_user?: string | null;
+  qc_user?: string | null;
+  packing_user?: string | null;
 }
 
 export interface AssignItemStockMetaResponse {
@@ -214,7 +222,6 @@ export interface AssignedItemStock {
   code: string;
   lot_number?: string | null;
   lot_number_to?: string | null;
-  assigned_by?: string | null;
   unit_id: number;
   unit_name: string;
   quantity: number;
@@ -224,7 +231,11 @@ export interface AssignedItemStock {
   location_id?: number | null;
   location_name?: string | null;
   warehouse_id?: number | null;
+  qr_type?: string | null;
   cavity_number?: string | null;
+  manufacturing_user?: string | null;
+  qc_user?: string | null;
+  packing_user?: string | null;
 }
 
 export type AssignOrGetItemStockResponse =

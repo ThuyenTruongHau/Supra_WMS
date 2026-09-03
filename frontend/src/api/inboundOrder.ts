@@ -38,10 +38,12 @@ export const getInboundOrderDetailsApi = async (
 
 export const suggestInboundAllocationApi = async (
   body: InboundSuggestAllocationRequest,
+  qrType: string,
 ): Promise<InboundSuggestAllocationResponse> => {
   const { data } = await axiosInstance.post<InboundSuggestAllocationResponse>(
     `${BASE}/suggest-allocation`,
     body,
+    { params: { qr_type: qrType } },
   );
   return data;
 };

@@ -2,7 +2,15 @@
  * Bản dịch message lỗi API (tiếng Anh từ backend) → tiếng Việt trên UI.
  * Key phải khớp prefix/câu backend trả về.
  */
+import { translateQrType } from "@/i18n/qrTypeLabels.vi";
+
 const CALLER_PREFIX = /^Error calling inbound order:\s*/i;
+
+const QR_TYPE_LOCATION_CONFLICT =
+  /^Vị trí đã có QR loại '(\w+)', không thể gán QR loại '(\w+)'$/;
+
+const QR_TYPE_SUGGESTION_BLOCKED =
+  /^(\w+) can't get suggestion for allocation$/;
 
 export const API_MESSAGES_VI: Record<string, string> = {
   "Warehouse not found": "Không tìm thấy kho",
@@ -85,9 +93,41 @@ function applyDictionary(message: string): string {
   return message;
 }
 
+function translateQrTypeLocationConflict(message: string): string | null {
+  const match = message.match(QR_TYPE_LOCATION_CONFLICT);
+  if (!match) return null;
+  const [, existingType, incomingType] = match;
+  return (
+    `Vị trí này đang có ${translateQrType(existingType)}. ` +
+    `Không thể gán ${translateQrType(incomingType)} vào cùng vị trí.`
+  );
+}
+
+function translateQrTypeSuggestionBlocked(message: string): string | null {
+  const match = message.match(QR_TYPE_SUGGESTION_BLOCKED);
+  if (!match) return null;
+  const [, qrType] = match;
+  return (
+    `${translateQrType(qrType)} không được gợi ý cấp vào kho. ` +
+    "Vui lòng thử cách khác."
+  );
+}
+
+export function isQrTypeLocationConflictMessage(message: string): boolean {
+  return QR_TYPE_LOCATION_CONFLICT.test(message.trim());
+}
+
+export function isQrTypeSuggestionBlockedMessage(message: string): boolean {
+  return QR_TYPE_SUGGESTION_BLOCKED.test(message.trim());
+}
+
 export function translateApiMessage(message: string): string {
   const trimmed = message.trim();
   if (!trimmed) return trimmed;
   const inner = trimmed.replace(CALLER_PREFIX, "").trim();
+  const qrConflict = translateQrTypeLocationConflict(inner || trimmed);
+  if (qrConflict) return qrConflict;
+  const qrSuggestBlocked = translateQrTypeSuggestionBlocked(inner || trimmed);
+  if (qrSuggestBlocked) return qrSuggestBlocked;
   return applyDictionary(inner || trimmed);
 }

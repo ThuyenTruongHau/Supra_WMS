@@ -44,8 +44,13 @@ export const useGetInboundOrderDetails = (orderCode: string | undefined) => {
 
 export const useSuggestInboundAllocation = () => {
   return useMutation({
-    mutationFn: (body: InboundSuggestAllocationRequest) =>
-      suggestInboundAllocationApi(body),
+    mutationFn: ({
+      body,
+      qrType,
+    }: {
+      body: InboundSuggestAllocationRequest;
+      qrType: string;
+    }) => suggestInboundAllocationApi(body, qrType),
   });
 };
 

@@ -48,7 +48,9 @@ from app.core.logger import get_logger
 logger = get_logger("main")
 
 
-def suggest_allocation_inbound(db: Session, body: InboundSuggestAllocation):
+def suggest_allocation_inbound(db: Session, body: InboundSuggestAllocation, qr_type: str):
+    if qr_type not in ["item"]:
+        raise ValueError(f"{qr_type} can't get suggestion for allocation")
     needed = len(body.line_items)
     reversed_keys = cache_scan_keys("inbound:reserved:*")
     reversed_location_ids = [int(k.rsplit(":", 1)[-1]) for k in reversed_keys]

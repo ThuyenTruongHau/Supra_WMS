@@ -25,6 +25,8 @@ from app.modules.warehouse.inbound_order.inbound_order_schema import (
     AssignItemStockMetaResponse,
     AssignOrGetItemStockRequest,
     QrCodePreviewResponse,
+    RelocateAssignedStockRequest,
+    RelocateAssignedStockResponse,
 )
 from app.modules.warehouse.inbound_order import inbound_order_service, qr_code_module
 from app.modules.warehouse.inbound_order.inbound_celery_task import (
@@ -57,9 +59,9 @@ __all__ = [
     "/inbound-orders/suggest-allocation",
     response_model=InboundSuggestAllocationResponse,
 )
-def suggest_inbound_allocation(body: InboundSuggestAllocation, db: DbSession):
+def suggest_inbound_allocation(body: InboundSuggestAllocation, db: DbSession, qr_type: str):
     try:
-        return inbound_order_service.suggest_allocation_inbound(db, body)
+        return inbound_order_service.suggest_allocation_inbound(db, body, qr_type)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
 
@@ -258,8 +260,10 @@ def _assign_or_get_item_stocks(db: Session, body: AssignOrGetItemStockRequest):
             quantity=body.quantity,
             unit_id=body.unit_id,
             lot_number=body.lot_number,
-            assigned_by=body.assigned_by,
             cavity_number=body.cavity_number,
+            manufacturing_user=body.manufacturing_user,
+            qc_user=body.qc_user,
+            packing_user=body.packing_user,
         )
     except ValueError as e:
         msg = str(e)
@@ -270,3 +274,28 @@ def _assign_or_get_item_stocks(db: Session, body: AssignOrGetItemStockRequest):
     if "part_number" in result and "qr_code_id" not in result:
         return AssignItemStockMetaResponse.model_validate(result)
     return QrCodePreviewResponse.model_validate(result)
+
+@router.post(
+    "/inbound-orders/assigned-stocks/relocate",
+    response_model=RelocateAssignedStockResponse,
+)
+def relocate_assigned_stocks(
+    body: RelocateAssignedStockRequest,
+    db: DbSession,
+):
+    try:
+        moved = qr_code_module.relocate_cached_item_stock(
+            db=db,
+            from_location_code=body.from_location_code.strip(),
+            to_location_code=body.to_location_code.strip(),
+        )
+    except ValueError as e:
+        msg = str(e)
+        code = 404 if "not found" in msg.lower() else 400
+        raise HTTPException(status_code=code, detail=msg) from e
+
+    return RelocateAssignedStockResponse(
+        moved=moved,
+        from_location_code=body.from_location_code.strip(),
+        to_location_code=body.to_location_code.strip(),
+    )
