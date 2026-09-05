@@ -5,6 +5,7 @@
 export const QR_TYPE_LABELS_VI: Record<string, string> = {
   item: "Phiếu sản phẩm",
   transit: "Phiếu di chuyển",
+  pack: "Phiếu đóng gói",
 };
 
 export function translateQrType(qrType: string | null | undefined): string {

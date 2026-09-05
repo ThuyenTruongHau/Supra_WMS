@@ -486,26 +486,73 @@ async def import_warehouse_map(
             source_path.unlink(missing_ok=True)
         raise
 
-def _hard_delete_locations_for_warehouse(db: Session, warehouse_id: int) -> int:
-    location_ids = [
-        row[0]
-        for row in db.query(Location.id)
-        .filter(Location.warehouse_id == warehouse_id)
-        .all()
-    ]
-    if not location_ids:
+def _upsert_location_from_shelf(
+    db: Session,
+    warehouse_id: int,
+    zone_id: Optional[int],
+    shelf: dict,
+) -> tuple[Location, bool]:
+    code = shelf["location_code"].strip()
+    existing = (
+        db.query(Location)
+        .filter(
+            Location.warehouse_id == warehouse_id,
+            Location.location_code == code,
+        )
+        .first()
+    )
+    if existing:
+        existing.location_name = shelf["location_name"].strip()
+        existing.row = shelf["row"]
+        existing.column = shelf["column"]
+        existing.level = shelf["level"]
+        existing.zone_id = zone_id
+        existing.is_active = True
+        return existing, False
+
+    location = Location(
+        location_code=code,
+        location_name=shelf["location_name"].strip(),
+        row=shelf["row"],
+        column=shelf["column"],
+        level=shelf["level"],
+        warehouse_id=warehouse_id,
+        zone_id=zone_id,
+        is_active=True,
+    )
+    db.add(location)
+    return location, True
+
+
+def _delete_orphan_locations(
+    db: Session,
+    warehouse_id: int,
+    new_codes: set[str],
+) -> int:
+    query = db.query(Location).filter(Location.warehouse_id == warehouse_id)
+    if new_codes:
+        query = query.filter(~Location.location_code.in_(new_codes))
+    orphans = query.all()
+    if not orphans:
         return 0
 
-    db.query(ItemStock).filter(ItemStock.location_id.in_(location_ids)).delete(
-        synchronize_session=False
-    )
-    deleted = (
+    for loc in orphans:
+        has_stock = (
+            db.query(ItemStock.id)
+            .filter(ItemStock.location_id == loc.id)
+            .first()
+        )
+        if has_stock:
+            raise ValueError(
+                f"Không thể import map: vị trí {loc.location_code} còn tồn kho"
+            )
+
+    orphan_ids = [loc.id for loc in orphans]
+    return (
         db.query(Location)
-        .filter(Location.warehouse_id == warehouse_id)
+        .filter(Location.id.in_(orphan_ids))
         .delete(synchronize_session=False)
     )
-    db.flush()
-    return deleted
 
 
 def _dedupe_shelves(shelves: list[dict]) -> list[dict]:
@@ -538,27 +585,27 @@ def sync_locations_from_map(
     zone_id: Optional[int] = None,
 ) -> dict:
     _ensure_warehouse_and_zone(db, warehouse_id, zone_id)
-    deleted = _hard_delete_locations_for_warehouse(db, warehouse_id)
     unique_shelves = _dedupe_shelves(shelves)
+    new_codes = {s["location_code"] for s in unique_shelves}
 
+    created = 0
+    updated = 0
     for shelf in unique_shelves:
-        db.add(
-            Location(
-                location_code=shelf["location_code"].strip(),
-                location_name=shelf["location_name"].strip(),
-                row=shelf["row"],
-                column=shelf["column"],
-                level=shelf["level"],
-                warehouse_id=warehouse_id,
-                zone_id=zone_id,
-                is_active=True,
-            )
+        _, is_created = _upsert_location_from_shelf(
+            db, warehouse_id, zone_id, shelf
         )
+        if is_created:
+            created += 1
+        else:
+            updated += 1
+
+    deleted = _delete_orphan_locations(db, warehouse_id, new_codes)
 
     db.flush()
     return {
+        "created": created,
+        "updated": updated,
         "deleted": deleted,
-        "created": len(unique_shelves),
         "total": len(unique_shelves),
     }
 

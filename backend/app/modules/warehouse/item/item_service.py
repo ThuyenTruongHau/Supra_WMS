@@ -51,7 +51,7 @@ logger = get_logger("main")
 NEARLY_OUTDATED_DAYS = 30
 RECENT_QR_CODE_DAYS = 2
 MAX_QR_PRINT_QUANTITY = 50
-ALLOWED_QR_TYPES = frozenset({"item", "transit"})
+ALLOWED_QR_TYPES = frozenset({"item", "transit", "pack"})
 DEFAULT_QR_TYPE = "item"
 
 
@@ -508,7 +508,6 @@ def list_qr_codes(
 def get_qr_code_by_code(db: Session, code: Optional[str] = None) -> Optional[QR_Code]:
     if not code:
         return None
-    logger.info(f"Getting QR code by code: {code}")
     get_code = db.query(QR_Code).filter(QR_Code.code == code).first()
     if not get_code:
         return None

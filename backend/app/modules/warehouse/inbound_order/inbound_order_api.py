@@ -1,4 +1,4 @@
-from typing import Annotated, Optional, Union
+from typing import Annotated, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
@@ -21,10 +21,12 @@ from app.modules.warehouse.inbound_order.inbound_order_schema import (
     InboundOrderDetailResponse,
     InboundOrderUpdate,
     InboundOrderDeleteResponse,
-    AssignedItemStockResponse,
-    AssignItemStockMetaResponse,
     AssignOrGetItemStockRequest,
+    AssignOrGetItemStockResponse,
+    QrCodePreviewRequest,
     QrCodePreviewResponse,
+    CacheForPackingUserRequest,
+    PackingUserPendingStocksResponse,
     RelocateAssignedStockRequest,
     RelocateAssignedStockResponse,
 )
@@ -59,9 +61,9 @@ __all__ = [
     "/inbound-orders/suggest-allocation",
     response_model=InboundSuggestAllocationResponse,
 )
-def suggest_inbound_allocation(body: InboundSuggestAllocation, db: DbSession, qr_type: str):
+def suggest_inbound_allocation(body: InboundSuggestAllocation, db: DbSession):
     try:
-        return inbound_order_service.suggest_allocation_inbound(db, body, qr_type)
+        return inbound_order_service.suggest_allocation_inbound(db, body)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
 
@@ -220,12 +222,29 @@ def caller_inbound_order(
     return InboundCallerResponse.model_validate(order)
 
 @router.post(
+    "/inbound-orders/preview-stocks",
+    response_model=QrCodePreviewResponse,
+)
+def preview_inbound_qr_code(
+    body: QrCodePreviewRequest,
+    db: DbSession,
+):
+    try:
+        result = qr_code_module.preview_qr_code(
+            db=db,
+            qr_code=body.qr_code,
+            warehouse_id=body.warehouse_id,
+        )
+    except ValueError as e:
+        msg = str(e)
+        code = 404 if "not found" in msg.lower() else 400
+        raise HTTPException(status_code=code, detail=msg) from e
+    return QrCodePreviewResponse.model_validate(result)
+
+
+@router.post(
     "/inbound-orders/assigned-stocks",
-    response_model=Union[
-        QrCodePreviewResponse,
-        AssignItemStockMetaResponse,
-        list[AssignedItemStockResponse],
-    ],
+    response_model=AssignOrGetItemStockResponse,
 )
 def assign_or_get_item_stocks(
     body: AssignOrGetItemStockRequest,
@@ -236,11 +255,7 @@ def assign_or_get_item_stocks(
 
 @router.post(
     "/inbound-orders/locations/{location_id}/assigned-stocks",
-    response_model=Union[
-        QrCodePreviewResponse,
-        AssignItemStockMetaResponse,
-        list[AssignedItemStockResponse],
-    ],
+    response_model=AssignOrGetItemStockResponse,
 )
 def assign_or_get_item_stocks_by_location(
     location_id: int,
@@ -255,7 +270,8 @@ def _assign_or_get_item_stocks(db: Session, body: AssignOrGetItemStockRequest):
     try:
         result = qr_code_module.assign_or_get_item_stock(
             db=db,
-            location_code=body.location_code,
+            raw=body.raw,
+            warehouse_id=body.warehouse_id,
             qr_code=body.qr_code,
             quantity=body.quantity,
             unit_id=body.unit_id,
@@ -269,11 +285,53 @@ def _assign_or_get_item_stocks(db: Session, body: AssignOrGetItemStockRequest):
         msg = str(e)
         code = 404 if "not found" in msg.lower() else 400
         raise HTTPException(status_code=code, detail=msg) from e
-    if isinstance(result, list):
-        return [AssignedItemStockResponse.model_validate(s) for s in result]
-    if "part_number" in result and "qr_code_id" not in result:
-        return AssignItemStockMetaResponse.model_validate(result)
-    return QrCodePreviewResponse.model_validate(result)
+    return AssignOrGetItemStockResponse.model_validate(result)
+
+
+@router.get(
+    "/inbound-orders/packing-stocks",
+    response_model=PackingUserPendingStocksResponse,
+)
+def get_packing_user_pending_stocks(
+    packing_user: str = Query(..., min_length=1, max_length=100),
+):
+    try:
+        items = qr_code_module.get_pending_by_packing_user(packing_user)
+    except ValueError as e:
+        msg = str(e)
+        code = 404 if "not found" in msg.lower() else 400
+        raise HTTPException(status_code=code, detail=msg) from e
+    return PackingUserPendingStocksResponse(packing_user=packing_user.strip(), items=items)
+
+
+@router.post(
+    "/inbound-orders/packing-stocks",
+    response_model=AssignOrGetItemStockResponse,
+)
+def cache_for_packing_user(
+    body: CacheForPackingUserRequest,
+    db: DbSession,
+):
+    try:
+        result = qr_code_module.assign_for_packing_user(
+            db=db,
+            warehouse_id=body.warehouse_id,
+            qr_code=body.qr_code,
+            quantity=body.quantity,
+            unit_id=body.unit_id,
+            lot_number=body.lot_number,
+            cavity_number=body.cavity_number,
+            manufacturing_user=body.manufacturing_user,
+            qc_user=body.qc_user,
+            packing_user=body.packing_user,
+            relation=body.relation,
+        )
+    except ValueError as e:
+        msg = str(e)
+        code = 404 if "not found" in msg.lower() else 400
+        raise HTTPException(status_code=code, detail=msg) from e
+    return AssignOrGetItemStockResponse.model_validate(result)
+
 
 @router.post(
     "/inbound-orders/assigned-stocks/relocate",

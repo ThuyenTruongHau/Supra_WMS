@@ -51,7 +51,7 @@ class ItemStock(Base):
         "location_id",
         Integer,
         ForeignKey("location.id"),
-        nullable=False,
+        nullable=True,
         index=True,
     )
     inbound_order_detail_id = Column(Integer, ForeignKey("inbound_order_detail.id"), nullable=True, index=True)
@@ -75,6 +75,8 @@ class ItemStock(Base):
     manufacturing_user = Column(String(50), nullable=True, index=True)
     packing_user = Column(String(50), nullable=True, index=True)
     cavity_number = Column(String(50), nullable=True, index=True)
+
+    stock_level = Column(Integer, nullable=True, index=True)
 
     item = relationship("Item", lazy="joined")
     unit = relationship("Unit", foreign_keys=[unit_id], lazy="joined")

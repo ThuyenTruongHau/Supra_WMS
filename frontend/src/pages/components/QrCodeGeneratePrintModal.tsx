@@ -22,6 +22,7 @@ const LABELS_PER_PAGE = 9;
 const QR_TYPE_OPTIONS: { value: QrPrintType; label: string }[] = [
   { value: "item", label: translateQrType("item") },
   { value: "transit", label: translateQrType("transit") },
+  { value: "pack", label: translateQrType("pack") },
 ];
 
 type QrCodeGeneratePrintModalProps = {
@@ -144,8 +145,13 @@ export default function QrCodeGeneratePrintModal({
       const displayCodes = Array.isArray(event.data.display_codes)
         ? event.data.display_codes.map(String)
         : [];
+      const rawQrType = String(event.data.qr_type ?? "item");
       const printQrType: QrPrintType =
-        event.data.qr_type === "transit" ? "transit" : "item";
+        rawQrType === "transit"
+          ? "transit"
+          : rawQrType === "pack"
+            ? "pack"
+            : "item";
       if (!itemId || !printQuantity) return;
       void handlePrintRequest(
         itemId,
@@ -226,7 +232,7 @@ export default function QrCodeGeneratePrintModal({
             <p className="mt-1 text-xs text-slate-500">
               {qrType === "transit"
                 ? "Dùng mẫu phiếu di chuyển (transit)."
-                : "Dùng mẫu phiếu sản phẩm Bacviet (item)."}
+                : "Dùng mẫu phiếu sản phẩm Bacviet (item/pack)."}
             </p>
           </div>
 

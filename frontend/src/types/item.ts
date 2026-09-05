@@ -108,7 +108,7 @@ export interface ItemImportJobStatus {
 }
 
 export type QRCodeStatus = 'expired' | 'stocked' | 'available'
-export type QrPrintType = 'item' | 'transit'
+export type QrPrintType = 'item' | 'transit' | 'pack'
 
 export interface QRCodeRecent {
   id: number

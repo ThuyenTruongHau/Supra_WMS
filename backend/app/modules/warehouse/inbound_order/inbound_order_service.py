@@ -48,9 +48,7 @@ from app.core.logger import get_logger
 logger = get_logger("main")
 
 
-def suggest_allocation_inbound(db: Session, body: InboundSuggestAllocation, qr_type: str):
-    if qr_type not in ["item"]:
-        raise ValueError(f"{qr_type} can't get suggestion for allocation")
+def suggest_allocation_inbound(db: Session, body: InboundSuggestAllocation):
     needed = len(body.line_items)
     reversed_keys = cache_scan_keys("inbound:reserved:*")
     reversed_location_ids = [int(k.rsplit(":", 1)[-1]) for k in reversed_keys]
@@ -184,6 +182,7 @@ def _create_stock_and_allocation(
         expiry_date=payload.expiry_date,
         status="in_transit",
         is_active=True,
+        stock_level=1,
     )
     db.add(item_stock)
     db.flush()

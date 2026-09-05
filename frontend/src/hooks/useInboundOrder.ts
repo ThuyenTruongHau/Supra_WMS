@@ -9,16 +9,21 @@ import {
   deleteInboundOrderApi,
   acceptInboundTaskApi,
   assignOrGetItemStockApi,
+  cacheForPackingUserApi,
+  getPackingUserStocksApi,
+  previewQrCodeApi,
   callerInboundOrderApi,
 } from "@/api/inboundOrder";
 import type {
   AssignOrGetItemStockRequest,
+  CacheForPackingUserRequest,
   GetInboundOrdersParams,
   InboundOrderCreateRequest,
   InboundOrderDeleteResponse,
   InboundOrderUpdateRequest,
   InboundReleaseLocationsRequest,
   InboundSuggestAllocationRequest,
+  QrCodePreviewRequest,
 } from "@/types/inboundOrder";
 import type { AxiosError } from "axios";
 import type { ApiErrorResponse } from "@/types/apiError";
@@ -44,13 +49,8 @@ export const useGetInboundOrderDetails = (orderCode: string | undefined) => {
 
 export const useSuggestInboundAllocation = () => {
   return useMutation({
-    mutationFn: ({
-      body,
-      qrType,
-    }: {
-      body: InboundSuggestAllocationRequest;
-      qrType: string;
-    }) => suggestInboundAllocationApi(body, qrType),
+    mutationFn: (body: InboundSuggestAllocationRequest) =>
+      suggestInboundAllocationApi(body),
   });
 };
 
@@ -123,6 +123,25 @@ export const useAssignOrGetItemStock = () => {
   return useMutation({
     mutationFn: (body: AssignOrGetItemStockRequest) =>
       assignOrGetItemStockApi(body),
+  });
+};
+
+export const usePreviewQrCode = () => {
+  return useMutation({
+    mutationFn: (body: QrCodePreviewRequest) => previewQrCodeApi(body),
+  });
+};
+
+export const useCacheForPackingUser = () => {
+  return useMutation({
+    mutationFn: (body: CacheForPackingUserRequest) =>
+      cacheForPackingUserApi(body),
+  });
+};
+
+export const useGetPackingUserStocks = () => {
+  return useMutation({
+    mutationFn: (packingUser: string) => getPackingUserStocksApi(packingUser),
   });
 };
 

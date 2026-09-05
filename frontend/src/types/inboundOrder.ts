@@ -182,8 +182,9 @@ export interface InboundOrderDeleteResponse {
 
 export interface AssignOrGetItemStockRequest {
   qr_code?: string | null;
+  raw?: string | null;
   location_id?: number | null;
-  location_code?: string | null;
+  warehouse_id?: number | null;
   quantity?: number | null;
   unit_id?: number | null;
   lot_number?: string | null;
@@ -205,8 +206,7 @@ export interface QrCodePreviewResponse {
   lot_number: string;
   cavity_numbers: string[];
   cavity_number?: string | null;
-  qr_type?: string | null;
-  /** Present (even as "") => show field on FE */
+  qr_type: string;
   manufacturing_user?: string | null;
   qc_user?: string | null;
   packing_user?: string | null;
@@ -215,6 +215,56 @@ export interface QrCodePreviewResponse {
 export interface AssignItemStockMetaResponse {
   part_number: string;
   location: string;
+}
+
+export interface QrCodePreviewRequest {
+  qr_code: string;
+  warehouse_id?: number | null;
+}
+
+export interface PendingCachedResponse {
+  qr_code_id: number;
+  code: string;
+  part_number: string;
+  item_name?: string;
+}
+
+export interface PackDraft {
+  qr_code: string;
+  qr_code_id: number;
+  item_id: number;
+  quantity: number;
+  unit_id: number;
+  unit_name?: string;
+  lot_number: string;
+  cavity_number?: string;
+  manufacturing_user: string;
+  qc_user?: string;
+}
+
+export interface PackerItemAnchor {
+  qr_code_id: number;
+  code: string;
+  item_id: number;
+}
+
+export interface CacheForPackingUserRequest {
+  qr_code: string;
+  warehouse_id?: number | null;
+  quantity: number;
+  unit_id: number;
+  lot_number: string;
+  cavity_number?: string | null;
+  manufacturing_user: string;
+  qc_user?: string | null;
+  packing_user?: string | null;
+  /** Parent item qr_code_id; required when caching pack QR */
+  relation?: number | null;
+}
+
+export interface PackingUserPendingStocksResponse {
+  packing_user: string;
+  items: AssignedItemStock[];
 }
 
 export interface AssignedItemStock {
@@ -236,22 +286,52 @@ export interface AssignedItemStock {
   manufacturing_user?: string | null;
   qc_user?: string | null;
   packing_user?: string | null;
+  stock_level?: number | null;
+  /** Parent item qr_code_id when this row is a linked pack */
+  relation?: number | null;
 }
 
-export type AssignOrGetItemStockResponse =
-  | QrCodePreviewResponse
-  | AssignItemStockMetaResponse
-  | AssignedItemStock[];
+export type AssignOrGetItemStockAction =
+  | "preview"
+  | "assigned"
+  | "location_stocks"
+  | "pending_cached";
 
-export const isAssignMetaResponse = (
-  value: AssignOrGetItemStockResponse,
-): value is AssignItemStockMetaResponse =>
-  !Array.isArray(value) && "part_number" in value && !("qr_code_id" in value);
+export interface AssignOrGetItemStockResponse {
+  action: AssignOrGetItemStockAction;
+  preview?: QrCodePreviewResponse | null;
+  assigned?: AssignItemStockMetaResponse | null;
+  location_stocks?: AssignedItemStock[];
+  pending?: PendingCachedResponse | null;
+}
 
-export const isQrPreviewResponse = (
+export const isAssignOrGetPreview = (
   value: AssignOrGetItemStockResponse,
-): value is QrCodePreviewResponse =>
-  !Array.isArray(value) && "qr_code_id" in value;
+): value is AssignOrGetItemStockResponse & {
+  action: "preview";
+  preview: QrCodePreviewResponse;
+} => value.action === "preview" && !!value.preview;
+
+export const isAssignOrGetAssigned = (
+  value: AssignOrGetItemStockResponse,
+): value is AssignOrGetItemStockResponse & {
+  action: "assigned";
+  assigned: AssignItemStockMetaResponse;
+} => value.action === "assigned" && !!value.assigned;
+
+export const isAssignOrGetLocationStocks = (
+  value: AssignOrGetItemStockResponse,
+): value is AssignOrGetItemStockResponse & {
+  action: "location_stocks";
+  location_stocks: AssignedItemStock[];
+} => value.action === "location_stocks";
+
+export const isAssignOrGetPendingCached = (
+  value: AssignOrGetItemStockResponse,
+): value is AssignOrGetItemStockResponse & {
+  action: "pending_cached";
+  pending: PendingCachedResponse;
+} => value.action === "pending_cached" && !!value.pending;
 
 export interface InboundCallerResponse {
   order: InboundOrder;

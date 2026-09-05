@@ -2,6 +2,7 @@ import axiosInstance from "./axiosInstance";
 import type {
   AssignOrGetItemStockRequest,
   AssignOrGetItemStockResponse,
+  CacheForPackingUserRequest,
   GetInboundOrdersParams,
   InboundCallerResponse,
   InboundOrder,
@@ -14,6 +15,9 @@ import type {
   InboundReleaseLocationsResponse,
   InboundSuggestAllocationRequest,
   InboundSuggestAllocationResponse,
+  QrCodePreviewRequest,
+  QrCodePreviewResponse,
+  PackingUserPendingStocksResponse,
 } from "@/types/inboundOrder";
 
 const BASE = "/api/v1/inbound-orders";
@@ -38,12 +42,10 @@ export const getInboundOrderDetailsApi = async (
 
 export const suggestInboundAllocationApi = async (
   body: InboundSuggestAllocationRequest,
-  qrType: string,
 ): Promise<InboundSuggestAllocationResponse> => {
   const { data } = await axiosInstance.post<InboundSuggestAllocationResponse>(
     `${BASE}/suggest-allocation`,
     body,
-    { params: { qr_type: qrType } },
   );
   return data;
 };
@@ -103,6 +105,36 @@ export const assignOrGetItemStockApi = async (
   const { data } = await axiosInstance.post<AssignOrGetItemStockResponse>(
     `${BASE}/assigned-stocks`,
     body,
+  );
+  return data;
+};
+
+export const previewQrCodeApi = async (
+  body: QrCodePreviewRequest,
+): Promise<QrCodePreviewResponse> => {
+  const { data } = await axiosInstance.post<QrCodePreviewResponse>(
+    `${BASE}/preview-stocks`,
+    body,
+  );
+  return data;
+};
+
+export const cacheForPackingUserApi = async (
+  body: CacheForPackingUserRequest,
+): Promise<AssignOrGetItemStockResponse> => {
+  const { data } = await axiosInstance.post<AssignOrGetItemStockResponse>(
+    `${BASE}/packing-stocks`,
+    body,
+  );
+  return data;
+};
+
+export const getPackingUserStocksApi = async (
+  packingUser: string,
+): Promise<PackingUserPendingStocksResponse> => {
+  const { data } = await axiosInstance.get<PackingUserPendingStocksResponse>(
+    `${BASE}/packing-stocks`,
+    { params: { packing_user: packingUser } },
   );
   return data;
 };

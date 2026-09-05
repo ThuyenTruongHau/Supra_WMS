@@ -74,7 +74,8 @@ class InboundReleaseLocationsResponse(BaseModel):
 class AssignOrGetItemStockRequest(BaseModel):
     qr_code: Optional[str] = Field(None, min_length=1, max_length=50)
     location_id: Optional[int] = Field(None, gt=0)
-    location_code: Optional[str] = Field(None, min_length=1, max_length=100)
+    raw: Optional[str] = Field(None, min_length=1, max_length=100)  
+    warehouse_id: Optional[int] = Field(None, gt=0)
     quantity: Optional[int] = Field(None, gt=0)
     unit_id: Optional[int] = Field(None, gt=0)
     lot_number: Optional[str] = Field(None, max_length=50)
@@ -85,13 +86,18 @@ class AssignOrGetItemStockRequest(BaseModel):
 
     @model_validator(mode="after")
     def require_fields_when_assign(self) -> "AssignOrGetItemStockRequest":
-        has_location = self.location_id is not None or bool(self.location_code)
+        has_location = self.location_id is not None or bool(self.raw)  
         if self.qr_code is not None and has_location:
             if self.quantity is None or self.unit_id is None:
                 raise ValueError(
                     "quantity and unit_id are required when assigning a QR code to a location"
                 )
         return self
+
+
+class QrCodePreviewRequest(BaseModel):
+    qr_code: str = Field(..., min_length=1, max_length=50)
+    warehouse_id: Optional[int] = Field(None, gt=0)
 
 
 class QrCodePreviewResponse(BaseModel):
@@ -106,6 +112,7 @@ class QrCodePreviewResponse(BaseModel):
     lot_number: str
     cavity_numbers: list[str] = Field(default_factory=list)
     cavity_number: Optional[str] = None
+    qr_type: str = "item"
     manufacturing_user: Optional[str] = None
     qc_user: Optional[str] = None
     packing_user: Optional[str] = None
@@ -114,6 +121,51 @@ class QrCodePreviewResponse(BaseModel):
 class AssignItemStockMetaResponse(BaseModel):
     part_number: str
     location: str
+
+
+class PendingCachedResponse(BaseModel):
+    qr_code_id: int
+    code: str
+    part_number: str
+    item_name: str = ""
+
+
+class PackingUserPendingStocksResponse(BaseModel):
+    packing_user: str
+    items: list["AssignedItemStockResponse"] = Field(default_factory=list)
+
+
+class CacheForPackingUserRequest(BaseModel):
+    qr_code: str = Field(..., min_length=1, max_length=50)
+    warehouse_id: Optional[int] = Field(None, gt=0)
+    quantity: int = Field(..., gt=0)
+    unit_id: int = Field(..., gt=0)
+    lot_number: str = Field(..., min_length=1, max_length=50)
+    cavity_number: Optional[str] = Field(None, max_length=50)
+    manufacturing_user: str = Field(..., min_length=1, max_length=100)
+    qc_user: Optional[str] = Field(None, max_length=100)
+    packing_user: Optional[str] = Field(None, max_length=100)
+    relation: Optional[int] = Field(
+        None,
+        gt=0,
+        description="Parent item qr_code_id; required when caching pack QR",
+    )
+
+class AssignOrGetItemStockAction:
+    PREVIEW = "preview"
+    ASSIGNED = "assigned"
+    LOCATION_STOCKS = "location_stocks"
+    PENDING_CACHED = "pending_cached"
+
+
+class AssignOrGetItemStockResponse(BaseModel):
+    """Unified scan response — FE branches on `action`."""
+
+    action: str
+    preview: Optional[QrCodePreviewResponse] = None
+    assigned: Optional[AssignItemStockMetaResponse] = None
+    location_stocks: list["AssignedItemStockResponse"] = Field(default_factory=list)
+    pending: Optional[PendingCachedResponse] = None
 
 
 class AssignedItemStockResponse(BaseModel):
@@ -135,6 +187,11 @@ class AssignedItemStockResponse(BaseModel):
     manufacturing_user: Optional[str] = None
     qc_user: Optional[str] = None
     packing_user: Optional[str] = None
+    stock_level: Optional[int] = None
+    relation: Optional[int] = Field(
+        None,
+        description="Parent item qr_code_id when this pending row is a pack",
+    )
 
 class InboundOrderAllocationCreate(BaseModel):
     item_id: int = Field(..., gt=0)

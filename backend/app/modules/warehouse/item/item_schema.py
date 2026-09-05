@@ -134,7 +134,7 @@ class ItemDetailResponse(BaseModel):
 
 # --- QR Code ---
 
-QrType = Literal["item", "transit"]
+QrType = Literal["item", "transit", "pack"]
 
 
 class QRCodeCreate(BaseModel):

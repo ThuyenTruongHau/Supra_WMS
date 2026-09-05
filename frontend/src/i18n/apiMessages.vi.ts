@@ -7,10 +7,11 @@ import { translateQrType } from "@/i18n/qrTypeLabels.vi";
 const CALLER_PREFIX = /^Error calling inbound order:\s*/i;
 
 const QR_TYPE_LOCATION_CONFLICT =
-  /^Vị trí đã có QR loại '(\w+)', không thể gán QR loại '(\w+)'$/;
+  /^Location already has QR type '(\w+)', cannot assign QR type '(\w+)'$/;
 
-const QR_TYPE_SUGGESTION_BLOCKED =
-  /^(\w+) can't get suggestion for allocation$/;
+/** @deprecated legacy backend message — remove after deploy */
+const QR_TYPE_LOCATION_CONFLICT_LEGACY =
+  /^Vị trí đã có QR loại '(\w+)', không thể gán QR loại '(\w+)'$/;
 
 export const API_MESSAGES_VI: Record<string, string> = {
   "Warehouse not found": "Không tìm thấy kho",
@@ -32,8 +33,21 @@ export const API_MESSAGES_VI: Record<string, string> = {
   "QR code": "Không tìm thấy mã QR",
   "quantity and unit_id are required when assigning a QR code to a location":
     "Cần số lượng và đơn vị khi gán mã QR vào vị trí",
+  "Invalid QR code or location not found":
+    "Mã QR không hợp lệ hoặc không tìm thấy vị trí",
+  "Only item or pack QR codes can be cached for packing":
+    "Chỉ mã QR loại sản phẩm hoặc đóng gói mới được lưu tạm ở chế độ người đóng gói",
+  /** @deprecated legacy backend key */
   "Mã QR không hợp lệ hoặc không tìm thấy vị trí":
     "Mã QR không hợp lệ hoặc không tìm thấy vị trí",
+  "lot_number is required when assigning a QR code to a location":
+    "Cần số lô khi gán mã QR vào vị trí",
+  "cavity_number is required for this item":
+    "Sản phẩm này yêu cầu chọn số cavity",
+  "Invalid cavity_number": "Số cavity không hợp lệ",
+  "manufacturing_user is required when assigning a QR code to a location":
+    "Cần chọn người sản xuất khi gán mã QR vào vị trí",
+  "From or to location not found": "Không tìm thấy vị trí nguồn hoặc đích",
   "Unit not found": "Không tìm thấy đơn vị",
   "Item not found": "Không tìm thấy sản phẩm",
   "Item id not found": "Không tìm thấy sản phẩm",
@@ -94,7 +108,9 @@ function applyDictionary(message: string): string {
 }
 
 function translateQrTypeLocationConflict(message: string): string | null {
-  const match = message.match(QR_TYPE_LOCATION_CONFLICT);
+  const match =
+    message.match(QR_TYPE_LOCATION_CONFLICT) ??
+    message.match(QR_TYPE_LOCATION_CONFLICT_LEGACY);
   if (!match) return null;
   const [, existingType, incomingType] = match;
   return (
@@ -103,22 +119,12 @@ function translateQrTypeLocationConflict(message: string): string | null {
   );
 }
 
-function translateQrTypeSuggestionBlocked(message: string): string | null {
-  const match = message.match(QR_TYPE_SUGGESTION_BLOCKED);
-  if (!match) return null;
-  const [, qrType] = match;
-  return (
-    `${translateQrType(qrType)} không được gợi ý cấp vào kho. ` +
-    "Vui lòng thử cách khác."
-  );
-}
-
 export function isQrTypeLocationConflictMessage(message: string): boolean {
-  return QR_TYPE_LOCATION_CONFLICT.test(message.trim());
-}
-
-export function isQrTypeSuggestionBlockedMessage(message: string): boolean {
-  return QR_TYPE_SUGGESTION_BLOCKED.test(message.trim());
+  const trimmed = message.trim();
+  return (
+    QR_TYPE_LOCATION_CONFLICT.test(trimmed) ||
+    QR_TYPE_LOCATION_CONFLICT_LEGACY.test(trimmed)
+  );
 }
 
 export function translateApiMessage(message: string): string {
@@ -127,7 +133,5 @@ export function translateApiMessage(message: string): string {
   const inner = trimmed.replace(CALLER_PREFIX, "").trim();
   const qrConflict = translateQrTypeLocationConflict(inner || trimmed);
   if (qrConflict) return qrConflict;
-  const qrSuggestBlocked = translateQrTypeSuggestionBlocked(inner || trimmed);
-  if (qrSuggestBlocked) return qrSuggestBlocked;
   return applyDictionary(inner || trimmed);
 }

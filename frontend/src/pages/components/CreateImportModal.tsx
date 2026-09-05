@@ -78,21 +78,10 @@ export interface ImportGroupDraft {
   to_location_id?: number;
   to_location_name?: string;
   status?: string;
-  /** Loại QR của phần tử đầu nhóm (dùng khi gọi gợi ý vị trí). */
+  /** Loại QR từ scan (metadata nhóm). */
   qr_type?: string | null;
   items: ImportItemDraft[];
   detailEntries?: KeyValueEntry[];
-}
-
-/** Lấy qr_type phần tử đầu tiên có giá trị — mặc định "item" cho tạo đơn thủ công. */
-export function resolveSuggestQrType(groups: ImportGroupDraft[]): string {
-  for (const group of groups) {
-    if (group.qr_type) return group.qr_type;
-    for (const item of group.items) {
-      if (item.qr_type) return item.qr_type;
-    }
-  }
-  return "item";
 }
 
 interface CreateImportModalProps {
@@ -424,20 +413,17 @@ export default function CreateImportModal({
     try {
       message.loading({ content: "Đang gợi ý vị trí...", key: "suggest" });
       const res = await suggestMutation.mutateAsync({
-        qrType: resolveSuggestQrType(groups),
-        body: {
-          warehouse_id: warehouseId,
-          detail_type: inboundType,
-          line_items: groups.map((g) => ({
-            items: g.items.map((i) => ({
-              item_id: i.item_id!,
-              quantity: i.quantity,
-              unit_id: i.unit_id!,
-              lot_number: normalizeLotNumber(i.lot_number),
-            })),
-            details: entriesToDetails(g.detailEntries ?? []),
+        warehouse_id: warehouseId,
+        detail_type: inboundType,
+        line_items: groups.map((g) => ({
+          items: g.items.map((i) => ({
+            item_id: i.item_id!,
+            quantity: i.quantity,
+            unit_id: i.unit_id!,
+            lot_number: normalizeLotNumber(i.lot_number),
           })),
-        },
+          details: entriesToDetails(g.detailEntries ?? []),
+        })),
       });
       setSuggested(res.line_items);
       setGroups((prev) =>
