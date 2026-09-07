@@ -1,15 +1,16 @@
-/** Định dạng số lô — ddmmyy khớp logic FEFO outbound (6 chữ số). */
+/** Định dạng số lô — legacy gồm cả DDMMYY và DD/MM/YY. */
 export type LotNumberFormat = "ddmmyy" | "legacy" | "any";
 
-const LEGACY_DATE = String.raw`\d{2}/\d{2}/\d{2}`;
-const LEGACY_RANGE_RE = new RegExp(
-  `^(${LEGACY_DATE})-(${LEGACY_DATE})$`,
-);
-const LEGACY_DAY_RANGE_RE = /^(\d{1,2})-(\d{1,2})\/(\d{2}\/\d{2})$/;
-const LEGACY_SINGLE_RE = new RegExp(`^(${LEGACY_DATE})$`);
+export {
+  LOT_NUMBER_LEGACY_HINT,
+  isValidLegacyLotNumber,
+  parseLegacyLotNumber,
+} from "@/utils/legacyLotNumber";
 
-export const LOT_NUMBER_LEGACY_HINT =
-  "DD/MM/YY, DD/MM/YY-DD/MM/YY, hoặc DD-DD/MM/YY (vd: 19/08/26, 30/07/26-01/08/26, 09-10/04/26)";
+import {
+  LOT_NUMBER_LEGACY_HINT,
+  isValidLegacyLotNumber,
+} from "@/utils/legacyLotNumber";
 
 export interface LotNumberValidationOptions {
   /** Bắt buộc nhập số lô. Mặc định false — tắt khi bài toán không cần lô. */
@@ -30,14 +31,6 @@ export function normalizeLotNumber(
 ): string | null {
   const trimmed = value?.trim();
   return trimmed ? trimmed : null;
-}
-
-function isValidLegacyLotNumber(value: string): boolean {
-  return (
-    LEGACY_RANGE_RE.test(value) ||
-    LEGACY_DAY_RANGE_RE.test(value) ||
-    LEGACY_SINGLE_RE.test(value)
-  );
 }
 
 export function validateLotNumber(

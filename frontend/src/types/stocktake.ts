@@ -66,3 +66,42 @@ export interface CreateStocktakeInput {
   item_ids?: number[];
   lot_numbers?: string[];
 }
+
+export interface StocktakeItemFormData {
+  stocktake_item_id: number;
+  stocktake_id: number;
+  item_stock_id: number;
+  desired_quantity: number;
+  item_sku: string | null;
+  item_name: string | null;
+  location_id: number;
+  location_code: string | null;
+  location_name: string | null;
+  lot_number_from: string | null;
+  lot_number_to: string | null;
+  lot_number: string | null;
+  expiry_date: string | null;
+  status: string;
+  system_quantity: number;
+}
+
+export interface StocktakeRecordCountInput {
+  actual_quantity: number;
+  lot_number_from?: string | null;
+  lot_number_to?: string | null;
+  lot_number?: string | null;
+  expiry_date?: string | null;
+  location_id?: number;
+  status?: string;
+}
+
+export interface RecordStocktakeItemCountParams {
+  stocktakeId: number;
+  stocktakeItemId: number;
+  payload: StocktakeRecordCountInput;
+}
+
+export interface ConfirmStocktakeItemQuantityParams {
+  stocktakeId: number;
+  stocktakeItemId: number;
+}

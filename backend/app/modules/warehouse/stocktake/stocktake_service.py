@@ -5,18 +5,23 @@ from typing import Optional
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import case, func, or_, and_
-from datetime import datetime
-
-from app.modules.warehouse.lot_number_utils import parse_legacy_lot_number
+from app.modules.warehouse.item.item_model import Item
+from app.modules.warehouse.lot_number_utils import (
+    format_lot_number_display,
+    lot_string_to_date,
+    parse_legacy_lot_number,
+)
 from app.modules.warehouse.stocktake.stocktake_model import Stocktake, StocktakeItemStock
 from app.modules.warehouse.item_stock.item_stock_model import ItemStock
 from app.modules.warehouse.location_map.location_model import Location
 from app.modules.warehouse.stocktake.stocktake_schema import (
     StocktakeCreate,
     StocktakeDetailResponse,
+    StocktakeItemStockFormData,
     StocktakeItemStockListResponse,
     StocktakeItemStockResponse,
     StocktakeListResponse,
+    StocktakeRecordCountRequest,
     StocktakeResponse,
     StocktakeUpdate,
 )
@@ -61,12 +66,17 @@ def get_stocktake_detail(db: Session, stocktake_id: int) -> Optional[StocktakeDe
 
     item_rows = (
         db.query(StocktakeItemStock)
+        .join(Location, Location.id == StocktakeItemStock.location_id)
         .options(
             joinedload(StocktakeItemStock.location),
             joinedload(StocktakeItemStock.item_stock).joinedload(ItemStock.item),
         )
         .filter(StocktakeItemStock.stocktake_id == stocktake_id)
-        .order_by(StocktakeItemStock.id.asc())
+        .order_by(
+            Location.location_name.asc().nulls_last(),
+            Location.location_code.asc().nulls_last(),
+            StocktakeItemStock.id.asc(),
+        )
         .all()
     )
     base = stocktake_to_response(stocktake)
@@ -143,6 +153,7 @@ def list_stocktake_items(
     query = (
         db.query(StocktakeItemStock)
         .join(Stocktake, Stocktake.id == StocktakeItemStock.stocktake_id)
+        .join(Location, Location.id == StocktakeItemStock.location_id)
         .options(
             joinedload(StocktakeItemStock.location),
             joinedload(StocktakeItemStock.item_stock).joinedload(ItemStock.item),
@@ -153,7 +164,11 @@ def list_stocktake_items(
         query = query.filter(StocktakeItemStock.stocktake_id == stocktake_id)
     total = query.count()
     items = (
-        query.order_by(StocktakeItemStock.id.desc())
+        query.order_by(
+            Location.location_name.asc().nulls_last(),
+            Location.location_code.asc().nulls_last(),
+            StocktakeItemStock.id.asc(),
+        )
         .offset((page - 1) * page_size)
         .limit(page_size)
         .all()
@@ -201,6 +216,7 @@ def create_stocktake(
         .filter(
             Location.warehouse_id == body.warehouse_id,
             ItemStock.is_active.is_(True),
+            ItemStock.quantity > 0,
         )
     )
 
@@ -214,8 +230,8 @@ def create_stocktake(
                 legacy = raw.replace(",", "-").replace(" ", "")
                 try:
                     lot_from, lot_to = parse_legacy_lot_number(legacy)
-                    start = datetime.strptime(lot_from, "%d/%m/%y").date()
-                    end = datetime.strptime(lot_to, "%d/%m/%y").date()
+                    start = lot_string_to_date(lot_from)
+                    end = lot_string_to_date(lot_to)
                 except ValueError as e:
                     raise ValueError("Invalid lot number format") from e
                 stock_from = _lot_as_date(ItemStock.lot_number_from)
@@ -301,3 +317,158 @@ def delete_stocktake(db: Session, stocktake_id: int) -> bool:
         raise ValueError(f"Database conflict: {e.orig}") from e
     return True
 
+
+def _stocktake_item_query(db: Session):
+    return (
+        db.query(StocktakeItemStock)
+        .options(
+            joinedload(StocktakeItemStock.location),
+            joinedload(StocktakeItemStock.item_stock).joinedload(ItemStock.item),
+        )
+    )
+
+
+def _get_stocktake_item_row(
+    db: Session,
+    stocktake_id: int,
+    stocktake_item_id: int,
+) -> Optional[StocktakeItemStock]:
+    return (
+        _stocktake_item_query(db)
+        .filter(
+            StocktakeItemStock.id == stocktake_item_id,
+            StocktakeItemStock.stocktake_id == stocktake_id,
+        )
+        .first()
+    )
+
+
+def _ensure_item_and_location(db: Session, item_id: int, location_id: int) -> None:
+    item = (
+        db.query(Item)
+        .filter(Item.id == item_id, Item.is_active.is_(True))
+        .first()
+    )
+    if not item:
+        raise ValueError(f"Item id not found: {item_id}")
+    location = (
+        db.query(Location)
+        .filter(Location.id == location_id, Location.is_active.is_(True))
+        .first()
+    )
+    if not location:
+        raise ValueError(f"Location id not found: {location_id}")
+
+
+def _apply_item_stock_metadata(
+    db: Session,
+    item_stock: ItemStock,
+    body: StocktakeRecordCountRequest,
+) -> None:
+    data = body.model_dump(exclude_unset=True, exclude={"actual_quantity"})
+    if "location_id" in data:
+        _ensure_item_and_location(db, item_stock.item_id, data["location_id"])
+        item_stock.location_id = data["location_id"]
+    for field in ("lot_number_from", "lot_number_to", "expiry_date", "status"):
+        if field in data:
+            setattr(item_stock, field, data[field])
+
+
+def get_stocktake_item_form_data(
+    db: Session,
+    stocktake_item_id: int,
+) -> Optional[StocktakeItemStockFormData]:
+    row = (
+        _stocktake_item_query(db)
+        .filter(StocktakeItemStock.id == stocktake_item_id)
+        .first()
+    )
+    if not row or not row.item_stock:
+        return None
+
+    item_stock = row.item_stock
+    item = item_stock.item
+    location = row.location
+    return StocktakeItemStockFormData(
+        stocktake_item_id=row.id,
+        stocktake_id=row.stocktake_id,
+        item_stock_id=row.item_stock_id,
+        desired_quantity=row.desired_quantity,
+        item_sku=item.sku if item else None,
+        item_name=item.name if item else None,
+        location_id=item_stock.location_id,
+        location_code=location.location_code if location else None,
+        location_name=location.location_name if location else None,
+        lot_number_from=item_stock.lot_number_from,
+        lot_number_to=item_stock.lot_number_to,
+        expiry_date=item_stock.expiry_date,
+        status=item_stock.status,
+        system_quantity=item_stock.quantity,
+    )
+
+
+def record_stocktake_item_count(
+    db: Session,
+    stocktake_id: int,
+    stocktake_item_id: int,
+    body: StocktakeRecordCountRequest,
+) -> Optional[StocktakeItemStockResponse]:
+    row = _get_stocktake_item_row(db, stocktake_id, stocktake_item_id)
+    if not row:
+        return None
+    if row.status != "initialize":
+        raise ValueError("Item already recorded")
+
+    item_stock = row.item_stock
+    if not item_stock:
+        raise ValueError("Item stock not found")
+
+    _apply_item_stock_metadata(db, item_stock, body)
+    row.actual_quantity = body.actual_quantity
+    row.status = "in_progress"
+    row.location_id = item_stock.location_id
+    row.lot_number = format_lot_number_display(
+        item_stock.lot_number_from,
+        item_stock.lot_number_to,
+    ) or row.lot_number
+
+    try:
+        db.commit()
+        db.refresh(row)
+        row = _get_stocktake_item_row(db, stocktake_id, stocktake_item_id)
+    except IntegrityError as e:
+        db.rollback()
+        raise ValueError(f"Database conflict: {e.orig}") from e
+    return stocktake_item_to_response(row) if row else None
+
+
+def confirm_quantity_for_stock(
+    db: Session,
+    stocktake_id: int,
+    stocktake_item_id: int,
+) -> Optional[StocktakeItemStockResponse]:
+    row = _get_stocktake_item_row(db, stocktake_id, stocktake_item_id)
+    if not row:
+        return None
+    if row.status != "in_progress":
+        raise ValueError("Item is not pending admin confirmation")
+
+    item_stock = row.item_stock
+    if not item_stock:
+        raise ValueError("Item stock not found")
+
+    item_stock.quantity = row.actual_quantity
+    row.status = (
+        "completed"
+        if row.actual_quantity == row.desired_quantity
+        else "discrepancy"
+    )
+
+    try:
+        db.commit()
+        db.refresh(row)
+        row = _get_stocktake_item_row(db, stocktake_id, stocktake_item_id)
+    except IntegrityError as e:
+        db.rollback()
+        raise ValueError(f"Database conflict: {e.orig}") from e
+    return stocktake_item_to_response(row) if row else None

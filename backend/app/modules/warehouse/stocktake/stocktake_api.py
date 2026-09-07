@@ -11,10 +11,14 @@ from app.modules.auth.auth_model import User
 from app.modules.warehouse.stocktake import stocktake_service
 from app.modules.warehouse.stocktake.stocktake_service import stocktake_to_response
 from app.modules.warehouse.stocktake.stocktake_schema import (
+    StocktakeConfirmQuantityRequest,
     StocktakeCreate,
     StocktakeDetailResponse,
+    StocktakeItemStockFormData,
     StocktakeItemStockListResponse,
+    StocktakeItemStockResponse,
     StocktakeListResponse,
+    StocktakeRecordCountRequest,
     StocktakeResponse,
     StocktakeUpdate,
 )
@@ -69,6 +73,18 @@ def list_stocktake_items(
         page_size=page_size,
         stocktake_id=stocktake_id,
     )
+
+
+@router.get(
+    "/stocktake-items/{stocktake_item_id}/form-data",
+    response_model=StocktakeItemStockFormData,
+    dependencies=[Depends(_STOCKTAKE_READ)],
+)
+def get_stocktake_item_form_data(stocktake_item_id: int, db: DbSession):
+    form_data = stocktake_service.get_stocktake_item_form_data(db, stocktake_item_id)
+    if not form_data:
+        raise HTTPException(status_code=404, detail="Stocktake item not found")
+    return form_data
 
 
 @router.post(
@@ -135,3 +151,52 @@ def delete_stocktake(stocktake_id: int, db: DbSession):
     if not deleted:
         raise HTTPException(status_code=404, detail="Stocktake not found")
     return None
+
+
+@router.post(
+    "/stocktakes/{stocktake_id}/items/{stocktake_item_id}/record-count",
+    response_model=StocktakeItemStockResponse,
+    dependencies=[Depends(_STOCKTAKE_UPDATE)],
+)
+def record_stocktake_item_count(
+    stocktake_id: int,
+    stocktake_item_id: int,
+    body: StocktakeRecordCountRequest,
+    db: DbSession,
+):
+    try:
+        result = stocktake_service.record_stocktake_item_count(
+            db,
+            stocktake_id,
+            stocktake_item_id,
+            body,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    if not result:
+        raise HTTPException(status_code=404, detail="Stocktake item not found")
+    return result
+
+
+@router.post(
+    "/stocktakes/{stocktake_id}/items/{stocktake_item_id}/confirm-quantity",
+    response_model=StocktakeItemStockResponse,
+    dependencies=[Depends(_STOCKTAKE_UPDATE)],
+)
+def confirm_stocktake_item_quantity(
+    stocktake_id: int,
+    stocktake_item_id: int,
+    db: DbSession,
+    body: StocktakeConfirmQuantityRequest | None = None,
+):
+    try:
+        result = stocktake_service.confirm_quantity_for_stock(
+            db,
+            stocktake_id,
+            stocktake_item_id,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    if not result:
+        raise HTTPException(status_code=404, detail="Stocktake item not found")
+    return result

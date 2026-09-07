@@ -9,7 +9,10 @@ from app.modules.warehouse.item.item_service import get_qr_code_by_code
 from app.modules.warehouse.location_map.location_model import Location
 from app.modules.warehouse.unit.unit_model import Unit
 from app.modules.warehouse.item.item_model import Item, QR_Code
-from app.modules.warehouse.lot_number_utils import parse_legacy_lot_number
+from app.modules.warehouse.lot_number_utils import (
+    format_lot_number_display,
+    parse_legacy_lot_number,
+)
 from app.core.logger import get_logger
 from app.modules.warehouse.inbound_order.inbound_order_schema import AssignOrGetItemStockAction
 
@@ -327,8 +330,8 @@ def assign_for_packing_user(
     lot_raw = (lot_number or "").strip()
     if not lot_raw:
         raise ValueError("lot_number is required when assigning a QR code to a location")
-    parse_legacy_lot_number(lot_raw)
-    resolved_lot = lot_raw
+    lot_from, lot_to = parse_legacy_lot_number(lot_raw)
+    resolved_lot = format_lot_number_display(lot_from, lot_to)
     item = qr_record.item
     allowed_cavities = _cavity_numbers_from_item(item)
     if allowed_cavities:
@@ -455,8 +458,8 @@ def assign_or_get_item_stock(
     lot_raw = (lot_number or "").strip()
     if not lot_raw:
         raise ValueError("lot_number is required when assigning a QR code to a location")
-    parse_legacy_lot_number(lot_raw)
-    resolved_lot = lot_raw
+    lot_from, lot_to = parse_legacy_lot_number(lot_raw)
+    resolved_lot = format_lot_number_display(lot_from, lot_to)
     item = qr_record.item
     allowed_cavities = _cavity_numbers_from_item(item)
     if allowed_cavities:

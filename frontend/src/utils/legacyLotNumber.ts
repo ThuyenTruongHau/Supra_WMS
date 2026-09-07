@@ -1,9 +1,15 @@
-import { LOT_NUMBER_LEGACY_HINT } from "@/utils/lotNumberValidation";
+export const LOT_NUMBER_LEGACY_HINT =
+  "DDMMYY, DDMMYY-DDMMYY, DD-DDMMYY, DD/MM/YY, DD/MM/YY-DD/MM/YY, hoặc DD-DD/MM/YY " +
+  "(vd: 040526, 040526-050526, 04-050826, 19/08/26, 30/07/26-01/08/26, 09-10/04/26)";
 
-const LEGACY_DATE = String.raw`\d{2}/\d{2}/\d{2}`;
-const LEGACY_RANGE_RE = new RegExp(`^(${LEGACY_DATE})-(${LEGACY_DATE})$`);
-const LEGACY_DAY_RANGE_RE = /^(\d{1,2})-(\d{1,2})\/(\d{2})\/(\d{2})$/;
-const LEGACY_SINGLE_RE = new RegExp(`^(${LEGACY_DATE})$`);
+const COMPACT6 = String.raw`\d{6}`;
+const SLASH_DATE = String.raw`\d{2}/\d{2}/\d{2}`;
+const COMPACT_RANGE_RE = new RegExp(`^(${COMPACT6})-(${COMPACT6})$`);
+const COMPACT_DAY_RANGE_RE = /^(\d{1,2})-(\d{1,2})(\d{4})$/;
+const COMPACT_SINGLE_RE = new RegExp(`^(${COMPACT6})$`);
+const SLASH_RANGE_RE = new RegExp(`^(${SLASH_DATE})-(${SLASH_DATE})$`);
+const SLASH_DAY_RANGE_RE = /^(\d{1,2})-(\d{1,2})\/(\d{2})\/(\d{2})$/;
+const SLASH_SINGLE_RE = new RegExp(`^(${SLASH_DATE})$`);
 
 export interface LegacyLotBounds {
   from: string;
@@ -20,30 +26,75 @@ export class LegacyLotNumberError extends Error {
   }
 }
 
-/** Mirror backend parse_legacy_lot_number. */
+function validateDdmmyy(compact: string): void {
+  const day = Number.parseInt(compact.slice(0, 2), 10);
+  const month = Number.parseInt(compact.slice(2, 4), 10);
+  if (day < 1 || day > 31 || month < 1 || month > 12) {
+    throw new LegacyLotNumberError();
+  }
+}
+
+function toCompact(dd: string, mm: string, yy: string): string {
+  const compact = `${Number.parseInt(dd, 10).toString().padStart(2, "0")}${mm}${yy}`;
+  validateDdmmyy(compact);
+  return compact;
+}
+
+function slashToCompact(slash: string): string {
+  const [dd, mm, yy] = slash.split("/");
+  return toCompact(dd, mm, yy);
+}
+
+/** Mirror backend parse_legacy_lot_number — always returns compact DDMMYY. */
 export function parseLegacyLotNumber(value: string): LegacyLotBounds {
   const s = value.trim();
-
-  const rangeMatch = LEGACY_RANGE_RE.exec(s);
-  if (rangeMatch) {
-    return { from: rangeMatch[1], to: rangeMatch[2] };
+  if (!s) {
+    throw new LegacyLotNumberError();
   }
 
-  const dayRangeMatch = LEGACY_DAY_RANGE_RE.exec(s);
-  if (dayRangeMatch) {
-    const d1 = Number.parseInt(dayRangeMatch[1], 10);
-    const d2 = Number.parseInt(dayRangeMatch[2], 10);
-    const mm = dayRangeMatch[3];
-    const yy = dayRangeMatch[4];
+  let match = COMPACT_RANGE_RE.exec(s);
+  if (match) {
+    validateDdmmyy(match[1]);
+    validateDdmmyy(match[2]);
+    return { from: match[1], to: match[2] };
+  }
+
+  match = COMPACT_DAY_RANGE_RE.exec(s);
+  if (match) {
+    const mm = match[3].slice(0, 2);
+    const yy = match[3].slice(2, 4);
     return {
-      from: `${String(d1).padStart(2, "0")}/${mm}/${yy}`,
-      to: `${String(d2).padStart(2, "0")}/${mm}/${yy}`,
+      from: toCompact(match[1], mm, yy),
+      to: toCompact(match[2], mm, yy),
     };
   }
 
-  const singleMatch = LEGACY_SINGLE_RE.exec(s);
-  if (singleMatch) {
-    return { from: s, to: s };
+  match = COMPACT_SINGLE_RE.exec(s);
+  if (match) {
+    validateDdmmyy(match[1]);
+    return { from: match[1], to: match[1] };
+  }
+
+  match = SLASH_RANGE_RE.exec(s);
+  if (match) {
+    return {
+      from: slashToCompact(match[1]),
+      to: slashToCompact(match[2]),
+    };
+  }
+
+  match = SLASH_DAY_RANGE_RE.exec(s);
+  if (match) {
+    return {
+      from: toCompact(match[1], match[3], match[4]),
+      to: toCompact(match[2], match[3], match[4]),
+    };
+  }
+
+  match = SLASH_SINGLE_RE.exec(s);
+  if (match) {
+    const compact = slashToCompact(s);
+    return { from: compact, to: compact };
   }
 
   throw new LegacyLotNumberError();
@@ -67,17 +118,24 @@ export function formatLotNumberDisplay(
   return lotNumberFrom || lotNumberTo || null;
 }
 
-function parseLegacyLotDate(value: string): Date {
-  const [dd, mm, yy] = value.split("/");
+function parseLotDate(value: string): Date {
+  if (value.includes("/")) {
+    const [dd, mm, yy] = value.split("/");
+    return new Date(
+      2000 + Number.parseInt(yy, 10),
+      Number.parseInt(mm, 10) - 1,
+      Number.parseInt(dd, 10),
+    );
+  }
   return new Date(
-    2000 + Number.parseInt(yy, 10),
-    Number.parseInt(mm, 10) - 1,
-    Number.parseInt(dd, 10),
+    2000 + Number.parseInt(value.slice(4, 6), 10),
+    Number.parseInt(value.slice(2, 4), 10) - 1,
+    Number.parseInt(value.slice(0, 2), 10),
   );
 }
 
-function compareLegacyLotDates(a: string, b: string): number {
-  return parseLegacyLotDate(a).getTime() - parseLegacyLotDate(b).getTime();
+function compareLotDates(a: string, b: string): number {
+  return parseLotDate(a).getTime() - parseLotDate(b).getTime();
 }
 
 /** Min from / max to across all pack lots. */
@@ -91,10 +149,10 @@ export function aggregateLotNumbers(lots: string[]): string {
 
   for (const lot of lots) {
     const { from, to } = parseLegacyLotNumber(lot);
-    if (!minFrom || compareLegacyLotDates(from, minFrom) < 0) {
+    if (!minFrom || compareLotDates(from, minFrom) < 0) {
       minFrom = from;
     }
-    if (!maxTo || compareLegacyLotDates(to, maxTo) > 0) {
+    if (!maxTo || compareLotDates(to, maxTo) > 0) {
       maxTo = to;
     }
   }
@@ -104,4 +162,13 @@ export function aggregateLotNumbers(lots: string[]): string {
     throw new LegacyLotNumberError("lot_number is required");
   }
   return formatted;
+}
+
+export function isValidLegacyLotNumber(value: string): boolean {
+  try {
+    parseLegacyLotNumber(value);
+    return true;
+  } catch {
+    return false;
+  }
 }

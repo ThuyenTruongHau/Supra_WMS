@@ -8,6 +8,7 @@ import { useGetStocktakeItems, useGetStocktakes } from "@/hooks/useStocktake";
 import type { Stocktake, StocktakeItemStock } from "@/types/stocktake";
 import InboundStatusTag from "@/components/shared/InboundStatusTag";
 import CreateStocktakeModal from "@/pages/components/CreateStocktakeModal";
+import StocktakeRecordCountModal from "@/pages/components/StocktakeRecordCountModal";
 import dayjs from "dayjs";
 
 const PAGE_SIZE = 20;
@@ -28,6 +29,14 @@ function formatDate(date?: string | null) {
   return dayjs(date).format("DD/MM/YYYY HH:mm");
 }
 
+function displayLocationName(record: StocktakeItemStock): string {
+  return (
+    record.location_name ||
+    record.location_code ||
+    `#${record.location_id}`
+  );
+}
+
 export default function StocktakePage() {
   const navigate = useNavigate();
   const selectedWarehouseId = useAppStore((state) => state.selectedWarehouseId);
@@ -39,6 +48,9 @@ export default function StocktakePage() {
   const [searchInput, setSearchInput] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [recordTarget, setRecordTarget] = useState<StocktakeItemStock | null>(
+    null,
+  );
 
   useEffect(() => {
     setEventPage(1);
@@ -141,6 +153,12 @@ export default function StocktakePage() {
       ),
     },
     {
+      title: "Vị trí",
+      key: "location_name",
+      width: 200,
+      render: (_, record) => displayLocationName(record),
+    },
+    {
       title: "Mã sản phẩm",
       dataIndex: "item_sku",
       key: "item_sku",
@@ -153,21 +171,6 @@ export default function StocktakePage() {
       key: "item_name",
       ellipsis: true,
       render: (name: string | null) => name || "—",
-    },
-    {
-      title: "Vị trí",
-      dataIndex: "location_code",
-      key: "location_code",
-      width: 180,
-      render: (_: string | null, record) =>
-        record.location_code || record.location_name || `#${record.location_id}`,
-    },
-    {
-      title: "ID lô",
-      dataIndex: "item_stock_id",
-      key: "item_stock_id",
-      width: 110,
-      render: (id: number) => `#${id}`,
     },
     {
       title: "Lot",
@@ -193,13 +196,27 @@ export default function StocktakePage() {
       title: "Trạng thái",
       dataIndex: "status",
       key: "status",
-      width: 160,
-      render: (status: string | null) =>
-        status ? (
+      width: 150,
+      render: (status: string | null, record) => {
+        if (status === "initialize") {
+          return (
+            <Button
+              variant="primary"
+              onClick={(e) => {
+                e.stopPropagation();
+                setRecordTarget(record);
+              }}
+            >
+              Ghi nhận
+            </Button>
+          );
+        }
+        return status ? (
           <InboundStatusTag status={status} size="sm" />
         ) : (
           "—"
-        ),
+        );
+      },
     },
   ];
 
@@ -314,6 +331,13 @@ export default function StocktakePage() {
           setEventPage(1);
           void refetchEvents();
         }}
+      />
+
+      <StocktakeRecordCountModal
+        open={recordTarget != null}
+        record={recordTarget}
+        onCancel={() => setRecordTarget(null)}
+        onSuccess={() => setRecordTarget(null)}
       />
     </div>
   );
