@@ -16,7 +16,6 @@ import type {
   InboundSuggestAllocationRequest,
   InboundSuggestAllocationResponse,
   QrCodePreviewRequest,
-  QrCodePreviewResponse,
   PackingUserPendingStocksResponse,
 } from "@/types/inboundOrder";
 
@@ -111,8 +110,8 @@ export const assignOrGetItemStockApi = async (
 
 export const previewQrCodeApi = async (
   body: QrCodePreviewRequest,
-): Promise<QrCodePreviewResponse> => {
-  const { data } = await axiosInstance.post<QrCodePreviewResponse>(
+): Promise<AssignOrGetItemStockResponse> => {
+  const { data } = await axiosInstance.post<AssignOrGetItemStockResponse>(
     `${BASE}/preview-stocks`,
     body,
   );
@@ -129,12 +128,30 @@ export const cacheForPackingUserApi = async (
   return data;
 };
 
+export type PackingPendingRole = "item" | "pack";
+
+export type GetPackingUserStocksOptions = {
+  linked?: boolean;
+  pendingRole?: PackingPendingRole;
+};
+
 export const getPackingUserStocksApi = async (
   packingUser: string,
+  options?: boolean | GetPackingUserStocksOptions,
 ): Promise<PackingUserPendingStocksResponse> => {
+  const resolved =
+    typeof options === "boolean" ? { linked: options } : (options ?? {});
   const { data } = await axiosInstance.get<PackingUserPendingStocksResponse>(
     `${BASE}/packing-stocks`,
-    { params: { packing_user: packingUser } },
+    {
+      params: {
+        packing_user: packingUser,
+        ...(resolved.linked === true || resolved.linked === false
+          ? { linked: resolved.linked }
+          : {}),
+        ...(resolved.pendingRole ? { pending_role: resolved.pendingRole } : {}),
+      },
+    },
   );
   return data;
 };

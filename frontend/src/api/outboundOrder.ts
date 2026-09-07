@@ -113,6 +113,22 @@ export const getOutboundRobotTasksApi = async (
   }
 };
 
+export const getOutboundManualAllocationTasksApi = async (
+  orderId: number,
+): Promise<OutboundRobotTask[]> => {
+  try {
+    const { data } = await axiosInstance.get<OutboundRobotTask[]>(
+      `/api/v1/manual-allocation-tasks/${orderId}`,
+    );
+    return Array.isArray(data) ? data : [];
+  } catch (err) {
+    if (isAxiosError(err) && err.response?.status === 404) {
+      return [];
+    }
+    throw err;
+  }
+};
+
 export const executeOutboundRobotTaskApi = async (
   body: OutboundRobotTaskExecuteRequest,
   detailType = "auto",

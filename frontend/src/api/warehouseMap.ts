@@ -33,6 +33,7 @@ export interface LocationsByLogicResponse {
     warehouse_id: number;
     zone_id: number | null;
     is_active: boolean;
+    status?: string | null;
   }>;
 }
 

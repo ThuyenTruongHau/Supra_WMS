@@ -1,4 +1,4 @@
-import type { PackDraft } from "@/types/inboundOrder";
+import type { AssignedItemStock } from "@/types/inboundOrder";
 import type { QrTabletInboundMessageKey } from "@/i18n/qrTabletInbound.vi";
 import {
   LegacyLotNumberError,
@@ -28,8 +28,12 @@ export interface AggregatedItemFromPacks {
   qc_user?: string;
 }
 
+function packLotNumber(stock: AssignedItemStock): string {
+  return (stock.lot_number || stock.lot_number_to || "").trim();
+}
+
 function unionCommaSeparated(
-  values: Array<string | undefined>,
+  values: Array<string | undefined | null>,
   maxLength: number,
 ): string | undefined {
   const seen = new Set<string>();
@@ -60,7 +64,7 @@ function unionCommaSeparated(
   return joined;
 }
 
-function unionCavities(packs: PackDraft[]): string | undefined {
+function unionCavities(packs: AssignedItemStock[]): string | undefined {
   const seen = new Set<string>();
   const ordered: string[] = [];
 
@@ -84,8 +88,8 @@ function unionCavities(packs: PackDraft[]): string | undefined {
   return joined;
 }
 
-export function aggregatePackDrafts(
-  packs: PackDraft[],
+export function aggregateAssignedPacks(
+  packs: AssignedItemStock[],
   itemId: number,
 ): AggregatedItemFromPacks {
   if (packs.length === 0) {
@@ -105,7 +109,7 @@ export function aggregatePackDrafts(
 
   let lotNumber: string;
   try {
-    lotNumber = aggregateLotNumbers(packs.map((pack) => pack.lot_number));
+    lotNumber = aggregateLotNumbers(packs.map((pack) => packLotNumber(pack)));
   } catch (err) {
     if (err instanceof LegacyLotNumberError) {
       throw new PackAggregateError("packerInvalidLot");

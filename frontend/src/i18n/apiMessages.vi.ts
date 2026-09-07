@@ -9,6 +9,16 @@ const CALLER_PREFIX = /^Error calling inbound order:\s*/i;
 const QR_TYPE_LOCATION_CONFLICT =
   /^Location already has QR type '(\w+)', cannot assign QR type '(\w+)'$/;
 
+const PACKING_USER_PENDING_ITEM_CONFLICT =
+  /^Packing user already has pending stock for item '([^']+)', cannot cache a different item$/;
+
+const PACK_ALREADY_LINKED =
+  /^Pack QR is already linked to an item and cannot be modified$/;
+
+const UNIT_NOT_FOUND = /^Unit not found:\s*(.+)$/;
+const ITEM_NOT_FOUND = /^Item not found:\s*(.+)$/;
+const INVALID_CAVITY = /^Invalid cavity_number:\s*(.+)$/;
+
 /** @deprecated legacy backend message — remove after deploy */
 const QR_TYPE_LOCATION_CONFLICT_LEGACY =
   /^Vị trí đã có QR loại '(\w+)', không thể gán QR loại '(\w+)'$/;
@@ -37,6 +47,24 @@ export const API_MESSAGES_VI: Record<string, string> = {
     "Mã QR không hợp lệ hoặc không tìm thấy vị trí",
   "Only item or pack QR codes can be cached for packing":
     "Chỉ mã QR loại sản phẩm hoặc đóng gói mới được lưu tạm ở chế độ người đóng gói",
+  "Invalid QR code": "Mã QR không hợp lệ",
+  "Transit QR codes cannot be cached for packing":
+    "Mã QR di chuyển không thể lưu tạm ở chế độ người đóng gói",
+  "Pack QR is already linked to an item and cannot be modified":
+    "Pack QR đã được gán cho item, không thể quét lại hoặc sửa",
+  "relation cannot reference the same QR code":
+    "Pack không thể liên kết với chính mã QR đó",
+  "relation must point to a cached item QR":
+    "Cần quét và lưu tạm item trước khi gán pack",
+  "relation must point to an item QR":
+    "Pack chỉ có thể liên kết với mã QR loại sản phẩm (item)",
+  "relation item belongs to a different packing user":
+    "Item này thuộc người đóng gói khác, không thể gán pack",
+  "packing_user is required": "Cần chọn người đóng gói",
+  "qc_user is required for item or pack QR":
+    "Cần chọn người kiểm tra cho mã QR sản phẩm/đóng gói",
+  "packing_user is required for item or pack QR":
+    "Cần chọn người đóng gói cho mã QR sản phẩm/đóng gói",
   /** @deprecated legacy backend key */
   "Mã QR không hợp lệ hoặc không tìm thấy vị trí":
     "Mã QR không hợp lệ hoặc không tìm thấy vị trí",
@@ -107,6 +135,39 @@ function applyDictionary(message: string): string {
   return message;
 }
 
+function translatePackingUserPendingItemConflict(message: string): string | null {
+  const match = message.match(PACKING_USER_PENDING_ITEM_CONFLICT);
+  if (!match) return null;
+  const [, existingSku] = match;
+  return (
+    `Người đóng gói đã có hàng tạm của sản phẩm ${existingSku}. ` +
+    "Không thể lưu tạm sản phẩm khác."
+  );
+}
+
+function translatePackAlreadyLinked(message: string): string | null {
+  if (!PACK_ALREADY_LINKED.test(message)) return null;
+  return "Pack QR đã được gán cho item, không thể quét lại hoặc sửa";
+}
+
+function translateUnitNotFound(message: string): string | null {
+  const match = message.match(UNIT_NOT_FOUND);
+  if (!match) return null;
+  return `Không tìm thấy đơn vị: ${match[1]}`;
+}
+
+function translateItemNotFound(message: string): string | null {
+  const match = message.match(ITEM_NOT_FOUND);
+  if (!match) return null;
+  return `Không tìm thấy sản phẩm: ${match[1]}`;
+}
+
+function translateInvalidCavity(message: string): string | null {
+  const match = message.match(INVALID_CAVITY);
+  if (!match) return null;
+  return `Số cavity không hợp lệ: ${match[1]}`;
+}
+
 function translateQrTypeLocationConflict(message: string): string | null {
   const match =
     message.match(QR_TYPE_LOCATION_CONFLICT) ??
@@ -131,7 +192,25 @@ export function translateApiMessage(message: string): string {
   const trimmed = message.trim();
   if (!trimmed) return trimmed;
   const inner = trimmed.replace(CALLER_PREFIX, "").trim();
-  const qrConflict = translateQrTypeLocationConflict(inner || trimmed);
+  const target = inner || trimmed;
+
+  const packLinked = translatePackAlreadyLinked(target);
+  if (packLinked) return packLinked;
+
+  const pendingItemConflict = translatePackingUserPendingItemConflict(target);
+  if (pendingItemConflict) return pendingItemConflict;
+
+  const qrConflict = translateQrTypeLocationConflict(target);
   if (qrConflict) return qrConflict;
-  return applyDictionary(inner || trimmed);
+
+  const unitNotFound = translateUnitNotFound(target);
+  if (unitNotFound) return unitNotFound;
+
+  const itemNotFound = translateItemNotFound(target);
+  if (itemNotFound) return itemNotFound;
+
+  const invalidCavity = translateInvalidCavity(target);
+  if (invalidCavity) return invalidCavity;
+
+  return applyDictionary(target);
 }

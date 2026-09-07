@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Optional, List
+from typing import Any, Optional, List, Union
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
@@ -148,7 +148,7 @@ class CacheForPackingUserRequest(BaseModel):
     relation: Optional[int] = Field(
         None,
         gt=0,
-        description="Parent item qr_code_id; required when caching pack QR",
+        description="Parent item qr_code_id when linking pack to cached item",
     )
 
 class AssignOrGetItemStockAction:
@@ -166,6 +166,9 @@ class AssignOrGetItemStockResponse(BaseModel):
     assigned: Optional[AssignItemStockMetaResponse] = None
     location_stocks: list["AssignedItemStockResponse"] = Field(default_factory=list)
     pending: Optional[PendingCachedResponse] = None
+    location_id: Optional[int] = None
+    location_name: Optional[str] = None
+    warehouse_id: Optional[int] = None
 
 
 class AssignedItemStockResponse(BaseModel):
@@ -188,9 +191,12 @@ class AssignedItemStockResponse(BaseModel):
     qc_user: Optional[str] = None
     packing_user: Optional[str] = None
     stock_level: Optional[int] = None
-    relation: Optional[int] = Field(
+    relation: Optional[Union[int, str]] = Field(
         None,
-        description="Parent item qr_code_id when this pending row is a pack",
+        description=(
+            'Pending link: "item" marks an item anchor row; '
+            "int is parent item qr_code_id for a linked pack; null is an unlinked pack"
+        ),
     )
 
 class InboundOrderAllocationCreate(BaseModel):
@@ -202,6 +208,10 @@ class InboundOrderAllocationCreate(BaseModel):
     lot_number: Optional[str] = Field(None, max_length=50)
     qr_code_id: Optional[int] = None
     expiry_date: Optional[str] = None
+    cavity_number: Optional[str] = None
+    manufacturing_user: Optional[str] = None
+    qc_user: Optional[str] = None
+    packing_user: Optional[str] = None
 
     @model_validator(mode="after")
     def validate_lot_fields(self) -> "InboundOrderAllocationCreate":

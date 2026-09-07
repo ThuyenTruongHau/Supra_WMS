@@ -15,6 +15,7 @@ import {
   useGetOutboundOrderDetails,
   useGetOutboundLackedDetails,
   useGetOutboundRobotTasks,
+  useGetOutboundManualAllocationTasks,
   useDeleteOutboundOrder,
   useCalculateOutboundOrder,
   useExecuteOutboundRobotTask,
@@ -88,10 +89,15 @@ const TASK_TYPE_LABEL: Record<OutboundRobotTask["task_type"], string> = {
   return: "TRẢ",
 };
 
-function getRobotTaskDisplayStatus(record: OutboundRobotTask): string {
+function getRobotTaskDisplayStatus(
+  record: OutboundRobotTask,
+  isManualOutbound = false,
+): string {
   const allocationStatus = record.allocations[0]?.status;
+  if (allocationStatus === "completed") return "completed";
   // Robot ICS "completed" maps allocation to pre_completed until QR confirm.
   if (allocationStatus === "pre_completed") return "pre_completed";
+  if (isManualOutbound) return allocationStatus || record.status;
   if (record.task_type !== "return") return record.status;
   if (record.status && record.status !== "initialize") return record.status;
   return allocationStatus || record.status;
@@ -182,6 +188,7 @@ export default function OutboundDetailPage() {
   const orderId = orderIdParam ? Number(orderIdParam) : undefined;
   const navigate = useNavigate();
   const outboundType = useAppStore((s) => s.outboundType);
+  const isManualOutbound = outboundType === "manual";
   const selectedWarehouseId = useAppStore((s) => s.selectedWarehouseId);
 
   const [isEditOpen, setIsEditOpen] = useState(false);
@@ -218,7 +225,19 @@ export default function OutboundDetailPage() {
     data: robotTasks = [],
     isLoading: isRobotTasksLoading,
     refetch: refetchRobotTasks,
-  } = useGetOutboundRobotTasks(orderId, !!orderId);
+  } = useGetOutboundRobotTasks(orderId, !!orderId && !isManualOutbound);
+  const {
+    data: manualAllocationTasks = [],
+    isLoading: isManualAllocationTasksLoading,
+    refetch: refetchManualAllocationTasks,
+  } = useGetOutboundManualAllocationTasks(orderId, !!orderId && isManualOutbound);
+  const allocationTasks = isManualOutbound ? manualAllocationTasks : robotTasks;
+  const isAllocationTasksLoading = isManualOutbound
+    ? isManualAllocationTasksLoading
+    : isRobotTasksLoading;
+  const refetchAllocationTasks = isManualOutbound
+    ? refetchManualAllocationTasks
+    : refetchRobotTasks;
   const deleteMutation = useDeleteOutboundOrder();
   const calculateMutation = useCalculateOutboundOrder();
   const executeRobotTaskMutation = useExecuteOutboundRobotTask();
@@ -226,8 +245,9 @@ export default function OutboundDetailPage() {
   const { data: users = [] } = useUser();
 
   const warehouseId = order?.warehouse_id ?? selectedWarehouseId ?? 0;
+  const fetchAllocationTab = activeTab === "allocation";
   const { data: outboundBufferLocationsData, isLoading: outboundBufferLocationsLoading } =
-    useOutboundBufferLocations(warehouseId, activeTab === "allocation");
+    useOutboundBufferLocations(warehouseId, fetchAllocationTab);
 
   const outboundBufferLocationOptions = useMemo(
     () =>
@@ -379,7 +399,7 @@ export default function OutboundDetailPage() {
         allocationCode,
       );
 
-      if (hasLocation) {
+      if (hasLocation || (isManualOutbound && kind === "start")) {
         return displayLocationName(
           allocationName,
           allocationCode,
@@ -417,6 +437,7 @@ export default function OutboundDetailPage() {
     [
       getTaskLocationSelectOptions,
       handleTaskLocationChange,
+      isManualOutbound,
       outboundBufferLabelById,
       outboundBufferLocationsLoading,
       taskLocationDraft,
@@ -435,7 +456,10 @@ export default function OutboundDetailPage() {
 
     try {
       setExecutingTaskOrderId(record.order_id);
-      message.loading({ content: "Đang gửi lệnh...", key: "execute" });
+      message.loading({
+        content: isManualOutbound ? "Đang xác nhận xuất..." : "Đang gửi lệnh...",
+        key: "execute",
+      });
       await executeRobotTaskMutation.mutateAsync({
         orderId,
         body: {
@@ -448,11 +472,14 @@ export default function OutboundDetailPage() {
         },
         detailType: outboundType,
       });
-      message.success({ content: "Đã thực thi task", key: "execute" });
+      message.success({
+        content: isManualOutbound ? "Đã xác nhận xuất" : "Đã thực thi task",
+        key: "execute",
+      });
       void refetchOrder();
       void refetchDetails();
       void refetchLacked();
-      void refetchRobotTasks();
+      void refetchAllocationTasks();
     } catch (err) {
       message.error({ content: apiError(err), key: "execute" });
     } finally {
@@ -472,7 +499,7 @@ export default function OutboundDetailPage() {
       const returnQty = Number(result.return_quantity ?? 0);
       void refetchOrder();
       void refetchDetails();
-      void refetchRobotTasks();
+      void refetchAllocationTasks();
       void refetchLacked();
 
       if (returnQty > 0) {
@@ -520,10 +547,10 @@ export default function OutboundDetailPage() {
       void refetchDetails();
       void refetchLacked();
       if (tab === "allocation") {
-        void refetchRobotTasks();
+        void refetchAllocationTasks();
       }
     },
-    [refetchDetails, refetchLacked, refetchOrder, refetchRobotTasks],
+    [refetchAllocationTasks, refetchDetails, refetchLacked, refetchOrder],
   );
 
   const handleDetailRowExpand = useCallback(
@@ -535,9 +562,9 @@ export default function OutboundDetailPage() {
 
   const handleRobotTaskRowExpand = useCallback(
     (expanded: boolean) => {
-      if (expanded) void refetchRobotTasks();
+      if (expanded) void refetchAllocationTasks();
     },
-    [refetchRobotTasks],
+    [refetchAllocationTasks],
   );
 
   const toggleDetailSelection = useCallback(
@@ -618,7 +645,7 @@ export default function OutboundDetailPage() {
       void refetchOrder();
       void refetchDetails();
       void refetchLacked();
-      void refetchRobotTasks();
+      void refetchAllocationTasks();
       setActiveTab("allocation");
 
       if (result.is_fully_allocated) {
@@ -919,7 +946,7 @@ export default function OutboundDetailPage() {
       key: "status",
       width: 150,
       render: (_, record) => {
-        const displayStatus = getRobotTaskDisplayStatus(record);
+        const displayStatus = getRobotTaskDisplayStatus(record, isManualOutbound);
         if (displayStatus === "initialize") {
           const { startId, endId, needsStartPick, needsEndPick } =
             getTaskLocationIds(record);
@@ -939,11 +966,11 @@ export default function OutboundDetailPage() {
               }
               onClick={() => void handleExecuteRobotTask(record)}
             >
-              Execute
+              {isManualOutbound ? "Xác nhận xuất" : "Execute"}
             </Button>
           );
         }
-        if (displayStatus === "pre_completed") {
+        if (!isManualOutbound && displayStatus === "pre_completed") {
           return (
             <Button
               variant="primary"
@@ -1312,18 +1339,18 @@ export default function OutboundDetailPage() {
                   onExpand: handleDetailRowExpand,
                 }}
               />
-            ) : isRobotTasksLoading ? (
+            ) : isAllocationTasksLoading ? (
               <div className="py-12 text-center text-slate-500">
                 Đang tải lệnh phân bổ...
               </div>
-            ) : robotTasks.length === 0 ? (
+            ) : allocationTasks.length === 0 ? (
               <div className="py-12 text-center text-slate-400 italic">
                 Chưa hàng nào được phân bổ
               </div>
             ) : (
               <Table
                 columns={robotTaskColumns}
-                dataSource={robotTasks}
+                dataSource={allocationTasks}
                 pagination={false}
                 rowKey="order_id"
                 size="middle"

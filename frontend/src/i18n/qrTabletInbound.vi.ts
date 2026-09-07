@@ -34,6 +34,10 @@ export const QR_TABLET_INBOUND_VI = {
     "QR thiếu thông tin bắt buộc. Quét lại khi mã đã được lưu tạm trước đó.",
   packerListCount: "{count} mã QR",
   packerNoPacksToConfirm: "Cần quét ít nhất 1 pack trước khi xác nhận item",
+  packerNoPacksForAnchor:
+    "Người đóng gói chưa có pack hoặc item nào khớp với sản phẩm đang quét.",
+  packerPendingItemMismatch:
+    "Người đóng gói {packingUser} đang gom sản phẩm {pendingSku}, không khớp với item đang quét ({anchorSku}).",
   packerMixedUnit: "Các pack phải cùng đơn vị",
   packerItemMismatch: "Pack không thuộc cùng sản phẩm với item",
   packerInvalidLot: "Số lô pack không hợp lệ hoặc không gom được",
@@ -42,13 +46,17 @@ export const QR_TABLET_INBOUND_VI = {
   packerConfirmSending: "Đang gửi dữ liệu đóng gói...",
   packerBatchReviewTitle: "Xác nhận gửi dữ liệu đóng gói",
   packerBatchReviewHint:
-    "Kiểm tra thông tin item gom từ pack. Bấm gửi để lưu tạm lên hệ thống.",
+    "Kiểm tra thông tin item gom từ pack đã có và pack mới được chọn. Bấm gửi để lưu tạm lên hệ thống.",
   packerBatchReviewItemSection: "Item gom từ pack",
+  packerBatchReviewExistingItemSection: "Item đang lưu tạm",
+  packerBatchReviewExistingPacksSection: "Pack đã gom trước",
+  packerBatchReviewNewPacksSection: "Pack mới (chọn để thêm)",
   packerBatchReviewPacksSection: "Pack sẽ gửi",
+  packerBatchReviewAggregatedSection: "Tổng gom (cũ + mới)",
+  packerNoPacksSelected: "Chọn ít nhất 1 pack mới hoặc cần có pack đã gom trước",
   packerBatchSendButton: "Gửi dữ liệu",
   packerBatchSendProgress: "Đang gửi {current}/{total}...",
   packerBatchSendComplete: "Đã gửi xong",
-  packerBatchTotalRequests: "Tổng {count} lần gửi API",
   pendingCachedSuccess: "Đã lưu tạm QR {code} — {partNumber}",
   selectWarehouseFirst: "Hãy chọn kho ở header trước khi quét",
   assignedTitle: "Đã gán sản phẩm",
@@ -64,6 +72,11 @@ export const QR_TABLET_INBOUND_VI = {
   inboundComplete: "Hoàn tất đơn nhập",
   flowPackerModeLabel: "Chế độ người đóng gói",
   flowToggleAria: "Bật tắt chế độ người đóng gói",
+  packerLocationImportTitle: "Nhập kho từ vị trí",
+  packerLocationImportHint:
+    "Chọn người đóng gói để lấy các item đã lưu tạm và tạo đơn nhập.",
+  packerLocationNoPendingItems:
+    "Người đóng gói chưa có item nào đã lưu tạm để nhập kho.",
 } as const;
 
 export type QrTabletInboundMessageKey = keyof typeof QR_TABLET_INBOUND_VI;
@@ -104,9 +117,13 @@ export function formatPackerBatchSendProgress(
     .replace("{total}", String(total));
 }
 
-export function formatPackerBatchTotalRequests(count: number): string {
-  return QR_TABLET_INBOUND_VI.packerBatchTotalRequests.replace(
-    "{count}",
-    String(count),
-  );
+export function formatPackerPendingItemMismatch(
+  packingUser: string,
+  pendingSku: string,
+  anchorSku: string,
+): string {
+  return QR_TABLET_INBOUND_VI.packerPendingItemMismatch
+    .replace("{packingUser}", packingUser)
+    .replace("{pendingSku}", pendingSku)
+    .replace("{anchorSku}", anchorSku);
 }

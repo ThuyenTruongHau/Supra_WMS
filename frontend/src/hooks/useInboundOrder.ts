@@ -141,7 +141,15 @@ export const useCacheForPackingUser = () => {
 
 export const useGetPackingUserStocks = () => {
   return useMutation({
-    mutationFn: (packingUser: string) => getPackingUserStocksApi(packingUser),
+    mutationFn: ({
+      packingUser,
+      linked,
+      pendingRole,
+    }: {
+      packingUser: string;
+      linked?: boolean;
+      pendingRole?: "item" | "pack";
+    }) => getPackingUserStocksApi(packingUser, { linked, pendingRole }),
   });
 };
 

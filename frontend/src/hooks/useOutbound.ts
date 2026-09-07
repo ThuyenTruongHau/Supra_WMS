@@ -9,6 +9,7 @@ import {
   updateOutboundOrderApi,
   deleteOutboundOrderApi,
   getOutboundRobotTasksApi,
+  getOutboundManualAllocationTasksApi,
   executeOutboundRobotTaskApi,
   confirmOutboundOrderQrApi,
   confirmOutboundOrderNoQrApi,
@@ -83,6 +84,12 @@ export const useCalculateOutboundOrder = () => {
       queryClient.invalidateQueries({
         queryKey: ["outboundRobotTasks", variables.body.outbound_order_id],
       });
+      queryClient.invalidateQueries({
+        queryKey: [
+          "outboundManualAllocationTasks",
+          variables.body.outbound_order_id,
+        ],
+      });
     },
   });
 };
@@ -94,6 +101,18 @@ export const useGetOutboundRobotTasks = (
   return useQuery({
     queryKey: ["outboundRobotTasks", orderId],
     queryFn: () => getOutboundRobotTasksApi(orderId!),
+    enabled: !!orderId && orderId > 0 && enabled,
+    ...LIVE_QUERY_OPTIONS,
+  });
+};
+
+export const useGetOutboundManualAllocationTasks = (
+  orderId: number | undefined,
+  enabled: boolean,
+) => {
+  return useQuery({
+    queryKey: ["outboundManualAllocationTasks", orderId],
+    queryFn: () => getOutboundManualAllocationTasksApi(orderId!),
     enabled: !!orderId && orderId > 0 && enabled,
     ...LIVE_QUERY_OPTIONS,
   });
@@ -172,6 +191,9 @@ export const useExecuteOutboundRobotTask = () => {
       queryClient.invalidateQueries({
         queryKey: ["outboundRobotTasks", variables.orderId],
       });
+      queryClient.invalidateQueries({
+        queryKey: ["outboundManualAllocationTasks", variables.orderId],
+      });
     },
   });
 };
@@ -194,6 +216,9 @@ export const useConfirmOutboundOrderQr = () => {
       });
       queryClient.invalidateQueries({
         queryKey: ["outboundRobotTasks", variables.orderId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["outboundManualAllocationTasks", variables.orderId],
       });
       queryClient.invalidateQueries({ queryKey: ["outboundOrders"] });
     },
@@ -218,6 +243,9 @@ export const useConfirmOutboundOrderNoQr = () => {
       });
       queryClient.invalidateQueries({
         queryKey: ["outboundRobotTasks", variables.orderId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["outboundManualAllocationTasks", variables.orderId],
       });
       queryClient.invalidateQueries({
         queryKey: ["outboundOrderLacked", variables.orderId],

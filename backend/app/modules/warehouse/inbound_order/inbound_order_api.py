@@ -1,4 +1,4 @@
-from typing import Annotated, Optional
+from typing import Annotated, Literal, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
@@ -24,7 +24,6 @@ from app.modules.warehouse.inbound_order.inbound_order_schema import (
     AssignOrGetItemStockRequest,
     AssignOrGetItemStockResponse,
     QrCodePreviewRequest,
-    QrCodePreviewResponse,
     CacheForPackingUserRequest,
     PackingUserPendingStocksResponse,
     RelocateAssignedStockRequest,
@@ -223,7 +222,7 @@ def caller_inbound_order(
 
 @router.post(
     "/inbound-orders/preview-stocks",
-    response_model=QrCodePreviewResponse,
+    response_model=AssignOrGetItemStockResponse,
 )
 def preview_inbound_qr_code(
     body: QrCodePreviewRequest,
@@ -239,7 +238,7 @@ def preview_inbound_qr_code(
         msg = str(e)
         code = 404 if "not found" in msg.lower() else 400
         raise HTTPException(status_code=code, detail=msg) from e
-    return QrCodePreviewResponse.model_validate(result)
+    return AssignOrGetItemStockResponse.model_validate(result)
 
 
 @router.post(
@@ -294,9 +293,21 @@ def _assign_or_get_item_stocks(db: Session, body: AssignOrGetItemStockRequest):
 )
 def get_packing_user_pending_stocks(
     packing_user: str = Query(..., min_length=1, max_length=100),
+    linked: Optional[bool] = Query(
+        None,
+        description="True=linked packs only, False=unlinked packs only, omit=all pack pending",
+    ),
+    pending_role: Optional[Literal["item", "pack"]] = Query(
+        None,
+        description='"item"=item anchors (relation=item), "pack" or omit with linked=pack filters',
+    ),
 ):
     try:
-        items = qr_code_module.get_pending_by_packing_user(packing_user)
+        items = qr_code_module.get_pending_by_packing_user(
+            packing_user,
+            linked=linked,
+            pending_role=pending_role,
+        )
     except ValueError as e:
         msg = str(e)
         code = 404 if "not found" in msg.lower() else 400

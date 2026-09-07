@@ -1,5 +1,5 @@
 import json
-from typing import Optional
+from typing import Optional, Literal
 from zoneinfo import ZoneInfo
 
 from sqlalchemy.orm import Session
@@ -123,11 +123,25 @@ def _assigned_result(part_number: str, location: str) -> dict:
     }
 
 
-def _location_stocks_result(stocks: list[dict]) -> dict:
-    return {
+def _location_stocks_result(
+    stocks: list[dict],
+    location: Optional[Location] = None,
+) -> dict:
+    result: dict = {
         "action": AssignOrGetItemStockAction.LOCATION_STOCKS,
         "location_stocks": stocks,
     }
+    if location is not None:
+        result["location_id"] = location.id
+        result["location_name"] = location.location_name
+        result["warehouse_id"] = location.warehouse_id
+    elif stocks:
+        first = stocks[0]
+        if first.get("location_id") is not None:
+            result["location_id"] = first["location_id"]
+            result["location_name"] = first.get("location_name")
+            result["warehouse_id"] = first.get("warehouse_id")
+    return result
 
 
 def _resolve_location(
@@ -157,20 +171,48 @@ def _default_lot_number(qr_record) -> str:
         return created.strftime("%d/%m/%y")
     return created.astimezone(VN).strftime("%d/%m/%y")
 
+def _reject_if_linked_pack_recache(qr_record, qr_type: str) -> None:
+    if (qr_type or "item").strip().lower() != "pack":
+        return
+    existing = _get_cached_pending_for_qr(qr_record.id)
+    if existing and _is_linked_pack_pending(existing):
+        raise ValueError(
+            "Pack QR is already linked to an item and cannot be modified"
+        )
 
-def preview_qr_code(
-    db: Session,
-    qr_code: Optional[str] = None,
-    warehouse_id: Optional[int] = None,
-) -> dict:
-    del warehouse_id
+def preview_qr_code(db, qr_code=None, warehouse_id=None):
     qr_record = get_qr_code_by_code(db, qr_code)
-    if qr_record is None or not _qr_type_needs_qc_packing(qr_record.qr_type):
-        raise ValueError("Only item or pack QR codes can be cached for packing")
-    if qr_record is None:
-        raise ValueError("Invalid QR code")
 
-    return _qr_preview_payload(qr_record)
+    if qr_record is None:
+        location = _resolve_location(db, qr_code, warehouse_id)
+        if location is None:
+            raise ValueError("Invalid QR code or location not found")
+        return _location_stocks_result([], location)
+
+    qr_type = (qr_record.qr_type or "item").strip().lower()
+    if qr_type == "transit":
+        raise ValueError("Transit QR codes cannot be cached for packing")
+
+    if not _qr_type_needs_qc_packing(qr_record.qr_type):
+        raise ValueError("Only item or pack QR codes can be cached for packing")
+    _reject_if_linked_pack_recache(qr_record, qr_type)
+    return _preview_result(qr_record)
+
+
+def _is_unlinked_pack_pending(stock: dict) -> bool:
+    level = stock.get("stock_level")
+    if level is not None:
+        if int(level) != 2:
+            return False
+    elif (stock.get("qr_type") or "item").strip().lower() != "pack":
+        return False
+
+    relation = stock.get("relation")
+    if relation is None:
+        return True
+    if isinstance(relation, str) and not relation.strip():
+        return True
+    return False
 
 
 def _is_linked_pack_pending(stock: dict) -> bool:
@@ -208,8 +250,26 @@ def _validate_pack_relation(
     if parent_packing != packing_user:
         raise ValueError("relation item belongs to a different packing user")
 
+def _relation_is_item_marker(relation) -> bool:
+    return isinstance(relation, str) and relation.strip().lower() == "item"
 
-def get_pending_by_packing_user(packing_user: str) -> list[dict]:
+def _is_item_anchor_pending(stock: dict) -> bool:
+    level = stock.get("stock_level")
+    qr_type = (stock.get("qr_type") or "item").strip().lower()
+    if level is not None:
+        if int(level) != 1:
+            return False
+    elif qr_type != "item":
+        return False
+    return _relation_is_item_marker(stock.get("relation"))
+
+
+def get_pending_by_packing_user(
+    packing_user: str,
+    *,
+    linked: Optional[bool] = None,
+    pending_role: Optional[Literal["item", "pack"]] = None,
+) -> list[dict]:
     username = (packing_user or "").strip()
     if not username:
         raise ValueError("packing_user is required")
@@ -217,11 +277,27 @@ def get_pending_by_packing_user(packing_user: str) -> list[dict]:
     if not keys:
         return []
     values = get_redis().mget(keys)
+
     stocks = [
         _normalize_assigned_stock(json.loads(raw))
         for raw in values if raw
     ]
-    return [stock for stock in stocks if _is_linked_pack_pending(stock)]
+
+    
+    if pending_role == "item":
+        return [s for s in stocks if _is_item_anchor_pending(s)]
+
+    if linked is True:
+        # logger.info(f"Linked pack pending: {stocks}")
+        return [stock for stock in stocks if _is_linked_pack_pending(stock)]
+    if linked is False:
+        # logger.info(f"Unlinked pack pending: {stocks}")
+        return [stock for stock in stocks if _is_unlinked_pack_pending(stock)]
+    return [
+        stock
+        for stock in stocks
+        if _is_linked_pack_pending(stock) or _is_unlinked_pack_pending(stock)
+    ]
 
 
 def assign_for_packing_user(
@@ -297,20 +373,26 @@ def assign_for_packing_user(
         cache_payload["packing_user"] = resolved_packing
 
     qr_type = (qr_record.qr_type or "item").strip().lower()
+    _reject_if_linked_pack_recache(qr_record, qr_type)
     if qr_type == "item":
-        cache_payload["relation"] = None
+        cache_payload["relation"] = "item"
     elif qr_type == "pack":
-        if relation is None:
-            raise ValueError("relation is required for pack QR")
-        resolved_relation = int(relation)
-        _validate_pack_relation(
-            pack_qr_id=qr_record.id,
-            relation=resolved_relation,
-            packing_user=resolved_packing or "",
-        )
-        cache_payload["relation"] = resolved_relation
+        if relation is not None:
+            resolved_relation = int(relation)
+            _validate_pack_relation(
+                pack_qr_id=qr_record.id,
+                relation=resolved_relation,
+                packing_user=resolved_packing or "",
+            )  
+            cache_payload["relation"] = resolved_relation
+        else:
+            cache_payload["relation"] = None  
     else:
         raise ValueError("Only item or pack QR codes can be cached for packing")
+
+    if needs_qc_packing and resolved_packing:
+        _check_pending_item_for_packing_user(resolved_packing, qr_record.item_id)
+    _clear_previous_qr_pending(qr_record.id)
 
     # logger.info(f"Caching pending for QR {qr_record.id} with payload: {cache_payload}")
 
@@ -361,7 +443,7 @@ def assign_or_get_item_stock(
             location = _resolve_location(db, qr_code, warehouse_id)
         if location is None:
             raise ValueError("Invalid QR code or location not found")
-        return _location_stocks_result(get_assigned_item_stock(db, location.id))
+        return _location_stocks_result(get_assigned_item_stock(db, location.id), location)
 
     if quantity is None or unit_id is None:
         raise ValueError("quantity and unit_id are required when assigning a QR code to a location")
@@ -432,6 +514,40 @@ def assign_or_get_item_stock(
         part_number=item.sku if item else "",
         location=location.location_name,
     )
+
+def _check_pending_item_for_packing_user(
+    packing_user: str,
+    item_id: Optional[int],
+) -> None:
+    username = (packing_user or "").strip()
+    if not username or item_id is None:
+        return
+    keys = cache_scan_keys(f"inbound:pending:user:{username}:*")
+    if not keys:
+        return
+    r = get_redis()
+    incoming_item_id = int(item_id)
+    for raw in r.mget(keys):
+        if not raw:
+            continue
+        cached = json.loads(raw)
+        existing_item_id = cached.get("item_id")
+        if existing_item_id is None:
+            continue
+        if int(existing_item_id) != incoming_item_id:
+            existing_sku = (cached.get("item_sku") or "").strip() or str(existing_item_id)
+            raise ValueError(
+                f"Packing user already has pending stock for item '{existing_sku}', "
+                f"cannot cache a different item"
+            )
+
+
+def _clear_previous_qr_pending(qr_id: int) -> None:
+    r = get_redis()
+    r.delete(f"inbound:pending:qr:{qr_id}")
+    for key in cache_scan_keys(f"inbound:pending:user:*:{qr_id}"):
+        r.delete(key)
+
 
 def _check_qr_in_location(location_id: int, qr_type: str) -> None:
     keys = cache_scan_keys(f"inbound:assign:location:{location_id}:*")

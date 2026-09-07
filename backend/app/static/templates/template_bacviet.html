@@ -14,6 +14,7 @@
       "part_number": "RC6-...",     // mã sản phẩm (dùng chung)
       "part_name": "TN_SP_...",     // tên sản phẩm (dùng chung)
       "qr_ids": ["id-1", "..."]   // mỗi phần tử = 1 QR id riêng, length = quantity
+      "qr_type": "item"           // item → hiện số 1, pack → hiện số 2 (góc trên phải)
     }
 
     Số trang = Math.ceil(quantity / 9)
@@ -128,6 +129,16 @@
     .ticket-header {
       border-bottom: 1px solid #000;
       flex-shrink: 0;
+      position: relative;
+    }
+
+    .qr-type-number {
+      position: absolute;
+      top: 0.35mm;
+      right: 0.6mm;
+      font-size: 8px;
+      font-weight: 700;
+      line-height: 1;
     }
 
     .ticket-title {
@@ -347,6 +358,7 @@
           "BGRD00074-20260821-00000009",
         ],
         display_codes: Array(9).fill("BGRD00074-20260821"),
+        qr_type: "item",
       };
     })();
   </script>
@@ -383,11 +395,18 @@
         );
       }
 
+      function qrTypeDisplayNumber(qrType) {
+        const normalized = String(qrType ?? "item").trim().toLowerCase();
+        if (normalized === "item") return "1";
+        if (normalized === "pack") return "2";
+        return "";
+      }
+
       /**
        * Chuyển payload backend → danh sách phiếu.
        *
-       * @param {{ quantity?: number, part_number?: string, part_name?: string, qr_ids?: string[] }} data
-       * @returns {{ part_number: string, part_name: string, qr_id: string }[]}
+       * @param {{ quantity?: number, part_number?: string, part_name?: string, qr_ids?: string[], qr_type?: string }} data
+       * @returns {{ part_number: string, part_name: string, qr_id: string, qr_type: string }[]}
        */
       function buildLabels(data) {
         const quantity = Math.max(Number(data?.quantity) || 0, 0);
@@ -395,12 +414,14 @@
         const partName = String(data?.part_name ?? "");
         const qrIds = Array.isArray(data?.qr_ids) ? data.qr_ids : [];
         const displayCodes = Array.isArray(data?.display_codes) ? data.display_codes : [];
+        const qrType = String(data?.qr_type ?? "item");
 
         return Array.from({ length: quantity }, (_, index) => ({
           part_number: partNumber,
           part_name: partName,
           qr_id: String(qrIds[index] ?? ""),
           qr_display: String(displayCodes[index] ?? qrIds[index] ?? ""),
+          qr_type: qrType,
         }));
       }
 
@@ -419,11 +440,16 @@
         const partNumber = escapeHtml(label.part_number);
         const partName = escapeHtml(label.part_name);
         const qrId = escapeHtml(label.qr_id);
-        const qrDisplay = escapeHtml(label.qr_display);  
+        const qrDisplay = escapeHtml(label.qr_display);
+        const qrTypeNumber = escapeHtml(qrTypeDisplayNumber(label.qr_type));
+        const qrTypeBadge = qrTypeNumber
+          ? `<span class="qr-type-number">${qrTypeNumber}</span>`
+          : "";
 
         return `
           <div class="ticket">
             <div class="ticket-header">
+              ${qrTypeBadge}
               <div class="ticket-title">
                 <h1>Phiếu sản phẩm</h1>
                 <p>Product record sheet</p>

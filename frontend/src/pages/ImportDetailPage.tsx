@@ -22,7 +22,7 @@ import type {
   InboundOrderDetail,
 } from "@/types/inboundOrder";
 import type { ColumnsType } from "antd/es/table";
-import { useInboundBufferLocations, useFullLocations } from "@/hooks/useWarehouseMap";
+import { useInboundBufferLocations, useFullLocations, useStorageAreaLocations } from "@/hooks/useWarehouseMap";
 import { useUser } from "@/hooks/useAuth";
 import dayjs from "dayjs";
 import CreateImportModal, {
@@ -143,6 +143,7 @@ export default function ImportDetailPage() {
   const { id: orderCode } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const inboundType = useAppStore((s) => s.inboundType);
+  const isManualInbound = inboundType === "manual";
   const warehouseId = useAppStore((s) => s.selectedWarehouseId) || 0;
 
   const [isEditOpen, setIsEditOpen] = useState(false);
@@ -160,7 +161,11 @@ export default function ImportDetailPage() {
   const acceptMutation = useAcceptInboundTask();
   const { data: users = [] } = useUser();
   const { data: bufferLocationsData, isLoading: bufferLocationsLoading } =
-    useInboundBufferLocations(warehouseId);
+    useInboundBufferLocations(warehouseId, !isManualInbound);
+  const { data: storageLocationsData } = useStorageAreaLocations(
+    warehouseId,
+    isManualInbound,
+  );
   const { data: fullLocations } = useFullLocations(warehouseId);
 
   const bufferLocationOptions = useMemo(
@@ -180,8 +185,11 @@ export default function ImportDetailPage() {
     for (const loc of bufferLocationsData?.items ?? []) {
       map.set(loc.id, loc.location_name || loc.location_code);
     }
+    for (const loc of storageLocationsData?.items ?? []) {
+      map.set(loc.id, loc.location_name || loc.location_code);
+    }
     return map;
-  }, [fullLocations, bufferLocationsData]);
+  }, [fullLocations, bufferLocationsData, storageLocationsData]);
 
   const orderMeta = useMemo(
     () => orders.find((o) => o.order_code === orderCode),
@@ -248,9 +256,15 @@ export default function ImportDetailPage() {
 
   const handleExecuteTask = async (detailId: number) => {
     try {
-      message.loading({ content: "Đang gửi lệnh...", key: "execute" });
+      message.loading({
+        content: isManualInbound ? "Đang xác nhận..." : "Đang gửi lệnh...",
+        key: "execute",
+      });
       await acceptMutation.mutateAsync(detailId);
-      message.success({ content: "Đã thực thi task", key: "execute" });
+      message.success({
+        content: isManualInbound ? "Đã xác nhận vị trí" : "Đã thực thi task",
+        key: "execute",
+      });
       void refetch();
       void refetchOrders();
     } catch (err) {
@@ -289,103 +303,140 @@ export default function ImportDetailPage() {
     }
   };
 
-  const columns: ColumnsType<InboundOrderDetail> = [
-    {
-      title: "Nhóm",
-      key: "group",
-      width: 90,
-      render: (_, __, index) => (
-        <span className="font-semibold">Nhóm {index + 1}</span>
-      ),
-    },
-    {
-      title: "Số SKU",
-      key: "sku_count",
-      width: 90,
-      render: (_, record) => (
-        <span className="font-semibold">{record.allocations?.length ?? 0}</span>
-      ),
-    },
-    {
-      title: "Điểm cấp",
-      key: "from_location",
-      width: 240,
-      render: (_, record) => {
-        const editable = record.status === "initialize";
-        if (!editable) {
-          return displayLocationName(
+  const columns: ColumnsType<InboundOrderDetail> = useMemo(() => {
+    const baseColumns: ColumnsType<InboundOrderDetail> = [
+      {
+        title: "Nhóm",
+        key: "group",
+        width: 90,
+        render: (_, __, index) => (
+          <span className="font-semibold">Nhóm {index + 1}</span>
+        ),
+      },
+      {
+        title: "Số SKU",
+        key: "sku_count",
+        width: 90,
+        render: (_, record) => (
+          <span className="font-semibold">{record.allocations?.length ?? 0}</span>
+        ),
+      },
+    ];
+
+    if (isManualInbound) {
+      baseColumns.push({
+        title: "Vị trí cất",
+        key: "from_location",
+        width: 240,
+        render: (_, record) =>
+          displayLocationName(
             record.from_location_name,
             record.from_location_code,
             record.from_location_id,
-          );
-        }
-        return (
-          <Select
-            className="w-full"
-            showSearch
-            optionFilterProp="label"
-            placeholder="Chọn điểm cấp..."
-            value={record.from_location_id ?? undefined}
-            options={bufferLocationOptions}
-            loading={bufferLocationsLoading || updateMutation.isPending}
-            disabled={updateMutation.isPending}
-            onChange={(val) =>
-              void handleFromLocationChange(record, Number(val))
+          ) !== "—"
+            ? displayLocationName(
+                record.from_location_name,
+                record.from_location_code,
+                record.from_location_id,
+              )
+            : formatLocationLabel(record.from_location_id, locationLabelById),
+      });
+    } else {
+      baseColumns.push(
+        {
+          title: "Điểm cấp",
+          key: "from_location",
+          width: 240,
+          render: (_, record) => {
+            const editable = record.status === "initialize";
+            if (!editable) {
+              return displayLocationName(
+                record.from_location_name,
+                record.from_location_code,
+                record.from_location_id,
+              );
             }
-          />
-        );
+            return (
+              <Select
+                className="w-full"
+                showSearch
+                optionFilterProp="label"
+                placeholder="Chọn điểm cấp..."
+                value={record.from_location_id ?? undefined}
+                options={bufferLocationOptions}
+                loading={bufferLocationsLoading || updateMutation.isPending}
+                disabled={updateMutation.isPending}
+                onChange={(val) =>
+                  void handleFromLocationChange(record, Number(val))
+                }
+              />
+            );
+          },
+        },
+        {
+          title: "Điểm trả",
+          key: "to_location",
+          width: 140,
+          render: (_, record) => {
+            const label = displayLocationName(
+              record.to_location_name,
+              record.to_location_code,
+              record.to_location_id,
+            );
+            if (label !== "—") return label;
+            return formatLocationLabel(record.to_location_id, locationLabelById);
+          },
+        },
+      );
+    }
+
+    baseColumns.push(
+      {
+        title: "Cập nhật",
+        dataIndex: "updated_at",
+        key: "updated_at",
+        width: 160,
+        render: (value: string | null) => formatDateTime(value),
       },
-    },
-    {
-      title: "Điểm trả",
-      key: "to_location",
-      width: 140,
-      render: (_, record) => {
-        const label = displayLocationName(
-          record.to_location_name,
-          record.to_location_code,
-          record.to_location_id,
-        );
-        if (label !== "—") return label;
-        return formatLocationLabel(record.to_location_id, locationLabelById);
+      {
+        title: "Trạng thái",
+        dataIndex: "status",
+        key: "status",
+        width: 150,
+        render: (status: string, record) => {
+          if (status === "initialize") {
+            const missingFrom = !isManualInbound && !record.from_location_id;
+            return (
+              <Button
+                variant="primary"
+                icon={<PlayCircleOutlined />}
+                loading={acceptMutation.isPending}
+                disabled={missingFrom}
+                title={
+                  missingFrom
+                    ? "Chọn điểm cấp trước khi thực thi"
+                    : undefined
+                }
+                onClick={() => void handleExecuteTask(record.id)}
+              >
+                {isManualInbound ? "Xác nhận vị trí" : "Execute"}
+              </Button>
+            );
+          }
+          return <InboundStatusTag status={status} size="sm" />;
+        },
       },
-    },
-    {
-      title: "Cập nhật",
-      dataIndex: "updated_at",
-      key: "updated_at",
-      width: 160,
-      render: (value: string | null) => formatDateTime(value),
-    },
-    {
-      title: "Trạng thái",
-      dataIndex: "status",
-      key: "status",
-      width: 150,
-      render: (status: string, record) => {
-        if (status === "initialize") {
-          const missingFrom = !record.from_location_id;
-          return (
-            <Button
-              variant="primary"
-              icon={<PlayCircleOutlined />}
-              loading={acceptMutation.isPending}
-              disabled={missingFrom}
-              title={
-                missingFrom
-                  ? "Chọn điểm cấp trước khi thực thi"
-                  : undefined
-              }
-              onClick={() => void handleExecuteTask(record.id)}
-            >
-              Execute
-            </Button>
-          );
-        }
-        return <InboundStatusTag status={status} size="sm" />;
-      },
-    },
-  ];
+    );
+
+    return baseColumns;
+  }, [
+    isManualInbound,
+    locationLabelById,
+    bufferLocationOptions,
+    bufferLocationsLoading,
+    updateMutation.isPending,
+    acceptMutation.isPending,
+  ]);
 
   const allocationColumns: ColumnsType<InboundOrderAllocation> = [
     {

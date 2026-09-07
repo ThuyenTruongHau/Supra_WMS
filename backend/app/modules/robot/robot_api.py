@@ -6,7 +6,9 @@ from fastapi import APIRouter, HTTPException, status
 
 from app.core.celery_app import run_logic_task
 from app.modules.robot.robot_celery_task import persist_task_status
+from app.core.logger import get_logger
 
+logger = get_logger("main")
 router = APIRouter(tags=["Robot"])
 
 

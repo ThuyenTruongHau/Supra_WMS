@@ -7,7 +7,9 @@ from sqlalchemy.orm import Session, selectinload, joinedload
 from zoneinfo import ZoneInfo
 
 from app.modules.auth.auth_model import User
-from app.modules.warehouse.warehouse_zone.warehouse_model import Zone  
+from app.modules.warehouse.warehouse_zone.warehouse_model import Zone 
+from app.modules.warehouse.unit import unit_service
+from app.modules.warehouse.item_stock.item_stock_model import ItemStock, ItemStockRelation 
 from app.modules.warehouse.item.item_service import get_qr_code_by_code
 from app.modules.warehouse.inbound_order.inbound_order_model import (
     InboundOrder,
@@ -154,32 +156,26 @@ def _create_stock_and_allocation(
     item = db.query(Item).filter(Item.id == payload.item_id).first()
     if not item:
         raise ValueError("Item not found")
-    if payload.unit_id == item.base_unit_id:
-        calculated_quantity = payload.quantity
-    else:
-        item_unit = (
-            db.query(ItemUnit)
-            .filter(
-                ItemUnit.item_id == payload.item_id,
-                ItemUnit.unit_id == payload.unit_id,
-            )
-            .first()
-        )
-        if not item_unit:
-            raise ValueError(
-                f"No conversion factor for item {payload.item_id} and unit {payload.unit_id}"
-            )
-        calculated_quantity = payload.quantity * item_unit.conversion_factor
+    converted = unit_service.convert_quantity(
+        db,
+        item_id=payload.item_id,
+        unit_id=payload.unit_id,
+        quantity=payload.quantity,
+    )
 
     item_stock = ItemStock(
         item_id=payload.item_id,
         location_id=detail.from_location_id,
         inbound_order_detail_id=detail.id,
-        unit_id=item.base_unit_id,
-        quantity=calculated_quantity,
+        unit_id=converted.base_unit_id,
+        quantity=int(converted.converted_quantity),
         lot_number_from=lot_number_from,
         lot_number_to=lot_number_to,
         expiry_date=payload.expiry_date,
+        cavity_number=getattr(payload, "cavity_number", None),
+        manufacturing_user=getattr(payload, "manufacturing_user", None),
+        qc_user=getattr(payload, "qc_user", None),
+        packing_user=getattr(payload, "packing_user", None),
         status="in_transit",
         is_active=True,
         stock_level=1,
@@ -192,6 +188,7 @@ def _create_stock_and_allocation(
         if not qr_code:
             raise ValueError(f"QR code {payload.qr_code_id} not found")
         qr_code.item_stock_id = item_stock.id
+        _clear_pending_cache_for_qr(db, payload.qr_code_id, item_stock)
         db.add(qr_code)
         db.flush()
 
@@ -254,6 +251,89 @@ def create_inbound_order(db: Session, body: InboundOrderCreate, user_id: int, in
     except IntegrityError as e:
         db.rollback()
         raise ValueError(f"Database conflict: {e.orig}") from e
+
+
+def _clear_pending_cache_for_qr(db: Session, qr_code_id: int, target_stock: ItemStock) -> None:
+    anchor_qr_id = qr_code_id
+
+    pending = cache_get(f"inbound:pending:qr:{anchor_qr_id}")
+    packing_user = ((pending or {}).get("packing_user") or "").strip()
+
+    pack_qr_ids: list[int] = []
+
+    if packing_user:
+        keys = cache_scan_keys(f"inbound:pending:user:{packing_user}:*")
+        if keys:
+            values = get_redis().mget(keys)
+            for raw in values:
+                if not raw:
+                    continue
+                cached = json.loads(raw)
+                relation = cached.get("relation")
+                if isinstance(relation, int) and relation == anchor_qr_id:
+                    pack_qr_id = int(cached["qr_code_id"])
+                    pack_qr_ids.append(pack_qr_id)
+                    pack_qr_code = db.query(QR_Code).filter(QR_Code.id == pack_qr_id).first()
+                    if not pack_qr_code:
+                        raise ValueError(f"QR code {pack_qr_id} not found")
+
+                    lot_from, lot_to = _resolve_lot_number_fields(
+                        lot_number_from=cached.get("lot_number_from"),
+                        lot_number_to=cached.get("lot_number_to"),
+                        lot_number=cached.get("lot_number"),
+                    )
+                    converted = unit_service.convert_quantity(
+                        db,
+                        item_id=int(cached["item_id"]),
+                        unit_id=int(cached["unit_id"]),
+                        quantity=int(cached["quantity"]),
+                    )
+
+                    created_stock = ItemStock(
+                        item_id=cached.get("item_id"),
+                        location_id=None,
+                        inbound_order_detail_id=target_stock.inbound_order_detail_id,
+                        unit_id=converted.base_unit_id,
+                        quantity=int(converted.converted_quantity),
+                        lot_number_from=lot_from,
+                        lot_number_to=lot_to,
+                        expiry_date=cached.get("expiry_date"),
+                        cavity_number=cached.get("cavity_number"),
+                        manufacturing_user=cached.get("manufacturing_user"),
+                        qc_user=cached.get("qc_user"),
+                        packing_user=cached.get("packing_user"),
+                        status="virtual",
+                        stock_level=2,
+                        is_active=True,
+                    )
+                    _create_virtual_stock_relation(db, pack_qr_code, created_stock, target_stock.id)
+
+    cache_delete(f"inbound:pending:qr:{anchor_qr_id}")
+    for key in cache_scan_keys(f"inbound:pending:user:*:{anchor_qr_id}"):
+        get_redis().delete(key)
+
+    if not packing_user:
+        return
+    for qr_id in pack_qr_ids:
+        cache_delete(f"inbound:pending:qr:{qr_id}")
+        cache_delete(f"inbound:pending:user:{packing_user}:{qr_id}")
+
+def _create_virtual_stock_relation(db: Session, qr_code: QR_Code, stock: ItemStock, target_stock_id: int) -> None:
+    virtual_stock = stock
+    db.add(virtual_stock)
+    db.flush()
+
+    qr_code.item_stock_id = virtual_stock.id
+    db.add(qr_code)
+    db.flush()
+
+    relation = ItemStockRelation(
+        parent_stock_id=target_stock_id,
+        child_stock_id=virtual_stock.id,
+        relation_type="packing",
+    )
+    db.add(relation)
+    db.flush()
 
 
 def _delete_detail_with_related(
@@ -644,7 +724,17 @@ def execute_inbound_task(db: Session, detail_id: int) -> InboundExecuteDetailRes
     robot_task: RobotTask | None = None
 
     if detail.detail_type == "manual":
-        detail.status = "issued"
+        detail.status = "completed"
+
+        stocks = (
+            db.query(ItemStock)
+            .filter(ItemStock.inbound_order_detail_id == detail.id)
+            .all()
+        )
+
+        for stock in stocks:
+            stock.status = "available"
+            
         db.commit()
         db.refresh(detail)
     else:

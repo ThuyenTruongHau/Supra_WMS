@@ -54,6 +54,16 @@ def get_outbound_robot_tasks_task(order_id: int) -> Any:
         return _dump(tasks)
 
 
+@celery_app.task(name="outbound.get_manual_allocation_tasks", acks_late=True)
+def get_outbound_manual_allocation_tasks_task(order_id: int) -> Any:
+    logger.info("outbound.get_manual_allocation_tasks order_id=%s", order_id)
+    with db_session() as db:
+        tasks = outbound_order_service.summarize_manual_allocation_tasks(
+            db, order_id
+        )
+        return _dump(tasks)
+
+
 @celery_app.task(name="outbound.get_order_details", acks_late=True)
 def get_outbound_order_details_task(order_id: int) -> Optional[Any]:
     logger.info("outbound.get_order_details order_id=%s", order_id)

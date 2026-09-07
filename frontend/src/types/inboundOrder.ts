@@ -132,6 +132,10 @@ export interface InboundOrderAllocationCreate {
   lot_number?: string | null;
   expiry_date?: string | null;
   qr_code_id?: number | null;
+  cavity_number?: string | null;
+  manufacturing_user?: string | null;
+  qc_user?: string | null;
+  packing_user?: string | null;
 }
 
 export interface InboundOrderDetailCreate {
@@ -229,19 +233,6 @@ export interface PendingCachedResponse {
   item_name?: string;
 }
 
-export interface PackDraft {
-  qr_code: string;
-  qr_code_id: number;
-  item_id: number;
-  quantity: number;
-  unit_id: number;
-  unit_name?: string;
-  lot_number: string;
-  cavity_number?: string;
-  manufacturing_user: string;
-  qc_user?: string;
-}
-
 export interface PackerItemAnchor {
   qr_code_id: number;
   code: string;
@@ -287,8 +278,8 @@ export interface AssignedItemStock {
   qc_user?: string | null;
   packing_user?: string | null;
   stock_level?: number | null;
-  /** Parent item qr_code_id when this row is a linked pack */
-  relation?: number | null;
+  /** `"item"` = item anchor; number = linked pack parent qr_code_id; null = unlinked pack */
+  relation?: number | string | null;
 }
 
 export type AssignOrGetItemStockAction =
@@ -303,6 +294,9 @@ export interface AssignOrGetItemStockResponse {
   assigned?: AssignItemStockMetaResponse | null;
   location_stocks?: AssignedItemStock[];
   pending?: PendingCachedResponse | null;
+  location_id?: number | null;
+  location_name?: string | null;
+  warehouse_id?: number | null;
 }
 
 export const isAssignOrGetPreview = (

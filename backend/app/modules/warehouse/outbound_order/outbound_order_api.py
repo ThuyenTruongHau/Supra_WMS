@@ -36,6 +36,7 @@ from app.modules.warehouse.outbound_order.outbound_celery_task import (
     get_outbound_order_by_id_task,
     get_outbound_order_details_task,
     get_outbound_robot_tasks_task,
+    get_outbound_manual_allocation_tasks_task,
     update_outbound_order_task,
 )
 
@@ -137,6 +138,25 @@ def get_outbound_robot_tasks(db: DbSession, order_id: int):
     if not robot_tasks:
         raise HTTPException(status_code=404, detail="Robot tasks not found")
     return robot_tasks
+
+
+@router.get(
+    "/manual-allocation-tasks/{order_id}",
+    response_model=list[OutboundRobotTaskResponse],
+    dependencies=[Depends(_OUTBOUND_READ)],
+)
+def get_outbound_manual_allocation_tasks(db: DbSession, order_id: int):
+    try:
+        tasks = run_logic_task(
+            get_outbound_manual_allocation_tasks_task, order_id=order_id
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    if not tasks:
+        raise HTTPException(
+            status_code=404, detail="Manual allocation tasks not found"
+        )
+    return tasks
 
 
 @router.get(

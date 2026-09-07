@@ -29,7 +29,10 @@ import type {
   InboundSuggestAllocationGroupResponse,
 } from "@/types/inboundOrder";
 import { useUnits } from "@/hooks/useUnit";
-import { useInboundBufferLocations } from "@/hooks/useWarehouseMap";
+import {
+  useInboundBufferLocations,
+  useStorageAreaLocations,
+} from "@/hooks/useWarehouseMap";
 import {
   convertQuantityApi,
   getItemAvailableUnitsApi,
@@ -50,6 +53,10 @@ import {
 } from "@/utils/lotNumberValidation";
 import { translateStatus } from "@/i18n/statusLabels.vi";
 import { resolveInboundType } from "@/config/warehouseMode";
+import {
+  buildInboundAllocationPayload,
+  hasTabletScanMetadata,
+} from "@/pages/qrtablet/packer/importMappers";
 
 /** Một SKU trong nhóm. */
 export interface ImportItemDraft {
@@ -66,7 +73,13 @@ export interface ImportItemDraft {
   lot_number?: string;
   expiry_date?: string;
   qr_code_id?: number;
+  qr_code?: string;
   qr_type?: string | null;
+  /** Metadata từ cache scan (luồng QR tablet). */
+  cavity_number?: string;
+  manufacturing_user?: string;
+  qc_user?: string;
+  packing_user?: string;
 }
 
 /** Một nhóm/pallet — nhiều SKU dùng chung một vị trí đích. */
@@ -77,6 +90,8 @@ export interface ImportGroupDraft {
   from_location_name?: string;
   to_location_id?: number;
   to_location_name?: string;
+  /** ID gốc từ suggest — dùng làm to_location_id khi create (manual admin). */
+  suggested_to_location_id?: number;
   status?: string;
   /** Loại QR từ scan (metadata nhóm). */
   qr_type?: string | null;
@@ -161,6 +176,40 @@ export default function CreateImportModal({
       })),
     [bufferLocationsData],
   );
+
+  const isQrTabletCaller =
+    !isEdit && submitMode === "caller" && lockFromLocation;
+
+  const isManualAdminCreate =
+    inboundType === "manual" && submitMode === "create" && !lockFromLocation;
+
+  const {
+    data: storageLocationsData,
+    isLoading: storageLocationsLoading,
+    isError: storageLocationsError,
+    refetch: refetchStorageLocations,
+  } = useStorageAreaLocations(
+    warehouseId || 0,
+    open && isManualAdminCreate,
+  );
+
+  const storageLocationOptions = useMemo(() => {
+    const suggestedIds = new Set(
+      groups
+        .map((g) => g.suggested_to_location_id)
+        .filter((id): id is number => !!id),
+    );
+    return (storageLocationsData?.items ?? [])
+      .filter(
+        (loc) => loc.status === "empty" || suggestedIds.has(loc.id),
+      )
+      .map((loc) => ({
+        value: loc.id,
+        label: `${loc.location_code}${loc.location_name ? ` — ${loc.location_name}` : ""}${
+          loc.status === "has_stock" ? " (có hàng)" : ""
+        }`,
+      }));
+  }, [storageLocationsData, groups]);
 
   const unitOptions = useMemo(
     () => units.map((u) => ({ value: u.id, label: u.name })),
@@ -395,6 +444,17 @@ export default function CreateImportModal({
 
   const validateStep1 = () => {
     for (const [index, group] of groups.entries()) {
+      if (isManualAdminCreate) {
+        if (!group.from_location_id) {
+          message.error(`Nhóm ${index + 1}: cần chọn vị trí cất`);
+          return false;
+        }
+        if (!group.suggested_to_location_id) {
+          message.error(`Nhóm ${index + 1}: thiếu vị trí gợi ý (cache)`);
+          return false;
+        }
+        continue;
+      }
       if (!group.to_location_id) {
         message.error(`Nhóm ${index + 1}: thiếu vị trí đích`);
         return false;
@@ -427,15 +487,38 @@ export default function CreateImportModal({
       });
       setSuggested(res.line_items);
       setGroups((prev) =>
-        prev.map((g, idx) => ({
-          ...g,
-          to_location_id: res.line_items[idx]?.target_location_id,
-          to_location_name: res.line_items[idx]?.target_location_name,
-        })),
+        prev.map((g, idx) => {
+          const target = res.line_items[idx];
+          const targetId = target?.target_location_id;
+          const targetName = target?.target_location_name;
+          if (isManualAdminCreate) {
+            return {
+              ...g,
+              suggested_to_location_id: targetId,
+              from_location_id: targetId,
+              from_location_name: targetName,
+              to_location_name: targetName,
+            };
+          }
+          return {
+            ...g,
+            to_location_id: targetId,
+            to_location_name: targetName,
+          };
+        }),
       );
-      message.success({ content: "Đã gợi ý vị trí đích", key: "suggest" });
+      message.success({
+        content: isManualAdminCreate
+          ? "Đã gợi ý vị trí cất"
+          : "Đã gợi ý vị trí đích",
+        key: "suggest",
+      });
       setStep(1);
-      void refetchBufferLocations();
+      if (isManualAdminCreate) {
+        void refetchStorageLocations();
+      } else {
+        void refetchBufferLocations();
+      }
     } catch (err) {
       message.error({ content: getApiErrorMessage(err), key: "suggest" });
     }
@@ -526,13 +609,6 @@ export default function CreateImportModal({
       return;
     }
 
-    for (const group of groups) {
-      if (!group.to_location_id) {
-        message.error("Mỗi nhóm cần có vị trí đích (To location)");
-        return;
-      }
-    }
-
     if (!validateStep1()) return;
 
     try {
@@ -550,16 +626,13 @@ export default function CreateImportModal({
         details: entriesToDetails(detailEntries),
         line_items: groups.map((g) => ({
           from_location_id: g.from_location_id!,
-          to_location_id: g.to_location_id!,
+          to_location_id: isManualAdminCreate
+            ? g.suggested_to_location_id!
+            : g.to_location_id!,
           details: entriesToDetails(g.detailEntries ?? []),
-          allocations: g.items.map((i) => ({
-            item_id: i.item_id!,
-            quantity: i.quantity,
-            unit_id: i.unit_id!,
-            lot_number: normalizeLotNumber(i.lot_number),
-            expiry_date: i.expiry_date || null,
-            qr_code_id: i.qr_code_id ?? null,
-          })),
+          allocations: g.items.map((i) =>
+            buildInboundAllocationPayload(i, isQrTabletCaller),
+          ),
         })),
       };
       if (submitMode === "caller") {
@@ -589,65 +662,120 @@ export default function CreateImportModal({
     updateMutation.isPending ||
     callerMutation.isPending;
 
-  const reviewColumns = [
-    {
+  const reviewColumns = useMemo(() => {
+    const groupCol = {
       title: "Nhóm",
       key: "group",
       width: 90,
       render: (_: unknown, __: ImportGroupDraft, index: number) =>
         `Nhóm ${index + 1}`,
-    },
-    {
-      title: "Điểm cấp",
-      key: "from",
-      width: 280,
-      render: (_: unknown, g: ImportGroupDraft) =>
-        lockFromLocation ? (
-          <span>
-            {g.from_location_name ||
-              bufferLocationOptions.find((o) => o.value === g.from_location_id)
-                ?.label ||
-              (g.from_location_id ? `#${g.from_location_id}` : "—")}
-          </span>
-        ) : (
-          <Select
-            className="w-full"
-            showSearch
-            optionFilterProp="label"
-            placeholder="Chọn điểm cấp..."
-            value={g.from_location_id}
-            options={bufferLocationOptions}
-            loading={bufferLocationsLoading}
-            notFoundContent={
-              bufferLocationsLoading
-                ? "Đang tải..."
-                : bufferLocationsError
-                  ? "Không tải được điểm cấp"
-                  : "Không có điểm cấp"
-            }
-            onChange={(val) =>
-              updateGroup(g.key, { from_location_id: Number(val) })
-            }
-          />
-        ),
-    },
-    {
-      title: "Vị trí đích (gợi ý)",
-      key: "to",
-      render: (_: unknown, g: ImportGroupDraft) =>
-        g.to_location_name
-          ? `${g.to_location_name} (#${g.to_location_id})`
-          : g.to_location_id
-            ? `#${g.to_location_id}`
-            : "—",
-    },
-    {
+    };
+    const countCol = {
       title: "Số sản phẩm",
       key: "count",
       width: 90,
       render: (_: unknown, g: ImportGroupDraft) => g.items.length,
-    },
-  ];
+    };
+
+    if (isManualAdminCreate) {
+      return [
+        groupCol,
+        {
+          title: "Vị trí cất",
+          key: "storage",
+          width: 320,
+          render: (_: unknown, g: ImportGroupDraft) => (
+            <Select
+              className="w-full"
+              showSearch
+              optionFilterProp="label"
+              placeholder="Chọn vị trí cất..."
+              value={g.from_location_id}
+              options={storageLocationOptions}
+              loading={storageLocationsLoading}
+              notFoundContent={
+                storageLocationsLoading
+                  ? "Đang tải..."
+                  : storageLocationsError
+                    ? "Không tải được vị trí kho"
+                    : "Không có vị trí trống"
+              }
+              onChange={(val) => {
+                const loc = storageLocationsData?.items.find(
+                  (item) => item.id === Number(val),
+                );
+                updateGroup(g.key, {
+                  from_location_id: Number(val),
+                  from_location_name:
+                    loc?.location_name || loc?.location_code || undefined,
+                });
+              }}
+            />
+          ),
+        },
+        countCol,
+      ];
+    }
+
+    return [
+      groupCol,
+      {
+        title: "Điểm cấp",
+        key: "from",
+        width: 280,
+        render: (_: unknown, g: ImportGroupDraft) =>
+          lockFromLocation ? (
+            <span>
+              {g.from_location_name ||
+                bufferLocationOptions.find((o) => o.value === g.from_location_id)
+                  ?.label ||
+                (g.from_location_id ? `#${g.from_location_id}` : "—")}
+            </span>
+          ) : (
+            <Select
+              className="w-full"
+              showSearch
+              optionFilterProp="label"
+              placeholder="Chọn điểm cấp..."
+              value={g.from_location_id}
+              options={bufferLocationOptions}
+              loading={bufferLocationsLoading}
+              notFoundContent={
+                bufferLocationsLoading
+                  ? "Đang tải..."
+                  : bufferLocationsError
+                    ? "Không tải được điểm cấp"
+                    : "Không có điểm cấp"
+              }
+              onChange={(val) =>
+                updateGroup(g.key, { from_location_id: Number(val) })
+              }
+            />
+          ),
+      },
+      {
+        title: "Vị trí đích (gợi ý)",
+        key: "to",
+        render: (_: unknown, g: ImportGroupDraft) =>
+          g.to_location_name
+            ? `${g.to_location_name} (#${g.to_location_id})`
+            : g.to_location_id
+              ? `#${g.to_location_id}`
+              : "—",
+      },
+      countCol,
+    ];
+  }, [
+    isManualAdminCreate,
+    storageLocationOptions,
+    storageLocationsLoading,
+    storageLocationsError,
+    storageLocationsData,
+    lockFromLocation,
+    bufferLocationOptions,
+    bufferLocationsLoading,
+    bufferLocationsError,
+  ]);
 
   const renderGroupItemsEditor = (group: ImportGroupDraft) => (
     <div className="space-y-3 py-1">
@@ -670,7 +798,7 @@ export default function CreateImportModal({
           </div>
           <div className="space-y-3">
             <div>
-              {item.allocation_id ? (
+              {item.allocation_id || (isQrTabletCaller && item.qr_code_id) ? (
                 <Input
                   value={
                     item.sku
@@ -817,6 +945,49 @@ export default function CreateImportModal({
                 }
               />
             </div>
+            {isQrTabletCaller && hasTabletScanMetadata(item) ? (
+              <>
+                <div className="grid grid-cols-2 gap-3">
+                  <Input
+                    disabled
+                    prefix={
+                      <span className="text-xs text-slate-400">Mã QR:</span>
+                    }
+                    value={item.qr_code ?? ""}
+                  />
+                  <Input
+                    disabled
+                    prefix={
+                      <span className="text-xs text-slate-400">Cavity:</span>
+                    }
+                    value={item.cavity_number ?? ""}
+                  />
+                </div>
+                <div className="grid grid-cols-3 gap-3">
+                  <Input
+                    disabled
+                    prefix={
+                      <span className="text-xs text-slate-400">Sản xuất:</span>
+                    }
+                    value={item.manufacturing_user ?? ""}
+                  />
+                  <Input
+                    disabled
+                    prefix={
+                      <span className="text-xs text-slate-400">Kiểm tra:</span>
+                    }
+                    value={item.qc_user ?? ""}
+                  />
+                  <Input
+                    disabled
+                    prefix={
+                      <span className="text-xs text-slate-400">Đóng gói:</span>
+                    }
+                    value={item.packing_user ?? ""}
+                  />
+                </div>
+              </>
+            ) : null}
           </div>
         </div>
       ))}
@@ -838,35 +1009,75 @@ export default function CreateImportModal({
     </div>
   );
 
-  const reviewItemColumns = [
-    {
-      title: "Mã sản phẩm",
-      key: "item",
-      render: (_: unknown, i: ImportItemDraft) =>
-        `${i.sku || i.item_id}${i.item_name ? ` — ${i.item_name}` : ""}`,
-    },
-    { title: "SL", dataIndex: "quantity", key: "quantity", width: 90 },
-    {
-      title: "Đơn vị",
-      key: "unit",
-      width: 120,
-      render: (_: unknown, i: ImportItemDraft) =>
-        units.find((u) => u.id === i.unit_id)?.name ?? "—",
-    },
-    {
-      title: "Số lô",
-      key: "lot",
-      width: 140,
-      render: (_: unknown, i: ImportItemDraft) => i.lot_number || "—",
-    },
-    {
-      title: "HSD",
-      key: "expiry",
-      width: 130,
-      render: (_: unknown, i: ImportItemDraft) =>
-        i.expiry_date ? dayjs(i.expiry_date).format("DD/MM/YYYY") : "—",
-    },
-  ];
+  const reviewItemColumns = useMemo(() => {
+    const base = [
+      {
+        title: "Mã sản phẩm",
+        key: "item",
+        render: (_: unknown, i: ImportItemDraft) =>
+          `${i.sku || i.item_id}${i.item_name ? ` — ${i.item_name}` : ""}`,
+      },
+      { title: "SL", dataIndex: "quantity", key: "quantity", width: 90 },
+      {
+        title: "Đơn vị",
+        key: "unit",
+        width: 120,
+        render: (_: unknown, i: ImportItemDraft) =>
+          units.find((u) => u.id === i.unit_id)?.name ?? "—",
+      },
+      {
+        title: "Số lô",
+        key: "lot",
+        width: 140,
+        render: (_: unknown, i: ImportItemDraft) => i.lot_number || "—",
+      },
+      {
+        title: "HSD",
+        key: "expiry",
+        width: 130,
+        render: (_: unknown, i: ImportItemDraft) =>
+          i.expiry_date ? dayjs(i.expiry_date).format("DD/MM/YYYY") : "—",
+      },
+    ];
+
+    if (!isQrTabletCaller) {
+      return base;
+    }
+
+    return [
+      ...base,
+      {
+        title: "QR",
+        key: "qr_code",
+        width: 120,
+        render: (_: unknown, i: ImportItemDraft) => i.qr_code || "—",
+      },
+      {
+        title: "Sản xuất",
+        key: "manufacturing_user",
+        width: 120,
+        render: (_: unknown, i: ImportItemDraft) => i.manufacturing_user || "—",
+      },
+      {
+        title: "Kiểm tra",
+        key: "qc_user",
+        width: 120,
+        render: (_: unknown, i: ImportItemDraft) => i.qc_user || "—",
+      },
+      {
+        title: "Đóng gói",
+        key: "packing_user",
+        width: 120,
+        render: (_: unknown, i: ImportItemDraft) => i.packing_user || "—",
+      },
+      {
+        title: "Cavity",
+        key: "cavity_number",
+        width: 90,
+        render: (_: unknown, i: ImportItemDraft) => i.cavity_number || "—",
+      },
+    ];
+  }, [isQrTabletCaller, units]);
 
   return (
     <Modal
@@ -891,6 +1102,8 @@ export default function CreateImportModal({
                       ...g,
                       to_location_id: undefined,
                       to_location_name: undefined,
+                      suggested_to_location_id: undefined,
+                      from_location_name: undefined,
                       from_location_id: lockFromLocation
                         ? g.from_location_id
                         : undefined,
@@ -946,7 +1159,11 @@ export default function CreateImportModal({
           className="mb-6 mt-4"
           items={[
             { title: "Khai báo hàng hóa" },
-            { title: "Gợi ý vị trí & chọn điểm cấp" },
+            {
+              title: isManualAdminCreate
+                ? "Gợi ý vị trí & chọn vị trí cất"
+                : "Gợi ý vị trí & chọn điểm cấp",
+            },
           ]}
         />
       )}
@@ -1065,8 +1282,9 @@ export default function CreateImportModal({
       {step === 1 && !isEdit && (
         <div className="space-y-3">
           <div className="bg-brand-primary/10 p-3 rounded-lg border border-brand-primary/20 text-sm">
-            Hệ thống đã gợi ý vị trí đích cho từng nhóm. Chọn điểm cấp (buffer)
-            cho mỗi nhóm trước khi xác nhận.
+            {isManualAdminCreate
+              ? "Hệ thống đã gợi ý vị trí cất. Bạn có thể giữ hoặc chọn lại từ khu storage trước khi xác nhận."
+              : "Hệ thống đã gợi ý vị trí đích cho từng nhóm. Chọn điểm cấp (buffer) cho mỗi nhóm trước khi xác nhận."}
           </div>
           <Table
             columns={reviewColumns}

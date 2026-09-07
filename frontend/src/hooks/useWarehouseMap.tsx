@@ -59,6 +59,18 @@ export const useOutboundBufferLocations = (
   });
 };
 
+export const useStorageAreaLocations = (
+  warehouseId: number,
+  enabled = true,
+) => {
+  return useQuery({
+    queryKey: ['storage-area-locations', warehouseId],
+    queryFn: () => getLocationsByLogicApi(warehouseId, 'storage_area'),
+    enabled: enabled && warehouseId > 0,
+    ...LIVE_QUERY_OPTIONS,
+  });
+};
+
 export const useImportWarehouseMap = () => {
   const queryClient = useQueryClient();
   return useMutation<
