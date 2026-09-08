@@ -1,0 +1,213 @@
+import { useMemo } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { AxiosError } from 'axios';
+import {
+  getAllItemStockByZoneApi,
+  getAllLocationsByZoneApi,
+  getLocationDetailApi,
+  getLocationStockLabelsApi,
+  listStorageLocationsApi,
+  listStorageRelocateCommandsApi,
+  relocateStorageStockApi,
+} from '@/api/warehouseLocation';
+import type {
+  LocationStockLabel,
+  StorageLocation,
+  StorageRelocateCommand,
+  StorageRelocateInput,
+  StorageRelocateResult,
+  StorageStockStatus,
+  WarehouseLocation,
+  WarehouseLocationDetail,
+} from '@/types/warehouseLocation';
+import { ApiErrorResponse } from '@/types/apiError';
+import { getMockStockedLocatorCodes } from '@/utils/mockMapInventory';
+
+export const warehouseLocationsQueryKey = (zoneId: number) =>
+  ['warehouse_locations', zoneId] as const;
+export const itemStockByZoneQueryKey = (zoneId: number) =>
+  ['item_stock_by_zone', zoneId] as const;
+export const locationStockLabelsQueryKey = (zoneId: number) =>
+  ['location_stock_labels', zoneId] as const;
+export const storageLocationsQueryKey = (
+  zoneId: number,
+  stockStatus: StorageStockStatus,
+) => ['storage_locations', zoneId, stockStatus] as const;
+export const storageRelocateCommandsQueryKey = (zoneId: number) =>
+  ['storage_relocate_commands', zoneId] as const;
+
+export const useLocationsByZone = (zoneId: number) => {
+  return useQuery<WarehouseLocation[], AxiosError<ApiErrorResponse>>({
+    queryKey: warehouseLocationsQueryKey(zoneId),
+    queryFn: () => getAllLocationsByZoneApi(zoneId),
+    enabled: zoneId > 0,
+    staleTime: 2 * 60 * 1000,
+  });
+};
+
+export const useLocationByCodeMap = (zoneId: number) => {
+  const query = useLocationsByZone(zoneId);
+
+  const locationByCode = useMemo(() => {
+    const map: Record<string, WarehouseLocation> = {};
+    for (const location of query.data ?? []) {
+      map[location.location_code] = location;
+    }
+    return map;
+  }, [query.data]);
+
+  return { ...query, locationByCode };
+};
+
+export const useItemStockByZone = (zoneId: number) => {
+  return useQuery({
+    queryKey: itemStockByZoneQueryKey(zoneId),
+    queryFn: () => getAllItemStockByZoneApi(zoneId),
+    enabled: zoneId > 0,
+    staleTime: 30 * 1000,
+    refetchOnMount: "always",
+  });
+};
+
+export const useLocationStockLabels = (zoneId: number) => {
+  const query = useQuery({
+    queryKey: locationStockLabelsQueryKey(zoneId),
+    queryFn: () => getLocationStockLabelsApi(zoneId),
+    enabled: zoneId > 0,
+    staleTime: 30 * 1000,
+    refetchOnMount: 'always',
+  });
+
+  const labelByCode = useMemo(() => {
+    const map = new Map<string, LocationStockLabel>();
+    for (const cell of query.data?.cells ?? []) {
+      map.set(cell.location_code, cell);
+    }
+    return map;
+  }, [query.data]);
+
+  return { ...query, labelByCode };
+};
+
+export const useStockedLocationIds = (zoneId: number) => {
+  const locationsQuery = useLocationsByZone(zoneId);
+  const stockQuery = useItemStockByZone(zoneId);
+
+  const stockedLocationIds = useMemo(() => {
+    const ids = new Set<number>();
+    for (const row of stockQuery.data ?? []) {
+      if (Number(row.quantity) > 0) {
+        ids.add(row.location_id);
+      }
+    }
+
+    const locations = locationsQuery.data ?? [];
+    if (locations.length > 0) {
+      const mockLocators = getMockStockedLocatorCodes(
+        locations.map((location) => location.location_code),
+      );
+      for (const location of locations) {
+        if (mockLocators.has(location.location_code) && !ids.has(location.id)) {
+          ids.add(location.id);
+        }
+      }
+    }
+
+    return ids;
+  }, [stockQuery.data, locationsQuery.data]);
+
+  return {
+    ...stockQuery,
+    stockedLocationIds,
+    isLoading: stockQuery.isLoading || locationsQuery.isLoading,
+  };
+};
+
+export const useLocationDetail = (locationId: number | null, enabled: boolean) => {
+  return useQuery<WarehouseLocationDetail, AxiosError<ApiErrorResponse>>({
+    queryKey: ['warehouse_location_detail', locationId],
+    queryFn: () => getLocationDetailApi(locationId!),
+    enabled: enabled && locationId !== null && locationId > 0,
+    staleTime: 60 * 1000,
+  });
+};
+
+export const useStorageLocations = (
+  zoneId: number,
+  stockStatus: StorageStockStatus,
+  enabled = true,
+) => {
+  return useQuery<StorageLocation[], AxiosError<ApiErrorResponse>>({
+    queryKey: storageLocationsQueryKey(zoneId, stockStatus),
+    queryFn: async () => {
+      const res = await listStorageLocationsApi({
+        zoneId,
+        stockStatus,
+        limit: 1000,
+      });
+      return res.locations;
+    },
+    enabled: enabled && zoneId > 0,
+    staleTime: 30 * 1000,
+  });
+};
+
+export const useStorageRelocateCommands = (zoneId: number, enabled = true) => {
+  return useQuery<StorageRelocateCommand[], AxiosError<ApiErrorResponse>>({
+    queryKey: storageRelocateCommandsQueryKey(zoneId),
+    queryFn: async () => {
+      const res = await listStorageRelocateCommandsApi({
+        zoneId,
+        limit: 50,
+      });
+      return res.commands;
+    },
+    enabled: enabled && zoneId > 0,
+    staleTime: 15 * 1000,
+  });
+};
+
+export const useRelocateStorageStock = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<
+    StorageRelocateResult,
+    AxiosError<ApiErrorResponse>,
+    StorageRelocateInput
+  >({
+    mutationFn: relocateStorageStockApi,
+    onSuccess: (_data, variables) => {
+      const { zone_id: zoneId } = variables;
+      void queryClient.invalidateQueries({
+        queryKey: storageLocationsQueryKey(zoneId, 'occupied'),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: storageLocationsQueryKey(zoneId, 'empty'),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: storageRelocateCommandsQueryKey(zoneId),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: locationStockLabelsQueryKey(zoneId),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: itemStockByZoneQueryKey(zoneId),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: warehouseLocationsQueryKey(zoneId),
+      });
+    },
+  });
+};
+
+export type ShelfOccupancy = 'empty' | 'occupied' | 'unsynced';
+
+export function getShelfOccupancy(
+  locationCode: string,
+  locationByCode: Record<string, WarehouseLocation>,
+  stockedLocationIds: Set<number>,
+): ShelfOccupancy {
+  const location = locationByCode[locationCode];
+  if (!location) return 'unsynced';
+  return stockedLocationIds.has(location.id) ? 'occupied' : 'empty';
+}
