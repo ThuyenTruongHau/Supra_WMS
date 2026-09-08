@@ -17,12 +17,13 @@ import {
   YAxis,
 } from 'recharts'
 import { Card } from '@/components/ui'
+import { DEMO_MASAN_PRODUCTS, DEMO_TOP_EXPORT_PRODUCTS } from '@/data/demoMasanProducts'
 
 const KPI_CARDS = [
-  { label: 'Tổng đơn nhập', value: '1,284', color: '#3aa6a6' },
-  { label: 'Tổng đơn xuất', value: '976', color: '#0f3d46' },
-  { label: 'Giá trị tồn kho', value: '4.2 tỷ', color: '#0f3460' },
-  { label: 'Sản phẩm theo dõi', value: '358 Part_number', color: '#6b7280' },
+  { label: 'Tổng đơn nhập', value: '186', color: '#168C87' },
+  { label: 'Tổng đơn xuất', value: '142', color: '#17363A' },
+  { label: 'Pallet xuất hôm nay', value: '16', color: '#2F8FD8' },
+  { label: 'SKU CHIN-SU / Omachi', value: `${DEMO_MASAN_PRODUCTS.length} mã`, color: '#6b7280' },
 ]
 
 const MONTHLY_DATA = [
@@ -40,18 +41,15 @@ const MONTHLY_DATA = [
   { month: 'T12', nhap: 1284, xuat: 976 },
 ]
 
-const TOP_PRODUCTS = [
-  { name: 'Thép cuộn', value: 420 },
-  { name: 'Xi măng', value: 380 },
-  { name: 'Sơn nước', value: 310 },
-  { name: 'Ống nhựa', value: 280 },
-  { name: 'Cát xây dựng', value: 245 },
-]
+const TOP_PRODUCTS = DEMO_TOP_EXPORT_PRODUCTS.map((item) => ({
+  name: item.shortName,
+  value: item.value,
+}))
 
 const WAREHOUSE_DISTRIBUTION = [
-  { name: 'Kho nguyên liệu', value: 45, color: '#3aa6a6' },
-  { name: 'Kho thành phẩm', value: 35, color: '#0f3d46' },
-  { name: 'Kho vật tư', value: 20, color: '#0f3460' },
+  { name: 'Phở CHIN-SU', value: 55, color: '#168C87' },
+  { name: 'Omachi', value: 30, color: '#17363A' },
+  { name: 'Bánh phở khô', value: 15, color: '#2F8FD8' },
 ]
 
 const ROBOT_HOURLY_DATA = [
@@ -90,7 +88,7 @@ export default function ReportPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold text-brand-dark">Báo cáo</h2>
-        <span className="text-sm text-gray-400">Tháng 6 / 2026</span>
+        <span className="text-sm text-gray-400">Ngày 07/01/2026</span>
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -104,7 +102,7 @@ export default function ReportPage() {
         ))}
       </div>
 
-      <div className="rounded-xl bg-white p-5 shadow-sm">
+      <div className="rounded-xl border border-stripe-hairline bg-panel p-5 shadow-stripe-1">
         <h3 className="mb-4 text-base font-semibold text-brand-dark">
           Nhập / Xuất kho theo tháng
         </h3>
@@ -112,12 +110,12 @@ export default function ReportPage() {
           <AreaChart data={MONTHLY_DATA} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
             <defs>
               <linearGradient id="colorNhap" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#3aa6a6" stopOpacity={0.35} />
-                <stop offset="95%" stopColor="#3aa6a6" stopOpacity={0} />
+                <stop offset="5%" stopColor="#168C87" stopOpacity={0.35} />
+                <stop offset="95%" stopColor="#168C87" stopOpacity={0} />
               </linearGradient>
               <linearGradient id="colorXuat" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#0f3d46" stopOpacity={0.3} />
-                <stop offset="95%" stopColor="#0f3d46" stopOpacity={0} />
+                <stop offset="5%" stopColor="#17363A" stopOpacity={0.3} />
+                <stop offset="95%" stopColor="#17363A" stopOpacity={0} />
               </linearGradient>
             </defs>
             <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
@@ -129,7 +127,7 @@ export default function ReportPage() {
               type="monotone"
               dataKey="nhap"
               name="Nhập kho"
-              stroke="#3aa6a6"
+              stroke="#168C87"
               fill="url(#colorNhap)"
               strokeWidth={2}
             />
@@ -137,7 +135,7 @@ export default function ReportPage() {
               type="monotone"
               dataKey="xuat"
               name="Xuất kho"
-              stroke="#0f3d46"
+              stroke="#17363A"
               fill="url(#colorXuat)"
               strokeWidth={2}
             />
@@ -146,9 +144,9 @@ export default function ReportPage() {
       </div>
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-        <div className="rounded-xl bg-white p-5 shadow-sm">
+        <div className="rounded-xl border border-stripe-hairline bg-panel p-5 shadow-stripe-1">
           <h3 className="mb-4 text-base font-semibold text-brand-dark">
-            Top 5 sản phẩm nhập nhiều
+            Top sản phẩm xuất (biểu mẫu ngày)
           </h3>
           <ResponsiveContainer width="100%" height={280}>
             <BarChart data={TOP_PRODUCTS} layout="vertical" margin={{ top: 0, right: 16, left: 8, bottom: 0 }}>
@@ -161,12 +159,12 @@ export default function ReportPage() {
                 tick={{ fontSize: 12, fill: '#374151' }}
               />
               <Tooltip />
-              <Bar dataKey="value" name="Số lượng" fill="#3aa6a6" radius={[0, 4, 4, 0]} />
+              <Bar dataKey="value" name="Số lượng" fill="#168C87" radius={[0, 4, 4, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
 
-        <div className="rounded-xl bg-white p-5 shadow-sm">
+        <div className="rounded-xl border border-stripe-hairline bg-panel p-5 shadow-stripe-1">
           <h3 className="mb-4 text-base font-semibold text-brand-dark">Phân bổ theo kho</h3>
           <ResponsiveContainer width="100%" height={280}>
             <PieChart>
@@ -195,7 +193,7 @@ export default function ReportPage() {
       <div className="space-y-4">
         <h3 className="text-base font-semibold text-brand-dark">Hiệu suất robot</h3>
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-          <div className="rounded-xl bg-white p-5 shadow-sm">
+          <div className="rounded-xl border border-stripe-hairline bg-panel p-5 shadow-stripe-1">
             <h4 className="mb-4 text-sm font-semibold text-brand-dark">Có tải / Không tải</h4>
             <ResponsiveContainer width="100%" height={240}>
               <BarChart
@@ -212,14 +210,14 @@ export default function ReportPage() {
                 <Bar
                   dataKey="coTai"
                   name="Có tải"
-                  fill="#3aa6a6"
+                  fill="#168C87"
                   radius={[2, 2, 0, 0]}
                   maxBarSize={10}
                 />
                 <Bar
                   dataKey="khongTai"
                   name="Không tải"
-                  fill="#0f3d46"
+                  fill="#17363A"
                   radius={[2, 2, 0, 0]}
                   maxBarSize={10}
                 />
@@ -227,7 +225,7 @@ export default function ReportPage() {
             </ResponsiveContainer>
           </div>
 
-          <div className="rounded-xl bg-white p-5 shadow-sm">
+          <div className="rounded-xl border border-stripe-hairline bg-panel p-5 shadow-stripe-1">
             <h4 className="mb-4 text-sm font-semibold text-brand-dark">Hiệu xuất</h4>
             <ResponsiveContainer width="100%" height={240}>
               <LineChart data={ROBOT_HOURLY_DATA} margin={ROBOT_CHART_MARGIN}>
@@ -240,16 +238,16 @@ export default function ReportPage() {
                   type="monotone"
                   dataKey="hieuXuat"
                   name="Hiệu xuất"
-                  stroke="#3aa6a6"
+                  stroke="#168C87"
                   strokeWidth={2}
-                  dot={{ r: 2, fill: '#3aa6a6', strokeWidth: 0 }}
-                  activeDot={{ r: 4, fill: '#3aa6a6' }}
+                  dot={{ r: 2, fill: '#168C87', strokeWidth: 0 }}
+                  activeDot={{ r: 4, fill: '#168C87' }}
                 />
               </LineChart>
             </ResponsiveContainer>
           </div>
 
-          <div className="rounded-xl bg-white p-5 shadow-sm">
+          <div className="rounded-xl border border-stripe-hairline bg-panel p-5 shadow-stripe-1">
             <h4 className="mb-4 text-sm font-semibold text-brand-dark">Thành công / Thất bại</h4>
             <ResponsiveContainer width="100%" height={240}>
               <ComposedChart data={ROBOT_HOURLY_DATA} margin={ROBOT_CHART_MARGIN}>
@@ -263,7 +261,7 @@ export default function ReportPage() {
                   yAxisId="left"
                   dataKey="thanhCong"
                   name="Thành công"
-                  fill="#3aa6a6"
+                  fill="#168C87"
                   radius={[2, 2, 0, 0]}
                   maxBarSize={12}
                 />
@@ -272,11 +270,11 @@ export default function ReportPage() {
                   type="monotone"
                   dataKey="thatBai"
                   name="Thất bại"
-                  stroke="#0f3460"
+                  stroke="#2F8FD8"
                   strokeWidth={2}
                   strokeDasharray="5 3"
-                  dot={{ r: 2, fill: '#0f3460', strokeWidth: 0 }}
-                  activeDot={{ r: 4, fill: '#0f3460' }}
+                  dot={{ r: 2, fill: '#2F8FD8', strokeWidth: 0 }}
+                  activeDot={{ r: 4, fill: '#2F8FD8' }}
                 />
               </ComposedChart>
             </ResponsiveContainer>

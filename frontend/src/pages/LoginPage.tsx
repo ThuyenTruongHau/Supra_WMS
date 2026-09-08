@@ -32,13 +32,13 @@ export default function LoginPage() {
       style={{ backgroundImage: `url(${loginBg})` }}
     >
       {/* Background Overlay */}
-      <div className="absolute inset-0 z-10 bg-white/18" />
+      <div className="absolute inset-0 z-10 bg-canvas/35" />
 
       {/* Industrial Pattern Overlay */}
       <div className="bg-industrial-pattern pointer-events-none absolute inset-0 z-20" />
 
       <div className="relative z-30 w-full max-w-[420px] px-4 md:max-w-[90%] lg:max-w-[420px]">
-        <div className="rounded-[10px] bg-white px-6 py-8 shadow-[0_8px_32px_rgba(0,0,0,0.1),0_2px_8px_rgba(0,0,0,0.06)] sm:px-9 sm:pt-10 sm:pb-8">
+        <div className="rounded-[10px] bg-panel px-6 py-8 shadow-stripe-2 sm:px-9 sm:pt-10 sm:pb-8">
           <div className="mb-5 flex justify-center">
             <img
               src={thadoLogo}
@@ -78,9 +78,9 @@ export default function LoginPage() {
                   placeholder="Nhập tài khoản"
                   disabled={isPending || isSubmitting}
                   {...register('username')}
-                  className={`h-11 w-full rounded-lg border bg-white pl-10 pr-3 text-sm outline-none transition-all placeholder:text-gray-400 hover:border-brand-primary focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/15 disabled:cursor-not-allowed disabled:bg-gray-50 ${errors.username
-                    ? 'border-red-500 focus:border-red-500 focus:ring-red-500/15'
-                    : 'border-gray-300'
+                  className={`h-11 w-full rounded-lg border bg-panel pl-10 pr-3 text-sm outline-none transition-all placeholder:text-stripe-ink-mute hover:border-brand-primary focus:border-brand-primary focus:ring-2 focus:ring-tech-accent/25 disabled:cursor-not-allowed disabled:bg-panel-soft ${errors.username
+                    ? 'border-stripe-error focus:border-stripe-error focus:ring-stripe-error/15'
+                    : 'border-stripe-hairline'
                     }`}
                 />
               </div>
@@ -103,9 +103,9 @@ export default function LoginPage() {
                   placeholder="Nhập mật khẩu"
                   disabled={isPending || isSubmitting}
                   {...register('password')}
-                  className={`h-11 w-full rounded-lg border bg-white pl-10 pr-10 text-sm outline-none transition-all placeholder:text-gray-400 hover:border-brand-primary focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/15 disabled:cursor-not-allowed disabled:bg-gray-50 ${errors.password
-                    ? 'border-red-500 focus:border-red-500 focus:ring-red-500/15'
-                    : 'border-gray-300'
+                  className={`h-11 w-full rounded-lg border bg-panel pl-10 pr-10 text-sm outline-none transition-all placeholder:text-stripe-ink-mute hover:border-brand-primary focus:border-brand-primary focus:ring-2 focus:ring-tech-accent/25 disabled:cursor-not-allowed disabled:bg-panel-soft ${errors.password
+                    ? 'border-stripe-error focus:border-stripe-error focus:ring-stripe-error/15'
+                    : 'border-stripe-hairline'
                     }`}
                 />
                 <button
@@ -124,7 +124,7 @@ export default function LoginPage() {
 
             <button
               type="submit"
-              className="mt-2 h-[45px] w-full cursor-pointer rounded-lg border-none bg-linear-to-br from-brand-dark to-brand-primary text-base font-bold text-white transition-all hover:brightness-112 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-70 disabled:hover:filter-none"
+              className="mt-2 h-[45px] w-full cursor-pointer rounded-lg border-none bg-linear-to-br from-sidebar to-brand-primary text-base font-bold text-white transition-all hover:brightness-112 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-70 disabled:hover:filter-none"
               disabled={isPending || isSubmitting}
             >
               {isPending ? 'Đang đăng nhập...' : 'Đăng nhập'}

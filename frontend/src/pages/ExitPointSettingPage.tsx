@@ -55,7 +55,10 @@ export default function ExitPointSettingPage() {
   useEffect(() => {
     if (!zones?.length || activeZoneId) return;
     const fromStore = zones.find((z) => z.id === selectedWarehouseId);
-    setActiveZoneId(fromStore?.id ?? zones[0].id);
+    const masanZone =
+      zones.find((z) => z.code === "MSC_MASAN") ||
+      zones.find((z) => (z.name || "").toLowerCase().includes("masan"));
+    setActiveZoneId(fromStore?.id ?? masanZone?.id ?? zones[0].id);
   }, [zones, activeZoneId, selectedWarehouseId]);
 
   const handleZoneChange = (zoneId: number) => {
@@ -105,21 +108,15 @@ export default function ExitPointSettingPage() {
         message.error(`Location '${location.location_code}' đang inactive.`);
         return null;
       }
-      if (
-        location.location_type &&
-        location.location_type !== OUTBOUND_STATION
-      ) {
+      if (location.location_type !== OUTBOUND_STATION) {
         message.error(
           `Location '${location.location_code}' không phải outbound_station (hiện là ${location.location_type}).`,
         );
         return null;
       }
-      if (
-        location.warehouse_id !== activeZoneId &&
-        location.zone_id !== activeZoneId
-      ) {
+      if (location.zone_id !== activeZoneId) {
         message.error(
-          `Location '${location.location_code}' không thuộc warehouse/zone đang chọn.`,
+          `Location '${location.location_code}' không thuộc zone đang chọn.`,
         );
         return null;
       }
@@ -149,6 +146,7 @@ export default function ExitPointSettingPage() {
       location_code: location.location_code,
       name:
         form.getFieldValue("name") ||
+        location.bin ||
         location.node_name ||
         location.location_code,
     });
@@ -377,7 +375,7 @@ export default function ExitPointSettingPage() {
           resetCreateForm();
         }}
         footer={null}
-        destroyOnHidden
+        destroyOnClose
       >
         <Form
           form={form}
@@ -471,7 +469,7 @@ export default function ExitPointSettingPage() {
         width="90vw"
         style={{ top: 20 }}
         styles={{ body: { height: "80vh", padding: 0 } }}
-        destroyOnHidden
+        destroyOnClose
       >
         <div className="w-full h-full relative">
           {isResolvingLocation && (
