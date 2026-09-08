@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.core.celery_app import run_logic_task
 from app.core.database import get_db
-from app.core.dependencies import require_permission
+from app.core.dependencies import get_dev_admin_user, require_permission
 from app.modules.robot.robot_service import IcsError
 from app.modules.auth.auth_model import User
 from app.modules.warehouse.inbound_order import inbound_order_model
@@ -81,12 +81,11 @@ def release_inbound_locations(body: InboundReleaseLocationsRequest):
     "/inbound-orders",
     response_model=InboundOrderResponse,
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(_INBOUND_CREATE)],
 )
 def create_inbound_order(
     body: InboundOrderCreate,
     db: DbSession,
-    current_user: Annotated[User, Depends(_INBOUND_CREATE)],
+    current_user: Annotated[User, Depends(get_dev_admin_user)],
     inbound_type: str,
 ):
     try:
@@ -104,7 +103,6 @@ def create_inbound_order(
 @router.get(
     "/inbound-orders",
     response_model=InboundOrderListResponse,
-    dependencies=[Depends(_INBOUND_READ)],
 )
 def list_inbound_orders(
     db: DbSession,

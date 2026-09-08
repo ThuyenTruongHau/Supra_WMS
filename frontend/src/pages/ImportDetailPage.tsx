@@ -6,6 +6,7 @@ import InboundStatusTag from "@/components/shared/InboundStatusTag";
 import {
   ArrowLeftOutlined,
   DeleteOutlined,
+  DownloadOutlined,
   EditOutlined,
   PlayCircleOutlined,
 } from "@ant-design/icons";
@@ -32,6 +33,7 @@ import { detailsToEntries } from "@/utils/keyValueDetails";
 import { computeDetailProgress } from "@/utils/detailProgress";
 
 import { getApiErrorMessage } from "@/utils/apiErrorMessage";
+import { exportInboundOrderMasanApi } from "@/api/masan";
 
 const TABLE_CLASS =
   "[&_.ant-table-thead_th]:!bg-slate-50 [&_.ant-table-thead_th]:!text-slate-600 [&_.ant-table-thead_th]:!font-semibold [&_.ant-table-thead_th]:!text-base [&_.ant-table-tbody_td]:!text-base [&_.ant-table-thead_th]:!py-3 [&_.ant-table-tbody_td]:!py-3 [&_.ant-table-row]:hover:bg-slate-50/50";
@@ -147,6 +149,7 @@ export default function ImportDetailPage() {
   const warehouseId = useAppStore((s) => s.selectedWarehouseId) || 0;
 
   const [isEditOpen, setIsEditOpen] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   const { data: details = [], isLoading, refetch } =
     useGetInboundOrderDetails(orderCode);
@@ -300,6 +303,21 @@ export default function ImportDetailPage() {
       message.success("Đã cập nhật điểm cấp");
     } catch (err) {
       message.error(apiError(err));
+    }
+  };
+
+  const handleExport = async () => {
+    if (!orderMeta?.id) return;
+
+    setExporting(true);
+    try {
+      message.loading({ content: "Đang xuất Excel...", key: "export" });
+      await exportInboundOrderMasanApi(orderMeta.id);
+      message.success({ content: "Đã tải file Excel", key: "export" });
+    } catch (err) {
+      message.error({ content: apiError(err), key: "export" });
+    } finally {
+      setExporting(false);
     }
   };
 
@@ -529,6 +547,15 @@ export default function ImportDetailPage() {
           </div>
         </div>
         <Space className="shrink-0">
+          <Button
+            variant="secondary"
+            icon={<DownloadOutlined />}
+            disabled={!orderMeta?.id || details.length === 0}
+            loading={exporting}
+            onClick={() => void handleExport()}
+          >
+            Export Excel
+          </Button>
           <Button
             variant="edit"
             icon={<EditOutlined />}

@@ -13,11 +13,18 @@ import {
 import type { ColumnsType } from "antd/es/table";
 import CreateImportModal, {
   type ImportGroupDraft,
-  type ImportItemDraft,
 } from "./components/CreateImportModal";
 import { useGetInboundOrders } from "@/hooks/useInboundOrder";
 import { useAppStore } from "@/store/useAppStore";
 import type { InboundOrder } from "@/types/inboundOrder";
+import { parseMasanInboundPreviewApi } from "@/api/masan";
+import {
+  createInboundOrderApi,
+  suggestInboundAllocationApi,
+} from "@/api/inboundOrder";
+import { resolveInboundType } from "@/config/warehouseMode";
+import { getApiErrorMessage } from "@/utils/apiErrorMessage";
+import { buildMasanInboundCreateRequest } from "@/utils/masanInboundImport";
 import dayjs from "dayjs";
 import { useUser } from "@/hooks/useAuth";
 
@@ -40,6 +47,7 @@ export default function ImportPage() {
   const [importGroups, setImportGroups] = useState<
     ImportGroupDraft[] | undefined
   >();
+  const [importing, setImporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -114,138 +122,64 @@ export default function ImportPage() {
     XLSX.writeFile(wb, "Template_NhapKho.xlsx");
   };
 
-  const handleImportExcel = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImportExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.onload = (evt) => {
-      try {
-        const fileData = new Uint8Array(evt.target?.result as ArrayBuffer);
-        const workbook = XLSX.read(fileData, { type: "array" });
-        const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-        const jsonData = XLSX.utils.sheet_to_json<unknown[]>(worksheet, {
-          header: 1,
-        });
+    if (!selectedWarehouseId) {
+      message.warning("Vui lòng chọn kho trước khi import");
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      return;
+    }
 
-        let headerRowIndex = -1;
-        let groupCol = -1;
-        let skuCol = -1;
-        let itemIdCol = -1;
-        let unitIdCol = -1;
-        let qtyCol = -1;
-        let lotCol = -1;
-        let expiryCol = -1;
+    setImporting(true);
+    const messageKey = "masan-import";
 
-        for (let i = 0; i < jsonData.length; i++) {
-          const row = jsonData[i] as unknown[];
-          if (!row) continue;
-          const find = (name: string) =>
-            row.findIndex(
-              (cell) =>
-                typeof cell === "string" && cell.trim().toLowerCase() === name,
-            );
-          skuCol = find("mã item");
-          if (skuCol === -1) skuCol = find("sku");
-          if (skuCol !== -1 || find("item id") !== -1) {
-            headerRowIndex = i;
-            groupCol = find("nhóm");
-            if (groupCol === -1) groupCol = find("pallet");
-            itemIdCol = find("item id");
-            unitIdCol = find("unit id");
-            qtyCol = find("số lượng");
-            lotCol = find("lot");
-            expiryCol = find("hạn sử dụng");
-            break;
-          }
-        }
+    try {
+      const inboundType = resolveInboundType(selectedWarehouseId);
 
-        if (headerRowIndex === -1) {
-          message.error('Không tìm thấy header Excel (cần cột "Mã Item" hoặc "Item ID")');
-          return;
-        }
+      message.loading({ content: "Đang đọc file Excel...", key: messageKey });
+      const parseResult = await parseMasanInboundPreviewApi(
+        file,
+        selectedWarehouseId,
+        inboundType,
+      );
 
-        // Các dòng cùng giá trị cột "Nhóm" chia sẻ một vị trí đích.
-        // Dòng không có nhóm được coi là một nhóm riêng.
-        const groupsByName = new Map<string, ImportGroupDraft>();
-        const parsedGroups: ImportGroupDraft[] = [];
-        let itemCount = 0;
-
-        for (let i = headerRowIndex + 1; i < jsonData.length; i++) {
-          const row = jsonData[i] as unknown[];
-          if (!row) continue;
-          const itemId =
-            itemIdCol >= 0 && row[itemIdCol] != null
-              ? Number(row[itemIdCol])
-              : undefined;
-          const sku =
-            skuCol >= 0 && row[skuCol] != null
-              ? String(row[skuCol]).trim()
-              : undefined;
-          if (!itemId && !sku) continue;
-
-          const item: ImportItemDraft = {
-            key: `import-item-${i}`,
-            sku,
-            item_id: itemId && !Number.isNaN(itemId) ? itemId : undefined,
-            quantity: qtyCol >= 0 ? Number(row[qtyCol]) || 0 : 0,
-            unit_id:
-              unitIdCol >= 0 && row[unitIdCol] != null
-                ? Number(row[unitIdCol])
-                : undefined,
-            lot_number:
-              lotCol >= 0 && row[lotCol] != null
-                ? String(row[lotCol]).trim()
-                : undefined,
-            expiry_date:
-              expiryCol >= 0 && row[expiryCol] != null
-                ? String(row[expiryCol]).trim()
-                : undefined,
-          };
-          itemCount += 1;
-
-          const groupName =
-            groupCol >= 0 && row[groupCol] != null
-              ? String(row[groupCol]).trim()
-              : "";
-
-          if (groupName) {
-            const existing = groupsByName.get(groupName);
-            if (existing) {
-              existing.items.push(item);
-              continue;
-            }
-            const group: ImportGroupDraft = {
-              key: `import-group-${groupName}-${i}`,
-              items: [item],
-            };
-            groupsByName.set(groupName, group);
-            parsedGroups.push(group);
-          } else {
-            parsedGroups.push({
-              key: `import-group-${i}`,
-              items: [item],
-            });
-          }
-        }
-
-        if (parsedGroups.length === 0) {
-          message.warning("Không có dòng hợp lệ trong Excel");
-          return;
-        }
-
-        setImportGroups(parsedGroups);
-        setIsCreateOpen(true);
-        message.success(
-          `Đã đọc ${itemCount} SKU trong ${parsedGroups.length} nhóm từ Excel`,
+      if (parseResult.invalid_rows > 0) {
+        message.warning(
+          `${parseResult.invalid_rows} dòng lỗi sẽ bỏ qua; tiếp tục với ${parseResult.valid_rows} dòng hợp lệ`,
         );
-      } catch {
-        message.error("Lỗi khi đọc file Excel");
-      } finally {
-        if (fileInputRef.current) fileInputRef.current.value = "";
       }
-    };
-    reader.readAsArrayBuffer(file);
+
+      message.loading({ content: "Đang gợi ý vị trí...", key: messageKey });
+      const suggestResult = await suggestInboundAllocationApi(
+        parseResult.suggest_allocation,
+      );
+
+      const orderCode = `IN-${dayjs().format("YYYYMMDD-HHmmss")}`;
+      const createPayload = buildMasanInboundCreateRequest(
+        parseResult,
+        suggestResult,
+        {
+          warehouseId: selectedWarehouseId,
+          orderCode,
+        },
+      );
+
+      message.loading({ content: "Đang tạo đơn nhập...", key: messageKey });
+      const order = await createInboundOrderApi(createPayload, inboundType);
+
+      message.success({
+        content: `Đã tạo đơn ${order.order_code} với ${parseResult.valid_rows} dòng`,
+        key: messageKey,
+      });
+      void refetch();
+    } catch (err) {
+      message.error({ content: getApiErrorMessage(err), key: messageKey });
+    } finally {
+      setImporting(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
   };
 
   const columns: ColumnsType<InboundOrder> = [
@@ -351,6 +285,7 @@ export default function ImportPage() {
             <Button
               variant="secondary"
               icon={<UploadOutlined />}
+              loading={importing}
               onClick={() => fileInputRef.current?.click()}
             >
               Import Excel
