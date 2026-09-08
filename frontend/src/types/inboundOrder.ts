@@ -286,7 +286,9 @@ export type AssignOrGetItemStockAction =
   | "preview"
   | "assigned"
   | "location_stocks"
-  | "pending_cached";
+  | "pending_cached"
+  | "location"
+  | "created";
 
 export interface AssignOrGetItemStockResponse {
   action: AssignOrGetItemStockAction;
@@ -296,7 +298,9 @@ export interface AssignOrGetItemStockResponse {
   pending?: PendingCachedResponse | null;
   location_id?: number | null;
   location_name?: string | null;
+  location_code?: string | null;
   warehouse_id?: number | null;
+  order_code?: string | null;
 }
 
 export const isAssignOrGetPreview = (
@@ -326,6 +330,20 @@ export const isAssignOrGetPendingCached = (
   action: "pending_cached";
   pending: PendingCachedResponse;
 } => value.action === "pending_cached" && !!value.pending;
+
+export const isManualInboundLocation = (
+  value: AssignOrGetItemStockResponse,
+): value is AssignOrGetItemStockResponse & {
+  action: "location";
+  location_id: number;
+} => value.action === "location" && value.location_id != null;
+
+export const isManualInboundCreated = (
+  value: AssignOrGetItemStockResponse,
+): value is AssignOrGetItemStockResponse & {
+  action: "created";
+  order_code: string;
+} => value.action === "created" && !!value.order_code;
 
 export interface InboundCallerResponse {
   order: InboundOrder;

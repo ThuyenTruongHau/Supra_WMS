@@ -108,6 +108,16 @@ export const assignOrGetItemStockApi = async (
   return data;
 };
 
+export const manualInboundScanApi = async (
+  body: AssignOrGetItemStockRequest,
+): Promise<AssignOrGetItemStockResponse> => {
+  const { data } = await axiosInstance.post<AssignOrGetItemStockResponse>(
+    `${BASE}/manual/scan`,
+    body,
+  );
+  return data;
+};
+
 export const previewQrCodeApi = async (
   body: QrCodePreviewRequest,
 ): Promise<AssignOrGetItemStockResponse> => {

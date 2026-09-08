@@ -109,6 +109,13 @@ class ItemStock(Base):
     )
 
 
+def countable_stock_level_criterion(stock_level_col=None):
+    """Pack/sub-level stock (level > 1) is excluded from item/location inventory views."""
+    if stock_level_col is None:
+        stock_level_col = ItemStock.stock_level
+    return or_(stock_level_col.is_(None), stock_level_col <= 1)
+
+
 class ItemStockRelation(Base):
     __tablename__ = "item_stock_relation"
 

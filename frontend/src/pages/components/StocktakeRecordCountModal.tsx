@@ -175,7 +175,7 @@ export default function StocktakeRecordCountModal({
               loading={isLocationsLoading}
               options={locations.map((loc) => ({
                 value: loc.id,
-                label: loc.location_name || loc.location_code || `#${loc.id}`,
+                label: loc.location_name || `#${loc.id}`,
               }))}
             />
           </Form.Item>

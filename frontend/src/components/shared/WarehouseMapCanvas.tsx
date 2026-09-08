@@ -35,19 +35,6 @@ import { useActiveWarehouseMap, useFullLocations, useDownloadWarehouseMap } from
 import { message } from '@/components/ui';
 import type { MapData, NodeInfo, FullLocationDetail } from '@/types/warehouseMap';
 import { formatQuantity } from '@/utils/formatQuantity';
-
-// ─── Props ──────────────────────────────────────────────────────────────────────
-
-interface WarehouseMapCanvasProps {
-  /** Callback khi user click vào một node trên bản đồ. Trả về null nếu click vào khoảng trống. */
-  onNodeClick?: (node: NodeInfo | null) => void;
-  /** Ẩn thanh toolbar (dùng khi nhúng làm Picker) */
-  hideToolbar?: boolean;
-  /** Ẩn drawer chi tiết khi click vào kệ (dùng khi nhúng làm Picker) */
-  hideDrawer?: boolean;
-  /** Mã location đang được chọn — highlight màu xanh trên map */
-  selectedLocationCodes?: string[];
-}
 import {
   ZOOM_MAX,
   ZOOM_FACTOR,
@@ -66,6 +53,25 @@ import {
   parseNode,
 } from '@/utils/warehouseMapUtils';
 
+// ─── Props ──────────────────────────────────────────────────────────────────────
+
+interface WarehouseMapCanvasProps {
+  /** Callback khi user click vào một node trên bản đồ. Trả về null nếu click vào khoảng trống. */
+  onNodeClick?: (node: NodeInfo | null) => void;
+  /** Ẩn thanh toolbar (dùng khi nhúng làm Picker) */
+  hideToolbar?: boolean;
+  /** Ẩn drawer chi tiết khi click vào kệ (dùng khi nhúng làm Picker) */
+  hideDrawer?: boolean;
+  /** Mã location đang được chọn — highlight màu xanh trên map */
+  selectedLocationCodes?: string[];
+  /** Ghi đè warehouse đang chọn trên header (vd. map kiểm kê theo phiếu). */
+  warehouseId?: number;
+  /** Dữ liệu vị trí/tồn tùy chỉnh — dùng cho map kiểm kê thay API full-locations. */
+  locationOverrides?: FullLocationDetail[];
+  /** Bỏ gọi API preview/full-locations; chỉ dùng locationOverrides. */
+  skipFullLocationsFetch?: boolean;
+}
+
 
 // ─── Component ─────────────────────────────────────────────────────────────────
 
@@ -74,12 +80,16 @@ const WarehouseMapCanvas: React.FC<WarehouseMapCanvasProps> = ({
   hideToolbar = false,
   hideDrawer = false,
   selectedLocationCodes = [],
+  warehouseId: warehouseIdProp,
+  locationOverrides,
+  skipFullLocationsFetch = false,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   // ─── Zustand stores ────────────────────────────────────────────────────────
   const selectedWarehouseId = useAppStore((s) => s.selectedWarehouseId);
+  const resolvedWarehouseId = warehouseIdProp ?? selectedWarehouseId;
   const roleCanonical = useAuthStore((s) => s.role_canonical);
   const role = useAuthStore((s) => s.role);
   const isAdmin =
@@ -93,13 +103,30 @@ const WarehouseMapCanvas: React.FC<WarehouseMapCanvasProps> = ({
     isLoading,
     isError,
     error,
-  } = useActiveWarehouseMap(selectedWarehouseId);
+  } = useActiveWarehouseMap(resolvedWarehouseId);
 
-  const { data: fullLocationsData } = useFullLocations(selectedWarehouseId);
+  const { data: fullLocationsData } = useFullLocations(
+    skipFullLocationsFetch ? 0 : resolvedWarehouseId,
+  );
+
+  const effectiveLocations = useMemo(() => {
+    if (locationOverrides) {
+      return {
+        location_codes: locationOverrides
+          .filter((loc) => loc.item_stock.length > 0)
+          .map((loc) => loc.location_code),
+        locations: locationOverrides,
+      };
+    }
+    return {
+      location_codes: fullLocationsData?.location_codes ?? [],
+      locations: fullLocationsData?.locations ?? [],
+    };
+  }, [locationOverrides, fullLocationsData]);
 
   const fullLocationCodes = useMemo(
-    () => new Set(fullLocationsData?.location_codes ?? []),
-    [fullLocationsData],
+    () => new Set(effectiveLocations.location_codes),
+    [effectiveLocations.location_codes],
   );
 
   // Map data (parsed once per API response, never mutated)
@@ -127,8 +154,8 @@ const WarehouseMapCanvas: React.FC<WarehouseMapCanvasProps> = ({
     fullCodesRef.current = fullLocationCodes;
     
     const map = new Map<string, FullLocationDetail>();
-    if (fullLocationsData?.locations) {
-      for (const loc of fullLocationsData.locations) {
+    if (effectiveLocations.locations) {
+      for (const loc of effectiveLocations.locations) {
         if (loc.location_code) {
           map.set(loc.location_code, loc);
         }
@@ -139,7 +166,7 @@ const WarehouseMapCanvas: React.FC<WarehouseMapCanvasProps> = ({
     // Re-draw when renderable locations change
     draw();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fullLocationCodes, fullLocationsData]);
+  }, [fullLocationCodes, effectiveLocations]);
 
   // Transform state (mutable refs — no re-render needed for every frame)
   const scaleRef = useRef(1);
@@ -563,7 +590,7 @@ const WarehouseMapCanvas: React.FC<WarehouseMapCanvasProps> = ({
           onImportClick={() => setImportDialogOpen(true)}
           onDownloadClick={() => {
             downloadMutation.mutate(
-              { warehouseId: selectedWarehouseId },
+              { warehouseId: resolvedWarehouseId },
               {
                 onSuccess: () => message.success('Đã tải xuống bản đồ'),
                 onError: () => message.error('Không thể tải xuống bản đồ'),
@@ -610,7 +637,7 @@ const WarehouseMapCanvas: React.FC<WarehouseMapCanvasProps> = ({
         <WarehouseMapImportDialog
           open={importDialogOpen}
           onClose={() => setImportDialogOpen(false)}
-          warehouseId={selectedWarehouseId}
+          warehouseId={resolvedWarehouseId}
         />
       )}
     </div>

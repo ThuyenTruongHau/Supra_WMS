@@ -3,11 +3,14 @@ import { AutoComplete } from "antd";
 import { SearchOutlined } from "@ant-design/icons";
 import { Button, Input } from "@/components/ui";
 import { useGetItems } from "@/hooks/useItem";
+import { useDebounce } from "@/hooks/useDebounce";
 import { cn } from "@/components/ui/utils/cn";
 
 const BROWSE_PAGE_SIZE = 40;
 const SEARCH_PAGE_SIZE = 100;
-const DROPDOWN_MIN_WIDTH = 560;
+const DROPDOWN_MIN_WIDTH = 620;
+const SEARCH_DEBOUNCE_MS = 300;
+const MIN_LIVE_SEARCH_CHARS = 1;
 
 /** Ensure only one SKU dropdown is open at a time across all rows/modals. */
 const openSkuSelectRegistry = new Map<string, () => void>();
@@ -44,9 +47,7 @@ type SkuSearchSelectProps = {
   placeholder?: string;
   className?: string;
   disabled?: boolean;
-  /** Số SKU hiển thị khi focus / browse (mặc định 40) */
   browsePageSize?: number;
-  /** Số SKU tối đa khi bấm Tìm (mặc định 100) */
   searchPageSize?: number;
 };
 
@@ -56,15 +57,21 @@ type ItemQueryParams = {
   page_size: number;
 };
 
+function formatQuantityHint(baseQuantity?: number, baseUnit?: string): string | null {
+  if (baseQuantity == null || baseQuantity <= 0 || !baseUnit) return null;
+  return `SL mặc định: ${baseQuantity} ${baseUnit}`;
+}
+
 /**
- * Ô Part_number: focus → tải 40 SKU đầu; bấm Tìm → tìm theo ô nhập (hỗ trợ nhiều SKU).
+ * Ô Part_number: gõ ≥1 ký tự → gợi ý sản phẩm (debounce); focus → browse;
+ * bấm Tìm → tìm ngay theo ô nhập.
  */
 export function SkuSearchSelect({
   value,
   onChange,
   onSelectOption,
   warehouseId,
-  placeholder = "Tìm theo tên, Part_number, mã...",
+  placeholder = "Gõ 1–2 ký tự để gợi ý sản phẩm...",
   className,
   disabled,
   browsePageSize = BROWSE_PAGE_SIZE,
@@ -76,6 +83,8 @@ export function SkuSearchSelect({
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const setDropdownOpenRef = useRef(setDropdownOpen);
   setDropdownOpenRef.current = setDropdownOpen;
+
+  const debouncedSearch = useDebounce(searchInput.trim(), SEARCH_DEBOUNCE_MS);
 
   const closeDropdown = useCallback(() => {
     setDropdownOpenRef.current(false);
@@ -94,6 +103,40 @@ export function SkuSearchSelect({
   useEffect(() => {
     return () => unregisterSkuSelect(instanceId);
   }, [instanceId]);
+
+  useEffect(() => {
+    if (warehouseId <= 0) return;
+
+    if (debouncedSearch.length >= MIN_LIVE_SEARCH_CHARS) {
+      setQueryParams((prev) => {
+        const next: ItemQueryParams = {
+          page: 1,
+          page_size: searchPageSize,
+          q: debouncedSearch,
+        };
+        if (
+          prev?.q === next.q &&
+          prev.page === next.page &&
+          prev.page_size === next.page_size
+        ) {
+          return prev;
+        }
+        return next;
+      });
+      openDropdown();
+      return;
+    }
+
+    if (debouncedSearch.length === 0) {
+      setQueryParams((prev) => {
+        if (prev === null) return prev;
+        if (prev.q === undefined && prev.page === 1 && prev.page_size === browsePageSize) {
+          return prev;
+        }
+        return { page: 1, page_size: browsePageSize };
+      });
+    }
+  }, [debouncedSearch, warehouseId, searchPageSize, browsePageSize, openDropdown]);
 
   const { data, isFetching, isError, refetch } = useGetItems({
     warehouse_id: warehouseId,
@@ -178,21 +221,34 @@ export function SkuSearchSelect({
             setDropdownOpen(open);
           }}
           value={searchInput}
-          options={options.map((o) => ({
-            value: o.value,
-            label: (
-              <div className="flex min-w-0 items-center gap-2 py-0.5">
-                <span className="shrink-0 font-semibold text-brand-primary">
-                  {o.value}
-                </span>
-                <span className="truncate text-slate-500">- {o.item_name}</span>
-              </div>
-            ),
-            item_name: o.item_name,
-            item_id: o.item_id,
-            base_unit: o.base_unit,
-            base_quantity: o.base_quantity,
-          }))}
+          options={options.map((o) => {
+            const qtyHint = formatQuantityHint(o.base_quantity, o.base_unit);
+            return {
+              value: o.value,
+              label: (
+                <div className="flex min-w-0 items-center justify-between gap-3 py-0.5">
+                  <div className="min-w-0 flex-1">
+                    <span className="shrink-0 font-semibold text-brand-primary">
+                      {o.value}
+                    </span>
+                    <span className="truncate text-slate-500">
+                      {" "}
+                      - {o.item_name}
+                    </span>
+                  </div>
+                  {qtyHint ? (
+                    <span className="shrink-0 text-xs font-medium text-emerald-700">
+                      {qtyHint}
+                    </span>
+                  ) : null}
+                </div>
+              ),
+              item_name: o.item_name,
+              item_id: o.item_id,
+              base_unit: o.base_unit,
+              base_quantity: o.base_quantity,
+            };
+          })}
           onChange={(text) => {
             setSearchInput(text);
             if (value && text !== value) {
@@ -236,7 +292,7 @@ export function SkuSearchSelect({
                 ? "Lỗi tải sản phẩm"
                 : queryParams
                   ? "Không có kết quả"
-                  : "Bấm vào ô hoặc Tìm để tải sản phẩm"
+                  : "Gõ 1–2 ký tự hoặc bấm Tìm"
           }
         >
           <Input

@@ -21,8 +21,75 @@ export interface NodeInfo {
   extraTypes: number[];
 }
 
+/** Move every reference of a bin that left the map onto a bin that is in it. */
+export interface MapRemapEntry {
+  from_bin: string;
+  to_bin: string;
+}
+
+export interface MapSyncMatchedItem {
+  location_id: number;
+  bin_code: string | null;
+  location_name: string | null;
+  matched_by: 'bin_code' | 'row_column_level' | 'location_code';
+  previous_location_code: string | null;
+  location_code: string;
+}
+
+export interface MapSyncCreatedItem {
+  location_id: number;
+  bin_code: string | null;
+  location_name: string | null;
+  location_code: string;
+}
+
+export interface MapSyncRemappedItem {
+  from_location_id: number;
+  from_bin: string | null;
+  to_location_id: number;
+  to_bin: string | null;
+  moved: Record<string, number>;
+}
+
+/** Also used for `blocked`, where `quantity` is the stock that prevents retiring. */
+export interface MapSyncRetiredItem {
+  location_id: number;
+  bin_code: string | null;
+  location_name: string | null;
+  references: Record<string, number>;
+  quantity?: string | null;
+}
+
+export interface MapSyncFreedCode {
+  location_id: number;
+  bin_code: string | null;
+  released_location_code: string;
+}
+
+export interface MapSyncUnnamedNode {
+  location_code: string;
+  node_name: string | null;
+}
+
 export interface WarehouseMapImportResult {
-  message: string;
+  total_shelves: number;
+  matched: MapSyncMatchedItem[];
+  created: MapSyncCreatedItem[];
+  remapped: MapSyncRemappedItem[];
+  retired: MapSyncRetiredItem[];
+  blocked: MapSyncRetiredItem[];
+  freed_codes: MapSyncFreedCode[];
+  nodes_without_bin_code: MapSyncUnnamedNode[];
+  counts: {
+    matched: number;
+    created: number;
+    remapped: number;
+    retired: number;
+    blocked: number;
+  };
+  warehouse_map_id?: number | null;
+  source?: string | null;
+  moved_cache_entries?: number | null;
 }
 
 export interface MapLocationItemStock {
@@ -35,6 +102,7 @@ export interface FullLocationDetail {
   id: number;
   location_code: string;
   location_name?: string | null;
+  bin_code?: string | null;
   row: string | null;
   column: string | null;
   level: string | null;
@@ -52,6 +120,7 @@ export interface WarehouseLocationCell {
   id: number;
   location_code: string;
   location_name: string;
+  bin_code: string | null;
   node_name: string | null;
   warehouse_id: number;
   zone_id: number | null;

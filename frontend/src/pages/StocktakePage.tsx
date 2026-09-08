@@ -32,8 +32,7 @@ function formatDate(date?: string | null) {
 function displayLocationName(record: StocktakeItemStock): string {
   return (
     record.location_name ||
-    record.location_code ||
-    `#${record.location_id}`
+    (record.location_id ? `#${record.location_id}` : "—")
   );
 }
 

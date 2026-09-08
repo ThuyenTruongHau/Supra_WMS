@@ -304,7 +304,7 @@ def _clear_pending_cache_for_qr(db: Session, qr_code_id: int, target_stock: Item
                         packing_user=cached.get("packing_user"),
                         status="virtual",
                         stock_level=2,
-                        is_active=True,
+                        is_active=False,
                     )
                     _create_virtual_stock_relation(db, pack_qr_code, created_stock, target_stock.id)
 

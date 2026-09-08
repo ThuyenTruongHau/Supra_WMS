@@ -1,6 +1,7 @@
 import axiosInstance from './axiosInstance';
 import type {
   MapData,
+  MapRemapEntry,
   WarehouseMapImportResult,
   FullLocationsResponse,
   WarehouseLocationItemStockDetail,
@@ -48,17 +49,49 @@ export const getLocationsByLogicApi = async (
   return response.data;
 };
 
-export const importWarehouseMapApi = async (
+const buildMapImportFormData = (
   warehouseId: number,
   file: File,
-): Promise<WarehouseMapImportResult> => {
+  remap?: MapRemapEntry[],
+  zoneId?: number,
+): FormData => {
   const formData = new FormData();
   formData.append('warehouse_id', String(warehouseId));
   formData.append('file', file);
+  if (zoneId !== undefined) {
+    formData.append('zone_id', String(zoneId));
+  }
+  // Sent as JSON because the request itself is multipart/form-data.
+  if (remap?.length) {
+    formData.append('remap', JSON.stringify(remap));
+  }
+  return formData;
+};
 
+/** Dry run: reports what would be matched, remapped and retired without writing. */
+export const previewWarehouseMapImportApi = async (
+  warehouseId: number,
+  file: File,
+  remap?: MapRemapEntry[],
+  zoneId?: number,
+): Promise<WarehouseMapImportResult> => {
+  const response = await axiosInstance.post<WarehouseMapImportResult>(
+    '/api/v1/warehouse-maps/import/preview',
+    buildMapImportFormData(warehouseId, file, remap, zoneId),
+    { timeout: 5 * 60 * 1000 },
+  );
+  return response.data;
+};
+
+export const importWarehouseMapApi = async (
+  warehouseId: number,
+  file: File,
+  remap?: MapRemapEntry[],
+  zoneId?: number,
+): Promise<WarehouseMapImportResult> => {
   const response = await axiosInstance.post<WarehouseMapImportResult>(
     '/api/v1/warehouse-maps/import',
-    formData,
+    buildMapImportFormData(warehouseId, file, remap, zoneId),
     { timeout: 5 * 60 * 1000 },
   );
   return response.data;

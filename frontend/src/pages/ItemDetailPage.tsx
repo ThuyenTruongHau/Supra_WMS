@@ -144,11 +144,11 @@ const TABLE_CLASS =
 
 const locationColumns: ColumnsType<ItemStock> = [
   {
-    title: "Mã vị trí",
-    dataIndex: "location_code",
-    key: "location_code",
-    render: (code: string | null | undefined, row) =>
-      code || row.location_id || "—",
+    title: "Tên vị trí",
+    dataIndex: "location_name",
+    key: "location_name",
+    render: (name: string | null | undefined, row) =>
+      name || (row.location_id ? `#${row.location_id}` : "—"),
   },
   {
     title: "Số lượng",

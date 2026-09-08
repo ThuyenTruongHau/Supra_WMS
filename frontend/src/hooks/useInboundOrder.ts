@@ -9,6 +9,7 @@ import {
   deleteInboundOrderApi,
   acceptInboundTaskApi,
   assignOrGetItemStockApi,
+  manualInboundScanApi,
   cacheForPackingUserApi,
   getPackingUserStocksApi,
   previewQrCodeApi,
@@ -123,6 +124,13 @@ export const useAssignOrGetItemStock = () => {
   return useMutation({
     mutationFn: (body: AssignOrGetItemStockRequest) =>
       assignOrGetItemStockApi(body),
+  });
+};
+
+export const useManualInboundScan = () => {
+  return useMutation({
+    mutationFn: (body: AssignOrGetItemStockRequest) =>
+      manualInboundScanApi(body),
   });
 };
 

@@ -6,6 +6,7 @@ from pydantic import BaseModel, ConfigDict, Field
 class LocationCreate(BaseModel):
     location_code: str = Field(..., min_length=1, max_length=50)
     location_name: str = Field(..., min_length=1, max_length=100)
+    bin_code: Optional[str] = Field(None, max_length=50)
     row: Optional[str] = Field(None, max_length=10)
     column: Optional[str] = Field(None, max_length=10)
     level: Optional[str] = Field(None, max_length=10)
@@ -17,6 +18,7 @@ class LocationCreate(BaseModel):
 class LocationUpdate(BaseModel):
     location_code: Optional[str] = Field(None, min_length=1, max_length=50)
     location_name: Optional[str] = Field(None, min_length=1, max_length=100)
+    bin_code: Optional[str] = Field(None, max_length=50)
     row: Optional[str] = Field(None, max_length=10)
     column: Optional[str] = Field(None, max_length=10)
     level: Optional[str] = Field(None, max_length=10)
@@ -30,6 +32,7 @@ class LocationResponse(BaseModel):
     id: int
     location_code: str
     location_name: str
+    bin_code: Optional[str] = None
     row: Optional[str] = None
     column: Optional[str] = None
     level: Optional[str] = None
@@ -62,6 +65,79 @@ class MapCreate(BaseModel):
     is_active: bool = Field(default=True)
 
 
+class MapRemapEntry(BaseModel):
+    """Move every reference of a bin that left the map onto a bin that is in it."""
+
+    from_bin: str = Field(..., min_length=1, max_length=100)
+    to_bin: str = Field(..., min_length=1, max_length=100)
+
+
+class MapSyncMatchedItem(BaseModel):
+    location_id: int
+    bin_code: Optional[str] = None
+    location_name: Optional[str] = None
+    matched_by: str
+    previous_location_code: Optional[str] = None
+    location_code: str
+
+
+class MapSyncCreatedItem(BaseModel):
+    location_id: int
+    bin_code: Optional[str] = None
+    location_name: Optional[str] = None
+    location_code: str
+
+
+class MapSyncRemappedItem(BaseModel):
+    from_location_id: int
+    from_bin: Optional[str] = None
+    to_location_id: int
+    to_bin: Optional[str] = None
+    moved: dict[str, int] = {}
+
+
+class MapSyncRetiredItem(BaseModel):
+    location_id: int
+    bin_code: Optional[str] = None
+    location_name: Optional[str] = None
+    references: dict[str, int] = {}
+    quantity: Optional[str] = None
+
+
+class MapSyncFreedCode(BaseModel):
+    location_id: int
+    bin_code: Optional[str] = None
+    released_location_code: str
+
+
+class MapSyncUnnamedNode(BaseModel):
+    location_code: str
+    node_name: Optional[str] = None
+
+
+class MapSyncCounts(BaseModel):
+    matched: int
+    created: int
+    remapped: int
+    retired: int
+    blocked: int
+
+
+class MapSyncResult(BaseModel):
+    total_shelves: int
+    matched: list[MapSyncMatchedItem] = []
+    created: list[MapSyncCreatedItem] = []
+    remapped: list[MapSyncRemappedItem] = []
+    retired: list[MapSyncRetiredItem] = []
+    blocked: list[MapSyncRetiredItem] = []
+    freed_codes: list[MapSyncFreedCode] = []
+    nodes_without_bin_code: list[MapSyncUnnamedNode] = []
+    counts: MapSyncCounts
+    warehouse_map_id: Optional[int] = None
+    source: Optional[str] = None
+    moved_cache_entries: Optional[int] = None
+
+
 class MapDataResponse(BaseModel):
     width: int
     height: int
@@ -87,6 +163,7 @@ class MapLocationItem(BaseModel):
     id: int
     location_code: str
     location_name: Optional[str] = None
+    bin_code: Optional[str] = None
     row: Optional[str] = None
     column: Optional[str] = None
     level: Optional[str] = None

@@ -1,8 +1,10 @@
 import { useNavigate, useParams } from "react-router-dom";
+import { useState } from "react";
 import { Card, Table, Button, Modal, Space, message } from "@/components/ui";
 import type { ColumnsType } from "antd/es/table";
-import { ArrowLeftOutlined, DeleteOutlined } from "@ant-design/icons";
+import { ArrowLeftOutlined, DeleteOutlined, EnvironmentOutlined } from "@ant-design/icons";
 import InboundStatusTag from "@/components/shared/InboundStatusTag";
+import StocktakeMapModal from "@/pages/components/StocktakeMapModal";
 import {
   useConfirmStocktakeItemQuantity,
   useDeleteStocktake,
@@ -23,8 +25,7 @@ function formatDate(date?: string | null) {
 function displayLocationName(record: StocktakeItemStock): string {
   return (
     record.location_name ||
-    record.location_code ||
-    `#${record.location_id}`
+    (record.location_id ? `#${record.location_id}` : "—")
   );
 }
 
@@ -38,6 +39,7 @@ export default function StocktakeDetailPage() {
   const confirmMutation = useConfirmStocktakeItemQuantity();
   const items = detail?.items ?? [];
   const canDelete = detail?.status === "initialize";
+  const [isMapOpen, setIsMapOpen] = useState(false);
 
   const handleDelete = () => {
     if (!stocktakeId) return;
@@ -197,6 +199,13 @@ export default function StocktakeDetailPage() {
         </div>
         <Space className="shrink-0">
           <Button
+            icon={<EnvironmentOutlined />}
+            disabled={!detail?.warehouse_id || items.length === 0}
+            onClick={() => setIsMapOpen(true)}
+          >
+            Xem map
+          </Button>
+          <Button
             variant="dangerText"
             icon={<DeleteOutlined />}
             disabled={!canDelete}
@@ -265,6 +274,16 @@ export default function StocktakeDetailPage() {
           locale={{ emptyText: "Phiếu này chưa có dòng kiểm kê." }}
         />
       </Card>
+
+      <StocktakeMapModal
+        open={isMapOpen}
+        onClose={() => setIsMapOpen(false)}
+        warehouseId={detail?.warehouse_id ?? 0}
+        items={items}
+        stocktakeLabel={
+          detail?.description?.trim() || `#${stocktakeId || ""}`
+        }
+      />
     </div>
   );
 }

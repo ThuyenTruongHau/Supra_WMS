@@ -1,10 +1,13 @@
 from sqlalchemy import (
-    Boolean, Column, DateTime, ForeignKey, Integer, String, UniqueConstraint, func,
-    select, case, exists, or_,
+    Boolean, Column, DateTime, ForeignKey, Index, Integer, String, UniqueConstraint, func,
+    select, case, exists, or_, text,
 )
 from sqlalchemy.orm import relationship, column_property
 from app.core.database import Base
-from app.modules.warehouse.item_stock.item_stock_model import ItemStock
+from app.modules.warehouse.item_stock.item_stock_model import (
+    ItemStock,
+    countable_stock_level_criterion,
+)
 from app.modules.warehouse.inbound_order.inbound_order_model import InboundOrderDetail
 from app.modules.warehouse.outbound_order.outbound_order_model import OutboundOrderAllocation
 
@@ -60,6 +63,7 @@ def _location_status_expression(location_id_col):
                     ItemStock.location_id == location_id_col,
                     ItemStock.quantity > 0,
                     ItemStock.is_active.is_(True),
+                    countable_stock_level_criterion(),
                 )
                 .correlate_except(ItemStock)
             ),
@@ -79,16 +83,21 @@ class Location(Base):
             "location_code",
             name="uq_location_warehouse_code",
         ),
-        UniqueConstraint(
+        Index(
+            "uq_location_warehouse_bin",
             "warehouse_id",
-            "location_name",
-            name="uq_location_warehouse_name",
+            "bin_code",
+            unique=True,
+            postgresql_where=text("bin_code IS NOT NULL"),
         ),
     )
 
     id = Column(Integer, primary_key=True, index=True)
+    # Map node number. Rewritten on every import because map editors renumber nodes.
     location_code = Column(String(50), nullable=False, index=True)
     location_name = Column(String(100), nullable=False, index=True)
+    # Physical bin label (e.g. KH1.13). Stable identity used to match across imports.
+    bin_code = Column(String(50), nullable=True, index=True)
     row = Column(String(10))  # Mapped from DB 'row' column
     column = Column("column", String(10))  # 'column' is SQL keyword, use mapped name
     level = Column(String(10))
@@ -118,7 +127,8 @@ class Location(Base):
         )
         .where(
             ItemStock.location_id == id,
-            ItemStock.is_active.is_(True)
+            ItemStock.is_active.is_(True),
+            countable_stock_level_criterion(),
         )
         .correlate_except(ItemStock)
         .scalar_subquery()

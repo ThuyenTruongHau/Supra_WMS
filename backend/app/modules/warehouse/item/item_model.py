@@ -7,7 +7,10 @@ from sqlalchemy.orm import column_property
 from app.core.config import settings
 
 from app.core.database import Base
-from app.modules.warehouse.item_stock.item_stock_model import ItemStock
+from app.modules.warehouse.item_stock.item_stock_model import (
+    ItemStock,
+    countable_stock_level_criterion,
+)
 from app.modules.warehouse.location_map.location_model import Location
 from app.modules.warehouse.warehouse_zone.warehouse_model import Zone
 
@@ -44,6 +47,7 @@ class Item(Base):
         .where(
             ItemStock.item_id == id,
             ItemStock.is_active.is_(True),
+            countable_stock_level_criterion(),
             ItemStock.location_id.in_(
                 select(Location.id)
                 .join(Zone, Location.zone_id == Zone.id)

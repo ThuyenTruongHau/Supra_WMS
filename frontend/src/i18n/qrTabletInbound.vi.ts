@@ -77,6 +77,11 @@ export const QR_TABLET_INBOUND_VI = {
     "Chọn người đóng gói để lấy các item đã lưu tạm và tạo đơn nhập.",
   packerLocationNoPendingItems:
     "Người đóng gói chưa có item nào đã lưu tạm để nhập kho.",
+  manualLocationReceived:
+    "Đã nhận vị trí {location}. Hoàn tất form rồi quét lại vị trí hoặc bấm xác nhận.",
+  manualPendingLocationLabel: "Vị trí đã quét: {location}",
+  manualConfirmButton: "Xác nhận nhập kho",
+  manualCreatedTitle: "Đã tạo đơn nhập",
 } as const;
 
 export type QrTabletInboundMessageKey = keyof typeof QR_TABLET_INBOUND_VI;
@@ -126,4 +131,22 @@ export function formatPackerPendingItemMismatch(
     .replace("{packingUser}", packingUser)
     .replace("{pendingSku}", pendingSku)
     .replace("{anchorSku}", anchorSku);
+}
+
+export function formatManualLocationReceived(location: string): string {
+  return QR_TABLET_INBOUND_VI.manualLocationReceived.replace(
+    "{location}",
+    location,
+  );
+}
+
+export function formatManualPendingLocationLabel(location: string): string {
+  return QR_TABLET_INBOUND_VI.manualPendingLocationLabel.replace(
+    "{location}",
+    location,
+  );
+}
+
+export function formatManualCreatedContent(orderCode: string): string {
+  return `Mã đơn: ${orderCode}`;
 }

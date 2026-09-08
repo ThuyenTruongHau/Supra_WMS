@@ -458,6 +458,8 @@ def confirm_quantity_for_stock(
         raise ValueError("Item stock not found")
 
     item_stock.quantity = row.actual_quantity
+    if item_stock.quantity == 0:
+        item_stock.is_active = False
     row.status = (
         "completed"
         if row.actual_quantity == row.desired_quantity

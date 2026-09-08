@@ -33,7 +33,10 @@ from app.modules.warehouse.item.item_schema import (
 )
 from app.modules.warehouse.unit.unit_model import Unit
 from app.modules.warehouse.warehouse_zone.warehouse_model import Warehouse, Zone
-from app.modules.warehouse.item_stock.item_stock_model import ItemStock
+from app.modules.warehouse.item_stock.item_stock_model import (
+    ItemStock,
+    countable_stock_level_criterion,
+)
 from app.modules.warehouse.location_map.location_model import Location
 from app.modules.warehouse.item.item_celery_task import import_item_masan_task
 from app.modules.warehouse.item.item_import_utils import (
@@ -147,6 +150,7 @@ def analyze_items(db: Session, warehouse_id: int) -> ItemAnalyzeResponse:
             Item.warehouse_id == warehouse_id,
             Item.is_active.is_(True),
             ItemStock.is_active.is_(True),
+            countable_stock_level_criterion(),
             Location.is_active.is_(True),
             Zone.code.in_(settings.zone_storage),
         )
@@ -166,6 +170,7 @@ def analyze_items(db: Session, warehouse_id: int) -> ItemAnalyzeResponse:
             Item.warehouse_id == warehouse_id,
             Item.is_active.is_(True),
             ItemStock.is_active.is_(True),
+            countable_stock_level_criterion(),
             Location.is_active.is_(True),
             Zone.code.in_(settings.zone_storage),
             ItemStock.expiry_date.isnot(None),
@@ -186,6 +191,7 @@ def analyze_items(db: Session, warehouse_id: int) -> ItemAnalyzeResponse:
         .join(Zone, Zone.id == Location.zone_id)
         .filter(
             ItemStock.is_active.is_(True),
+            countable_stock_level_criterion(),
             Location.warehouse_id == warehouse_id,
             Location.is_active.is_(True),
             Zone.code.in_(settings.zone_storage),
@@ -219,15 +225,19 @@ def get_item_detail(db: Session, item_id: int) -> ItemDetailResponse:
         raise ValueError("Item not found")
 
     stocks = (
-        db.query(ItemStock, Location.location_code)
+        db.query(ItemStock, Location.location_code, Location.location_name)
         .outerjoin(Location, Location.id == ItemStock.location_id)
-        .filter(ItemStock.item_id == item.id, ItemStock.is_active.is_(True))
+        .filter(
+            ItemStock.item_id == item.id,
+            ItemStock.is_active.is_(True),
+            countable_stock_level_criterion(),
+        )
         .order_by(ItemStock.id)
         .all()
     )
 
     stock_items: list[ItemStockInDetail] = []
-    for stock, location_code in stocks:
+    for stock, location_code, location_name in stocks:
         stock_items.append(
             ItemStockInDetail(
                 id=stock.id,
@@ -235,6 +245,7 @@ def get_item_detail(db: Session, item_id: int) -> ItemDetailResponse:
                 location_id=stock.location_id,
                 unit_id=stock.unit_id,
                 location_code=location_code,
+                location_name=location_name,
                 lot_number_from=stock.lot_number_from,
                 lot_number_to=stock.lot_number_to,
                 lot_number=format_lot_number_display(

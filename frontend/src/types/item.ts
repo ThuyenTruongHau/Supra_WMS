@@ -60,6 +60,7 @@ export interface ItemStock {
   item_id: number
   location_id: number
   location_code?: string | null
+  location_name?: string | null
   lot_number: string | null
   expiry_date: string | null
   quantity: number

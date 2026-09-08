@@ -156,6 +156,8 @@ class AssignOrGetItemStockAction:
     ASSIGNED = "assigned"
     LOCATION_STOCKS = "location_stocks"
     PENDING_CACHED = "pending_cached"
+    LOCATION = "location"
+    CREATED = "created"
 
 
 class AssignOrGetItemStockResponse(BaseModel):
@@ -168,7 +170,9 @@ class AssignOrGetItemStockResponse(BaseModel):
     pending: Optional[PendingCachedResponse] = None
     location_id: Optional[int] = None
     location_name: Optional[str] = None
+    location_code: Optional[str] = None
     warehouse_id: Optional[int] = None
+    order_code: Optional[str] = None
 
 
 class AssignedItemStockResponse(BaseModel):

@@ -63,7 +63,11 @@ class TaskStatusService:
 
         stocks = (
             db.query(ItemStock)
-            .filter(ItemStock.inbound_order_detail_id == detail.id)
+            .filter(
+                ItemStock.inbound_order_detail_id == detail.id,
+                ItemStock.is_active.is_(True),
+                ItemStock.status != "virtual",
+            )
             .all()
         )
         for stock in stocks:

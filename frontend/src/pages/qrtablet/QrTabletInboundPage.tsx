@@ -3,6 +3,7 @@ import { Form, Input, Modal, Progress, Checkbox } from "antd";
 import { ScanOutlined } from "@ant-design/icons";
 import { useQuery } from "@tanstack/react-query";
 import { Button, Select, message } from "@/components/ui";
+import { UnitSearchSelect } from "@/components/shared/UnitSearchSelect";
 import { QrCameraOverlay, QrImageImport } from "@/components/qr-scan";
 import CreateImportModal, {
   type ImportGroupDraft,
@@ -11,16 +12,24 @@ import {
   useAssignOrGetItemStock,
   useCacheForPackingUser,
   useGetPackingUserStocks,
+  useManualInboundScan,
   usePreviewQrCode,
 } from "@/hooks/useInboundOrder";
 import { getStaffUsernamesApi } from "@/api/auth";
 import { getItemAvailableUnitsApi } from "@/api/itemUnit";
+import {
+  formatUnitSelectOptions,
+  suggestQuantityForUnitOption,
+  type UnitSelectOption,
+} from "@/utils/itemUnitDisplay";
 import { getApiErrorMessage, isQrTypeLocationConflictError } from "@/utils/apiErrorMessage";
 import {
   isAssignOrGetAssigned,
   isAssignOrGetLocationStocks,
   isAssignOrGetPendingCached,
   isAssignOrGetPreview,
+  isManualInboundCreated,
+  isManualInboundLocation,
   type AssignedItemStock,
   type AssignOrGetItemStockRequest,
   type AssignOrGetItemStockResponse,
@@ -36,6 +45,9 @@ import {
 import { useAppStore } from "@/store/useAppStore";
 import {
   formatAssignedProduct,
+  formatManualCreatedContent,
+  formatManualLocationReceived,
+  formatManualPendingLocationLabel,
   formatPackerBatchSendProgress,
   formatPackerPendingItemMismatch,
   formatPendingCached,
@@ -53,6 +65,12 @@ import {
 } from "@/pages/qrtablet/packer/packerBatchUtils";
 
 type ScanMode = "idle" | "product" | "location";
+
+type PendingLocation = {
+  location_id: number;
+  location_name: string;
+  location_code: string;
+};
 
 type ItemBatchAnchor = Pick<
   QrCodePreviewResponse,
@@ -128,6 +146,7 @@ export default function QrTabletInboundPage() {
   );
   const isPackerMode = scanFlow === "continuous";
   const assignMutation = useAssignOrGetItemStock();
+  const manualScanMutation = useManualInboundScan();
   const previewMutation = usePreviewQrCode();
   const packingMutation = useCacheForPackingUser();
   const packingStocksMutation = useGetPackingUserStocks();
@@ -146,6 +165,9 @@ export default function QrTabletInboundPage() {
     [staffUsernames],
   );
   const [scanMode, setScanMode] = useState<ScanMode>("idle");
+  const [pendingLocation, setPendingLocation] = useState<PendingLocation | null>(
+    null,
+  );
   const [preview, setPreview] = useState<QrCodePreviewResponse | null>(null);
   const [quantity, setQuantity] = useState<number>(1);
   const [unitId, setUnitId] = useState<number | undefined>();
@@ -154,9 +176,8 @@ export default function QrTabletInboundPage() {
   const [qcUsers, setQcUsers] = useState<string[]>([]);
   const [packingUser, setPackingUser] = useState<string | undefined>();
   const [cavityNumber, setCavityNumber] = useState<string | undefined>();
-  const [unitOptions, setUnitOptions] = useState<
-    { value: number; label: string }[]
-  >([]);
+  const [unitOptions, setUnitOptions] = useState<UnitSelectOption[]>([]);
+  const [itemBaseQuantity, setItemBaseQuantity] = useState(1);
   const [formOpen, setFormOpen] = useState(false);
   const [importGroups, setImportGroups] = useState<ImportGroupDraft[]>();
   const [warehouseId, setWarehouseId] = useState<number | undefined>();
@@ -226,6 +247,8 @@ export default function QrTabletInboundPage() {
     setBatchSendProgress(null);
     setIsBatchSending(false);
     cancelLocationImport();
+    setPreview(null);
+    setPendingLocation(null);
   }, [selectedWarehouseId, isAutoWarehouse, cancelLocationImport]);
 
   const handleScanFlowChange = useCallback(
@@ -242,6 +265,7 @@ export default function QrTabletInboundPage() {
       setIsBatchSending(false);
       cancelLocationImport();
       setPreview(null);
+      setPendingLocation(null);
       setQuantity(1);
       setUnitId(undefined);
       setLotNumber("");
@@ -256,6 +280,7 @@ export default function QrTabletInboundPage() {
 
   const scanPending =
     assignMutation.isPending ||
+    manualScanMutation.isPending ||
     previewMutation.isPending ||
     packingMutation.isPending ||
     packingStocksMutation.isPending ||
@@ -372,6 +397,7 @@ export default function QrTabletInboundPage() {
 
   const resetPreview = useCallback(() => {
     setPreview(null);
+    setPendingLocation(null);
     setQuantity(1);
     setUnitId(undefined);
     setLotNumber("");
@@ -380,6 +406,7 @@ export default function QrTabletInboundPage() {
     setQcUsers([]);
     setPackingUser(undefined);
     setUnitOptions([]);
+    setItemBaseQuantity(1);
   }, []);
 
   const applyPreviewResult = useCallback(
@@ -398,7 +425,9 @@ export default function QrTabletInboundPage() {
         setWorkbenchPackingUser(undefined);
       }
       setPreview(result);
-      setQuantity(result.quantity ?? 1);
+      const defaultQty = result.quantity ?? 1;
+      setQuantity(defaultQty);
+      setItemBaseQuantity(defaultQty);
       setUnitId(result.unit_id);
       setLotNumber(result.lot_number ?? "");
       setCavityNumber(result.cavity_number ?? result.cavity_numbers?.[0]);
@@ -415,14 +444,21 @@ export default function QrTabletInboundPage() {
           ? result.packing_user || undefined
           : undefined,
       );
-      setUnitOptions([{ value: result.unit_id, label: result.unit_name }]);
+      setUnitOptions([
+        {
+          value: result.unit_id,
+          label: result.unit_name,
+          unit_name: result.unit_name,
+        },
+      ]);
       try {
         const available = await getItemAvailableUnitsApi(result.item_id);
         setUnitOptions(
-          available.units.map((u) => ({
-            value: u.unit_id,
-            label: u.unit_name,
-          })),
+          formatUnitSelectOptions(
+            available.units,
+            available.base_unit_name,
+            defaultQty,
+          ),
         );
       } catch {
         // keep base unit option
@@ -467,6 +503,37 @@ export default function QrTabletInboundPage() {
           ),
         );
         resetPreview();
+        return;
+      }
+      message.error(tQrTabletInbound("unhandledResponse"));
+    },
+    [applyPreviewResult, resetPreview],
+  );
+
+  const handleManualScanResponse = useCallback(
+    async (result: AssignOrGetItemStockResponse) => {
+      if (isAssignOrGetPreview(result)) {
+        await applyPreviewResult(result.preview);
+        return;
+      }
+      if (isManualInboundLocation(result)) {
+        const locationLabel =
+          result.location_name ?? result.location_code ?? String(result.location_id);
+        setPendingLocation({
+          location_id: result.location_id,
+          location_name: result.location_name ?? locationLabel,
+          location_code: result.location_code ?? locationLabel,
+        });
+        message.info(formatManualLocationReceived(locationLabel));
+        setScanMode("location");
+        return;
+      }
+      if (isManualInboundCreated(result)) {
+        resetPreview();
+        Modal.success({
+          title: tQrTabletInbound("manualCreatedTitle"),
+          content: formatManualCreatedContent(result.order_code),
+        });
         return;
       }
       message.error(tQrTabletInbound("unhandledResponse"));
@@ -734,11 +801,14 @@ export default function QrTabletInboundPage() {
   );
 
   const buildScanPayload = useCallback(
-    (scanned: string): AssignOrGetItemStockRequest => {
+    (
+      scanned: string,
+      locationCodeOverride?: string,
+    ): AssignOrGetItemStockRequest => {
       if (preview) {
         return {
           qr_code: preview.code,
-          raw: scanned,
+          raw: locationCodeOverride ?? scanned,
           warehouse_id: selectedWarehouseId,
           quantity,
           unit_id: unitId,
@@ -822,6 +892,13 @@ export default function QrTabletInboundPage() {
           message.error(tQrTabletInbound("unhandledResponse"));
           return;
         }
+        if (!isAutoWarehouse) {
+          const result = await manualScanMutation.mutateAsync(
+            buildScanPayload(scanned),
+          );
+          await handleManualScanResponse(result);
+          return;
+        }
         const result = await assignMutation.mutateAsync(buildScanPayload(scanned));
         await handleAssignOrGetResponse(result);
       } catch (err) {
@@ -842,13 +919,45 @@ export default function QrTabletInboundPage() {
       assignMutation,
       buildScanPayload,
       handleAssignOrGetResponse,
+      handleManualScanResponse,
+      isAutoWarehouse,
       isPackerMode,
       beginFromLocationScan,
+      manualScanMutation,
       previewMutation,
       resetPreview,
       selectedWarehouseId,
     ],
   );
+
+  const handleManualConfirm = useCallback(async () => {
+    if (!pendingLocation || !preview || !isProductFormReady) {
+      return;
+    }
+    if (!selectedWarehouseId) {
+      message.warning(tQrTabletInbound("selectWarehouseFirst"));
+      return;
+    }
+    try {
+      const result = await manualScanMutation.mutateAsync(
+        buildScanPayload(
+          pendingLocation.location_code,
+          pendingLocation.location_code,
+        ),
+      );
+      await handleManualScanResponse(result);
+    } catch (err) {
+      message.error(getApiErrorMessage(err));
+    }
+  }, [
+    buildScanPayload,
+    handleManualScanResponse,
+    isProductFormReady,
+    manualScanMutation,
+    pendingLocation,
+    preview,
+    selectedWarehouseId,
+  ]);
 
   const handleImportDecoded = useCallback(
     async (text: string) => {
@@ -1346,11 +1455,21 @@ export default function QrTabletInboundPage() {
                     />
                   </Form.Item>
                   <Form.Item label={tQrTabletInbound("labelUnit")} required className="!mb-0">
-                    <Select
-                      className="w-full"
+                    <UnitSearchSelect
+                      placeholder="Gõ 1–2 ký tự để gợi ý đơn vị"
                       value={unitId}
                       options={unitOptions}
-                      onChange={(val) => setUnitId(Number(val))}
+                      onChange={(val, option) => {
+                        setUnitId(val);
+                        const suggested = suggestQuantityForUnitOption(
+                          val,
+                          unitOptions,
+                          itemBaseQuantity,
+                        );
+                        if (option?.suggested_quantity) {
+                          setQuantity(suggested);
+                        }
+                      }}
                     />
                   </Form.Item>
                 </div>
@@ -1420,6 +1539,13 @@ export default function QrTabletInboundPage() {
                     </>
                   ) : (
                     <>
+                      {!isAutoWarehouse && pendingLocation && (
+                        <p className="rounded-lg bg-brand-primary/10 px-3 py-2 text-sm text-brand-dark">
+                          {formatManualPendingLocationLabel(
+                            pendingLocation.location_name,
+                          )}
+                        </p>
+                      )}
                       <Button
                         variant="primary"
                         className="!h-12 w-full !text-lg"
@@ -1429,6 +1555,17 @@ export default function QrTabletInboundPage() {
                       >
                         {tQrTabletInbound("scanLocationButton")}
                       </Button>
+                      {!isAutoWarehouse && pendingLocation && (
+                        <Button
+                          variant="secondary"
+                          className="!h-12 w-full !text-lg"
+                          loading={manualScanMutation.isPending}
+                          disabled={!isProductFormReady}
+                          onClick={() => void handleManualConfirm()}
+                        >
+                          {tQrTabletInbound("manualConfirmButton")}
+                        </Button>
+                      )}
                       <QrImageImport onDecoded={handleImportDecoded} />
                     </>
                   )}

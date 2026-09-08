@@ -1,9 +1,11 @@
 """Location API."""
 
+import json
 from typing import Annotated, Optional
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
 from fastapi.responses import Response
+from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -19,6 +21,8 @@ from app.modules.warehouse.location_map.location_schema import (
     LocationsByLogicResponse,
     LocationsForMapResponse,
     MapDataResponse,
+    MapRemapEntry,
+    MapSyncResult,
 )
 
 router = APIRouter(tags=["Location_Map"])
@@ -137,30 +141,87 @@ def delete_location(location_id: int, db: DbSession):
     return None
 
 
+def _parse_remap_form(remap: Optional[str]) -> Optional[list[dict]]:
+    """Remap arrives as a JSON string because the request is multipart/form-data."""
+    if not remap or not remap.strip():
+        return None
+    try:
+        parsed = json.loads(remap)
+    except json.JSONDecodeError as e:
+        raise HTTPException(
+            status_code=400,
+            detail="remap phải là JSON dạng [{from_bin, to_bin}]",
+        ) from e
+    if not isinstance(parsed, list):
+        raise HTTPException(
+            status_code=400,
+            detail="remap phải là JSON dạng [{from_bin, to_bin}]",
+        )
+    try:
+        entries = [MapRemapEntry.model_validate(item) for item in parsed]
+    except ValidationError as e:
+        raise HTTPException(status_code=400, detail=e.errors()) from e
+    return [entry.model_dump() for entry in entries]
+
+
+def _require_zip(file: UploadFile) -> None:
+    if not file.filename or not file.filename.lower().endswith(".zip"):
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid file format. Please upload a .zip file.",
+        )
+
+
+@router.post(
+    "/warehouse-maps/import/preview",
+    response_model=MapSyncResult,
+    dependencies=[Depends(require_permission("map:import_map"))],
+)
+async def preview_warehouse_map_import(
+    db: DbSession,
+    warehouse_id: int = Form(...),
+    file: UploadFile = File(...),
+    zone_id: Optional[int] = Form(None),
+    remap: Optional[str] = Form(None),
+):
+    """Dry-run the import: report what would be matched, remapped and retired."""
+    _require_zip(file)
+    try:
+        return await location_service.preview_warehouse_map_import(
+            db=db,
+            warehouse_id=warehouse_id,
+            upload=file,
+            zone_id=zone_id,
+            remap=_parse_remap_form(remap),
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
+
 @router.post(
     "/warehouse-maps/import",
     status_code=status.HTTP_201_CREATED,
+    response_model=MapSyncResult,
     dependencies=[Depends(require_permission("map:import_map"))],
 )
 async def import_warehouse_map(
     db: DbSession,
     warehouse_id: int = Form(...),
     file: UploadFile = File(...),
+    zone_id: Optional[int] = Form(None),
+    remap: Optional[str] = Form(None),
 ):
-    if not file.filename or not file.filename.lower().endswith(".zip"):
-        raise HTTPException(
-            status_code=400,
-            detail="Invalid file format. Please upload a .zip file.",
-        )
+    _require_zip(file)
     try:
-        await location_service.import_warehouse_map(
+        return await location_service.import_warehouse_map(
             db=db,
             warehouse_id=warehouse_id,
             upload=file,
+            zone_id=zone_id,
+            remap=_parse_remap_form(remap),
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
-    return {"message": "Map imported successfully"}
 
 
 @router.get(

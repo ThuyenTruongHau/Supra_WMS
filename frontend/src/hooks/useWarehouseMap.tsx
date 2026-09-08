@@ -4,11 +4,13 @@ import {
   getFullLocationsApi,
   getLocationsByLogicApi,
   importWarehouseMapApi,
+  previewWarehouseMapImportApi,
   downloadActiveMapApi,
   getLocationDetailByIdApi,
 } from '@/api/warehouseMap';
 import type {
   MapData,
+  MapRemapEntry,
   FullLocationsResponse,
   WarehouseMapImportResult,
   WarehouseLocationItemStockDetail,
@@ -71,15 +73,34 @@ export const useStorageAreaLocations = (
   });
 };
 
+interface ImportWarehouseMapVariables {
+  warehouseId: number;
+  file: File;
+  remap?: MapRemapEntry[];
+  zoneId?: number;
+}
+
+/** Dry run the import so the operator can review before anything is written. */
+export const usePreviewWarehouseMapImport = () => {
+  return useMutation<
+    WarehouseMapImportResult,
+    AxiosError<ApiErrorResponse>,
+    ImportWarehouseMapVariables
+  >({
+    mutationFn: ({ warehouseId, file, remap, zoneId }) =>
+      previewWarehouseMapImportApi(warehouseId, file, remap, zoneId),
+  });
+};
+
 export const useImportWarehouseMap = () => {
   const queryClient = useQueryClient();
   return useMutation<
     WarehouseMapImportResult,
     AxiosError<ApiErrorResponse>,
-    { warehouseId: number; file: File }
+    ImportWarehouseMapVariables
   >({
-    mutationFn: ({ warehouseId, file }) =>
-      importWarehouseMapApi(warehouseId, file),
+    mutationFn: ({ warehouseId, file, remap, zoneId }) =>
+      importWarehouseMapApi(warehouseId, file, remap, zoneId),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({
         queryKey: ['warehouse-map', variables.warehouseId],

@@ -17,6 +17,7 @@ import {
   useUpdateOutboundOrder,
 } from "@/hooks/useOutbound";
 import type { OutboundOrderLineItemUpdate } from "@/types/outbound";
+import { getItemByIdApi } from "@/api/item";
 import {
   convertQuantityApi,
   getItemAvailableUnitsApi,
@@ -43,6 +44,8 @@ export interface OutboundItemDraft {
   base_unit_id?: number;
   converted_quantity?: number;
   converted_unit_name?: string;
+  warehouse_stock_quantity?: number | null;
+  warehouse_stock_loading?: boolean;
   detailEntries?: KeyValueEntry[];
 }
 
@@ -222,6 +225,25 @@ export default function CreateOutboundModal({
     return available;
   };
 
+  const loadWarehouseStock = async (itemKey: string, itemId: number) => {
+    updateItem(itemKey, {
+      warehouse_stock_loading: true,
+      warehouse_stock_quantity: undefined,
+    });
+    try {
+      const detail = await getItemByIdApi(itemId);
+      updateItem(itemKey, {
+        warehouse_stock_loading: false,
+        warehouse_stock_quantity: Number(detail.item.quantity ?? 0),
+      });
+    } catch {
+      updateItem(itemKey, {
+        warehouse_stock_loading: false,
+        warehouse_stock_quantity: null,
+      });
+    }
+  };
+
   useEffect(() => {
     if (!open || !isEdit || !initialItems?.length) return;
 
@@ -260,6 +282,7 @@ export default function CreateOutboundModal({
           }),
         );
         for (const entry of entries) {
+          void loadWarehouseStock(entry.itemKey, entry.item_id);
           if (entry.unit_id && entry.quantity > 0) {
             await refreshConvertedQuantity(
               entry.itemKey,
@@ -439,6 +462,8 @@ export default function CreateOutboundModal({
                   base_unit_id: undefined,
                   converted_quantity: undefined,
                   converted_unit_name: undefined,
+                  warehouse_stock_quantity: undefined,
+                  warehouse_stock_loading: false,
                 });
               } else {
                 updateItem(item.key, { sku });
@@ -455,6 +480,8 @@ export default function CreateOutboundModal({
                   base_unit_id: undefined,
                   converted_quantity: undefined,
                   converted_unit_name: undefined,
+                  warehouse_stock_quantity: undefined,
+                  warehouse_stock_loading: false,
                 });
                 return;
               }
@@ -471,6 +498,7 @@ export default function CreateOutboundModal({
                   quantity,
                   unit_id: available.base_unit_id,
                 });
+                void loadWarehouseStock(item.key, opt.item_id);
                 await refreshConvertedQuantity(
                   item.key,
                   opt.item_id,
@@ -485,7 +513,7 @@ export default function CreateOutboundModal({
         )}
       </div>
 
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <Input
           type="number"
           min={0}
@@ -510,6 +538,19 @@ export default function CreateOutboundModal({
               );
             }
           }}
+        />
+        <Input
+          disabled
+          prefix={<span className="text-xs text-slate-400">Tồn kho:</span>}
+          value={
+            !item.item_id
+              ? "—"
+              : item.warehouse_stock_loading
+                ? "..."
+                : item.warehouse_stock_quantity != null
+                  ? formatQuantity(item.warehouse_stock_quantity)
+                  : "—"
+          }
         />
         <Select
           className="w-full"

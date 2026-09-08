@@ -203,11 +203,13 @@ def delete_inbound_order(
     "/inbound-orders/caller",
     status_code=status.HTTP_201_CREATED,
     response_model=InboundCallerResponse,
+    # dependencies=[Depends(_INBOUND_CREATE)],
 )
 def caller_inbound_order(
     body: InboundOrderCreate,
     db: DbSession,
     inbound_type: str,
+    # current_user: Annotated[User, Depends(_INBOUND_CREATE)],
 ):
     try:
         order = run_logic_task(
@@ -269,6 +271,38 @@ def _assign_or_get_item_stocks(db: Session, body: AssignOrGetItemStockRequest):
     try:
         result = qr_code_module.assign_or_get_item_stock(
             db=db,
+            raw=body.raw,
+            warehouse_id=body.warehouse_id,
+            qr_code=body.qr_code,
+            quantity=body.quantity,
+            unit_id=body.unit_id,
+            lot_number=body.lot_number,
+            cavity_number=body.cavity_number,
+            manufacturing_user=body.manufacturing_user,
+            qc_user=body.qc_user,
+            packing_user=body.packing_user,
+        )
+    except ValueError as e:
+        msg = str(e)
+        code = 404 if "not found" in msg.lower() else 400
+        raise HTTPException(status_code=code, detail=msg) from e
+    return AssignOrGetItemStockResponse.model_validate(result)
+
+
+@router.post(
+    "/inbound-orders/manual/scan",
+    response_model=AssignOrGetItemStockResponse,
+    dependencies=[Depends(_INBOUND_CREATE)],
+)
+def manual_inbound_scan(
+    body: AssignOrGetItemStockRequest,
+    db: DbSession,
+    current_user: Annotated[User, Depends(_INBOUND_CREATE)],
+):
+    try:
+        result = qr_code_module.assign_stock_to_location(
+            db=db,
+            user_id=current_user.id,
             raw=body.raw,
             warehouse_id=body.warehouse_id,
             qr_code=body.qr_code,

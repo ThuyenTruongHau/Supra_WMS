@@ -14,6 +14,12 @@ import {
 import { PlusOutlined, DeleteOutlined } from "@ant-design/icons";
 import { Select, Table, Button } from "@/components/ui";
 import { SkuSearchSelect } from "@/components/shared/SkuSearchSelect";
+import { UnitSearchSelect } from "@/components/shared/UnitSearchSelect";
+import {
+  formatUnitSelectOptions,
+  suggestQuantityForUnitOption,
+  type UnitSelectOption,
+} from "@/utils/itemUnitDisplay";
 import { useAppStore } from "@/store/useAppStore";
 import {
   useSuggestInboundAllocation,
@@ -67,7 +73,9 @@ export interface ImportItemDraft {
   item_name?: string;
   quantity: number;
   unit_id?: number;
-  unit_options?: { value: number; label: string }[];
+  unit_options?: UnitSelectOption[];
+  /** SL gợi ý theo đơn vị cơ bản khi chọn sản phẩm. */
+  item_base_quantity?: number;
   converted_quantity?: number;
   converted_unit_name?: string;
   lot_number?: string;
@@ -212,7 +220,12 @@ export default function CreateImportModal({
   }, [storageLocationsData, groups]);
 
   const unitOptions = useMemo(
-    () => units.map((u) => ({ value: u.id, label: u.name })),
+    (): UnitSelectOption[] =>
+      units.map((u) => ({
+        value: u.id,
+        label: u.name,
+        unit_name: u.name,
+      })),
     [units],
   );
 
@@ -319,13 +332,20 @@ export default function CreateImportModal({
     }
   };
 
-  const loadItemUnits = async (groupKey: string, itemKey: string, itemId: number) => {
+  const loadItemUnits = async (
+    groupKey: string,
+    itemKey: string,
+    itemId: number,
+    baseQuantity = 1,
+  ) => {
     const available = await getItemAvailableUnitsApi(itemId);
     updateItem(groupKey, itemKey, {
-      unit_options: available.units.map((u) => ({
-        value: u.unit_id,
-        label: u.unit_name,
-      })),
+      unit_options: formatUnitSelectOptions(
+        available.units,
+        available.base_unit_name,
+        baseQuantity,
+      ),
+      item_base_quantity: baseQuantity,
     });
     return available;
   };
@@ -343,13 +363,16 @@ export default function CreateImportModal({
               .filter((item) => item.item_id)
               .map(async (item) => {
                 const available = await getItemAvailableUnitsApi(item.item_id!);
+                const baseQuantity =
+                  item.quantity > 0 ? item.quantity : item.item_base_quantity ?? 1;
                 return {
                   groupKey: group.key,
                   itemKey: item.key,
-                  unit_options: available.units.map((u) => ({
-                    value: u.unit_id,
-                    label: u.unit_name,
-                  })),
+                  unit_options: formatUnitSelectOptions(
+                    available.units,
+                    available.base_unit_name,
+                    baseQuantity,
+                  ),
                 };
               }),
           ),
@@ -844,6 +867,7 @@ export default function CreateImportModal({
                         item_name: opt.item_name,
                         quantity,
                         unit_id: available.base_unit_id,
+                        item_base_quantity: quantity,
                       });
                       await refreshConvertedQuantity(
                         group.key,
@@ -886,29 +910,47 @@ export default function CreateImportModal({
                   }
                 }}
               />
-              <Select
-                className="w-full"
-                placeholder="Unit"
+              <UnitSearchSelect
+                placeholder="Gõ 1–2 ký tự để gợi ý đơn vị"
                 value={item.unit_id}
                 options={item.unit_options ?? unitOptions}
-                onChange={async (val) => {
-                  const unitId = Number(val);
-                  updateItem(group.key, item.key, { unit_id: unitId });
+                onChange={async (unitId, selectedOption) => {
+                  const suggestedQty = selectedOption
+                    ? suggestQuantityForUnitOption(
+                        unitId,
+                        item.unit_options ?? unitOptions,
+                        item.item_base_quantity ?? item.quantity ?? 1,
+                      )
+                    : item.quantity;
+
+                  updateItem(group.key, item.key, {
+                    unit_id: unitId,
+                    quantity: suggestedQty > 0 ? suggestedQty : item.quantity,
+                  });
+
                   if (item.item_id) {
                     try {
-                      await loadItemUnits(group.key, item.key, item.item_id);
+                      await loadItemUnits(
+                        group.key,
+                        item.key,
+                        item.item_id,
+                        item.item_base_quantity ?? suggestedQty,
+                      );
                     } catch (err) {
                       message.error(getApiErrorMessage(err));
                       return;
                     }
                   }
-                  if (item.item_id && item.quantity > 0) {
+
+                  const nextQty =
+                    suggestedQty > 0 ? suggestedQty : item.quantity;
+                  if (item.item_id && nextQty > 0) {
                     void refreshConvertedQuantity(
                       group.key,
                       item.key,
                       item.item_id,
                       unitId,
-                      item.quantity,
+                      nextQty,
                     );
                   }
                 }}
