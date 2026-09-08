@@ -1,121 +1,212 @@
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
 @import "tailwindcss";
+@import "./styles/operatorTabletScale.css";
 
 @theme {
-  --color-brand-dark: #0f3d46;
-  --color-brand-primary: #3aa6a6;
-  --color-brand-bg-dark: #1a1a2e;
-  --color-brand-bg-medium: #16213e;
-  --color-brand-bg-blue: #0f3460;
+  /* Oceanic Frost / Neo Teal */
+  --color-brand-dark: #17363A;
+  --color-brand-primary: #168C87;
+  --color-brand-bg-dark: #163B40;
+  --color-brand-bg-medium: #204F55;
+  --color-brand-bg-blue: #2F8FD8;
 
-  /* Stripe-inspired color palette */
-  --color-stripe-primary: #3AA6A6;
-  --color-stripe-primary-deep: #2F8C8C;
-  --color-stripe-primary-press: #1F5F5F;
-  --color-stripe-primary-soft: #58B8B8;
-  --color-stripe-primary-subdued: #B7E3E3;
-  --color-stripe-brand-dark-900: #143B3B;
-  --color-stripe-ink: #0D253D;
-  --color-stripe-ink-secondary: #273951;
-  --color-stripe-ink-mute: #64748d;
-  --color-stripe-ink-mute-2: #61718a;
-  --color-stripe-canvas-soft: #f6f9fc;
-  --color-stripe-canvas-cream: #f5e9d4;
-  --color-stripe-hairline: #e3e8ee;
-  --color-stripe-hairline-input: #a8c3de;
-  --color-stripe-ruby: #ea2261;
-  --color-stripe-magenta: #f96bee;
-  --color-stripe-lemon: #9b6829;
+  --color-canvas: #E2E8F0;
+  --color-panel: #FFFFFF;
+  --color-panel-soft: #F8FAFC;
+  --color-tech-accent: #2F8FD8;
+  /* Sidebar nguyên bản: navy slate, không dùng deep teal khói */
+  --color-sidebar: #0F172A;
+  --color-sidebar-hover: #1E293B;
+  --color-sidebar-mute: #94A3B8;
+
+  --color-stripe-primary: #168C87;
+  --color-stripe-primary-deep: #0F6F6B;
+  --color-stripe-primary-press: #0C5855;
+  --color-stripe-primary-soft: #3AAFA9;
+  --color-stripe-primary-subdued: #DBEAFE;
+  --color-stripe-brand-dark-900: #163B40;
+  --color-stripe-ink: #17363A;
+  --color-stripe-ink-secondary: #2A4A4E;
+  --color-stripe-ink-mute: #587477;
+  --color-stripe-ink-mute-2: #6B8A8C;
+  --color-stripe-canvas-soft: #F1F5F9;
+  --color-stripe-canvas-cream: #F8FAFC;
+  --color-stripe-hairline: #D8E0EA;
+  --color-stripe-hairline-input: #B8C4D1;
+  --color-stripe-success: #2F9E77;
+  --color-stripe-warning: #D58A28;
+  --color-stripe-error: #D9545D;
+  --color-stripe-ruby: #D9545D;
+  --color-stripe-magenta: #2F8FD8;
+  --color-stripe-lemon: #D58A28;
 
   /* Fonts */
-  --font-sans: 'Outfit', system-ui, -apple-system, sans-serif;
+  --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
 
-  /* Shadows */
-  --shadow-stripe-1: 0px 1px 3px rgba(0, 55, 112, 0.08);
-  --shadow-stripe-2: 0px 8px 24px rgba(0, 55, 112, 0.08), 0px 2px 6px rgba(0, 55, 112, 0.04);
+  /* Shadows — teal tint */
+  --shadow-stripe-1: 0px 1px 3px rgba(22, 140, 135, 0.08);
+  --shadow-stripe-2: 0px 8px 24px rgba(22, 140, 135, 0.1), 0px 2px 6px rgba(22, 140, 135, 0.05);
+
+  /* Semantic Status Colors (Mapped for easy theming) */
+  --color-success-50: var(--color-emerald-50);
+  --color-success-100: var(--color-emerald-100);
+  --color-success-200: var(--color-emerald-200);
+  --color-success-300: var(--color-emerald-300);
+  --color-success-400: var(--color-emerald-400);
+  --color-success-500: var(--color-emerald-500);
+  --color-success-600: var(--color-emerald-600);
+  --color-success-700: var(--color-emerald-700);
+  --color-success-800: var(--color-emerald-800);
+  --color-success-900: var(--color-emerald-900);
+
+  --color-warning-50: var(--color-amber-50);
+  --color-warning-100: var(--color-amber-100);
+  --color-warning-200: var(--color-amber-200);
+  --color-warning-300: var(--color-amber-300);
+  --color-warning-400: var(--color-amber-400);
+  --color-warning-500: var(--color-amber-500);
+  --color-warning-600: var(--color-amber-600);
+  --color-warning-700: var(--color-amber-700);
+  --color-warning-800: var(--color-amber-800);
+  --color-warning-900: var(--color-amber-900);
+
+  --color-error-50: var(--color-rose-50);
+  --color-error-100: var(--color-rose-100);
+  --color-error-200: var(--color-rose-200);
+  --color-error-300: var(--color-rose-300);
+  --color-error-400: var(--color-rose-400);
+  --color-error-500: var(--color-rose-500);
+  --color-error-600: var(--color-rose-600);
+  --color-error-700: var(--color-rose-700);
+  --color-error-800: var(--color-rose-800);
+  --color-error-900: var(--color-rose-900);
+
+  --color-info-50: var(--color-blue-50);
+  --color-info-100: var(--color-blue-100);
+  --color-info-200: var(--color-blue-200);
+  --color-info-300: var(--color-blue-300);
+  --color-info-400: var(--color-blue-400);
+  --color-info-500: var(--color-blue-500);
+  --color-info-600: var(--color-blue-600);
+  --color-info-700: var(--color-blue-700);
+  --color-info-800: var(--color-blue-800);
+  --color-info-900: var(--color-blue-900);
 }
 
 @layer base {
   body {
-    @apply m-0 p-0 text-stripe-ink bg-white font-sans;
-    font-feature-settings: "ss01" on;
+    @apply m-0 p-0 text-stripe-ink bg-canvas font-sans;
+    font-feature-settings: "zero" 0;
     -webkit-font-smoothing: antialiased;
   }
 }
 
-/* Custom Gradient Mesh Backdrop */
+/* Neutral light mesh — không phủ xanh toàn trang */
 .stripe-gradient-mesh {
-  background-color: #f6f9fc;
+  background-color: #F1F5F9;
   background-image:
-    radial-gradient(at 0% 0%, rgba(245, 233, 212, 0.9) 0px, transparent 50%),
-    radial-gradient(at 50% 0%, rgba(183, 227, 227, 0.75) 0px, transparent 50%),
-    radial-gradient(at 100% 0%, rgba(249, 107, 238, 0.3) 0px, transparent 50%),
-    radial-gradient(at 80% 50%, rgba(234, 34, 97, 0.15) 0px, transparent 40%),
-    radial-gradient(at 20% 60%, rgba(58, 166, 166, 0.15) 0px, transparent 50%);
+    radial-gradient(at 0% 0%, rgba(255, 255, 255, 0.98) 0px, transparent 52%),
+    radial-gradient(at 50% 0%, rgba(226, 232, 240, 0.72) 0px, transparent 50%),
+    radial-gradient(at 100% 0%, rgba(47, 143, 216, 0.12) 0px, transparent 50%),
+    radial-gradient(at 80% 55%, rgba(148, 163, 184, 0.1) 0px, transparent 42%),
+    radial-gradient(at 15% 65%, rgba(255, 255, 255, 0.72) 0px, transparent 52%);
   background-size: 100% 100%;
 }
 
-/* Tabular figures for money/numeric fields */
 .tnum {
   font-feature-settings: "tnum" on, "lnum" on;
 }
 
-/* Custom scrollbar for navy console */
 .custom-scrollbar::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-track {
-  background: rgba(20, 59, 59, 0.5);
+  background: rgba(22, 59, 64, 0.45);
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(88, 184, 184, 0.3);
+  background: rgba(58, 175, 169, 0.35);
   border-radius: 3px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: rgba(88, 184, 184, 0.5);
+  background: rgba(58, 175, 169, 0.55);
 }
 
-/* Industrial Pattern */
 .bg-industrial-pattern {
   background:
     repeating-linear-gradient(0deg,
       transparent,
       transparent 48px,
-      rgba(15, 61, 70, 0.04) 48px,
-      rgba(15, 61, 70, 0.04) 50px),
+      rgba(22, 59, 64, 0.045) 48px,
+      rgba(22, 59, 64, 0.045) 50px),
     repeating-linear-gradient(90deg,
       transparent,
       transparent 48px,
-      rgba(15, 61, 70, 0.04) 48px,
-      rgba(15, 61, 70, 0.04) 50px);
+      rgba(22, 59, 64, 0.045) 48px,
+      rgba(22, 59, 64, 0.045) 50px);
 }
 
-/* Ant Design 6: offset via --notification-top. Do not use translateY — it breaks placement. */
-.ant-message,
-.ant-message-top {
-  --notification-top: 24px;
-  left: 50% !important;
-  right: auto !important;
-  top: var(--notification-top) !important;
-  bottom: auto !important;
-  transform: translateX(-50%) !important;
-  z-index: 1100 !important;
+.ant-message {
+  top: 50% !important;
+  transform: translate(-50%, -50%) !important;
 }
 
-.ant-message .ant-message-notice,
-.ant-message-top .ant-message-notice {
-  clip-path: none !important;
-  opacity: 1 !important;
+.iot-status {
+  --iot-led: #2F9E77;
+  --iot-text: #247A5C;
 }
 
-/* /qrtablet: just below browser chrome (not mid-screen). ~56–72px is typical URL/search bar. */
-body.qrtablet-route .ant-message,
-body.qrtablet-route .ant-message-top {
-  --notification-top: max(72px, calc(env(safe-area-inset-top, 0px) + 56px));
-  top: var(--notification-top) !important;
-  z-index: 1200 !important;
+.iot-status--online {
+  --iot-led: #2F9E77;
+  --iot-text: #247A5C;
+}
+
+.iot-status--syncing {
+  --iot-led: #D58A28;
+  --iot-text: #B06F1C;
+}
+
+.iot-status--offline {
+  --iot-led: #D9545D;
+  --iot-text: #B83E46;
+}
+
+.iot-status__led {
+  position: relative;
+  width: 7px;
+  height: 7px;
+  border-radius: 9999px;
+  background: var(--iot-led);
+  box-shadow: 0 0 0 0 color-mix(in srgb, var(--iot-led) 45%, transparent);
+  animation: iot-led-pulse 2.2s ease-out infinite;
+}
+
+.iot-status--offline .iot-status__led {
+  animation: none;
+  opacity: 0.9;
+}
+
+.iot-status__label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--iot-text);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+@keyframes iot-led-pulse {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--iot-led) 45%, transparent);
+  }
+  70% {
+    box-shadow: 0 0 0 6px color-mix(in srgb, var(--iot-led) 0%, transparent);
+  }
+  100% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--iot-led) 0%, transparent);
+  }
 }
