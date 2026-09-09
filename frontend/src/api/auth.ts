@@ -20,12 +20,18 @@ export const loginApi = async (data: LoginRequest): Promise<LoginResponse> => {
     user.roles?.find((r) => r.name === 'admin')?.name ??
     user.roles?.[0]?.name ??
     '';
+  
+  // MAP roleName to role_canonical for Frontend logic
+  let canonical = roleName;
+  if (roleName.toLowerCase() === 'admin') canonical = 'A001';
+  else if (roleName.toLowerCase() === 'operator') canonical = 'O001';
+
   return {
     access_token: tokens.access_token,
     refresh_token: tokens.refresh_token ?? '',
     token_type: tokens.token_type ?? 'bearer',
     role: roleName,
-    role_canonical: roleName,
+    role_canonical: canonical,
     user,
   };
 };
