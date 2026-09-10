@@ -214,6 +214,8 @@ export interface QrCodePreviewResponse {
   manufacturing_user?: string | null;
   qc_user?: string | null;
   packing_user?: string | null;
+  /** Pack đã gán vào item qua assign:item — FE gom khi quét item (luồng assign thường) */
+  linked_packs?: AssignedItemStock[];
 }
 
 export interface AssignItemStockMetaResponse {
@@ -246,11 +248,24 @@ export interface CacheForPackingUserRequest {
   unit_id: number;
   lot_number: string;
   cavity_number?: string | null;
-  manufacturing_user: string;
+  manufacturing_user?: string | null;
   qc_user?: string | null;
   packing_user?: string | null;
   /** Parent item qr_code_id; required when caching pack QR */
   relation?: number | null;
+}
+
+export interface AssignPackingToItemRequest {
+  qr_code: string;
+  warehouse_id?: number | null;
+  target_qr_id?: string | null;
+  quantity?: number;
+  unit_id?: number;
+  lot_number?: string;
+  cavity_number?: string | null;
+  manufacturing_user?: string;
+  qc_user?: string | null;
+  packing_user?: string | null;
 }
 
 export interface PackingUserPendingStocksResponse {

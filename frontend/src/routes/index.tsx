@@ -28,6 +28,7 @@ import QrTabletInboundPage from "@/pages/qrtablet/QrTabletInboundPage";
 import QrTabletOutboundPage from "@/pages/qrtablet/QrTabletOutboundPage";
 import QrTabletOutboundDetailPage from "@/pages/qrtablet/QrTabletOutboundDetailPage";
 import QrTabletStocktakePage from "@/pages/qrtablet/QrTabletStocktakePage";
+import QrTabletPrintQrPage from "@/pages/qrtablet/QrTabletPrintQrPage";
 
 
 export default function AppRoutes() {
@@ -55,6 +56,7 @@ export default function AppRoutes() {
         <Route path="export" element={<QrTabletOutboundPage />} />
         <Route path="export/:orderId" element={<QrTabletOutboundDetailPage />} />
         <Route path="inventory" element={<QrTabletStocktakePage />} />
+        <Route path="print-qr" element={<QrTabletPrintQrPage />} />
       </Route>
 
       {/* ── Worker routes (full-screen, no sidebar) ── */}

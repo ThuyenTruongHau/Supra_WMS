@@ -13,6 +13,7 @@ import dayjs from "dayjs";
 
 const PAGE_SIZE = 20;
 const SEARCH_WIDTH = 280;
+const CHECKLIST_STATUSES = ["initialize", "in_progress"] as const;
 
 const TABLE_CLASS =
   "[&_.ant-table-thead_th]:!bg-slate-50 [&_.ant-table-thead_th]:!text-slate-600 [&_.ant-table-thead_th]:!font-semibold [&_.ant-table-thead_th]:!text-base [&_.ant-table-tbody_td]:!text-base [&_.ant-table-thead_th]:!py-3 [&_.ant-table-tbody_td]:!py-3 [&_.ant-table-row]:hover:bg-slate-50/50";
@@ -82,6 +83,7 @@ export default function StocktakePage() {
       warehouse_id: warehouseId,
       page: checklistPage,
       page_size: PAGE_SIZE,
+      statuses: [...CHECKLIST_STATUSES],
     });
 
   const events = stocktakesData?.items ?? [];

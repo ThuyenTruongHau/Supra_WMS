@@ -50,6 +50,9 @@ export const listStocktakeItemsApi = async (
         page: params.page ?? 1,
         page_size: params.page_size ?? 20,
         stocktake_id: params.stocktake_id,
+        statuses: params.statuses?.length
+          ? params.statuses.join(",")
+          : undefined,
       },
     },
   );

@@ -38,6 +38,7 @@ import CreateOutboundModal, {
 import { detailsToEntries } from "@/utils/keyValueDetails";
 import { computeDetailProgress } from "@/utils/detailProgress";
 import { formatOutboundCalculateError } from "@/utils/outboundErrors";
+import { resolveOutboundLocationLogicTypeForOrder } from "@/utils/outboundLocationLogic";
 import { getApiErrorMessage } from "@/utils/apiErrorMessage";
 
 const TABLE_CLASS =
@@ -246,8 +247,12 @@ export default function OutboundDetailPage() {
 
   const warehouseId = order?.warehouse_id ?? selectedWarehouseId ?? 0;
   const fetchAllocationTab = activeTab === "allocation";
+  const locationLogicType = useMemo(
+    () => resolveOutboundLocationLogicTypeForOrder(order?.details, details),
+    [order?.details, details],
+  );
   const { data: outboundBufferLocationsData, isLoading: outboundBufferLocationsLoading } =
-    useOutboundBufferLocations(warehouseId, fetchAllocationTab);
+    useOutboundBufferLocations(warehouseId, locationLogicType, fetchAllocationTab);
 
   const outboundBufferLocationOptions = useMemo(
     () =>

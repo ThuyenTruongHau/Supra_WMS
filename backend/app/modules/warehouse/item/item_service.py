@@ -36,6 +36,7 @@ from app.modules.warehouse.warehouse_zone.warehouse_model import Warehouse, Zone
 from app.modules.warehouse.item_stock.item_stock_model import (
     ItemStock,
     countable_stock_level_criterion,
+    positive_stock_quantity_criterion,
 )
 from app.modules.warehouse.location_map.location_model import Location
 from app.modules.warehouse.item.item_celery_task import import_item_masan_task
@@ -151,6 +152,7 @@ def analyze_items(db: Session, warehouse_id: int) -> ItemAnalyzeResponse:
             Item.is_active.is_(True),
             ItemStock.is_active.is_(True),
             countable_stock_level_criterion(),
+            positive_stock_quantity_criterion(),
             Location.is_active.is_(True),
             Zone.code.in_(settings.zone_storage),
         )
@@ -171,6 +173,7 @@ def analyze_items(db: Session, warehouse_id: int) -> ItemAnalyzeResponse:
             Item.is_active.is_(True),
             ItemStock.is_active.is_(True),
             countable_stock_level_criterion(),
+            positive_stock_quantity_criterion(),
             Location.is_active.is_(True),
             Zone.code.in_(settings.zone_storage),
             ItemStock.expiry_date.isnot(None),
@@ -192,6 +195,7 @@ def analyze_items(db: Session, warehouse_id: int) -> ItemAnalyzeResponse:
         .filter(
             ItemStock.is_active.is_(True),
             countable_stock_level_criterion(),
+            positive_stock_quantity_criterion(),
             Location.warehouse_id == warehouse_id,
             Location.is_active.is_(True),
             Zone.code.in_(settings.zone_storage),
@@ -231,6 +235,7 @@ def get_item_detail(db: Session, item_id: int) -> ItemDetailResponse:
             ItemStock.item_id == item.id,
             ItemStock.is_active.is_(True),
             countable_stock_level_criterion(),
+            positive_stock_quantity_criterion(),
         )
         .order_by(ItemStock.id)
         .all()
@@ -620,6 +625,20 @@ def _validate_qr_print_request(db: Session, item_id: int, quantity: int) -> Item
     return item
 
 
+def _standard_weight_from_item(item: Item) -> str:
+    details = item.details or {}
+    for key in ("standard_weight", "standard weight"):
+        raw = details.get(key)
+        if raw is not None and str(raw).strip():
+            return str(raw).strip()
+    for detail_key, raw in details.items():
+        if detail_key.strip().lower().replace(" ", "_") != "standard_weight":
+            continue
+        if raw is not None and str(raw).strip():
+            return str(raw).strip()
+    return ""
+
+
 def _build_qr_code_strings(item: Item, quantity: int) -> tuple[list[str], list[str]]:
     date_part = datetime.now().strftime("%Y%m%d")
     display_code = f"{item.sku}-{date_part}"
@@ -648,6 +667,7 @@ def _build_print_payload(
         "quantity": quantity,
         "part_number": item.sku,
         "part_name": item.name,
+        "standard_weight": _standard_weight_from_item(item),
         "qr_ids": codes,
         "display_codes": display_codes,
         "qr_type": qr_type,
@@ -728,6 +748,9 @@ generate_qr_codes = create_qr_codes
 BACVIET_TEMPLATE_PATH = (
     Path(__file__).resolve().parents[3] / "static" / "templates" / "template_bacviet.html"
 )
+PACKING_TEMPLATE_PATH = (
+    Path(__file__).resolve().parents[3] / "static" / "templates" / "template_packing.html"
+)
 TRANSFER_TEMPLATE_PATH = (
     Path(__file__).resolve().parents[3]
     / "static"
@@ -743,6 +766,9 @@ def render_qr_codes(payload: dict) -> str:
     if qr_type == "transit":
         template_path = TRANSFER_TEMPLATE_PATH
         data_key = "__TRANSFER_PRINT_DATA__"
+    elif qr_type == "pack":
+        template_path = PACKING_TEMPLATE_PATH
+        data_key = "__PACKING_PRINT_DATA__"
     else:
         template_path = BACVIET_TEMPLATE_PATH
         data_key = "__BACVIET_PRINT_DATA__"

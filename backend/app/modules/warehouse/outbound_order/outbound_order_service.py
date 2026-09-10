@@ -400,7 +400,7 @@ def delete_outbound_order(db: Session, order_code: str) -> None:
         raise ValueError(f"Database conflict: {e.orig}") from e
 
 
-def _strategy_loading_stocks(db: Session, item_id: int, strategy: str):
+def _strategy_loading_stocks(db: Session, item_id: int, strategy: str, lot_number: str = None):
     q = (
         db.query(ItemStock)
         .join(Location, Location.id == ItemStock.location_id)
@@ -529,13 +529,26 @@ def calculate_outbound_order(
         body.line_items,
     )
 
+    outbound_order = db.query(OutboundOrder).filter(OutboundOrder.id == body.outbound_order_id).first()
+
+    lot_number = None
+    type = outbound_order.details.get("type")
+    if type in ["Tuyển chọn", "tuyển chọn", "Lấy lỗi", "lấy lỗi"]:
+        strategy = "re_qc"
+        lot_number = outbound_order.details.get("lot_number")
+        if not lot_number:
+            raise ValueError("Lot number is required")
+
+    if type in ["Lấy lẻ", "lấy lẻ"]:
+        strategy = "pick_split"
+        
     lines_by_item_id: dict[int, list[DetailForCalculate]] = defaultdict(list)
     for li in body.line_items:
         lines_by_item_id[li.item_id].append(li)
 
     try:
         for item_id, lines in lines_by_item_id.items():
-            stocks = _strategy_loading_stocks(db, item_id, strategy)
+            stocks = _strategy_loading_stocks(db, item_id, strategy, lot_number)
             if not stocks:
                 raise ValueError(f"No enough stock for item {item_id}")
             if lines[0].detail_type == "manual":
@@ -992,6 +1005,19 @@ def execute_outbound_task(
             raise ValueError(
                 f"Allocation {item.allocation_id} is not initialize"
             )
+
+        if allocation.allocation_type == "outbound":
+            stock = allocation.item_stock
+            if not stock or stock.location_id is None:
+                raise ValueError(
+                    "Item stock has no location; robot task cannot be dispatched"
+                )
+            if body.from_location_id != stock.location_id:
+                raise ValueError(
+                    "Pick location does not match the pallet's actual location. "
+                    "Stock may have been moved by another outbound order."
+                )
+        
         allocation.from_location_id = body.from_location_id
         allocation.to_location_id = body.to_location_id
         allocation.status = "issued"
@@ -1062,17 +1088,21 @@ def _settle_outbound_stock(
     if not allocations:
         return
 
-    stock = allocations[0].item_stock
-
     allocation_rows = []
     flag = 0
     overall = 0
     for allocation in allocations:
         allocation.status = "completed"
+        stock = allocation.item_stock
         if allocation.allocation_type == "outbound":
             flag = 1
+            if stock.quantity < allocation.quantity:
+                raise ValueError(f"Stock quantity is not enough: {stock.quantity} < {allocation.quantity}")
             stock.quantity -= allocation.quantity 
             overall += allocation.quantity
+        else:
+            flag = 0
+
         allocation_rows.append({
             "allocation_id": allocation.id,
             "part_number": allocation.item_stock.item.sku if allocation.item_stock and allocation.item_stock.item else None,
@@ -1089,24 +1119,24 @@ def _settle_outbound_stock(
             "quantity": int(allocation.quantity),
         })
 
-    if flag == 1:
-        db.add(Transaction(
-            from_location_id=allocations[0].from_location_id,
-            to_location_id=allocations[0].to_location_id,
-            transaction_type="outbound",
-            item_stock_id=stock.id,
-            quantity=int(stock.quantity) + overall,
-            created_by_id=allocations[0].outbound_order_detail.outbound_order.created_by_id,
-        ))
-    else:
-        db.add(Transaction(
-            from_location_id=allocations[0].from_location_id,
-            to_location_id=allocations[0].to_location_id,
-            transaction_type="return",
-            item_stock_id=stock.id,
-            quantity=int(stock.quantity),
-            created_by_id=allocations[0].outbound_order_detail.outbound_order.created_by_id,
-        ))
+        if flag == 1:
+            db.add(Transaction(
+                from_location_id=allocation.from_location_id,
+                to_location_id=allocation.to_location_id,
+                transaction_type="outbound",
+                item_stock_id=stock.id,
+                quantity=int(stock.quantity),
+                created_by_id=allocation.outbound_order_detail.outbound_order.created_by_id,
+            ))
+        else:
+            db.add(Transaction(
+                from_location_id=allocation.from_location_id,
+                to_location_id=allocation.to_location_id,
+                transaction_type="return",
+                item_stock_id=stock.id,
+                quantity=int(stock.quantity),
+                created_by_id=allocation.outbound_order_detail.outbound_order.created_by_id,
+            ))
     details = {
         "allocations": allocation_rows,
     }

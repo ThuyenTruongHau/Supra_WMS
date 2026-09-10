@@ -7,6 +7,7 @@ from app.core.database import Base
 from app.modules.warehouse.item_stock.item_stock_model import (
     ItemStock,
     countable_stock_level_criterion,
+    positive_stock_quantity_criterion,
 )
 from app.modules.warehouse.inbound_order.inbound_order_model import InboundOrderDetail
 from app.modules.warehouse.outbound_order.outbound_order_model import OutboundOrderAllocation
@@ -129,6 +130,7 @@ class Location(Base):
             ItemStock.location_id == id,
             ItemStock.is_active.is_(True),
             countable_stock_level_criterion(),
+            positive_stock_quantity_criterion(),
         )
         .correlate_except(ItemStock)
         .scalar_subquery()

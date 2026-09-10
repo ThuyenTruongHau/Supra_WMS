@@ -13,10 +13,12 @@ import {
   cacheForPackingUserApi,
   getPackingUserStocksApi,
   previewQrCodeApi,
+  assignPackingToItemApi,
   callerInboundOrderApi,
 } from "@/api/inboundOrder";
 import type {
   AssignOrGetItemStockRequest,
+  AssignPackingToItemRequest,
   CacheForPackingUserRequest,
   GetInboundOrdersParams,
   InboundOrderCreateRequest,
@@ -144,6 +146,13 @@ export const useCacheForPackingUser = () => {
   return useMutation({
     mutationFn: (body: CacheForPackingUserRequest) =>
       cacheForPackingUserApi(body),
+  });
+};
+
+export const useAssignPackingToItem = () => {
+  return useMutation({
+    mutationFn: (body: AssignPackingToItemRequest) =>
+      assignPackingToItemApi(body),
   });
 };
 

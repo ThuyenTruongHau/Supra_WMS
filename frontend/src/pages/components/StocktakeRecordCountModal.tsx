@@ -61,7 +61,7 @@ export default function StocktakeRecordCountModal({
   useEffect(() => {
     if (!open || !formData) return;
     form.setFieldsValue({
-      actual_quantity: 0,
+      actual_quantity: Number(formData.desired_quantity ?? formData.system_quantity ?? 0),
       lot_number: formData.lot_number || "",
       expiry_date: formData.expiry_date ? dayjs(formData.expiry_date) : null,
       location_id: formData.location_id,

@@ -1,4 +1,7 @@
-import type { AssignedItemStock } from "@/types/inboundOrder";
+import type {
+  AssignedItemStock,
+  QrCodePreviewResponse,
+} from "@/types/inboundOrder";
 import type { QrTabletInboundMessageKey } from "@/i18n/qrTabletInbound.vi";
 import {
   LegacyLotNumberError,
@@ -24,8 +27,14 @@ export interface AggregatedItemFromPacks {
   unit_id: number;
   lot_number: string;
   cavity_number?: string;
-  manufacturing_user: string;
+  manufacturing_user?: string;
   qc_user?: string;
+  packing_user?: string;
+}
+
+export interface AggregatedAssignPreview extends AggregatedItemFromPacks {
+  unit_name: string;
+  linked_packs: AssignedItemStock[];
 }
 
 function packLotNumber(stock: AssignedItemStock): string {
@@ -125,12 +134,14 @@ export function aggregateAssignedPacks(
     packs.map((pack) => pack.manufacturing_user),
     MAX_STAFF_FIELD_LENGTH,
   );
-  if (!manufacturingUser) {
-    throw new PackAggregateError("packerAggregateFieldTooLong");
-  }
 
   const qcUser = unionCommaSeparated(
     packs.map((pack) => pack.qc_user),
+    MAX_STAFF_FIELD_LENGTH,
+  );
+
+  const packingUser = unionCommaSeparated(
+    packs.map((pack) => pack.packing_user),
     MAX_STAFF_FIELD_LENGTH,
   );
 
@@ -141,5 +152,26 @@ export function aggregateAssignedPacks(
     cavity_number: unionCavities(packs),
     manufacturing_user: manufacturingUser,
     qc_user: qcUser,
+    packing_user: packingUser,
+  };
+}
+
+export function aggregatePreviewLinkedPacks(
+  preview: QrCodePreviewResponse,
+): AggregatedAssignPreview {
+  const linkedPacks = preview.linked_packs ?? [];
+  if (linkedPacks.length === 0) {
+    throw new PackAggregateError("packerNoPacksToConfirm");
+  }
+
+  const aggregated = aggregateAssignedPacks(linkedPacks, preview.item_id);
+  const unitName =
+    linkedPacks.find((pack) => pack.unit_id === aggregated.unit_id)?.unit_name ??
+    preview.unit_name;
+
+  return {
+    ...aggregated,
+    unit_name: unitName,
+    linked_packs: linkedPacks,
   };
 }

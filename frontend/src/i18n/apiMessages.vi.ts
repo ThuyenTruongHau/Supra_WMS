@@ -15,6 +15,18 @@ const PACKING_USER_PENDING_ITEM_CONFLICT =
 const PACK_ALREADY_LINKED =
   /^Pack QR is already linked to an item and cannot be modified$/;
 
+const PACK_ALREADY_ASSIGNED_OTHER_ITEM =
+  /^Pack QR is already assigned to a different item anchor and cannot be reassigned$/;
+
+const ONLY_ITEM_QR_LOCATION_ASSIGN =
+  /^Only item QR codes can be assigned to a location, got '(\w+)'$/;
+
+const PACK_ITEM_ANCHOR_MISMATCH =
+  /^Pack QR item does not match item anchor product '([^']+)'$/;
+
+const ANCHOR_PACK_ITEM_MISMATCH =
+  /^Item anchor already has packs for item '([^']+)', cannot assign a pack for a different item$/;
+
 const UNIT_NOT_FOUND = /^Unit not found:\s*(.+)$/;
 const ITEM_NOT_FOUND = /^Item not found:\s*(.+)$/;
 const INVALID_CAVITY = /^Invalid cavity_number:\s*(.+)$/;
@@ -47,11 +59,29 @@ export const API_MESSAGES_VI: Record<string, string> = {
     "Mã QR không hợp lệ hoặc không tìm thấy vị trí",
   "Only item or pack QR codes can be cached for packing":
     "Chỉ mã QR loại sản phẩm hoặc đóng gói mới được lưu tạm ở chế độ người đóng gói",
+  "Only pack QR codes can be previewed in this flow":
+    "Chỉ mã QR loại đóng gói (pack) mới được xem trước trong luồng này",
+  "Only pack QR codes can be assigned to an item anchor":
+    "Chỉ mã QR pack mới được gán vào item",
+  "target_qr_id is required when assigning pack to item":
+    "Cần mã item đích khi gán pack",
+  "quantity and unit_id are required when assigning pack to item":
+    "Cần số lượng và đơn vị khi gán pack vào item",
+  "lot_number is required when assigning pack to item":
+    "Cần số lô khi gán pack vào item",
+  "manufacturing_user is required when assigning pack to item":
+    "Cần người sản xuất khi gán pack vào item",
   "Invalid QR code": "Mã QR không hợp lệ",
   "Transit QR codes cannot be cached for packing":
     "Mã QR di chuyển không thể lưu tạm ở chế độ người đóng gói",
   "Pack QR is already linked to an item and cannot be modified":
     "Pack QR đã được gán cho item, không thể quét lại hoặc sửa",
+  "Pack QR is already assigned to a different item anchor and cannot be reassigned":
+    "Pack đã được gán cho item khác, không thể gán sang item mới",
+  "Pack QR codes cannot be assigned in this flow":
+    "Không thể quét mã pack trong luồng gán vị trí — chỉ dùng mã item",
+  "Transit QR codes cannot be assigned to a location":
+    "Không thể gán mã QR di chuyển vào vị trí",
   "relation cannot reference the same QR code":
     "Pack không thể liên kết với chính mã QR đó",
   "relation must point to a cached item QR":
@@ -116,6 +146,18 @@ export const API_MESSAGES_VI: Record<string, string> = {
     "Cần điểm cấp trước khi nhận task",
   "To location is required before accepting task":
     "Cần vị trí đích trước khi nhận task",
+
+  "Item stock has no location; robot task cannot be dispatched":
+    "Tồn kho chưa có vị trí, không thể gửi lệnh robot",
+  "Pick location does not match the pallet's actual location. Stock may have been moved by another outbound order.":
+    "Vị trí lấy hàng không khớp vị trí thực của pallet. Hàng có thể đã được chuyển bởi đơn xuất khác.",
+
+  /** @deprecated legacy backend message — remove after deploy */
+  "Item stock chưa có vị trí, không thể gửi lệnh robot":
+    "Tồn kho chưa có vị trí, không thể gửi lệnh robot",
+  /** @deprecated legacy backend message — remove after deploy */
+  "Vị trí lấy hàng không khớp vị trí thực của pallet. Hàng có thể đã được chuyển bởi đơn xuất khác.":
+    "Vị trí lấy hàng không khớp vị trí thực của pallet. Hàng có thể đã được chuyển bởi đơn xuất khác.",
 };
 
 const API_MESSAGE_ENTRIES = Object.entries(API_MESSAGES_VI).sort(
@@ -148,6 +190,37 @@ function translatePackingUserPendingItemConflict(message: string): string | null
 function translatePackAlreadyLinked(message: string): string | null {
   if (!PACK_ALREADY_LINKED.test(message)) return null;
   return "Pack QR đã được gán cho item, không thể quét lại hoặc sửa";
+}
+
+function translatePackAlreadyAssignedOtherItem(message: string): string | null {
+  if (!PACK_ALREADY_ASSIGNED_OTHER_ITEM.test(message)) return null;
+  return "Pack đã được gán cho item khác, không thể gán sang item mới";
+}
+
+function translateOnlyItemQrLocationAssign(message: string): string | null {
+  const match = message.match(ONLY_ITEM_QR_LOCATION_ASSIGN);
+  if (!match) return null;
+  const [, qrType] = match;
+  return (
+    `Chỉ mã QR loại sản phẩm (item) mới được gán vị trí, không phải ${translateQrType(qrType)}`
+  );
+}
+
+function translatePackItemAnchorMismatch(message: string): string | null {
+  const match = message.match(PACK_ITEM_ANCHOR_MISMATCH);
+  if (!match) return null;
+  const [, anchorSku] = match;
+  return `Pack không cùng sản phẩm với item đích (${anchorSku})`;
+}
+
+function translateAnchorPackItemMismatch(message: string): string | null {
+  const match = message.match(ANCHOR_PACK_ITEM_MISMATCH);
+  if (!match) return null;
+  const [, existingSku] = match;
+  return (
+    `Item đích đã có pack của sản phẩm ${existingSku}, ` +
+    "không thể gán pack sản phẩm khác"
+  );
 }
 
 function translateUnitNotFound(message: string): string | null {
@@ -196,6 +269,18 @@ export function translateApiMessage(message: string): string {
 
   const packLinked = translatePackAlreadyLinked(target);
   if (packLinked) return packLinked;
+
+  const packAssignedOtherItem = translatePackAlreadyAssignedOtherItem(target);
+  if (packAssignedOtherItem) return packAssignedOtherItem;
+
+  const onlyItemQrAssign = translateOnlyItemQrLocationAssign(target);
+  if (onlyItemQrAssign) return onlyItemQrAssign;
+
+  const packItemAnchorMismatch = translatePackItemAnchorMismatch(target);
+  if (packItemAnchorMismatch) return packItemAnchorMismatch;
+
+  const anchorPackItemMismatch = translateAnchorPackItemMismatch(target);
+  if (anchorPackItemMismatch) return anchorPackItemMismatch;
 
   const pendingItemConflict = translatePackingUserPendingItemConflict(target);
   if (pendingItemConflict) return pendingItemConflict;

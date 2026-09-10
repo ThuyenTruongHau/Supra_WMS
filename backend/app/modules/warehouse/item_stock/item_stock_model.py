@@ -116,6 +116,13 @@ def countable_stock_level_criterion(stock_level_col=None):
     return or_(stock_level_col.is_(None), stock_level_col <= 1)
 
 
+def positive_stock_quantity_criterion(quantity_col=None):
+    """Depleted stock rows (quantity = 0) are excluded from inventory read views."""
+    if quantity_col is None:
+        quantity_col = ItemStock.quantity
+    return quantity_col > 0
+
+
 class ItemStockRelation(Base):
     __tablename__ = "item_stock_relation"
 

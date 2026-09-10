@@ -149,6 +149,7 @@ def list_stocktake_items(
     page: int = 1,
     page_size: int = 20,
     stocktake_id: Optional[int] = None,
+    statuses: Optional[list[str]] = None,
 ) -> StocktakeItemStockListResponse:
     query = (
         db.query(StocktakeItemStock)
@@ -162,6 +163,10 @@ def list_stocktake_items(
     )
     if stocktake_id is not None:
         query = query.filter(StocktakeItemStock.stocktake_id == stocktake_id)
+    if statuses:
+        normalized = [s.strip() for s in statuses if s and s.strip()]
+        if normalized:
+            query = query.filter(StocktakeItemStock.status.in_(normalized))
     total = query.count()
     items = (
         query.order_by(

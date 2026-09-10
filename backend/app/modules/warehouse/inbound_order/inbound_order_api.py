@@ -25,6 +25,7 @@ from app.modules.warehouse.inbound_order.inbound_order_schema import (
     AssignOrGetItemStockResponse,
     QrCodePreviewRequest,
     CacheForPackingUserRequest,
+    AssignPackingToItemRequest,
     PackingUserPendingStocksResponse,
     RelocateAssignedStockRequest,
     RelocateAssignedStockResponse,
@@ -345,6 +346,35 @@ def get_packing_user_pending_stocks(
         code = 404 if "not found" in msg.lower() else 400
         raise HTTPException(status_code=code, detail=msg) from e
     return PackingUserPendingStocksResponse(packing_user=packing_user.strip(), items=items)
+
+
+@router.post(
+    "/inbound-orders/item-assign/packing",
+    response_model=AssignOrGetItemStockResponse,
+)
+def assign_packing_to_item(
+    body: AssignPackingToItemRequest,
+    db: DbSession,
+):
+    try:
+        result = qr_code_module.assign_packing_to_item(
+            db=db,
+            target_qr_id=body.target_qr_id,
+            warehouse_id=body.warehouse_id,
+            qr_code=body.qr_code,
+            quantity=body.quantity,
+            unit_id=body.unit_id,
+            lot_number=body.lot_number,
+            cavity_number=body.cavity_number,
+            manufacturing_user=body.manufacturing_user,
+            qc_user=body.qc_user,
+            packing_user=body.packing_user,
+        )
+    except ValueError as e:
+        msg = str(e)
+        code = 404 if "not found" in msg.lower() else 400
+        raise HTTPException(status_code=code, detail=msg) from e
+    return AssignOrGetItemStockResponse.model_validate(result)
 
 
 @router.post(

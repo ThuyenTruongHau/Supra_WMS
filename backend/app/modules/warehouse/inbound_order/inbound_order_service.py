@@ -259,64 +259,82 @@ def _clear_pending_cache_for_qr(db: Session, qr_code_id: int, target_stock: Item
     pending = cache_get(f"inbound:pending:qr:{anchor_qr_id}")
     packing_user = ((pending or {}).get("packing_user") or "").strip()
 
+    items_pending = cache_scan_keys(f"inbound:assign:item:{anchor_qr_id}:*")
+
     pack_qr_ids: list[int] = []
+    keys = []
 
     if packing_user:
         keys = cache_scan_keys(f"inbound:pending:user:{packing_user}:*")
-        if keys:
-            values = get_redis().mget(keys)
-            for raw in values:
-                if not raw:
-                    continue
-                cached = json.loads(raw)
+    if items_pending:
+        keys = items_pending 
+
+    if keys:
+        values = get_redis().mget(keys)
+        for raw in values:
+            if not raw:
+                continue
+            cached = json.loads(raw)
+            
+            if packing_user:
                 relation = cached.get("relation")
-                if isinstance(relation, int) and relation == anchor_qr_id:
-                    pack_qr_id = int(cached["qr_code_id"])
-                    pack_qr_ids.append(pack_qr_id)
-                    pack_qr_code = db.query(QR_Code).filter(QR_Code.id == pack_qr_id).first()
-                    if not pack_qr_code:
-                        raise ValueError(f"QR code {pack_qr_id} not found")
+            if items_pending:
+                relation = anchor_qr_id
+                
+            if isinstance(relation, int) and relation == anchor_qr_id:
+                pack_qr_id = int(cached["qr_code_id"])
+                pack_qr_ids.append(pack_qr_id)
+                pack_qr_code = db.query(QR_Code).filter(QR_Code.id == pack_qr_id).first()
+                if not pack_qr_code:
+                    raise ValueError(f"QR code {pack_qr_id} not found")
 
-                    lot_from, lot_to = _resolve_lot_number_fields(
-                        lot_number_from=cached.get("lot_number_from"),
-                        lot_number_to=cached.get("lot_number_to"),
-                        lot_number=cached.get("lot_number"),
-                    )
-                    converted = unit_service.convert_quantity(
-                        db,
-                        item_id=int(cached["item_id"]),
-                        unit_id=int(cached["unit_id"]),
-                        quantity=int(cached["quantity"]),
-                    )
+                lot_from, lot_to = _resolve_lot_number_fields(
+                    lot_number_from=cached.get("lot_number_from"),
+                    lot_number_to=cached.get("lot_number_to"),
+                    lot_number=cached.get("lot_number"),
+                )
+                converted = unit_service.convert_quantity(
+                    db,
+                    item_id=int(cached["item_id"]),
+                    unit_id=int(cached["unit_id"]),
+                    quantity=int(cached["quantity"]),
+                )
 
-                    created_stock = ItemStock(
-                        item_id=cached.get("item_id"),
-                        location_id=None,
-                        inbound_order_detail_id=target_stock.inbound_order_detail_id,
-                        unit_id=converted.base_unit_id,
-                        quantity=int(converted.converted_quantity),
-                        lot_number_from=lot_from,
-                        lot_number_to=lot_to,
-                        expiry_date=cached.get("expiry_date"),
-                        cavity_number=cached.get("cavity_number"),
-                        manufacturing_user=cached.get("manufacturing_user"),
-                        qc_user=cached.get("qc_user"),
-                        packing_user=cached.get("packing_user"),
-                        status="virtual",
-                        stock_level=2,
-                        is_active=False,
-                    )
-                    _create_virtual_stock_relation(db, pack_qr_code, created_stock, target_stock.id)
+                created_stock = ItemStock(
+                    item_id=cached.get("item_id"),
+                    location_id=None,
+                    inbound_order_detail_id=target_stock.inbound_order_detail_id,
+                    unit_id=converted.base_unit_id,
+                    quantity=int(converted.converted_quantity),
+                    lot_number_from=lot_from,
+                    lot_number_to=lot_to,
+                    expiry_date=cached.get("expiry_date"),
+                    cavity_number=cached.get("cavity_number"),
+                    manufacturing_user=cached.get("manufacturing_user"),
+                    qc_user=cached.get("qc_user"),
+                    packing_user=cached.get("packing_user"),
+                    status="virtual",
+                    stock_level=2,
+                    is_active=False,
+                )
+                _create_virtual_stock_relation(db, pack_qr_code, created_stock, target_stock.id)
 
     cache_delete(f"inbound:pending:qr:{anchor_qr_id}")
     for key in cache_scan_keys(f"inbound:pending:user:*:{anchor_qr_id}"):
         get_redis().delete(key)
 
-    if not packing_user:
-        return
-    for qr_id in pack_qr_ids:
-        cache_delete(f"inbound:pending:qr:{qr_id}")
-        cache_delete(f"inbound:pending:user:{packing_user}:{qr_id}")
+    if packing_user:
+        for qr_id in pack_qr_ids:
+            cache_delete(f"inbound:pending:qr:{qr_id}")
+            cache_delete(f"inbound:pending:user:{packing_user}:{qr_id}")
+
+    for key in items_pending:
+        get_redis().delete(key)
+
+    for key in items_pending:
+        pack_qr_id = int(key.rsplit(":", 1)[-1])
+        cache_delete(key)                              
+        cache_delete(f"inbound:assign:item:{pack_qr_id}")
 
 def _create_virtual_stock_relation(db: Session, qr_code: QR_Code, stock: ItemStock, target_stock_id: int) -> None:
     virtual_stock = stock

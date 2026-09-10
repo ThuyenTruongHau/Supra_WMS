@@ -188,6 +188,15 @@
       align-items: center;
     }
 
+    /* Dòng Sản xuất: ô trống chia 6.5 (trái) | 3.5 (phải) */
+    .row.split-value {
+      grid-template-columns: var(--label-col-width) 6.5fr 3.5fr;
+    }
+
+    .row.split-value .label + .value {
+      border-right: 1px solid #000;
+    }
+
     /* ── Ghi chú + QR ── */
     .remarks-row {
       flex: 0 0 24mm;
@@ -403,8 +412,9 @@
                 <div class="label">Số lượng</div>
                 <div class="value"></div>
               </div>
-              <div class="row">
+              <div class="row split-value">
                 <div class="label">Sản xuất</div>
+                <div class="value"></div>
                 <div class="value"></div>
               </div>
               <div class="row">

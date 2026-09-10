@@ -18,6 +18,7 @@ import type {
 import { AxiosError } from 'axios';
 import { ApiErrorResponse } from '@/types/apiError';
 import { LIVE_QUERY_OPTIONS } from '@/utils/liveQueryOptions';
+import type { OutboundLocationLogicType } from '@/utils/outboundLocationLogic';
 
 export const useActiveWarehouseMap = (warehouseId: number) => {
   return useQuery<MapData, AxiosError<ApiErrorResponse>>({
@@ -51,11 +52,12 @@ export const useInboundBufferLocations = (
 
 export const useOutboundBufferLocations = (
   warehouseId: number,
+  logicType: OutboundLocationLogicType = 'outbound_buffer',
   enabled = true,
 ) => {
   return useQuery({
-    queryKey: ['outbound-buffer-locations', warehouseId],
-    queryFn: () => getLocationsByLogicApi(warehouseId, 'outbound_buffer'),
+    queryKey: ['outbound-buffer-locations', warehouseId, logicType],
+    queryFn: () => getLocationsByLogicApi(warehouseId, logicType),
     enabled: enabled && warehouseId > 0,
     ...LIVE_QUERY_OPTIONS,
   });

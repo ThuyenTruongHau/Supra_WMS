@@ -8,6 +8,7 @@ import {
   ImportOutlined,
   ExportOutlined,
   AuditOutlined,
+  PrinterOutlined,
 } from "@ant-design/icons";
 
 interface SidebarLinkProps {
@@ -112,6 +113,12 @@ export default function QrTabletSidebar() {
           to="/qrtablet/inventory"
           icon={<AuditOutlined className="text-lg" />}
           label="Kiểm kê"
+          collapsed={collapsed}
+        />
+        <SidebarLink
+          to="/qrtablet/print-qr"
+          icon={<PrinterOutlined className="text-lg" />}
+          label="In mã QR"
           collapsed={collapsed}
         />
       </nav>

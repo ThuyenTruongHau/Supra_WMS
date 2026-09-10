@@ -16,6 +16,7 @@ import type {
   InboundSuggestAllocationRequest,
   InboundSuggestAllocationResponse,
   QrCodePreviewRequest,
+  AssignPackingToItemRequest,
   PackingUserPendingStocksResponse,
 } from "@/types/inboundOrder";
 
@@ -133,6 +134,16 @@ export const cacheForPackingUserApi = async (
 ): Promise<AssignOrGetItemStockResponse> => {
   const { data } = await axiosInstance.post<AssignOrGetItemStockResponse>(
     `${BASE}/packing-stocks`,
+    body,
+  );
+  return data;
+};
+
+export const assignPackingToItemApi = async (
+  body: AssignPackingToItemRequest,
+): Promise<AssignOrGetItemStockResponse> => {
+  const { data } = await axiosInstance.post<AssignOrGetItemStockResponse>(
+    `${BASE}/item-assign/packing`,
     body,
   );
   return data;

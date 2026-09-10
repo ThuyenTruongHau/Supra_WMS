@@ -2,11 +2,22 @@ import { useRef, type ChangeEvent } from "react";
 import { UploadOutlined } from "@ant-design/icons";
 import { message } from "antd";
 import { Button } from "@/components/ui";
+import { cn } from "@/components/ui/utils/cn";
 import { getApiErrorMessage } from "@/utils/apiErrorMessage";
 import { decodeQrFromFile } from "./decode";
 
+type QrImageImportProps = {
+  onDecoded: (text: string) => void;
+  label?: string;
+  className?: string;
+};
+
 /** Test-only: pick an image and decode QR via jsQR. */
-export function QrImageImport({ onDecoded }: { onDecoded: (text: string) => void }) {
+export function QrImageImport({
+  onDecoded,
+  label = "Import ảnh QR để test",
+  className,
+}: QrImageImportProps) {
   const inputRef = useRef<HTMLInputElement>(null);
 
   const onChange = async (e: ChangeEvent<HTMLInputElement>) => {
@@ -39,10 +50,10 @@ export function QrImageImport({ onDecoded }: { onDecoded: (text: string) => void
       <Button
         variant="secondary"
         icon={<UploadOutlined />}
-        className="!h-12 w-full"
+        className={cn("!h-12 w-full", className)}
         onClick={() => inputRef.current?.click()}
       >
-        Import ảnh QR để test
+        {label}
       </Button>
     </>
   );

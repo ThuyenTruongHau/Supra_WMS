@@ -116,6 +116,7 @@ class QrCodePreviewResponse(BaseModel):
     manufacturing_user: Optional[str] = None
     qc_user: Optional[str] = None
     packing_user: Optional[str] = None
+    linked_packs: list["AssignedItemStockResponse"] = Field(default_factory=list)
 
 
 class AssignItemStockMetaResponse(BaseModel):
@@ -142,7 +143,7 @@ class CacheForPackingUserRequest(BaseModel):
     unit_id: int = Field(..., gt=0)
     lot_number: str = Field(..., min_length=1, max_length=50)
     cavity_number: Optional[str] = Field(None, max_length=50)
-    manufacturing_user: str = Field(..., min_length=1, max_length=100)
+    manufacturing_user: Optional[str] = Field(None, max_length=100)
     qc_user: Optional[str] = Field(None, max_length=100)
     packing_user: Optional[str] = Field(None, max_length=100)
     relation: Optional[int] = Field(
@@ -150,6 +151,38 @@ class CacheForPackingUserRequest(BaseModel):
         gt=0,
         description="Parent item qr_code_id when linking pack to cached item",
     )
+
+
+class AssignPackingToItemRequest(BaseModel):
+    qr_code: str = Field(..., min_length=1, max_length=50)
+    warehouse_id: Optional[int] = Field(None, gt=0)
+    target_qr_id: Optional[str] = Field(
+        None,
+        min_length=1,
+        max_length=50,
+        description="Item qr_code_id as string when linking pack to item anchor",
+    )
+    quantity: Optional[int] = Field(None, gt=0)
+    unit_id: Optional[int] = Field(None, gt=0)
+    lot_number: Optional[str] = Field(None, max_length=50)
+    cavity_number: Optional[str] = Field(None, max_length=50)
+    manufacturing_user: Optional[str] = Field(None, max_length=100)
+    qc_user: Optional[str] = Field(None, max_length=100)
+    packing_user: Optional[str] = Field(None, max_length=100)
+
+    @model_validator(mode="after")
+    def require_fields_when_assign(self) -> "AssignPackingToItemRequest":
+        if self.target_qr_id is not None:
+            if self.quantity is None or self.unit_id is None:
+                raise ValueError(
+                    "quantity and unit_id are required when assigning pack to item"
+                )
+            if not (self.lot_number or "").strip():
+                raise ValueError(
+                    "lot_number is required when assigning pack to item"
+                )
+        return self
+
 
 class AssignOrGetItemStockAction:
     PREVIEW = "preview"

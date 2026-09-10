@@ -7,6 +7,17 @@ export const QR_TABLET_INBOUND_VI = {
   pageSubtitle:
     "Quét mã sản phẩm để gán vị trí, hoặc quét vị trí để tạo đơn nhập.",
   startScan: "Bắt đầu quét mã",
+  importQrTestNormal: "Import ảnh QR (quét thường)",
+  importQrTestPacking: "Import ảnh QR (đóng gói)",
+  startPackingScan: "Quét QR đóng gói",
+  packingScanTitle: "Quét QR đóng gói",
+  packingConfirmTitle: "Xác nhận pack",
+  packingSaveButton: "Lưu pack",
+  packingDraftSaved: "Đã lưu pack. Quét QR item để gán.",
+  packingAssignSuccess: "Đã gán pack vào item",
+  packingNeedPackFirst: "Cần quét pack trước khi quét QR item",
+  packingFormIncomplete: "Nhập đủ số lượng, đơn vị và số lô trước khi gán item",
+  packingWrongQrType: "Chỉ quét QR pack hoặc item trong luồng này",
   scanQrTitle: "Quét mã QR",
   scanLocationTitle: "Quét vị trí",
   confirmProductTitle: "Xác nhận sản phẩm",
@@ -26,6 +37,8 @@ export const QR_TABLET_INBOUND_VI = {
   packerCloseButton: "Đóng",
   packerScanNextButton: "Quét tiếp",
   packerSelectUserHint: "Chọn người đóng gói, xác nhận để tải danh sách QR đã lưu tạm.",
+  packerItemDirectFormHint:
+    "Người đóng gói chưa có dữ liệu lưu tạm. Nhập thông tin item để lưu tạm (mức item).",
   packerConfirmUserButton: "Xác nhận",
   packerCachedListTitle: "QR đã lưu tạm",
   packerWorkbenchTitle: "Danh sách QR đóng gói",
@@ -82,6 +95,10 @@ export const QR_TABLET_INBOUND_VI = {
   manualPendingLocationLabel: "Vị trí đã quét: {location}",
   manualConfirmButton: "Xác nhận nhập kho",
   manualCreatedTitle: "Đã tạo đơn nhập",
+  assignAggregatedHint:
+    "Đã gom {count} pack vào item. Kiểm tra thông tin tổng hợp trước khi quét vị trí.",
+  assignAggregatedPacksSection: "Pack đã gán",
+  assignAggregatedSummarySection: "Thông tin tổng hợp",
 } as const;
 
 export type QrTabletInboundMessageKey = keyof typeof QR_TABLET_INBOUND_VI;
@@ -149,4 +166,11 @@ export function formatManualPendingLocationLabel(location: string): string {
 
 export function formatManualCreatedContent(orderCode: string): string {
   return `Mã đơn: ${orderCode}`;
+}
+
+export function formatAssignAggregatedHint(count: number): string {
+  return QR_TABLET_INBOUND_VI.assignAggregatedHint.replace(
+    "{count}",
+    String(count),
+  );
 }

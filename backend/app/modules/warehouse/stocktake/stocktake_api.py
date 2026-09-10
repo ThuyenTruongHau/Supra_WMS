@@ -65,13 +65,23 @@ def list_stocktake_items(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     stocktake_id: Optional[int] = Query(None, gt=0),
+    statuses: Optional[str] = Query(
+        None,
+        description="Comma-separated item statuses, e.g. initialize,in_progress",
+    ),
 ):
+    status_list = (
+        [part.strip() for part in statuses.split(",") if part.strip()]
+        if statuses
+        else None
+    )
     return stocktake_service.list_stocktake_items(
         db,
         warehouse_id=warehouse_id,
         page=page,
         page_size=page_size,
         stocktake_id=stocktake_id,
+        statuses=status_list,
     )
 
 

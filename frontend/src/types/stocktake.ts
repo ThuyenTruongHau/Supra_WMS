@@ -57,6 +57,7 @@ export interface GetStocktakeItemsParams {
   page?: number;
   page_size?: number;
   stocktake_id?: number;
+  statuses?: string[];
 }
 
 export interface CreateStocktakeInput {

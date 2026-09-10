@@ -24,6 +24,7 @@ class Settings(BaseSettings):
     zone_inbound: list[str] = ["Zone_1.1", "Zone_2.2"]
     zone_outbound: list[str] = ["Zone_7"]
     zone_storage: list[str] = ["Zone_3"]
+    zone_qc: list[str] = ["Zone_2.1"]
 
     # Redis (cache)
     redis_url: str = "redis://10.73.231.5:6379/0"
