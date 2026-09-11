@@ -105,9 +105,8 @@ const WarehouseMapCanvas: React.FC<WarehouseMapCanvasProps> = ({
     error,
   } = useActiveWarehouseMap(resolvedWarehouseId);
 
-  const { data: fullLocationsData } = useFullLocations(
-    skipFullLocationsFetch ? 0 : resolvedWarehouseId,
-  );
+  const { data: fullLocationsData, refetch: refetchFullLocations } =
+    useFullLocations(skipFullLocationsFetch ? 0 : resolvedWarehouseId);
 
   const effectiveLocations = useMemo(() => {
     if (locationOverrides) {
@@ -185,6 +184,7 @@ const WarehouseMapCanvas: React.FC<WarehouseMapCanvasProps> = ({
   const [drawerVisible, setDrawerVisible] = useState(false);
   const [selectedNode, setSelectedNode] = useState<NodeInfo | null>(null);
   const [selectedLocationId, setSelectedLocationId] = useState<number | undefined>();
+  const [detailRefreshToken, setDetailRefreshToken] = useState(0);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
 
   // Download mutation
@@ -525,6 +525,13 @@ const WarehouseMapCanvas: React.FC<WarehouseMapCanvasProps> = ({
         const loc = fullLocationsMapRef.current.get(closest.content);
         setSelectedLocationId(loc?.id);
         if (!hideDrawer) setDrawerVisible(true);
+
+        const isOverviewMode = !hideDrawer && !skipFullLocationsFetch;
+        if (isOverviewMode) {
+          void refetchFullLocations();
+          setDetailRefreshToken((token) => token + 1);
+        }
+
         // Picker mode (hideDrawer): luôn trả node cho parent.
         // Map view: chỉ callback khi kệ không full (giữ hành vi cũ).
         if (hideDrawer || !fullCodesRef.current.has(closest.content)) {
@@ -536,7 +543,14 @@ const WarehouseMapCanvas: React.FC<WarehouseMapCanvasProps> = ({
         onNodeClick?.(null);
       }
     },
-    [getCanvasPos, screenToWorld, hideDrawer, onNodeClick],
+    [
+      getCanvasPos,
+      screenToWorld,
+      hideDrawer,
+      skipFullLocationsFetch,
+      refetchFullLocations,
+      onNodeClick,
+    ],
   );
 
   // ─── Attach Canvas Event Listeners ──────────────────────────────────────────
@@ -628,6 +642,7 @@ const WarehouseMapCanvas: React.FC<WarehouseMapCanvasProps> = ({
             }}
             node={selectedNode}
             locationId={selectedLocationId}
+            refreshToken={detailRefreshToken}
           />
         )}
       </div>

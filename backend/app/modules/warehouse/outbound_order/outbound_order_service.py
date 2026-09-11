@@ -7,7 +7,7 @@ from collections import defaultdict
 
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload, selectinload
-from sqlalchemy import case, func, exists, select
+from sqlalchemy import case, func, exists, select, and_
 
 from app.core.config import settings
 from app.modules.warehouse.item.item_model import Item
@@ -41,12 +41,105 @@ from app.modules.robot.robot_model import RobotTask
 from app.modules.robot.robot_service import task_status_service
 from app.modules.warehouse.transaction_history.history_model import History, Transaction
 from app.modules.warehouse.item.item_model import QR_Code
-from app.modules.warehouse.lot_number_utils import format_lot_number_display
+from app.modules.warehouse.lot_number_utils import format_lot_number_display, lot_string_to_date, parse_legacy_lot_number
 
 from app.core.logger import get_logger
 
 logger = get_logger("main")
 
+_PICK_SPLIT_OUTBOUND_TYPES = frozenset({"Lấy lẻ", "lấy lẻ"})
+
+
+def _is_pick_split_outbound(order_details: dict | None) -> bool:
+    return (order_details or {}).get("type") in _PICK_SPLIT_OUTBOUND_TYPES
+
+
+def _resolve_outbound_detail_type(order_details: dict | None, detail_type: str) -> str:
+    if _is_pick_split_outbound(order_details):
+        return "manual"
+    return detail_type
+
+
+def _enforce_pick_split_manual_details(db: Session, order: OutboundOrder) -> None:
+    if not _is_pick_split_outbound(order.details):
+        return
+    details = (
+        db.query(OutboundOrderDetail)
+        .filter(OutboundOrderDetail.outbound_order_id == order.id)
+        .all()
+    )
+    for detail in details:
+        detail.detail_type = "manual"
+
+
+def _resolve_execute_detail_type(
+    db: Session,
+    body: OutboundRobotTaskCreate,
+    detail_type: str,
+) -> str:
+    if not body.allocations:
+        return detail_type
+    allocation = (
+        db.query(OutboundOrderAllocation)
+        .options(
+            joinedload(OutboundOrderAllocation.outbound_order_detail).joinedload(
+                OutboundOrderDetail.outbound_order
+            )
+        )
+        .filter(OutboundOrderAllocation.id == body.allocations[0].allocation_id)
+        .first()
+    )
+    if not allocation or not allocation.outbound_order_detail:
+        return detail_type
+    order = allocation.outbound_order_detail.outbound_order
+    if not order:
+        return detail_type
+    return _resolve_outbound_detail_type(order.details, detail_type)
+
+
+def _get_fixed_quantity(db: Session, outbound_order: OutboundOrder, item_id: int) -> int:
+    meta = outbound_order.details or {}
+    type = meta.get("type")
+    q = (
+        db.query(ItemStock)
+        .join(Location, Location.id == ItemStock.location_id)
+        .join(Zone, Zone.id == Location.zone_id)
+        .filter(
+            ItemStock.item_id == item_id,
+            Zone.code.in_(settings.zone_storage),
+            ItemStock.available_quantity > 0,
+            ItemStock.is_active.is_(True),
+        )
+    )
+    if type in ["Tuyển chọn", "tuyển chọn", "Lấy lỗi", "lấy lỗi"]:
+        lot_number = outbound_order.details.get("lot_number")
+        if not lot_number:
+            raise ValueError("Lot number is required")
+        lot_from, lot_to = parse_legacy_lot_number(lot_number)
+        start = lot_string_to_date(lot_from)
+        end = lot_string_to_date(lot_to)
+
+        stock_from = _lot_as_date(ItemStock.lot_number_from)
+        stock_to = _lot_as_date(ItemStock.lot_number_to)
+
+        q = q.filter(
+            and_(
+                stock_from <= end,
+                stock_to >= start,
+                ItemStock.status.in_(["available", "split"]),
+            )
+        )
+
+    elif type in ["Lấy lẻ", "lấy lẻ"]:
+        q = q.filter(ItemStock.status == "split")
+
+    else:
+        raise ValueError(f"Invalid type: {type}")
+
+    total = q.with_entities(
+        func.coalesce(func.sum(ItemStock.available_quantity), 0)
+    ).scalar()
+    return int(total or 0)
 
 def create_outbound_order(db: Session, body: OutboundOrderCreate, user_id: int):
     try:
@@ -59,21 +152,38 @@ def create_outbound_order(db: Session, body: OutboundOrderCreate, user_id: int):
         )
         db.add(outbound_order)
         db.flush()
+
+        flag = False
+        type = (body.details or {}).get("type")
+        logger.info(f"Type: {type}")
+        if (body.details or {}).get("type") in ["Tuyển chọn", "tuyển chọn", "Lấy lỗi", "lấy lỗi", "Lấy lẻ", "lấy lẻ"]:
+            flag = True
+
         for line_item in body.line_items:
             unit = db.query(Unit).filter(Unit.id == line_item.unit_id).first()
             if not unit:
                 raise ValueError(f"Unit not found: {line_item.unit_id}")
 
+            logger.info(f"Flag: {flag}")
+            if flag:
+                fixed_quantity = _get_fixed_quantity(db, outbound_order, line_item.item_id)
+                logger.info(f"Fixed quantity: {fixed_quantity}")
+
             detail = OutboundOrderDetail(
                 outbound_order_id=outbound_order.id,
                 item_id=line_item.item_id,
-                quantity=line_item.quantity,
+                quantity=fixed_quantity if flag else line_item.quantity,
                 unit=unit.name,
                 details=line_item.details or {},
-                detail_type=line_item.detail_type,
+                detail_type=_resolve_outbound_detail_type(
+                    outbound_order.details,
+                    line_item.detail_type,
+                ),
             )
             db.add(detail)
             db.flush()
+
+        _enforce_pick_split_manual_details(db, outbound_order)
 
         db.add(History(
             outbound_order_id=outbound_order.id,
@@ -315,9 +425,14 @@ def update_outbound_order(
                     item_id=line.item_id,
                     quantity=line.quantity,
                     unit=unit.name,
-                    detail_type=line.detail_type or outbound_type,
+                    detail_type=_resolve_outbound_detail_type(
+                        order.details,
+                        line.detail_type or outbound_type,
+                    ),
                     details=line.details or {},
                 ))
+
+    _enforce_pick_split_manual_details(db, order)
 
     db.add(History(
         outbound_order_id=order.id,
@@ -351,6 +466,9 @@ def _patch_outbound_detail(db: Session, detail: OutboundOrderDetail, data: dict)
         detail.detail_type = data["detail_type"]
     if "details" in data:
         detail.details = data["details"] or {}
+    order = detail.outbound_order
+    if order and _is_pick_split_outbound(order.details):
+        detail.detail_type = "manual"
 
 
 def _delete_outbound_order_history(db: Session, outbound_order_id: int) -> None:
@@ -400,6 +518,15 @@ def delete_outbound_order(db: Session, order_code: str) -> None:
         raise ValueError(f"Database conflict: {e.orig}") from e
 
 
+def _lot_as_date(col):
+    return case(
+        (
+            col.op("~")(r"^\d{2}/\d{2}/\d{2}$"),
+            func.to_date(col, "DD/MM/YY"),
+        ),
+        else_=func.to_date(col, "DDMMYY"),
+    )
+
 def _strategy_loading_stocks(db: Session, item_id: int, strategy: str, lot_number: str = None):
     q = (
         db.query(ItemStock)
@@ -407,7 +534,6 @@ def _strategy_loading_stocks(db: Session, item_id: int, strategy: str, lot_numbe
         .join(Zone, Zone.id == Location.zone_id)
         .filter(
             ItemStock.item_id == item_id,
-            ItemStock.status == "available",
             Zone.code.in_(settings.zone_storage),
             ItemStock.available_quantity > 0,
             ItemStock.is_active.is_(True),
@@ -431,7 +557,27 @@ def _strategy_loading_stocks(db: Session, item_id: int, strategy: str, lot_numbe
             ),
             else_=func.to_date(lot_to, "DDMMYY"),
         )
+        q = q.filter(ItemStock.status == "available")
         q = q.order_by(lot_date_from.asc(), lot_date_to.asc(), ItemStock.id.asc())
+    elif strategy == "re_qc":
+        lot_from, lot_to = parse_legacy_lot_number(lot_number)
+        start = lot_string_to_date(lot_from)
+        end = lot_string_to_date(lot_to)
+
+        stock_from = _lot_as_date(ItemStock.lot_number_from)
+        stock_to = _lot_as_date(ItemStock.lot_number_to)
+
+        q = q.filter(
+            and_(
+                stock_from <= end,
+                stock_to >= start,
+                ItemStock.status.in_(["available", "split"]),
+            )
+        )
+        q = q.order_by(stock_from.asc(), stock_to.asc(), ItemStock.id.asc())
+    elif strategy == "pick_split":
+        q = q.filter(ItemStock.status == "split")
+        q = q.order_by(ItemStock.created_at.asc(), ItemStock.id.asc())
     else:
         q = q.order_by(ItemStock.created_at.asc(), ItemStock.id.asc())
     return q.all()
@@ -530,6 +676,8 @@ def calculate_outbound_order(
     )
 
     outbound_order = db.query(OutboundOrder).filter(OutboundOrder.id == body.outbound_order_id).first()
+    if not outbound_order:
+        raise ValueError(f"Outbound order not found: {body.outbound_order_id}")
 
     lot_number = None
     type = outbound_order.details.get("type")
@@ -551,10 +699,10 @@ def calculate_outbound_order(
             stocks = _strategy_loading_stocks(db, item_id, strategy, lot_number)
             if not stocks:
                 raise ValueError(f"No enough stock for item {item_id}")
-            if lines[0].detail_type == "manual":
-                with_robot_task = False
-            else:
-                with_robot_task = True
+            with_robot_task = not (
+                _is_pick_split_outbound(outbound_order.details)
+                or lines[0].detail_type == "manual"
+            )
             greedy_allocate_stocks_to_lines(db, stocks, lines, body.outbound_order_id, with_robot_task)
         db.commit()
     except Exception:
@@ -964,6 +1112,7 @@ def _build_manual_allocation_task_from_group(
 def execute_outbound_task(
     db: Session, body: OutboundRobotTaskCreate, detail_type
 ) -> None:
+    detail_type = _resolve_execute_detail_type(db, body, detail_type)
     if detail_type == "manual":
         _execute_outbound_task_manual(db, body)
         return

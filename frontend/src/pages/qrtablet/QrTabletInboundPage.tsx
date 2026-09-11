@@ -176,6 +176,7 @@ export default function QrTabletInboundPage() {
     [staffUsernames],
   );
   const [scanMode, setScanMode] = useState<ScanMode>("idle");
+  const [packingAssignScanKey, setPackingAssignScanKey] = useState(0);
   const [pendingLocation, setPendingLocation] = useState<PendingLocation | null>(
     null,
   );
@@ -219,6 +220,7 @@ export default function QrTabletInboundPage() {
     AssignedItemStock[]
   >([]);
   const [isAssignAggregatedForm, setIsAssignAggregatedForm] = useState(false);
+  const [isSplitProduct, setIsSplitProduct] = useState(false);
 
   const openImportModal = useCallback(
     ({
@@ -485,13 +487,21 @@ export default function QrTabletInboundPage() {
     }
   }, [assignLinkedPacks, isAssignAggregatedForm, preview?.item_id]);
 
+  const openPackingAssignScan = useCallback(() => {
+    setScanMode("idle");
+    setPackingAssignScanKey((key) => key + 1);
+    queueMicrotask(() => setScanMode("packingAssign"));
+  }, []);
+
   const resetPreview = useCallback(() => {
+    setScanMode("idle");
     setPreview(null);
     setPendingPackAssign(null);
     setPendingLocation(null);
     setPackerItemDirectForm(false);
     setAssignLinkedPacks([]);
     setIsAssignAggregatedForm(false);
+    setIsSplitProduct(false);
     setQuantity(1);
     setUnitId(undefined);
     setLotNumber("");
@@ -511,6 +521,7 @@ export default function QrTabletInboundPage() {
       setPreview(result);
       setAssignLinkedPacks(aggregated.linked_packs);
       setIsAssignAggregatedForm(true);
+      setIsSplitProduct(Boolean(result.is_split));
       setQuantity(aggregated.quantity);
       setItemBaseQuantity(aggregated.quantity);
       setUnitId(aggregated.unit_id);
@@ -577,6 +588,7 @@ export default function QrTabletInboundPage() {
       setAssignLinkedPacks([]);
       setIsAssignAggregatedForm(false);
       setPreview(result);
+      setIsSplitProduct(Boolean(result.is_split));
       const defaultQty = result.quantity ?? 1;
       setQuantity(defaultQty);
       setItemBaseQuantity(defaultQty);
@@ -670,6 +682,7 @@ export default function QrTabletInboundPage() {
 
   const handlePackingAssignScan = useCallback(
     async (scanned: string) => {
+      setScanMode("idle");
       if (!selectedWarehouseId) {
         message.warning(tQrTabletInbound("selectWarehouseFirst"));
         return;
@@ -1076,6 +1089,7 @@ export default function QrTabletInboundPage() {
             : showPackingUser
               ? selectedStaff(packingUser)
               : undefined,
+          is_split: isSplitProduct || undefined,
         };
       }
       return {
@@ -1087,6 +1101,7 @@ export default function QrTabletInboundPage() {
       assignAggregatedSubmitFields,
       cavityNumber,
       isAssignAggregatedForm,
+      isSplitProduct,
       lotNumber,
       manufacturingUsers,
       packingUser,
@@ -1382,6 +1397,28 @@ export default function QrTabletInboundPage() {
     preview?.unit_name ??
     "—";
 
+  const showSplitProductToggle =
+    isAutoWarehouse &&
+    !isPackerMode &&
+    !isPackerItemPicker &&
+    !isPackerCacheForm &&
+    !isPendingPackAssignForm;
+
+  const renderSplitProductToggle = () =>
+    showSplitProductToggle ? (
+      <Form.Item className="!mb-4">
+        <Checkbox
+          checked={isSplitProduct}
+          onChange={(event) => setIsSplitProduct(event.target.checked)}
+        >
+          {tQrTabletInbound("splitProductLabel")}
+        </Checkbox>
+        <p className="mt-1 text-xs text-stripe-ink-mute">
+          {tQrTabletInbound("splitProductHint")}
+        </p>
+      </Form.Item>
+    ) : null;
+
   const renderAssignAggregatedForm = () => (
     <>
       <p className="mb-4 text-sm text-stripe-ink-mute">
@@ -1432,6 +1469,7 @@ export default function QrTabletInboundPage() {
           )}
         </div>
       </div>
+      {renderSplitProductToggle()}
       <Button
         variant="primary"
         className="!h-12 w-full !text-lg"
@@ -1673,7 +1711,7 @@ export default function QrTabletInboundPage() {
                 icon={<ScanOutlined />}
                 className="!h-14 w-full !border-amber-400 !bg-amber-400 !text-lg !text-amber-950 hover:!border-amber-500 hover:!bg-amber-500 hover:!text-amber-950 md:!h-16 md:!text-xl"
                 loading={scanPending}
-                onClick={() => setScanMode("packingAssign")}
+                onClick={openPackingAssignScan}
               >
                 {tQrTabletInbound("startPackingScan")}
               </Button>
@@ -1707,6 +1745,7 @@ export default function QrTabletInboundPage() {
 
       {scanMode === "packingAssign" && (
         <QrCameraOverlay
+          key={packingAssignScanKey}
           title={tQrTabletInbound("packingScanTitle")}
           onScan={(text) => void handlePackingAssignScan(text)}
           onClose={() => setScanMode("idle")}
@@ -1753,7 +1792,7 @@ export default function QrTabletInboundPage() {
 
       <Modal
         title={tQrTabletInbound("confirmProductTitle")}
-        open={!!preview?.qr_code_id && scanMode !== "location"}
+        open={!!preview?.qr_code_id && scanMode === "idle"}
         onCancel={resetPreview}
         footer={null}
         centered
@@ -1879,6 +1918,7 @@ export default function QrTabletInboundPage() {
                     setPackingUser,
                     requiresProductStaffFields,
                   )}
+                {renderSplitProductToggle()}
                 <div className="flex flex-col gap-3">
                   {isPackerCacheForm ? (
                     <>
@@ -1910,7 +1950,7 @@ export default function QrTabletInboundPage() {
                         variant="secondary"
                         className="!h-12 w-full !border-amber-400 !bg-amber-400 !text-lg !text-amber-950 hover:!border-amber-500 hover:!bg-amber-500 hover:!text-amber-950"
                         loading={scanPending}
-                        onClick={() => setScanMode("packingAssign")}
+                        onClick={openPackingAssignScan}
                       >
                         {tQrTabletInbound("packerScanNextButton")}
                       </Button>

@@ -132,12 +132,15 @@ export const useDownloadWarehouseMap = () => {
   });
 };
 
-export const useLocationDetail = (locationId: number | undefined) => {
+export const useLocationDetail = (
+  locationId: number | undefined,
+  refreshToken = 0,
+) => {
   return useQuery<
     WarehouseLocationItemStockDetail,
     AxiosError<ApiErrorResponse>
   >({
-    queryKey: ['location-detail', locationId],
+    queryKey: ['location-detail', locationId, refreshToken],
     queryFn: () => getLocationDetailByIdApi(locationId as number),
     enabled: !!locationId && locationId > 0,
     ...LIVE_QUERY_OPTIONS,

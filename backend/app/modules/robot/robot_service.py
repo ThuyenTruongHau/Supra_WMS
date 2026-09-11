@@ -72,8 +72,8 @@ class TaskStatusService:
         )
         for stock in stocks:
             stock.location_id = detail.to_location_id
-            stock.status = "available"
-            stock.is_active = True
+            if stock.status != "split":
+                stock.status = "available"
 
             db.add(Transaction(
                     from_location_id=detail.from_location_id,

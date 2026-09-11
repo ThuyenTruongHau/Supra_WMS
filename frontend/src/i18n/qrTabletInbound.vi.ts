@@ -99,6 +99,8 @@ export const QR_TABLET_INBOUND_VI = {
     "Đã gom {count} pack vào item. Kiểm tra thông tin tổng hợp trước khi quét vị trí.",
   assignAggregatedPacksSection: "Pack đã gán",
   assignAggregatedSummarySection: "Thông tin tổng hợp",
+  splitProductLabel: "Hàng lẻ",
+  splitProductHint: "Đánh dấu sản phẩm này là hàng lẻ (Lấy lẻ) khi tạo đơn nhập.",
 } as const;
 
 export type QrTabletInboundMessageKey = keyof typeof QR_TABLET_INBOUND_VI;

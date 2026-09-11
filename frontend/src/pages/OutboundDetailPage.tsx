@@ -9,6 +9,7 @@ import {
   EditOutlined,
   CheckCircleOutlined,
   PlayCircleOutlined,
+  EnvironmentOutlined,
 } from "@ant-design/icons";
 import {
   useGetOutboundOrderById,
@@ -35,6 +36,8 @@ import dayjs from "dayjs";
 import CreateOutboundModal, {
   type OutboundItemDraft,
 } from "./components/CreateOutboundModal";
+import OutboundMapModal from "./components/OutboundMapModal";
+import { buildOutboundLocationOverrides } from "@/utils/outboundMap";
 import { detailsToEntries } from "@/utils/keyValueDetails";
 import { computeDetailProgress } from "@/utils/detailProgress";
 import { formatOutboundCalculateError } from "@/utils/outboundErrors";
@@ -193,6 +196,7 @@ export default function OutboundDetailPage() {
   const selectedWarehouseId = useAppStore((s) => s.selectedWarehouseId);
 
   const [isEditOpen, setIsEditOpen] = useState(false);
+  const [isMapOpen, setIsMapOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"list" | "allocation">("list");
   const [selectedDetailIds, setSelectedDetailIds] = useState<Set<number>>(
     () => new Set(),
@@ -310,6 +314,11 @@ export default function OutboundDetailPage() {
   );
 
   const editInitialItems = useMemo(() => toEditItems(details), [details]);
+
+  const outboundPickLocations = useMemo(
+    () => buildOutboundLocationOverrides(details),
+    [details],
+  );
 
   const selectableDetails = useMemo(
     () => details.filter((d) => d.status === "initialize"),
@@ -1168,6 +1177,18 @@ export default function OutboundDetailPage() {
         </div>
         <Space className="shrink-0">
           <Button
+            icon={<EnvironmentOutlined />}
+            disabled={!warehouseId || outboundPickLocations.length === 0}
+            title={
+              outboundPickLocations.length === 0
+                ? "Chưa có vị trí lấy hàng — phân bổ đơn trước khi xem map"
+                : undefined
+            }
+            onClick={() => setIsMapOpen(true)}
+          >
+            Xem map
+          </Button>
+          <Button
             variant="edit"
             icon={<EditOutlined />}
             disabled={!allInitialize}
@@ -1421,6 +1442,14 @@ export default function OutboundDetailPage() {
           void refetchOrder();
           void refetchDetails();
         }}
+      />
+
+      <OutboundMapModal
+        open={isMapOpen}
+        onClose={() => setIsMapOpen(false)}
+        warehouseId={warehouseId}
+        details={details}
+        orderLabel={order.order_code}
       />
     </div>
   );

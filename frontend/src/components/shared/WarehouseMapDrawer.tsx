@@ -17,6 +17,7 @@ interface WarehouseMapDrawerProps {
   onClose: () => void;
   node: NodeInfo | null;
   locationId?: number;
+  refreshToken?: number;
 }
 
 const WarehouseMapDrawer: React.FC<WarehouseMapDrawerProps> = ({
@@ -24,9 +25,16 @@ const WarehouseMapDrawer: React.FC<WarehouseMapDrawerProps> = ({
   onClose,
   node,
   locationId,
+  refreshToken = 0,
 }) => {
-  const { data: detailData, isLoading, isError } = useLocationDetail(
+  const {
+    data: detailData,
+    isLoading,
+    isFetching,
+    isError,
+  } = useLocationDetail(
     node?.type === 1 ? locationId : undefined,
+    refreshToken,
   );
 
   const hasItem = detailData && detailData.summary.item_stock_count > 0;
@@ -68,6 +76,11 @@ const WarehouseMapDrawer: React.FC<WarehouseMapDrawerProps> = ({
         </div>
 
         <div className="flex-1 overflow-y-auto p-5">
+          {isFetching && !isLoading && detailData ? (
+            <p className="mb-3 text-center text-xs text-slate-400">
+              Đang cập nhật...
+            </p>
+          ) : null}
           {isLoading ? (
             <div className="flex flex-col items-center justify-center h-full p-6">
               <Loading text="Đang tải thông tin..." className="!h-auto" />

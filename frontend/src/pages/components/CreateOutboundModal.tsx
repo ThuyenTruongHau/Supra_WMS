@@ -8,7 +8,11 @@ import {
   Space,
   message,
 } from "antd";
-import { PlusOutlined, DeleteOutlined } from "@ant-design/icons";
+import {
+  PlusOutlined,
+  DeleteOutlined,
+  MinusCircleOutlined,
+} from "@ant-design/icons";
 import { Select, Button } from "@/components/ui";
 import { SkuSearchSelect } from "@/components/shared/SkuSearchSelect";
 import { useAppStore } from "@/store/useAppStore";
@@ -26,8 +30,10 @@ import { formatQuantity } from "@/utils/formatQuantity";
 import dayjs from "dayjs";
 import KeyValueDetailsEditor from "@/components/shared/KeyValueDetailsEditor";
 import {
+  createEmptyKeyValueEntry,
   detailsToEntries,
   entriesToDetails,
+  nextKeyValueEntryId,
   type KeyValueEntry,
 } from "@/utils/keyValueDetails";
 import { getApiErrorMessage } from "@/utils/apiErrorMessage";
@@ -71,6 +77,29 @@ export const createEmptyItem = (): OutboundItemDraft => ({
 
 function errorMessage(err: unknown): string {
   return getApiErrorMessage(err);
+}
+
+const OUTBOUND_ORDER_TYPE_OPTIONS = [
+  { value: "Tuyển chọn", label: "Tuyển chọn" },
+  { value: "Lấy lỗi", label: "Lấy lỗi" },
+  { value: "Lấy lẻ", label: "Lấy lẻ" },
+];
+
+function appendOutboundOrderDetailEntry(entries: KeyValueEntry[]): KeyValueEntry[] {
+  if (entries.length === 0) {
+    return [{ id: nextKeyValueEntryId("outbound-order"), key: "type", value: "" }];
+  }
+  if (entries.length === 1) {
+    return [
+      ...entries,
+      {
+        id: nextKeyValueEntryId("outbound-order"),
+        key: "lot_number",
+        value: "",
+      },
+    ];
+  }
+  return [...entries, createEmptyKeyValueEntry()];
 }
 
 async function resolveItemsConversion(
@@ -398,15 +427,21 @@ export default function CreateOutboundModal({
       const resolvedItems = await resolveItemsConversion(items);
       if (!validateConvertedItems(resolvedItems)) return;
 
+      const createPayload = {
+        order_code: orderCode.trim(),
+        note: note.trim() || null,
+        warehouse_id: selectedWarehouseId,
+        details: entriesToDetails(detailEntries),
+        line_items: resolvedItems.map((i) => buildLineItemPayload(i, outboundType)),
+      };
+      console.log("[CreateOutboundModal] create payload", {
+        outboundType,
+        data: createPayload,
+      });
+
       await createMutation.mutateAsync({
         outboundType,
-        data: {
-          order_code: orderCode.trim(),
-          note: note.trim() || null,
-          warehouse_id: selectedWarehouseId,
-          details: entriesToDetails(detailEntries),
-          line_items: resolvedItems.map((i) => buildLineItemPayload(i, outboundType)),
-        },
+        data: createPayload,
       });
       message.success({
         content: "Tạo đơn xuất thành công!",
@@ -419,6 +454,83 @@ export default function CreateOutboundModal({
   };
 
   const isSubmitting = createMutation.isPending || updateMutation.isPending;
+
+  const updateOrderDetailEntry = (id: string, patch: Partial<KeyValueEntry>) => {
+    setDetailEntries((prev) =>
+      prev.map((entry) => (entry.id === id ? { ...entry, ...patch } : entry)),
+    );
+  };
+
+  const removeOrderDetailEntry = (id: string) => {
+    setDetailEntries((prev) => prev.filter((entry) => entry.id !== id));
+  };
+
+  const renderOrderDetailEntries = () => (
+    <div className="mb-2">
+      <div className="mb-2 text-sm font-medium text-slate-700">
+        Thông tin bổ sung đơn
+      </div>
+      {detailEntries.length > 0 && (
+        <div className="mb-2 space-y-2">
+          {detailEntries.map((entry) => {
+            const normalizedKey = entry.key.trim().toLowerCase();
+            return (
+              <div key={entry.id} className="flex w-full items-start gap-2">
+                <Input
+                  placeholder="Tên (vd: type)"
+                  value={entry.key}
+                  onChange={(e) =>
+                    updateOrderDetailEntry(entry.id, { key: e.target.value })
+                  }
+                  className="flex-1"
+                />
+                {normalizedKey === "type" ? (
+                  <Select
+                    className="flex-1"
+                    placeholder="Chọn loại đơn"
+                    value={entry.value || undefined}
+                    options={OUTBOUND_ORDER_TYPE_OPTIONS}
+                    onChange={(val) =>
+                      updateOrderDetailEntry(entry.id, {
+                        value: typeof val === "string" ? val : "",
+                      })
+                    }
+                  />
+                ) : (
+                  <Input
+                    placeholder={
+                      normalizedKey === "lot_number"
+                        ? "Số lô (vd: 01/03/26-05/03/26)"
+                        : "Giá trị"
+                    }
+                    value={entry.value}
+                    onChange={(e) =>
+                      updateOrderDetailEntry(entry.id, { value: e.target.value })
+                    }
+                    className="flex-1"
+                  />
+                )}
+                <MinusCircleOutlined
+                  className="mt-2 shrink-0 cursor-pointer text-red-400"
+                  onClick={() => removeOrderDetailEntry(entry.id)}
+                />
+              </div>
+            );
+          })}
+        </div>
+      )}
+      <AntButton
+        type="dashed"
+        icon={<PlusOutlined />}
+        className="w-full"
+        onClick={() =>
+          setDetailEntries((prev) => appendOutboundOrderDetailEntry(prev))
+        }
+      >
+        Thêm trường đơn
+      </AntButton>
+    </div>
+  );
 
   const renderItemEditor = (item: OutboundItemDraft, itemIndex: number) => (
     <div
@@ -648,13 +760,15 @@ export default function CreateOutboundModal({
       <Divider titlePlacement="left" className="!text-sm text-slate-400">
         THÔNG TIN BỔ SUNG ĐƠN
       </Divider>
-      <KeyValueDetailsEditor
-        entries={detailEntries}
-        onChange={setDetailEntries}
-        label="Thông tin bổ sung đơn"
-        addButtonText="Thêm trường đơn"
-        className="mb-2"
-      />
+      {!isEdit ? renderOrderDetailEntries() : (
+        <KeyValueDetailsEditor
+          entries={detailEntries}
+          onChange={setDetailEntries}
+          label="Thông tin bổ sung đơn"
+          addButtonText="Thêm trường đơn"
+          className="mb-2"
+        />
+      )}
 
       <Divider titlePlacement="left" className="!mt-6 !text-sm text-slate-400">
         DANH SÁCH HÀNG XUẤT

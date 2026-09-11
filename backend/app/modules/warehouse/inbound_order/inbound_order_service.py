@@ -163,6 +163,10 @@ def _create_stock_and_allocation(
         quantity=payload.quantity,
     )
 
+    status = "in_transit"
+    if (detail.details or {}).get("type") in ["Lấy lẻ", "lấy lẻ"]:
+        status = "split"
+
     item_stock = ItemStock(
         item_id=payload.item_id,
         location_id=detail.from_location_id,
@@ -176,7 +180,7 @@ def _create_stock_and_allocation(
         manufacturing_user=getattr(payload, "manufacturing_user", None),
         qc_user=getattr(payload, "qc_user", None),
         packing_user=getattr(payload, "packing_user", None),
-        status="in_transit",
+        status=status if status else "in_transit",
         is_active=True,
         stock_level=1,
     )
@@ -751,8 +755,9 @@ def execute_inbound_task(db: Session, detail_id: int) -> InboundExecuteDetailRes
         )
 
         for stock in stocks:
-            stock.status = "available"
-            
+            if stock.status != "split":
+                stock.status = "available"
+
         db.commit()
         db.refresh(detail)
     else:

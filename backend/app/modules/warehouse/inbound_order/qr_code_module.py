@@ -64,6 +64,23 @@ def _get_cached_pending_for_qr(qr_id: int) -> Optional[dict]:
     return cache_get(f"inbound:pending:qr:{qr_id}")
 
 
+def _is_split_stock_type(stock_type: Optional[str]) -> bool:
+    return (stock_type or "").strip().lower() in {"lấy lẻ", "lay le"}
+
+
+def _split_details_from_flag(is_split: Optional[bool]) -> Optional[dict]:
+    if is_split:
+        return {"type": "Lấy lẻ"}
+    return None
+
+
+def _is_split_from_cached(cached: dict) -> bool:
+    details = cached.get("details") or {}
+    if isinstance(details, dict) and _is_split_stock_type(details.get("type")):
+        return True
+    return bool(cached.get("is_split"))
+
+
 def _apply_cached_preview_fields(payload: dict, cached: dict) -> None:
     if cached.get("quantity") is not None:
         payload["quantity"] = int(cached["quantity"])
@@ -81,6 +98,7 @@ def _apply_cached_preview_fields(payload: dict, cached: dict) -> None:
         payload["qc_user"] = cached["qc_user"]
     if "packing_user" in payload and cached.get("packing_user"):
         payload["packing_user"] = cached["packing_user"]
+    payload["is_split"] = _is_split_from_cached(cached)
 
 
 def _qr_preview_payload(qr_record) -> dict:
@@ -100,6 +118,7 @@ def _qr_preview_payload(qr_record) -> dict:
         "cavity_numbers": _cavity_numbers_from_item(item),
         "qr_type": qr_type,
         "manufacturing_user": "",
+        "is_split": False,
     }
 
     if _qr_type_needs_qc_packing(qr_type):
@@ -191,6 +210,12 @@ def _resolve_location(
 def _normalize_assigned_stock(stock: dict) -> dict:
     if stock.get("lot_number") is None and stock.get("lot_number_to"):
         stock["lot_number"] = stock["lot_number_to"]
+    if stock.get("details") is None and stock.get("is_split"):
+        stock["details"] = {"type": "Lấy lẻ"}
+    elif isinstance(stock.get("details"), dict):
+        stock["is_split"] = _is_split_from_cached(stock)
+    else:
+        stock["is_split"] = False
     return stock
 
 
@@ -733,6 +758,7 @@ def assign_or_get_item_stock(
     manufacturing_user: Optional[str] = None,
     qc_user: Optional[str] = None,
     packing_user: Optional[str] = None,
+    is_split: Optional[bool] = None,
 ) -> dict:
     qr_record = get_qr_code_by_code(db, qr_code)
     location = _resolve_location(db, raw, warehouse_id)
@@ -811,6 +837,13 @@ def assign_or_get_item_stock(
     if needs_qc_packing:
         cache_payload["qc_user"] = resolved_qc
         cache_payload["packing_user"] = resolved_packing
+
+    split_details = _split_details_from_flag(is_split)
+    if split_details:
+        cache_payload["details"] = split_details
+        cache_payload["is_split"] = True
+    else:
+        cache_payload["is_split"] = False
 
     cache_set(
         f"inbound:assign:location:{location.id}:{qr_record.id}",

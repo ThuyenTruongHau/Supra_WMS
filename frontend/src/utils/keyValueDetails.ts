@@ -37,7 +37,10 @@ export function entriesToDetails(
 ): Record<string, string> {
   return Object.fromEntries(
     entries
-      .map(({ key, value }) => [key.trim(), value.trim()] as const)
+      .map(
+        ({ key, value }) =>
+          [key.trim().toLowerCase(), value.trim()] as const,
+      )
       .filter(([key]) => key.length > 0),
   );
 }

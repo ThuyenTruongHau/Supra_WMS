@@ -280,6 +280,7 @@ def _assign_or_get_item_stocks(db: Session, body: AssignOrGetItemStockRequest):
             manufacturing_user=body.manufacturing_user,
             qc_user=body.qc_user,
             packing_user=body.packing_user,
+            is_split=body.is_split,
         )
     except ValueError as e:
         msg = str(e)

@@ -83,6 +83,10 @@ class AssignOrGetItemStockRequest(BaseModel):
     manufacturing_user: Optional[str] = Field(None, max_length=100)
     qc_user: Optional[str] = Field(None, max_length=100)
     packing_user: Optional[str] = Field(None, max_length=100)
+    is_split: Optional[bool] = Field(
+        None,
+        description="When true, cache stock as Lấy lẻ (split) for inbound detail",
+    )
 
     @model_validator(mode="after")
     def require_fields_when_assign(self) -> "AssignOrGetItemStockRequest":
@@ -116,6 +120,7 @@ class QrCodePreviewResponse(BaseModel):
     manufacturing_user: Optional[str] = None
     qc_user: Optional[str] = None
     packing_user: Optional[str] = None
+    is_split: bool = False
     linked_packs: list["AssignedItemStockResponse"] = Field(default_factory=list)
 
 
@@ -228,6 +233,7 @@ class AssignedItemStockResponse(BaseModel):
     qc_user: Optional[str] = None
     packing_user: Optional[str] = None
     stock_level: Optional[int] = None
+    details: Optional[dict[str, Any]] = None
     relation: Optional[Union[int, str]] = Field(
         None,
         description=(

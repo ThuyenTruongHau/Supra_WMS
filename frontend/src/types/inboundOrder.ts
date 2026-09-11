@@ -196,6 +196,7 @@ export interface AssignOrGetItemStockRequest {
   manufacturing_user?: string | null;
   qc_user?: string | null;
   packing_user?: string | null;
+  is_split?: boolean | null;
 }
 
 export interface QrCodePreviewResponse {
@@ -214,6 +215,7 @@ export interface QrCodePreviewResponse {
   manufacturing_user?: string | null;
   qc_user?: string | null;
   packing_user?: string | null;
+  is_split?: boolean;
   /** Pack đã gán vào item qua assign:item — FE gom khi quét item (luồng assign thường) */
   linked_packs?: AssignedItemStock[];
 }
@@ -293,6 +295,8 @@ export interface AssignedItemStock {
   qc_user?: string | null;
   packing_user?: string | null;
   stock_level?: number | null;
+  is_split?: boolean;
+  details?: Record<string, unknown> | null;
   /** `"item"` = item anchor; number = linked pack parent qr_code_id; null = unlinked pack */
   relation?: number | string | null;
 }

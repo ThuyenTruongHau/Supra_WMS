@@ -1,4 +1,8 @@
 import type { ImportGroupDraft, ImportItemDraft } from "@/pages/components/CreateImportModal";
+import {
+  nextKeyValueEntryId,
+  type KeyValueEntry,
+} from "@/utils/keyValueDetails";
 import type {
   AssignedItemStock,
   AssignOrGetItemStockResponse,
@@ -48,6 +52,20 @@ export type LocationImportContext = {
   location_name?: string | null;
   warehouse_id?: number | null;
 };
+
+export function isSplitAssignedStock(stock: AssignedItemStock): boolean {
+  const type = stock.details?.type;
+  if (type === "Lấy lẻ" || type === "lấy lẻ") {
+    return true;
+  }
+  return Boolean(stock.is_split);
+}
+
+function splitDetailEntries(isSplit: boolean): KeyValueEntry[] {
+  return isSplit
+    ? [{ id: nextKeyValueEntryId("split"), key: "type", value: "Lấy lẻ" }]
+    : [];
+}
 
 function mapAssignedStockToImportItem(
   stock: AssignedItemStock,
@@ -104,41 +122,57 @@ export function locationContextFromScanResponse(
 export function mapLocationStocksToImportGroups(
   stocks: AssignedItemStock[],
 ): ImportGroupDraft[] {
-  const first = stocks[0];
-  return [
-    {
-      key: `tablet-group-${first?.location_id ?? "loc"}`,
+  const buckets = new Map<boolean, AssignedItemStock[]>();
+  for (const stock of stocks) {
+    const isSplit = isSplitAssignedStock(stock);
+    const bucket = buckets.get(isSplit) ?? [];
+    bucket.push(stock);
+    buckets.set(isSplit, bucket);
+  }
+
+  return Array.from(buckets.entries()).map(([isSplit, bucket], bucketIndex) => {
+    const first = bucket[0];
+    return {
+      key: `tablet-group-${first?.location_id ?? "loc"}-${isSplit ? "split" : "normal"}-${bucketIndex}`,
       from_location_id: first?.location_id ?? undefined,
       from_location_name: first?.location_name ?? undefined,
       qr_type: first?.qr_type ?? undefined,
-      items: stocks.map((stock, index) =>
+      detailEntries: splitDetailEntries(isSplit),
+      items: bucket.map((stock, index) =>
         mapAssignedStockToImportItem(
           stock,
           `tablet-item-${stock.qr_code_id}-${index}`,
         ),
       ),
-    },
-  ];
+    };
+  });
 }
 
 export function mapPendingItemsToImportGroups(
   items: AssignedItemStock[],
   location: LocationImportContext,
 ): ImportGroupDraft[] {
-  return [
-    {
-      key: `packer-loc-${location.location_id}`,
-      from_location_id: location.location_id,
-      from_location_name: location.location_name ?? undefined,
-      qr_type: "item",
-      items: items.map((stock, index) =>
-        mapAssignedStockToImportItem(
-          stock,
-          `pending-item-${stock.qr_code_id}-${index}`,
-        ),
+  const buckets = new Map<boolean, AssignedItemStock[]>();
+  for (const stock of items) {
+    const isSplit = isSplitAssignedStock(stock);
+    const bucket = buckets.get(isSplit) ?? [];
+    bucket.push(stock);
+    buckets.set(isSplit, bucket);
+  }
+
+  return Array.from(buckets.entries()).map(([isSplit, bucket], bucketIndex) => ({
+    key: `packer-loc-${location.location_id}-${isSplit ? "split" : "normal"}-${bucketIndex}`,
+    from_location_id: location.location_id,
+    from_location_name: location.location_name ?? undefined,
+    qr_type: "item",
+    detailEntries: splitDetailEntries(isSplit),
+    items: bucket.map((stock, index) =>
+      mapAssignedStockToImportItem(
+        stock,
+        `pending-item-${stock.qr_code_id}-${index}`,
       ),
-    },
-  ];
+    ),
+  }));
 }
 
 export function hasTabletScanMetadata(item: ImportItemDraft): boolean {
