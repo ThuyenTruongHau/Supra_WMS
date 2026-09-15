@@ -597,6 +597,15 @@ def _check_stock_in_task(db: Session, from_location_id: int, outbound_order_id: 
         return allocation.robot_task_id
     return None
 
+def _full_stock_in_location(db: Session, location_id: int) -> bool:
+    stocks = (
+        db.query(ItemStock)
+        .filter(ItemStock.location_id == location_id)
+        .filter(ItemStock.status.in_(["available", "split"]))
+        .all()
+    )
+    return int(sum(stock.quantity for stock in stocks))
+
 def greedy_allocate_stocks_to_lines(
     db: Session,
     stocks: list[ItemStock],
@@ -634,7 +643,7 @@ def greedy_allocate_stocks_to_lines(
                 logger.info(f"Robot task created: {robot_task.id}")
 
             robot_task = db.get(RobotTask, has_task)
-            robot_task.quantity = int(robot_task.quantity or 0) + int(take)
+            robot_task.quantity = _full_stock_in_location(db, stocks[j].location_id)
             task_id = has_task
         else:
             task_id = None
@@ -1117,6 +1126,16 @@ def execute_outbound_task(
         _execute_outbound_task_manual(db, body)
         return
 
+    start = db.query(Location).filter(Location.id == body.from_location_id).first()
+    if not start:
+        raise ValueError("From location not found")
+    if start.status == "empty":
+        raise ValueError("From location has no stock")
+    if start.status == "in_transit":
+        raise ValueError(
+            "From location is in transit; another robot task is already running"
+        )
+
 
     robot_task = (
         db.query(RobotTask).filter(RobotTask.order_id == body.order_id).first()
@@ -1171,7 +1190,7 @@ def execute_outbound_task(
         allocation.to_location_id = body.to_location_id
         allocation.status = "issued"
         taken += int(allocation.quantity)
-        full_quantity = int(allocation.item_stock.quantity)
+        full_quantity = robot_task.quantity
         last_allocation = allocation
         db.flush()
 
@@ -1356,3 +1375,97 @@ def confirm_no_qr(db: Session, order_id: str) -> dict[str, int] | None:
         raise ValueError("No pre_completed allocations to confirm")
 
     return _settle_outbound_stock(db, allocations)
+
+def execute_qr_manual(
+    db: Session,
+    allocation_ids: list[int],
+    qr_code: str,
+    to_location_id: int,
+) -> dict:
+    if not qr_code:
+        raise ValueError("QR code is required")
+
+    qr_record = db.query(QR_Code).filter(QR_Code.code == qr_code).first()
+    if not qr_record:
+        location = db.query(Location).filter(Location.location_code == qr_code).first()
+        if not location:
+            raise ValueError("QR code is invalid")
+
+        if location.id != to_location_id:
+            raise ValueError("Location code is not in the order")
+
+        for allocation_id in allocation_ids:
+            allocation = (
+                db.query(OutboundOrderAllocation)
+                .options(
+                    joinedload(OutboundOrderAllocation.item_stock),
+                    joinedload(OutboundOrderAllocation.outbound_order_detail).joinedload(
+                        OutboundOrderDetail.outbound_order
+                    ),
+                )
+                .filter(OutboundOrderAllocation.id == allocation_id)
+                .first()
+            )
+            if not allocation:
+                raise ValueError("Allocation not found")
+            if allocation.status != "pre_completed":
+                raise ValueError("Allocation is not pre_completed")
+
+            stock = allocation.item_stock
+            if not stock:
+                raise ValueError("Item stock not found")
+
+            allocation.to_location_id = to_location_id
+            if stock.location_id == to_location_id:
+                allocation.status = "completed"
+                stock.quantity -= allocation.quantity
+            db.flush()
+
+            db.add(
+                Transaction(
+                    from_location_id=allocation.from_location_id,
+                    to_location_id=to_location_id,
+                    transaction_type="outbound",
+                    item_stock_id=allocation.item_stock_id,
+                    quantity=int(allocation.quantity),
+                    created_by_id=allocation.outbound_order_detail.outbound_order.created_by_id,
+                )
+            )
+            db.flush()
+    else:
+        stock = qr_record.item_stock
+        if not stock:
+            raise ValueError("Item stock not found for QR code")
+
+        stock.location_id = to_location_id
+        db.flush()
+
+        for allocation_id in allocation_ids:
+            allocation = (
+                db.query(OutboundOrderAllocation)
+                .options(joinedload(OutboundOrderAllocation.item_stock))
+                .filter(OutboundOrderAllocation.id == allocation_id)
+                .first()
+            )
+            if not allocation:
+                raise ValueError("Allocation not found")
+            if allocation.status != "initialize":
+                raise ValueError("Allocation is not initialize")
+            if allocation.item_stock_id != qr_record.item_stock_id:
+                raise ValueError("Allocation is not in the order")
+
+            allocation.status = "pre_completed"
+            allocation.item_stock.location_id = to_location_id
+            db.flush()
+
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+
+    return {
+        "allocation_ids": allocation_ids,
+        "qr_code": qr_code,
+        "to_location_id": to_location_id,
+    }

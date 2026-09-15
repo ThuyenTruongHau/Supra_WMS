@@ -1,5 +1,7 @@
 import axios, { InternalAxiosRequestConfig } from 'axios';
 import { useAuthStore } from '@/store/useAuthStore';
+import { SNAPSHOT_MODE } from '@/snapshot/snapshotConfig';
+import { snapshotAdapter } from '@/snapshot/snapshotAdapter';
 import { refreshApi } from './auth';
 
 interface CustomAxiosRequestConfig extends InternalAxiosRequestConfig {
@@ -12,6 +14,8 @@ const axiosInstance = axios.create({
     'Content-Type': 'application/json',
   },
   timeout: 10000,
+  // Bản demo offline đọc dữ liệu từ snapshot thay vì gọi mạng.
+  adapter: SNAPSHOT_MODE ? snapshotAdapter : undefined,
 });
 
 let isRefreshing = false;
@@ -57,6 +61,12 @@ axiosInstance.interceptors.response.use(
   },
   async (error) => {
     const originalRequest = error.config as CustomAxiosRequestConfig;
+
+    // Bản demo không có endpoint refresh; nhánh 401 dưới đây sẽ xoá auth và
+    // chuyển hẳn sang /login, làm demo tự thoát ra màn hình đăng nhập.
+    if (SNAPSHOT_MODE) {
+      return Promise.reject(error);
+    }
 
     // Handle global errors (e.g., 401, 500)
     if (error.response?.status === 401 && originalRequest && !originalRequest._retry) {

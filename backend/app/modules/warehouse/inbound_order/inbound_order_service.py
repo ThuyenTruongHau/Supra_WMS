@@ -42,7 +42,7 @@ from app.modules.warehouse.unit.unit_model import ItemUnit, Unit
 from app.modules.warehouse.item_stock.item_stock_model import ItemStock
 from app.modules.robot.robot_service import task_status_service
 from app.modules.robot.robot_model import RobotTask
-from app.modules.warehouse.transaction_history.history_model import History
+from app.modules.warehouse.transaction_history.history_model import History, Transaction
 from app.core.config import settings
 from app.core.cache import cache_scan_keys, cache_set, cache_delete, cache_delete_pattern, cache_get, get_redis
 from app.core.logger import get_logger
@@ -163,9 +163,8 @@ def _create_stock_and_allocation(
         quantity=payload.quantity,
     )
 
-    status = "in_transit"
-    if (detail.details or {}).get("type") in ["Lấy lẻ", "lấy lẻ"]:
-        status = "split"
+    split_quantity = int((detail.details or {}).get("split") or 0)
+    is_split_stock = split_quantity > 0 and int(payload.quantity) == split_quantity
 
     item_stock = ItemStock(
         item_id=payload.item_id,
@@ -180,7 +179,7 @@ def _create_stock_and_allocation(
         manufacturing_user=getattr(payload, "manufacturing_user", None),
         qc_user=getattr(payload, "qc_user", None),
         packing_user=getattr(payload, "packing_user", None),
-        status=status if status else "in_transit",
+        status = "split" if is_split_stock else "in_transit",
         is_active=True,
         stock_level=1,
     )
@@ -750,13 +749,26 @@ def execute_inbound_task(db: Session, detail_id: int) -> InboundExecuteDetailRes
 
         stocks = (
             db.query(ItemStock)
-            .filter(ItemStock.inbound_order_detail_id == detail.id)
+            .filter(
+                ItemStock.inbound_order_detail_id == detail.id,
+                ItemStock.is_active.is_(True),
+                ItemStock.status != "virtual",
+            )
             .all()
         )
 
         for stock in stocks:
             if stock.status != "split":
                 stock.status = "available"
+
+            db.add(Transaction(
+                from_location_id=detail.from_location_id,
+                to_location_id=detail.to_location_id,
+                transaction_type="inbound",
+                item_stock_id=stock.id,
+                quantity=int(stock.quantity),
+                created_by_id=detail.inbound_order.created_by_id,
+            ))
 
         db.commit()
         db.refresh(detail)

@@ -5,9 +5,15 @@ import { useCreateQrCodes, usePreviewQrCodes } from "@/hooks/useItem";
 import type { ApiErrorResponse } from "@/types/apiError";
 import type { QrPrintType } from "@/types/item";
 import { translateQrType } from "@/i18n/qrTypeLabels.vi";
+import {
+  isManualPrintWarehouse,
+  QR_PRINT_LABELS_PER_PAGE_AUTO,
+  resolveQrPrintLabelsPerPage,
+} from "@/config/warehouseMode";
 import { printBacvietHtml } from "@/utils/printBacvietHtml";
 
-export const QR_PRINT_LABELS_PER_PAGE = 9;
+/** @deprecated use resolveQrPrintLabelsPerPage(warehouseId) */
+export const QR_PRINT_LABELS_PER_PAGE = QR_PRINT_LABELS_PER_PAGE_AUTO;
 export const QR_PRINT_MAX_QUANTITY = 50;
 
 export const QR_TYPE_OPTIONS: { value: QrPrintType; label: string }[] = [
@@ -39,7 +45,8 @@ export function useQrCodePrint({
   const [selectedSku, setSelectedSku] = useState<string | undefined>();
   const [selectedItemId, setSelectedItemId] = useState<number | null>(null);
   const [qrType, setQrType] = useState<QrPrintType>("item");
-  const [quantity, setQuantity] = useState(String(QR_PRINT_LABELS_PER_PAGE));
+  const labelsPerPage = resolveQrPrintLabelsPerPage(warehouseId);
+  const [quantity, setQuantity] = useState(String(labelsPerPage));
   const [previewHtml, setPreviewHtml] = useState<string | null>(null);
   const previewFrameRef = useRef<HTMLIFrameElement>(null);
 
@@ -50,9 +57,9 @@ export function useQrCodePrint({
     setSelectedSku(defaultSku);
     setSelectedItemId(defaultItemId);
     setQrType("item");
-    setQuantity(String(QR_PRINT_LABELS_PER_PAGE));
+    setQuantity(String(resolveQrPrintLabelsPerPage(warehouseId)));
     setPreviewHtml(null);
-  }, [defaultItemId, defaultSku]);
+  }, [defaultItemId, defaultSku, warehouseId]);
 
   useEffect(() => {
     if (active) {
@@ -168,6 +175,8 @@ export function useQrCodePrint({
 
   return {
     warehouseId,
+    labelsPerPage,
+    isManualPrintWarehouse: isManualPrintWarehouse(warehouseId),
     selectedSku,
     setSelectedSku,
     selectedItemId,

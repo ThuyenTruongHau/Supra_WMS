@@ -3,6 +3,7 @@ import { matchPath, Navigate, NavLink, useLocation } from "react-router-dom";
 import logo_thado from "@/assets/logo_thadorobot.png";
 import { useLogout } from "@/hooks/useAuth";
 import { useAuthStore } from "@/store/useAuthStore";
+import { SNAPSHOT_MODE } from "@/snapshot/snapshotConfig";
 import {
   LogoutOutlined,
   BarChartOutlined,
@@ -199,7 +200,7 @@ export default function Sidebar() {
   const logout = useLogout();
   const [collapsed, setCollapsed] = useState(false);
 
-  if (!isAuthenticated) {
+  if (!SNAPSHOT_MODE && !isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
 

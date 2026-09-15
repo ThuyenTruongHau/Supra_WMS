@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { ColumnsType } from "antd/es/table";
 import { PrinterOutlined } from "@ant-design/icons";
 import {
@@ -8,6 +8,7 @@ import {
   cn,
 } from "@/components/ui";
 import Hero from "@/components/shared/Hero";
+import WarehouseSelector from "@/components/shared/WarehouseSelector";
 import { SkuSearchSelect } from "@/components/shared/SkuSearchSelect";
 import { useRecentQrCodes } from "@/hooks/useItem";
 import { useAppStore } from "@/store/useAppStore";
@@ -64,6 +65,12 @@ export default function QrCodeSettingPage() {
 
   const warehouseId = selectedWarehouseId ?? 0;
 
+  useEffect(() => {
+    setFilterSku(undefined);
+    setFilterItemId(null);
+    setPage(1);
+  }, [selectedWarehouseId]);
+
   const {
     data: recentQrCodesData,
     isLoading: isRecentQrCodesLoading,
@@ -117,13 +124,16 @@ export default function QrCodeSettingPage() {
       <Hero
         title="Quản lý QR"
         extra={
-          <Button
-            variant="primary"
-            icon={<PrinterOutlined />}
-            onClick={() => setIsPrintOpen(true)}
-          >
-            In mã QR
-          </Button>
+          <>
+            <WarehouseSelector />
+            <Button
+              variant="primary"
+              icon={<PrinterOutlined />}
+              onClick={() => setIsPrintOpen(true)}
+            >
+              In mã QR
+            </Button>
+          </>
         }
       />
 

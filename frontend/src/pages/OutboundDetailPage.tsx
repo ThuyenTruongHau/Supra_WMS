@@ -42,6 +42,10 @@ import { detailsToEntries } from "@/utils/keyValueDetails";
 import { computeDetailProgress } from "@/utils/detailProgress";
 import { formatOutboundCalculateError } from "@/utils/outboundErrors";
 import { resolveOutboundLocationLogicTypeForOrder } from "@/utils/outboundLocationLogic";
+import {
+  resolveExecuteDetailType,
+  shouldUseManualAllocationFlow,
+} from "@/utils/outboundFlow";
 import { getApiErrorMessage } from "@/utils/apiErrorMessage";
 
 const TABLE_CLASS =
@@ -192,7 +196,6 @@ export default function OutboundDetailPage() {
   const orderId = orderIdParam ? Number(orderIdParam) : undefined;
   const navigate = useNavigate();
   const outboundType = useAppStore((s) => s.outboundType);
-  const isManualOutbound = outboundType === "manual";
   const selectedWarehouseId = useAppStore((s) => s.selectedWarehouseId);
 
   const [isEditOpen, setIsEditOpen] = useState(false);
@@ -219,6 +222,14 @@ export default function OutboundDetailPage() {
     isLoading: isOrderLoading,
     refetch: refetchOrder,
   } = useGetOutboundOrderById(orderId);
+  const useManualAllocationFlow = useMemo(
+    () => shouldUseManualAllocationFlow(outboundType, order?.details),
+    [outboundType, order?.details],
+  );
+  const executeDetailType = useMemo(
+    () => resolveExecuteDetailType(outboundType, order?.details),
+    [outboundType, order?.details],
+  );
   const {
     data: details = [],
     isLoading: isDetailsLoading,
@@ -230,17 +241,22 @@ export default function OutboundDetailPage() {
     data: robotTasks = [],
     isLoading: isRobotTasksLoading,
     refetch: refetchRobotTasks,
-  } = useGetOutboundRobotTasks(orderId, !!orderId && !isManualOutbound);
+  } = useGetOutboundRobotTasks(orderId, !!orderId && !useManualAllocationFlow);
   const {
     data: manualAllocationTasks = [],
     isLoading: isManualAllocationTasksLoading,
     refetch: refetchManualAllocationTasks,
-  } = useGetOutboundManualAllocationTasks(orderId, !!orderId && isManualOutbound);
-  const allocationTasks = isManualOutbound ? manualAllocationTasks : robotTasks;
-  const isAllocationTasksLoading = isManualOutbound
+  } = useGetOutboundManualAllocationTasks(
+    orderId,
+    !!orderId && useManualAllocationFlow,
+  );
+  const allocationTasks = useManualAllocationFlow
+    ? manualAllocationTasks
+    : robotTasks;
+  const isAllocationTasksLoading = useManualAllocationFlow
     ? isManualAllocationTasksLoading
     : isRobotTasksLoading;
-  const refetchAllocationTasks = isManualOutbound
+  const refetchAllocationTasks = useManualAllocationFlow
     ? refetchManualAllocationTasks
     : refetchRobotTasks;
   const deleteMutation = useDeleteOutboundOrder();
@@ -252,8 +268,13 @@ export default function OutboundDetailPage() {
   const warehouseId = order?.warehouse_id ?? selectedWarehouseId ?? 0;
   const fetchAllocationTab = activeTab === "allocation";
   const locationLogicType = useMemo(
-    () => resolveOutboundLocationLogicTypeForOrder(order?.details, details),
-    [order?.details, details],
+    () =>
+      resolveOutboundLocationLogicTypeForOrder(
+        order?.details,
+        details,
+        outboundType,
+      ),
+    [order?.details, details, outboundType],
   );
   const { data: outboundBufferLocationsData, isLoading: outboundBufferLocationsLoading } =
     useOutboundBufferLocations(warehouseId, locationLogicType, fetchAllocationTab);
@@ -413,7 +434,7 @@ export default function OutboundDetailPage() {
         allocationCode,
       );
 
-      if (hasLocation || (isManualOutbound && kind === "start")) {
+      if (hasLocation || (useManualAllocationFlow && kind === "start")) {
         return displayLocationName(
           allocationName,
           allocationCode,
@@ -451,7 +472,7 @@ export default function OutboundDetailPage() {
     [
       getTaskLocationSelectOptions,
       handleTaskLocationChange,
-      isManualOutbound,
+      useManualAllocationFlow,
       outboundBufferLabelById,
       outboundBufferLocationsLoading,
       taskLocationDraft,
@@ -471,7 +492,9 @@ export default function OutboundDetailPage() {
     try {
       setExecutingTaskOrderId(record.order_id);
       message.loading({
-        content: isManualOutbound ? "Đang xác nhận xuất..." : "Đang gửi lệnh...",
+        content: useManualAllocationFlow
+          ? "Đang xác nhận xuất..."
+          : "Đang gửi lệnh...",
         key: "execute",
       });
       await executeRobotTaskMutation.mutateAsync({
@@ -484,10 +507,12 @@ export default function OutboundDetailPage() {
             allocation_id: allocation.id,
           })),
         },
-        detailType: outboundType,
+        detailType: executeDetailType,
       });
       message.success({
-        content: isManualOutbound ? "Đã xác nhận xuất" : "Đã thực thi task",
+        content: useManualAllocationFlow
+          ? "Đã xác nhận xuất"
+          : "Đã thực thi task",
         key: "execute",
       });
       void refetchOrder();
@@ -960,7 +985,10 @@ export default function OutboundDetailPage() {
       key: "status",
       width: 150,
       render: (_, record) => {
-        const displayStatus = getRobotTaskDisplayStatus(record, isManualOutbound);
+        const displayStatus = getRobotTaskDisplayStatus(
+          record,
+          useManualAllocationFlow,
+        );
         if (displayStatus === "initialize") {
           const { startId, endId, needsStartPick, needsEndPick } =
             getTaskLocationIds(record);
@@ -980,11 +1008,11 @@ export default function OutboundDetailPage() {
               }
               onClick={() => void handleExecuteRobotTask(record)}
             >
-              {isManualOutbound ? "Xác nhận xuất" : "Execute"}
+              {useManualAllocationFlow ? "Xác nhận xuất" : "Execute"}
             </Button>
           );
         }
-        if (!isManualOutbound && displayStatus === "pre_completed") {
+        if (!useManualAllocationFlow && displayStatus === "pre_completed") {
           return (
             <Button
               variant="primary"

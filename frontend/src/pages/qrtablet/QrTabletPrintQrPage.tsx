@@ -2,7 +2,6 @@ import Hero from "@/components/shared/Hero";
 import { SkuSearchSelect } from "@/components/shared/SkuSearchSelect";
 import { Button, Card, Input, Select } from "@/components/ui";
 import {
-  QR_PRINT_LABELS_PER_PAGE,
   QR_PRINT_MAX_QUANTITY,
   QR_TYPE_OPTIONS,
   useQrCodePrint,
@@ -26,6 +25,8 @@ export default function QrTabletPrintQrPage() {
     previewHtml,
     previewFrameRef,
     isPreviewStep,
+    labelsPerPage,
+    isManualPrintWarehouse,
     handleConfirm,
     resetPreview,
     isPreviewPending,
@@ -82,11 +83,13 @@ export default function QrTabletPrintQrPage() {
                 onChange={(value) => setQrType(value as typeof qrType)}
               />
               <p className="mt-1 text-xs text-slate-500">
-                {qrType === "transit"
-                  ? "Dùng mẫu phiếu di chuyển (transit)."
-                  : qrType === "pack"
-                    ? "Dùng mẫu phiếu đóng gói (pack)."
-                    : "Dùng mẫu phiếu sản phẩm Bacviet (item)."}
+                {isManualPrintWarehouse
+                  ? "Kho manual: nhãn QR thuần 30×50mm (không có dòng ghi tay)."
+                  : qrType === "transit"
+                    ? "Kho auto: phiếu di chuyển có dòng ghi tay."
+                    : qrType === "pack"
+                      ? "Kho auto: phiếu đóng gói Bacviet có dòng ghi tay."
+                      : "Kho auto: phiếu sản phẩm Bacviet có dòng ghi tay."}
               </p>
             </div>
 
@@ -102,8 +105,7 @@ export default function QrTabletPrintQrPage() {
                 placeholder="Nhập số phiếu cần in"
               />
               <p className="mt-1 text-xs text-slate-500">
-                {QR_PRINT_LABELS_PER_PAGE} phiếu / trang A4. Tối đa{" "}
-                {QR_PRINT_MAX_QUANTITY} phiếu / lần.
+                {labelsPerPage} nhãn / trang A4. Tối đa {QR_PRINT_MAX_QUANTITY} nhãn / lần.
               </p>
             </div>
 

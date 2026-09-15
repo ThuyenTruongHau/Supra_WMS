@@ -263,7 +263,7 @@ export default function CreateOutboundModal({
       const detail = await getItemByIdApi(itemId);
       updateItem(itemKey, {
         warehouse_stock_loading: false,
-        warehouse_stock_quantity: Number(detail.item.quantity ?? 0),
+        warehouse_stock_quantity: Number(detail.available_quantity ?? 0),
       });
     } catch {
       updateItem(itemKey, {

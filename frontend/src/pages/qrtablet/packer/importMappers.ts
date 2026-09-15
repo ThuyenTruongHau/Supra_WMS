@@ -61,10 +61,21 @@ export function isSplitAssignedStock(stock: AssignedItemStock): boolean {
   return Boolean(stock.is_split);
 }
 
-function splitDetailEntries(isSplit: boolean): KeyValueEntry[] {
-  return isSplit
-    ? [{ id: nextKeyValueEntryId("split"), key: "type", value: "Lấy lẻ" }]
-    : [];
+/** Lấy số lượng lẻ từ stock được đánh dấu is_split để ghi detail.split. */
+function splitQuantityDetailEntries(
+  stocks: AssignedItemStock[],
+): KeyValueEntry[] {
+  const splitStock = stocks.find(isSplitAssignedStock);
+  if (!splitStock?.quantity) {
+    return [];
+  }
+  return [
+    {
+      id: nextKeyValueEntryId("split"),
+      key: "split",
+      value: String(splitStock.quantity),
+    },
+  ];
 }
 
 function mapAssignedStockToImportItem(
@@ -122,57 +133,51 @@ export function locationContextFromScanResponse(
 export function mapLocationStocksToImportGroups(
   stocks: AssignedItemStock[],
 ): ImportGroupDraft[] {
-  const buckets = new Map<boolean, AssignedItemStock[]>();
-  for (const stock of stocks) {
-    const isSplit = isSplitAssignedStock(stock);
-    const bucket = buckets.get(isSplit) ?? [];
-    bucket.push(stock);
-    buckets.set(isSplit, bucket);
+  if (stocks.length === 0) {
+    return [];
   }
 
-  return Array.from(buckets.entries()).map(([isSplit, bucket], bucketIndex) => {
-    const first = bucket[0];
-    return {
-      key: `tablet-group-${first?.location_id ?? "loc"}-${isSplit ? "split" : "normal"}-${bucketIndex}`,
-      from_location_id: first?.location_id ?? undefined,
-      from_location_name: first?.location_name ?? undefined,
-      qr_type: first?.qr_type ?? undefined,
-      detailEntries: splitDetailEntries(isSplit),
-      items: bucket.map((stock, index) =>
+  const first = stocks[0];
+  return [
+    {
+      key: `tablet-group-${first.location_id ?? "loc"}`,
+      from_location_id: first.location_id ?? undefined,
+      from_location_name: first.location_name ?? undefined,
+      qr_type: first.qr_type ?? undefined,
+      detailEntries: splitQuantityDetailEntries(stocks),
+      items: stocks.map((stock, index) =>
         mapAssignedStockToImportItem(
           stock,
           `tablet-item-${stock.qr_code_id}-${index}`,
         ),
       ),
-    };
-  });
+    },
+  ];
 }
 
 export function mapPendingItemsToImportGroups(
   items: AssignedItemStock[],
   location: LocationImportContext,
 ): ImportGroupDraft[] {
-  const buckets = new Map<boolean, AssignedItemStock[]>();
-  for (const stock of items) {
-    const isSplit = isSplitAssignedStock(stock);
-    const bucket = buckets.get(isSplit) ?? [];
-    bucket.push(stock);
-    buckets.set(isSplit, bucket);
+  if (items.length === 0) {
+    return [];
   }
 
-  return Array.from(buckets.entries()).map(([isSplit, bucket], bucketIndex) => ({
-    key: `packer-loc-${location.location_id}-${isSplit ? "split" : "normal"}-${bucketIndex}`,
-    from_location_id: location.location_id,
-    from_location_name: location.location_name ?? undefined,
-    qr_type: "item",
-    detailEntries: splitDetailEntries(isSplit),
-    items: bucket.map((stock, index) =>
-      mapAssignedStockToImportItem(
-        stock,
-        `pending-item-${stock.qr_code_id}-${index}`,
+  return [
+    {
+      key: `packer-loc-${location.location_id}`,
+      from_location_id: location.location_id,
+      from_location_name: location.location_name ?? undefined,
+      qr_type: "item",
+      detailEntries: splitQuantityDetailEntries(items),
+      items: items.map((stock, index) =>
+        mapAssignedStockToImportItem(
+          stock,
+          `pending-item-${stock.qr_code_id}-${index}`,
+        ),
       ),
-    ),
-  }));
+    },
+  ];
 }
 
 export function hasTabletScanMetadata(item: ImportItemDraft): boolean {

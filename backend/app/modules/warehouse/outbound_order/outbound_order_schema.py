@@ -215,3 +215,16 @@ class OutboundConfirmNoQrResponse(BaseModel):
     message: str
     overall: int = 0
     return_quantity: int = 0
+
+
+class ExecuteQrManualRequest(BaseModel):
+    allocation_ids: list[int] = Field(..., min_length=1)
+    qr_code: str = Field(..., min_length=1, max_length=50)
+    to_location_id: int = Field(..., gt=0)
+
+
+class ExecuteQrManualResponse(BaseModel):
+    allocation_ids: list[int]
+    qr_code: str
+    to_location_id: int
+    message: str = "Manual outbound QR scan processed"

@@ -26,6 +26,8 @@ from app.modules.warehouse.outbound_order.outbound_order_schema import (
     OutboundConfirmQrResponse,
     OutboundConfirmNoQrRequest,
     OutboundConfirmNoQrResponse,
+    ExecuteQrManualRequest,
+    ExecuteQrManualResponse,
 )
 from app.modules.warehouse.outbound_order import outbound_order_service
 from app.modules.warehouse.outbound_order.outbound_celery_task import (
@@ -325,3 +327,26 @@ def confirm_outbound_order_no_qr(
         overall=int(settle.get("overall", 0) if settle else 0),
         return_quantity=int(settle.get("return", 0) if settle else 0),
     )
+
+
+@router.post(
+    "/outbound-orders/execute-qr-manual",
+    response_model=ExecuteQrManualResponse,
+    dependencies=[Depends(_OUTBOUND_UPDATE)],
+)
+def execute_outbound_qr_manual(
+    body: ExecuteQrManualRequest,
+    db: DbSession,
+):
+    try:
+        result = outbound_order_service.execute_qr_manual(
+            db,
+            allocation_ids=body.allocation_ids,
+            qr_code=body.qr_code,
+            to_location_id=body.to_location_id,
+        )
+    except ValueError as e:
+        msg = str(e)
+        code = 404 if "not found" in msg.lower() else 400
+        raise HTTPException(status_code=code, detail=msg) from e
+    return ExecuteQrManualResponse.model_validate(result)

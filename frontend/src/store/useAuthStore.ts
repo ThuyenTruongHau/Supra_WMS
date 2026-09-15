@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { SNAPSHOT_MODE, getSnapshotConfig } from '@/snapshot/snapshotConfig';
 
 interface AuthState {
   access_token: string | null;
@@ -12,13 +13,44 @@ interface AuthState {
   clearAuth: () => void;
 }
 
+type AuthSnapshot = Pick<
+  AuthState,
+  | 'access_token'
+  | 'refresh_token'
+  | 'role_canonical'
+  | 'role'
+  | 'username'
+  | 'isAuthenticated'
+>;
+
+/**
+ * Bản demo offline không có endpoint đăng nhập lúc khởi động, nên auth được
+ * nạp sẵn từ window.__WMS_CONFIG__ để vào thẳng app.
+ */
+const initialState = (): AuthSnapshot => {
+  if (SNAPSHOT_MODE) {
+    const { auth } = getSnapshotConfig();
+    return {
+      access_token: auth.access_token,
+      refresh_token: auth.refresh_token,
+      role_canonical: auth.role_canonical,
+      role: auth.role,
+      username: auth.username,
+      isAuthenticated: true,
+    };
+  }
+  return {
+    access_token: localStorage.getItem('access_token'),
+    refresh_token: localStorage.getItem('refresh_token'),
+    role_canonical: localStorage.getItem('role_canonical'),
+    role: localStorage.getItem('role'),
+    username: localStorage.getItem('username'),
+    isAuthenticated: !!localStorage.getItem('access_token'),
+  };
+};
+
 export const useAuthStore = create<AuthState>((set) => ({
-  access_token: localStorage.getItem('access_token'),
-  refresh_token: localStorage.getItem('refresh_token'),
-  role_canonical: localStorage.getItem('role_canonical'),
-  role: localStorage.getItem('role'),
-  username: localStorage.getItem('username'),
-  isAuthenticated: !!localStorage.getItem('access_token'),
+  ...initialState(),
   setAuth: (access_token, refresh_token, role_canonical, role, username) => {
     localStorage.setItem('access_token', access_token);
     localStorage.setItem('refresh_token', refresh_token);
@@ -45,4 +77,3 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ access_token: null, refresh_token: null, role_canonical: null, role: null, username: null, isAuthenticated: false });
   },
 }));
-

@@ -29,6 +29,7 @@ import WarehouseMapImportDialog from './WarehouseMapImportDialog';
 import WarehouseMapToolbar from './WarehouseMapToolbar';
 import WarehouseMapOverlays from './WarehouseMapOverlays';
 import WarehouseMapLegend from './WarehouseMapLegend';
+import WarehouseMapZoomControls from './WarehouseMapZoomControls';
 import { useAppStore } from '@/store/useAppStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useActiveWarehouseMap, useFullLocations, useDownloadWarehouseMap } from '@/hooks/useWarehouseMap';
@@ -441,19 +442,22 @@ const WarehouseMapCanvas: React.FC<WarehouseMapCanvasProps> = ({
     return { cx: e.clientX - rect.left, cy: e.clientY - rect.top };
   }, []);
 
-  // ─── Wheel → Zoom centred on cursor ─────────────────────────────────────────
+  // ─── Zoom (wheel + buttons) ───────────────────────────────────────────────────
 
-  const handleWheel = useCallback(
-    (e: WheelEvent) => {
-      e.preventDefault();
-      const { cx, cy } = getCanvasPos(e);
+  const applyZoom = useCallback(
+    (zoomIn: boolean, pivotCx?: number, pivotCy?: number) => {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
 
-      const zoomIn = e.deltaY < 0;
+      const cx = pivotCx ?? canvas.width / 2;
+      const cy = pivotCy ?? canvas.height / 2;
+
       const factor = zoomIn ? ZOOM_FACTOR : 1 / ZOOM_FACTOR;
-      const newScale = Math.min(ZOOM_MAX, Math.max(zoomMinRef.current, scaleRef.current * factor));
+      const newScale = Math.min(
+        ZOOM_MAX,
+        Math.max(zoomMinRef.current, scaleRef.current * factor),
+      );
 
-      // Pivot around the cursor: keep world point under cursor fixed
-      // worldX = (cx - offsetX) / scale  →  offsetX' = cx - worldX * newScale
       const { wx, wy } = screenToWorld(cx, cy);
       scaleRef.current = newScale;
       offsetXRef.current = cx - wx * newScale;
@@ -461,7 +465,24 @@ const WarehouseMapCanvas: React.FC<WarehouseMapCanvasProps> = ({
 
       draw();
     },
-    [draw, getCanvasPos, screenToWorld],
+    [draw, screenToWorld],
+  );
+
+  const handleZoomIn = useCallback(() => {
+    applyZoom(true);
+  }, [applyZoom]);
+
+  const handleZoomOut = useCallback(() => {
+    applyZoom(false);
+  }, [applyZoom]);
+
+  const handleWheel = useCallback(
+    (e: WheelEvent) => {
+      e.preventDefault();
+      const { cx, cy } = getCanvasPos(e);
+      applyZoom(e.deltaY < 0, cx, cy);
+    },
+    [applyZoom, getCanvasPos],
   );
 
   // ─── Pan ─────────────────────────────────────────────────────────────────────
@@ -631,6 +652,13 @@ const WarehouseMapCanvas: React.FC<WarehouseMapCanvasProps> = ({
         />
 
         {hasData && !isLoading && !isError && <WarehouseMapLegend />}
+
+        {!hideToolbar && hasData && !isLoading && !isError && (
+          <WarehouseMapZoomControls
+            onZoomIn={handleZoomIn}
+            onZoomOut={handleZoomOut}
+          />
+        )}
 
         {/* Drawer Component */}
         {!hideDrawer && (

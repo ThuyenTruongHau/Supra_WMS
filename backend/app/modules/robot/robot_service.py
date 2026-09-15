@@ -140,13 +140,14 @@ class TaskStatusService:
                         _settle_outbound_stock(db, [allocation])
 
                 if MAPPING_STATUS[ics_status] == "completed":
-                    stock = allocations[0].item_stock
-                    logger.info(f"-------Stock: {stock.id}")
-                    if stock and allocations[0].to_location_id:
-                        logger.info(f"----------To location: {allocations[0].to_location_id}")
-                        stock.location_id = allocations[0].to_location_id
-                        stock.status = "available"
-                        stock.is_active = True
+                    from_location = allocations[0].from_location
+                    to_location = allocations[0].to_location
+                    if not from_location or not to_location:
+                        raise ValueError("From location or to location not found")
+                    stocks = db.query(ItemStock).filter(ItemStock.location_id == from_location.id, ItemStock.is_active.is_(True)).all()
+                    for stock in stocks:
+                        stock.location_id = to_location.id
+
                 
         record = TaskStatus(
             sub_task_status=payload.get("subTaskStatus"),

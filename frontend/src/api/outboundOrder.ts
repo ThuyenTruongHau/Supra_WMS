@@ -13,6 +13,8 @@ import type {
   OutboundOrderUpdateRequest,
   OutboundRobotTask,
   OutboundRobotTaskExecuteRequest,
+  ExecuteQrManualRequest,
+  ExecuteQrManualResponse,
 } from "@/types/outbound";
 
 const BASE = "/api/v1/outbound-orders";
@@ -171,6 +173,16 @@ export const confirmOutboundOrderNoQrApi = async (
   const { data } = await axiosInstance.post<OutboundConfirmNoQrResponse>(
     `${BASE}/confirm-no-qr`,
     { order_id: robotTaskOrderId },
+  );
+  return data;
+};
+
+export const executeOutboundQrManualApi = async (
+  body: ExecuteQrManualRequest,
+): Promise<ExecuteQrManualResponse> => {
+  const { data } = await axiosInstance.post<ExecuteQrManualResponse>(
+    `${BASE}/execute-qr-manual`,
+    body,
   );
   return data;
 };

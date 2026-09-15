@@ -1,5 +1,28 @@
+import json
+
 from pydantic_settings import BaseSettings
 from pydantic import field_validator
+
+def _parse_int_id_list(raw: object) -> list[int]:
+    if raw is None:
+        return []
+    if isinstance(raw, list):
+        return [int(value) for value in raw if str(value).strip().isdigit()]
+    text = str(raw).strip()
+    if not text:
+        return []
+    try:
+        parsed = json.loads(text)
+        if isinstance(parsed, list):
+            return [int(value) for value in parsed if str(value).strip().lstrip("-").isdigit()]
+    except json.JSONDecodeError:
+        pass
+    return [
+        int(part)
+        for part in text.split(",")
+        if part.strip().lstrip("-").isdigit()
+    ]
+
 
 class Settings(BaseSettings):
     #App
@@ -26,6 +49,9 @@ class Settings(BaseSettings):
     zone_storage: list[str] = ["Zone_3"]
     zone_qc: list[str] = ["Zone_2.1"]
 
+    # Warehouses using manual (full-form) print templates — JSON array or comma list, e.g. [2]
+    manual_warehouse_ids: list[int] = []
+
     # Redis (cache)
     redis_url: str = "redis://10.73.231.5:6379/0"
     redis_cache_ttl: int = 300
@@ -35,6 +61,11 @@ class Settings(BaseSettings):
     celery_broker_url: str = "redis://10.73.231.5:6379/1"
     celery_broker_result_url: str = "redis://10.73.231.5:6379/2"
 
+
+    @field_validator("manual_warehouse_ids", mode="before")
+    @classmethod
+    def parse_manual_warehouse_ids(cls, value: object) -> list[int]:
+        return _parse_int_id_list(value)
 
     class Config:
         env_file = ".env"

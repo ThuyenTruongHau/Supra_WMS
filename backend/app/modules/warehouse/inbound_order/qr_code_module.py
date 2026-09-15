@@ -10,7 +10,7 @@ from app.modules.warehouse.inbound_order.inbound_order_model import (
     InboundOrder, InboundOrderDetail, InboundOrderAllocation,
 )
 from app.modules.warehouse.unit import unit_service
-from app.modules.warehouse.transaction_history.history_model import History
+from app.modules.warehouse.transaction_history.history_model import History, Transaction
 from app.modules.warehouse.item_stock.item_stock_model import ItemStock
 from app.core.cache import cache_scan_keys, cache_set, get_redis, cache_delete_pattern, cache_get
 from app.modules.warehouse.item.item_service import get_qr_code_by_code
@@ -1126,8 +1126,10 @@ def assign_stock_to_location(
         qr_record.item_stock_id = item_stock.id
         db.add(qr_record)
         db.flush()
+        detail_type = "manual"
     else:
         item_stock = qr_record.item_stock
+        detail_type = "change_location"
 
     inbound = _create_inbound_order_qr_manual(
         db,
@@ -1135,6 +1137,8 @@ def assign_stock_to_location(
         user_id=user_id,
         allocation_unit_id=unit_id,
         allocation_quantity=quantity,
+        detail_type=detail_type,
+        to_location=location,
     )
     db.commit()
     return {
@@ -1152,6 +1156,8 @@ def _create_inbound_order_qr_manual(
     allocation_quantity: int,
     order_code: Optional[str] = None,
     note: Optional[str] = None,
+    detail_type: Optional[str] = None,
+    to_location: Optional[Location] = None,
 ) -> InboundOrder:
     if not item_stock.id:
         raise ValueError("ItemStock must be flushed before wrapping inbound order")
@@ -1174,14 +1180,21 @@ def _create_inbound_order_qr_manual(
     )
     db.add(inbound_order)
     db.flush()
-    dest_id = item_stock.location_id
+    if detail_type == "change_location":
+        if not to_location:
+            raise ValueError("To location is required for change location")
+        to_location_id = to_location.id
+    else:
+        to_location_id = item_stock.location_id
+
+    from_location_id = item_stock.location_id
 
     detail_status = "completed"
     detail = InboundOrderDetail(
         inbound_order_id=inbound_order.id,
-        from_location_id=dest_id,
-        to_location_id=dest_id,
-        detail_type="manual",
+        from_location_id=from_location_id,
+        to_location_id=to_location_id,
+        detail_type=detail_type,
         status=detail_status,
         details={},
     )
@@ -1189,7 +1202,17 @@ def _create_inbound_order_qr_manual(
     db.flush()
 
     item_stock.inbound_order_detail_id = detail.id
+    item_stock.location_id = to_location_id
     item_stock.status = "available"   
+
+    db.add(Transaction(
+        from_location_id=from_location_id,
+        to_location_id=to_location_id,
+        transaction_type="inbound",
+        item_stock_id=item_stock.id,
+        quantity=int(item_stock.quantity),
+        created_by_id=user_id,
+    ))
 
 
     allocation = InboundOrderAllocation(
@@ -1205,9 +1228,90 @@ def _create_inbound_order_qr_manual(
         inbound_order_id=inbound_order.id,
         old_status="none",
         new_status=detail_status,
-        description="Manual inbound created from QR scan",
-        details={"item_stock_id": item_stock.id, "location_id": dest_id},
+        description=f"{detail_type} inbound created from QR scan",
+        details={"item_stock_id": item_stock.id, "from_location_id": from_location_id, "to_location_id": to_location_id},
         created_by_id=user_id,
     ))
     db.flush()
     return inbound_order
+
+# def outbound_stock_taking_manual(
+#     db: Session,
+#     *,
+#     user_id: int,
+#     raw: Optional[str] = None,
+#     warehouse_id: Optional[int] = None,
+#     qr_code: Optional[str] = None,
+#     quantity: Optional[int] = None,
+# ) -> dict:
+#     if not qr_code:
+#         raise ValueError("qr_code is required")
+#     qr_record = db.query(QR_Code).filter(QR_Code.code == qr_code).first()
+#     location = _resolve_location(db, raw, warehouse_id)
+#     if qr_record is None:
+#         raise ValueError("QR code not found")
+#     if location is None:
+#         #preview_data_qr_code
+    
+#     item_stock = qr_record.item_stock
+#     if item_stock is None:
+#         raise ValueError("Item stock not found")
+#     if item_stock.location_id != location.id:
+#         raise ValueError("Item stock is not in the location")
+#     if item_stock.quantity < quantity:
+#         raise ValueError("Item stock quantity is less than the quantity to take")
+#     if item_stock.status != "available":
+#         raise ValueError("Item stock is not available")
+
+#     outbound_order = _create_outbound_order_qr_manual(
+#         db,
+#         item_stock,
+#         user_id=user_id,
+#         quantity=quantity,
+#         location=location,
+#     )
+
+#     try:
+#         db.commit()
+#     except Exception as e:
+#         db.rollback()
+#         raise e
+
+# def _create_outbound_order_qr_manual(
+#     db: Session,
+#     item_stock: ItemStock,
+#     *,
+#     user_id: int,
+#     quantity: int,
+#     location: Location,
+# ) -> OutboundOrder:
+#     outbound_order = OutboundOrder(
+#         warehouse_id=location.warehouse_id,
+#         order_code=order_code or f"OUT-M-{uuid4().hex[:8].upper()}",
+#         note="",
+#         created_by_id=user_id,
+#         details={},
+#     )
+#     db.add(outbound_order)
+#     db.flush()
+
+#     detail_status = "completed"
+#     detail = OutboundOrderDetail(
+#         outbound_order_id=outbound_order.id,
+#         from_location_id=item_stock.location_id,
+#         to_location_id=location.id,
+#         detail_type="manual",
+#         status=detail_status,
+#         details={},
+#     )
+
+#     db.add(detail)
+
+#     allocation = OutboundOrderAllocation(
+#         outbound_order_detail_id=detail.id,
+#         item_stock_id=item_stock.id,
+#         unit_id=item_stock.unit_id,
+#         quantity=quantity,
+#     )
+#     db.add(allocation)
+#     db.flush()

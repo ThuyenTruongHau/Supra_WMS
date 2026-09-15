@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <title>In QR — kho auto</title>
+  <!--
+    Template in QR cho kho AUTO — mỗi nhãn chỉ gồm QR + mã preview (display_codes).
+    Dùng chung cho qr_type: item | pack | transit.
+
+    Backend truyền dữ liệu qua window.__QR_LABEL_AUTO_PRINT_DATA__
+    rồi gọi QrLabelAutoPrint.init().
+
+    Payload:
+    {
+      "mode": "preview",
+      "item_id": 1,
+      "quantity": 9,
+      "part_number": "SKU-001",
+      "qr_ids": ["..."],
+      "display_codes": ["SKU-001-20260101"],
+      "qr_type": "item" | "pack" | "transit"
+    }
+
+    Số trang = Math.ceil(quantity / 9)
+  -->
+  <style>
+    :root {
+      --page-width: 194mm;
+      --page-height: 281mm;
+      --page-margin: 7mm;
+      --labels-per-page: 9;
+      --label-cols: 3;
+      --label-rows: 3;
+      --sheet-padding: 3mm;
+      --sheet-gap: 2.5mm;
+      --label-width: calc(
+        (var(--page-width) - 2 * var(--sheet-padding) - (var(--label-cols) - 1) * var(--sheet-gap))
+        / var(--label-cols)
+      );
+      --label-height: calc(
+        (var(--page-height) - 2 * var(--sheet-padding) - (var(--label-rows) - 1) * var(--sheet-gap))
+        / var(--label-rows)
+      );
+    }
+
+    @page {
+      size: A4 portrait;
+      margin: var(--page-margin);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      padding: 8mm;
+      font-family: "Times New Roman", Times, serif;
+      color: #000;
+      background: #f3f4f6;
+    }
+
+    .toolbar {
+      max-width: calc(var(--page-width) + 16mm);
+      margin: 0 auto 6mm;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: #475569;
+    }
+
+    .toolbar button {
+      padding: 8px 16px;
+      font-size: 14px;
+      cursor: pointer;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      background: #fff;
+    }
+
+    .print-root {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10mm;
+    }
+
+    .print-root.is-empty {
+      min-height: 40mm;
+      justify-content: center;
+      color: #64748b;
+      font-size: 14px;
+    }
+
+    .sheet-page {
+      width: var(--page-width);
+      height: var(--page-height);
+      background: #fff;
+      padding: var(--sheet-padding);
+      display: grid;
+      grid-template-columns: repeat(var(--label-cols), var(--label-width));
+      grid-template-rows: repeat(var(--label-rows), var(--label-height));
+      gap: var(--sheet-gap);
+      justify-content: center;
+      align-content: center;
+      page-break-after: always;
+      break-after: page;
+    }
+
+    .sheet-page:last-child {
+      page-break-after: auto;
+      break-after: auto;
+    }
+
+    .qr-label {
+      width: 100%;
+      height: 100%;
+      min-height: 0;
+      border: 1px solid #000;
+      background: #fff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 2mm;
+      page-break-inside: avoid;
+      break-inside: avoid;
+      overflow: hidden;
+    }
+
+    .qr-type-badge {
+      align-self: flex-end;
+      font-size: 8px;
+      font-weight: 700;
+      line-height: 1;
+      margin-bottom: 0.5mm;
+    }
+
+    .qr-image-wrap {
+      flex: 1;
+      min-height: 0;
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .qr-image-wrap img {
+      width: 100%;
+      height: 100%;
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+      display: block;
+    }
+
+    .qr-preview-code {
+      flex-shrink: 0;
+      width: 100%;
+      margin-top: 1mm;
+      font-size: 7px;
+      font-weight: 600;
+      line-height: 1.15;
+      text-align: center;
+      word-break: break-all;
+      overflow: hidden;
+      max-height: 8mm;
+    }
+
+    @media print {
+      body {
+        padding: 0;
+        background: #fff;
+      }
+      .toolbar { display: none; }
+      .print-root { gap: 0; }
+      .print-root.is-empty { display: none; }
+      .sheet-page {
+        box-shadow: none;
+        margin: 0;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="toolbar">
+    <span id="page-info">Chưa có dữ liệu in</span>
+    <button type="button" id="toolbar-print-btn">In / Lưu PDF</button>
+  </div>
+
+  <div class="print-root is-empty" id="print-root">Chưa có dữ liệu in.</div>
+
+  <script>
+    (function () {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("mock") !== "1" && !window.__QR_LABEL_AUTO_PRINT_DATA__) return;
+      window.__QR_LABEL_AUTO_PRINT_DATA__ = window.__QR_LABEL_AUTO_PRINT_DATA__ || {
+        __mock: true,
+        mode: "preview",
+        item_id: 1,
+        quantity: 9,
+        part_number: "BGRD00074",
+        qr_ids: Array.from({ length: 9 }, (_, i) => `BGRD00074-20260101-${String(i + 1).padStart(8, "0")}`),
+        display_codes: Array(9).fill("BGRD00074-20260101"),
+        qr_type: "item",
+      };
+    })();
+  </script>
+
+  <script>
+    (function () {
+      "use strict";
+
+      const LABELS_PER_PAGE = 9;
+
+      function escapeHtml(value) {
+        return String(value ?? "")
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;");
+      }
+
+      function qrImageUrl(qrId) {
+        return (
+          "https://api.qrserver.com/v1/create-qr-code/?size=400x400&margin=8&ecc=M&data=" +
+          encodeURIComponent(String(qrId ?? ""))
+        );
+      }
+
+      function qrTypeBadge(qrType) {
+        const normalized = String(qrType ?? "item").trim().toLowerCase();
+        if (normalized === "item") return "1";
+        if (normalized === "pack") return "2";
+        if (normalized === "transit") return "DC";
+        return "";
+      }
+
+      function buildLabels(data) {
+        const quantity = Math.max(Number(data?.quantity) || 0, 0);
+        const qrIds = Array.isArray(data?.qr_ids) ? data.qr_ids : [];
+        const displayCodes = Array.isArray(data?.display_codes) ? data.display_codes : [];
+        const qrType = String(data?.qr_type ?? "item");
+
+        return Array.from({ length: quantity }, (_, index) => ({
+          qr_id: String(qrIds[index] ?? ""),
+          qr_display: String(displayCodes[index] ?? qrIds[index] ?? ""),
+          qr_type: qrType,
+        }));
+      }
+
+      function countPages(quantity) {
+        const total = Math.max(Number(quantity) || 0, 0);
+        return total === 0 ? 0 : Math.ceil(total / LABELS_PER_PAGE);
+      }
+
+      function renderLabel(label) {
+        const qrDisplay = escapeHtml(label.qr_display);
+        const badge = escapeHtml(qrTypeBadge(label.qr_type));
+        const badgeHtml = badge
+          ? `<span class="qr-type-badge">${badge}</span>`
+          : "";
+
+        return `
+          <div class="qr-label">
+            ${badgeHtml}
+            <div class="qr-image-wrap">
+              <img src="${qrImageUrl(label.qr_id)}" alt="${qrDisplay}" />
+            </div>
+            <div class="qr-preview-code">${qrDisplay}</div>
+          </div>
+        `;
+      }
+
+      function renderPages(labels) {
+        if (!labels.length) return "";
+
+        const pages = [];
+        for (let i = 0; i < labels.length; i += LABELS_PER_PAGE) {
+          const chunk = labels.slice(i, i + LABELS_PER_PAGE);
+          pages.push(
+            `<div class="sheet-page">${chunk.map(renderLabel).join("")}</div>`,
+          );
+        }
+        return pages.join("");
+      }
+
+      function updatePageInfo(labelCount) {
+        const pageInfo = document.getElementById("page-info");
+        if (!pageInfo) return;
+
+        if (labelCount === 0) {
+          pageInfo.textContent = "Chưa có dữ liệu in";
+          return;
+        }
+
+        pageInfo.textContent =
+          `${labelCount} nhãn QR · ${countPages(labelCount)} trang A4 (${LABELS_PER_PAGE}/trang, kho auto)`;
+      }
+
+      function init(data) {
+        const labels = buildLabels(data);
+        const html = renderPages(labels);
+        const root = document.getElementById("print-root");
+
+        if (root) {
+          root.classList.toggle("is-empty", labels.length === 0);
+          root.innerHTML = labels.length === 0 ? "Chưa có dữ liệu in." : html;
+        }
+
+        updatePageInfo(labels.length);
+
+        return {
+          labels,
+          pageCount: countPages(labels.length),
+          html,
+        };
+      }
+
+      window.QrLabelAutoPrint = {
+        LABELS_PER_PAGE,
+        buildLabels,
+        countPages,
+        renderLabel,
+        renderPages,
+        init,
+      };
+
+      function handleToolbarPrint() {
+        const data = window.__QR_LABEL_AUTO_PRINT_DATA__;
+        if (data?.mode === "preview" && window.parent && window.parent !== window) {
+          window.parent.postMessage(
+            {
+              type: "bacviet-qr-print",
+              item_id: data.item_id,
+              quantity: data.quantity,
+              qr_ids: data.qr_ids,
+              display_codes: data.display_codes,
+              qr_type: data.qr_type || "item",
+            },
+            "*",
+          );
+          return;
+        }
+        window.print();
+      }
+
+      document
+        .getElementById("toolbar-print-btn")
+        ?.addEventListener("click", handleToolbarPrint);
+
+      if (window.__QR_LABEL_AUTO_PRINT_DATA__) {
+        init(window.__QR_LABEL_AUTO_PRINT_DATA__);
+      }
+    })();
+  </script>
+</body>
+</html>

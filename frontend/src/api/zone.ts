@@ -75,10 +75,14 @@ export const listLocationsApi = async (params?: {
 
 export const printLocationQrCodesApi = async (
   locationIds: number[],
+  warehouseId?: number,
 ): Promise<LocationQrPrintResponse> => {
   const { data } = await axiosInstance.post<LocationQrPrintResponse>(
     `${LOCATIONS_BASE}/qr-codes/print`,
-    { location_ids: locationIds },
+    {
+      location_ids: locationIds,
+      ...(warehouseId ? { warehouse_id: warehouseId } : {}),
+    },
   );
   return data;
 };

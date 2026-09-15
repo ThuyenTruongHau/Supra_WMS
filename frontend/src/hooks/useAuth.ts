@@ -8,6 +8,7 @@ import {
   updateUserApi,
 } from '@/api/auth';
 import { useAuthStore } from '@/store/useAuthStore';
+import { SNAPSHOT_MODE } from '@/snapshot/snapshotConfig';
 import type {
   CreateUserInput,
   LoginRequest,
@@ -43,6 +44,10 @@ export const useLogout = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   return () => {
+    if (SNAPSHOT_MODE) {
+      navigate('/report', { replace: true });
+      return;
+    }
     clearAuth();
     queryClient.clear();
     navigate('/login', { replace: true });

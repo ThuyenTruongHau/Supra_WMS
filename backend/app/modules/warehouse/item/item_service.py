@@ -14,6 +14,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
+from app.core.warehouse_mode import is_manual_warehouse
 from app.modules.warehouse.lot_number_utils import format_lot_number_display
 from app.modules.warehouse.item.item_model import Item, QR_Code
 from app.modules.warehouse.item.item_schema import (
@@ -234,6 +235,7 @@ def get_item_detail(db: Session, item_id: int) -> ItemDetailResponse:
         .filter(
             ItemStock.item_id == item.id,
             ItemStock.is_active.is_(True),
+            ItemStock.status == "available",
             countable_stock_level_criterion(),
             positive_stock_quantity_criterion(),
         )
@@ -242,7 +244,9 @@ def get_item_detail(db: Session, item_id: int) -> ItemDetailResponse:
     )
 
     stock_items: list[ItemStockInDetail] = []
+    available_quantity = 0
     for stock, location_code, location_name in stocks:
+        available_quantity += stock.quantity
         stock_items.append(
             ItemStockInDetail(
                 id=stock.id,
@@ -266,6 +270,7 @@ def get_item_detail(db: Session, item_id: int) -> ItemDetailResponse:
     return ItemDetailResponse(
         item=ItemResponse.model_validate(item),
         stocks=stock_items,
+        available_quantity=available_quantity,
     )
 
 
@@ -664,6 +669,7 @@ def _build_print_payload(
     return {
         "mode": mode,
         "item_id": item_id,
+        "warehouse_id": item.warehouse_id,
         "quantity": quantity,
         "part_number": item.sku,
         "part_name": item.name,
@@ -674,11 +680,19 @@ def _build_print_payload(
     }
 
 
+def _qr_labels_per_page(payload: dict) -> int:
+    warehouse_id = payload.get("warehouse_id")
+    if is_manual_warehouse(warehouse_id):
+        return QR_LABEL_MANUAL_LABELS_PER_PAGE
+    return QR_LABELS_PER_PAGE
+
+
 def _render_print_response(payload: dict, quantity: int, codes: list[str]) -> dict:
+    labels_per_page = _qr_labels_per_page(payload)
     return {
         "html": render_qr_codes(payload),
         "quantity": quantity,
-        "page_count": math.ceil(quantity / 9),
+        "page_count": math.ceil(quantity / labels_per_page) if quantity else 0,
         "qr_ids": codes,
         "display_codes": payload.get("display_codes", []),
         "qr_type": payload.get("qr_type", DEFAULT_QR_TYPE),
@@ -757,18 +771,30 @@ TRANSFER_TEMPLATE_PATH = (
     / "templates"
     / "template_phieu_di_chuyen.html"
 )
+QR_LABEL_MANUAL_TEMPLATE_PATH = (
+    Path(__file__).resolve().parents[3]
+    / "static"
+    / "templates"
+    / "template_qr_label_manual.html"
+)
 # backward-compatible alias
 TEMPLATE_PATH = BACVIET_TEMPLATE_PATH
+QR_LABELS_PER_PAGE = 9
+QR_LABEL_MANUAL_LABELS_PER_PAGE = 30
 
 
 def render_qr_codes(payload: dict) -> str:
     qr_type = _normalize_qr_type(payload.get("qr_type"))
-    if qr_type == "transit":
-        template_path = TRANSFER_TEMPLATE_PATH
-        data_key = "__TRANSFER_PRINT_DATA__"
+    warehouse_id = payload.get("warehouse_id")
+    if is_manual_warehouse(warehouse_id):
+        template_path = QR_LABEL_MANUAL_TEMPLATE_PATH
+        data_key = "__QR_LABEL_MANUAL_PRINT_DATA__"
     elif qr_type == "pack":
         template_path = PACKING_TEMPLATE_PATH
         data_key = "__PACKING_PRINT_DATA__"
+    elif qr_type == "transit":
+        template_path = TRANSFER_TEMPLATE_PATH
+        data_key = "__TRANSFER_PRINT_DATA__"
     else:
         template_path = BACVIET_TEMPLATE_PATH
         data_key = "__BACVIET_PRINT_DATA__"

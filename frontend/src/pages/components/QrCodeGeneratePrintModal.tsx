@@ -1,7 +1,6 @@
 import { Button, Input, Modal, Select, Space } from "@/components/ui";
 import { SkuSearchSelect } from "@/components/shared/SkuSearchSelect";
 import {
-  QR_PRINT_LABELS_PER_PAGE,
   QR_PRINT_MAX_QUANTITY,
   QR_TYPE_OPTIONS,
   useQrCodePrint,
@@ -37,6 +36,8 @@ export default function QrCodeGeneratePrintModal({
     previewFrameRef,
     isPreviewStep,
     printTitle,
+    labelsPerPage,
+    isManualPrintWarehouse,
     handleConfirm,
     isPreviewPending,
   } = useQrCodePrint({
@@ -108,11 +109,13 @@ export default function QrCodeGeneratePrintModal({
               onChange={(value) => setQrType(value as QrPrintType)}
             />
             <p className="mt-1 text-xs text-slate-500">
-              {qrType === "transit"
-                ? "Dùng mẫu phiếu di chuyển (transit)."
-                : qrType === "pack"
-                  ? "Dùng mẫu phiếu đóng gói (pack)."
-                  : "Dùng mẫu phiếu sản phẩm Bacviet (item)."}
+              {isManualPrintWarehouse
+                ? "Kho manual: nhãn QR thuần 30×50mm (không có dòng ghi tay)."
+                : qrType === "transit"
+                  ? "Kho auto: phiếu di chuyển có dòng ghi tay."
+                  : qrType === "pack"
+                    ? "Kho auto: phiếu đóng gói Bacviet có dòng ghi tay."
+                    : "Kho auto: phiếu sản phẩm Bacviet có dòng ghi tay."}
             </p>
           </div>
 
@@ -127,8 +130,7 @@ export default function QrCodeGeneratePrintModal({
               placeholder="Nhập số phiếu cần in"
             />
             <p className="mt-1 text-xs text-slate-500">
-              {QR_PRINT_LABELS_PER_PAGE} phiếu / trang A4. Tối đa{" "}
-              {QR_PRINT_MAX_QUANTITY} phiếu / lần.
+              {labelsPerPage} nhãn / trang A4. Tối đa {QR_PRINT_MAX_QUANTITY} nhãn / lần.
             </p>
           </div>
         </div>

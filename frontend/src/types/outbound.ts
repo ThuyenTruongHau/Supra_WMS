@@ -169,3 +169,16 @@ export interface OutboundRobotTaskExecuteRequest {
   to_location_id: number;
   allocations: AllocationOutboundTaskExecute[];
 }
+
+export interface ExecuteQrManualRequest {
+  allocation_ids: number[];
+  qr_code: string;
+  to_location_id: number;
+}
+
+export interface ExecuteQrManualResponse {
+  allocation_ids: number[];
+  qr_code: string;
+  to_location_id: number;
+  message: string;
+}

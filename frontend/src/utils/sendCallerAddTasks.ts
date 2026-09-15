@@ -1,3 +1,4 @@
+import { SNAPSHOT_MODE } from "@/snapshot/snapshotConfig";
 import type {
   InboundCallerLineItem,
   InboundCallerResponse,
@@ -36,6 +37,10 @@ export function buildTaskAddPayloads(
 export async function sendCallerAddTasks(
   response: InboundCallerResponse,
 ): Promise<void> {
+  // Chỗ duy nhất trong app gọi fetch() trực tiếp. Bản demo không có
+  // orchestrator nên request sẽ treo cho tới khi timeout.
+  if (SNAPSHOT_MODE) return;
+
   const url =
     import.meta.env.VITE_TASK_ADD_URL?.trim() || "/task/add-task";
   const moveMode =

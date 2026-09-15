@@ -4,9 +4,10 @@ from typing import Optional
 from app.core.cache import cache_scan_keys, cache_set, get_redis
 
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func, or_
 from app.core.config import settings
+from app.core.warehouse_mode import is_manual_warehouse
 from app.modules.warehouse.lot_number_utils import format_lot_number_display
 
 from app.modules.warehouse.location_map.location_model import Location, WarehouseMap
@@ -1191,6 +1192,14 @@ def get_locations_by_logic(db: Session, warehouse_id: int, type: str) -> list[Lo
 LOCATION_QR_TEMPLATE_PATH = (
     Path(__file__).resolve().parents[3] / "static" / "templates" / "template_location.html"
 )
+LOCATION_MANUAL_90MM_TEMPLATE_PATH = (
+    Path(__file__).resolve().parents[3]
+    / "static"
+    / "templates"
+    / "template_location_manual_90mm.html"
+)
+LOCATION_QR_LABELS_PER_PAGE_AUTO = 2
+LOCATION_QR_LABELS_PER_PAGE_MANUAL = 6
 LOCATION_QR_LOGO_PATH = (
     Path(__file__).resolve().parents[3] / "static" / "templates" / "logo_vcc_plastic.jpg"
 )
@@ -1203,14 +1212,43 @@ def _vcc_logo_data_uri() -> str:
     return f"data:image/webp;base64,{encoded}"
 
 
+def _is_storage_zone(zone: Zone | None) -> bool:
+    if zone is None:
+        return False
+    storage_keys = set(settings.zone_storage)
+    return zone.code in storage_keys or zone.name in storage_keys
+
+
+def _use_manual_storage_90mm_label(
+    warehouse_id: int | None,
+    locations: list[Location],
+) -> bool:
+    if not is_manual_warehouse(warehouse_id) or not locations:
+        return False
+    return all(_is_storage_zone(location.zone) for location in locations)
+
+
+def _location_labels_per_page(payload: dict) -> int:
+    if payload.get("use_manual_storage_90mm"):
+        return LOCATION_QR_LABELS_PER_PAGE_MANUAL
+    return LOCATION_QR_LABELS_PER_PAGE_AUTO
+
+
 def render_location_qr_codes(payload: dict) -> str:
-    template = LOCATION_QR_TEMPLATE_PATH.read_text(encoding="utf-8")
+    if payload.get("use_manual_storage_90mm"):
+        template_path = LOCATION_MANUAL_90MM_TEMPLATE_PATH
+        data_key = "__LOCATION_MANUAL_90MM_PRINT_DATA__"
+    else:
+        template_path = LOCATION_QR_TEMPLATE_PATH
+        data_key = "__LOCATION_PRINT_DATA__"
+
+    template = template_path.read_text(encoding="utf-8")
     logo_uri = _vcc_logo_data_uri()
     if logo_uri:
         template = template.replace("__VCC_LOGO_DATA_URI__", logo_uri)
     script = (
         "<script>"
-        f"window.__LOCATION_PRINT_DATA__ = {json.dumps(payload, ensure_ascii=False)};"
+        f"window.{data_key} = {json.dumps(payload, ensure_ascii=False)};"
         "</script>\n"
     )
     return template.replace(
@@ -1220,12 +1258,32 @@ def render_location_qr_codes(payload: dict) -> str:
     )
 
 
-def generate_qr_location_code(db: Session, location_ids: list[int]) -> dict:
+def generate_qr_location_code(
+    db: Session,
+    location_ids: list[int],
+    *,
+    warehouse_id: int | None = None,
+) -> dict:
     if not location_ids:
         raise ValueError("location_ids must not be empty")
 
-    rows = db.query(Location).filter(Location.id.in_(location_ids)).all()
+    rows = (
+        db.query(Location)
+        .options(joinedload(Location.zone))
+        .filter(Location.id.in_(location_ids))
+        .all()
+    )
     location_by_id = {location.id: location for location in rows}
+    warehouse_ids = {location.warehouse_id for location in rows if location is not None}
+    if len(warehouse_ids) > 1:
+        raise ValueError("All locations must belong to the same warehouse")
+    resolved_warehouse_id = warehouse_id or next(iter(warehouse_ids), None)
+    if (
+        warehouse_id is not None
+        and warehouse_ids
+        and warehouse_id not in warehouse_ids
+    ):
+        raise ValueError("warehouse_id does not match selected locations")
 
     labels: list[dict] = []
     qr_ids: list[str] = []
@@ -1248,12 +1306,26 @@ def generate_qr_location_code(db: Session, location_ids: list[int]) -> dict:
         )
         qr_ids.append(qr_data)
 
-    payload = {"labels": labels}
+    ordered_locations = [
+        location_by_id[location_id]
+        for location_id in location_ids
+        if location_id in location_by_id
+    ]
+    use_manual_storage_90mm = _use_manual_storage_90mm_label(
+        resolved_warehouse_id,
+        ordered_locations,
+    )
+    payload = {
+        "labels": labels,
+        "warehouse_id": resolved_warehouse_id,
+        "use_manual_storage_90mm": use_manual_storage_90mm,
+    }
     quantity = len(labels)
+    labels_per_page = _location_labels_per_page(payload)
     return {
         "html": render_location_qr_codes(payload),
         "quantity": quantity,
-        "page_count": math.ceil(quantity / 2) if quantity else 0,
+        "page_count": math.ceil(quantity / labels_per_page) if quantity else 0,
         "qr_ids": qr_ids,
     }
 

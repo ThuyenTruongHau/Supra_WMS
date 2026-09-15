@@ -280,6 +280,10 @@ def list_locations_by_storage_area(db: DbSession, warehouse_id: int = Query(...)
 )
 def print_location_qr_codes(body: LocationQrPrintRequest, db: DbSession):
     try:
-        return location_service.generate_qr_location_code(db, body.location_ids)
+        return location_service.generate_qr_location_code(
+            db,
+            body.location_ids,
+            warehouse_id=body.warehouse_id,
+        )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
