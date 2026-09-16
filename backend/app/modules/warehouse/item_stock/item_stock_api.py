@@ -63,7 +63,6 @@ def create_item_stock(body: ItemStockCreate, db: DbSession):
 @router.get(
     "/item-stocks/split",
     response_model=ItemStockSplitListResponse,
-    dependencies=[Depends(require_permission("item_stock:read"))],
 )
 def get_stock_split(
     db: DbSession,

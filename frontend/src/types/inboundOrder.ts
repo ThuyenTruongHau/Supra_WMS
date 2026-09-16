@@ -255,6 +255,7 @@ export interface CacheForPackingUserRequest {
   packing_user?: string | null;
   /** Parent item qr_code_id; required when caching pack QR */
   relation?: number | null;
+  is_split?: boolean;
 }
 
 export interface AssignPackingToItemRequest {
@@ -268,6 +269,7 @@ export interface AssignPackingToItemRequest {
   manufacturing_user?: string;
   qc_user?: string | null;
   packing_user?: string | null;
+  is_split?: boolean;
 }
 
 export interface PackingUserPendingStocksResponse {

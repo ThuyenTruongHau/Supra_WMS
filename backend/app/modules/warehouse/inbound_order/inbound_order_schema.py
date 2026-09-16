@@ -156,6 +156,10 @@ class CacheForPackingUserRequest(BaseModel):
         gt=0,
         description="Parent item qr_code_id when linking pack to cached item",
     )
+    is_split: Optional[bool] = Field(
+        None,
+        description="When true, cache stock as Lấy lẻ (split) for inbound detail",
+    )
 
 
 class AssignPackingToItemRequest(BaseModel):
@@ -174,6 +178,10 @@ class AssignPackingToItemRequest(BaseModel):
     manufacturing_user: Optional[str] = Field(None, max_length=100)
     qc_user: Optional[str] = Field(None, max_length=100)
     packing_user: Optional[str] = Field(None, max_length=100)
+    is_split: Optional[bool] = Field(
+        None,
+        description="When true, cache stock as Lấy lẻ (split) for inbound detail",
+    )
 
     @model_validator(mode="after")
     def require_fields_when_assign(self) -> "AssignPackingToItemRequest":

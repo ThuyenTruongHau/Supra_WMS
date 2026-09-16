@@ -369,6 +369,7 @@ def assign_packing_to_item(
             manufacturing_user=body.manufacturing_user,
             qc_user=body.qc_user,
             packing_user=body.packing_user,
+            is_split=body.is_split,
         )
     except ValueError as e:
         msg = str(e)
@@ -398,6 +399,7 @@ def cache_for_packing_user(
             qc_user=body.qc_user,
             packing_user=body.packing_user,
             relation=body.relation,
+            is_split=body.is_split,
         )
     except ValueError as e:
         msg = str(e)

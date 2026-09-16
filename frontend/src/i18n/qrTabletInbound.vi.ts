@@ -86,7 +86,7 @@ export const QR_TABLET_INBOUND_VI = {
   staffNotFound: "Không tìm thấy nhân viên",
   inboundCompleteWithTasks: "Hoàn tất đơn nhập và đã gửi task",
   inboundComplete: "Hoàn tất đơn nhập",
-  flowPackerModeLabel: "Chế độ người đóng gói",
+  flowPackerModeLabel: "Người đóng gói",
   flowToggleAria: "Bật tắt chế độ người đóng gói",
   packerLocationImportTitle: "Nhập kho từ vị trí",
   packerLocationImportHint:
@@ -117,6 +117,25 @@ export const QR_TABLET_INBOUND_VI = {
   splitStockExportButton: "Xuất hàng lẻ",
   splitStockScanBlocked:
     "Hoàn tất thao tác hàng lẻ trước khi quét QR tiếp theo.",
+  feBatchCollectToggle: "Quét liên tiếp",
+  feBatchToggleAria: "Bật tắt quét liên tiếp",
+  feBatchCollectHint:
+    "Chế độ quét liên tiếp. Hãy nhập form cuối đến gán all",
+  feBatchProductSection: "Phiếu sản phẩm (item)",
+  feBatchPackSection: "Phiếu đóng gói (pack)",
+  feBatchAdded: "Đã thêm {code} ({count} phiếu)",
+  feBatchDuplicate: "QR {code} đã có trong danh sách",
+  feBatchTransitRejected: "Không gom QR di chuyển (transit)",
+  feBatchUnsupportedRejected: "Loại QR không hỗ trợ gom",
+  feBatchLocationRejected: "Chế độ gom QR — chỉ quét phiếu sản phẩm hoặc đóng gói",
+  feBatchSubmitHint:
+    "Sẽ gửi {total} phiếu (gom {cachedCount} + phiếu hiện tại nếu có)",
+  feBatchSendProgress: "Đang gửi {current}/{total}...",
+  feBatchSendComplete: "Đã gửi xong {count} phiếu",
+  feBatchSendPartial:
+    "Gửi xong {success}/{total}. {failed} phiếu lỗi: {details}",
+  feBatchClearAll: "Xóa tất cả",
+  feBatchRemoveEntry: "Xóa",
 } as const;
 
 export type QrTabletInboundMessageKey = keyof typeof QR_TABLET_INBOUND_VI;
@@ -200,4 +219,52 @@ export function formatSplitStockSummary(
   return QR_TABLET_INBOUND_VI.splitStockSummary
     .replace("{count}", String(count))
     .replace("{quantity}", String(quantity));
+}
+
+export function formatFeBatchAdded(code: string, count: number): string {
+  return QR_TABLET_INBOUND_VI.feBatchAdded
+    .replace("{code}", code)
+    .replace("{count}", String(count));
+}
+
+export function formatFeBatchDuplicate(code: string): string {
+  return QR_TABLET_INBOUND_VI.feBatchDuplicate.replace("{code}", code);
+}
+
+export function formatFeBatchSubmitHint(
+  total: number,
+  cachedCount: number,
+): string {
+  return QR_TABLET_INBOUND_VI.feBatchSubmitHint
+    .replace("{total}", String(total))
+    .replace("{cachedCount}", String(cachedCount));
+}
+
+export function formatFeBatchSendProgress(
+  current: number,
+  total: number,
+): string {
+  return QR_TABLET_INBOUND_VI.feBatchSendProgress
+    .replace("{current}", String(current))
+    .replace("{total}", String(total));
+}
+
+export function formatFeBatchSendComplete(count: number): string {
+  return QR_TABLET_INBOUND_VI.feBatchSendComplete.replace(
+    "{count}",
+    String(count),
+  );
+}
+
+export function formatFeBatchSendPartial(
+  success: number,
+  total: number,
+  failed: number,
+  details: string,
+): string {
+  return QR_TABLET_INBOUND_VI.feBatchSendPartial
+    .replace("{success}", String(success))
+    .replace("{total}", String(total))
+    .replace("{failed}", String(failed))
+    .replace("{details}", details);
 }

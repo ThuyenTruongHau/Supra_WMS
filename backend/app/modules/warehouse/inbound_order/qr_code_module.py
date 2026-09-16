@@ -74,6 +74,18 @@ def _split_details_from_flag(is_split: Optional[bool]) -> Optional[dict]:
     return None
 
 
+def _apply_split_flag_to_cache_payload(
+    cache_payload: dict,
+    is_split: Optional[bool],
+) -> None:
+    split_details = _split_details_from_flag(is_split)
+    if split_details:
+        cache_payload["details"] = split_details
+        cache_payload["is_split"] = True
+    else:
+        cache_payload["is_split"] = False
+
+
 def _is_split_from_cached(cached: dict) -> bool:
     details = cached.get("details") or {}
     if isinstance(details, dict) and _is_split_stock_type(details.get("type")):
@@ -369,6 +381,7 @@ def assign_for_packing_user(
     qc_user: Optional[str] = None,
     packing_user: Optional[str] = None,
     relation: Optional[int] = None,
+    is_split: Optional[bool] = None,
 ) -> dict:
     qr_record = get_qr_code_by_code(db, qr_code)
     logger.info(f"qr_record: {qr_code} --- {qr_record}")
@@ -449,8 +462,7 @@ def assign_for_packing_user(
     if needs_qc_packing and resolved_packing:
         _check_pending_item_for_packing_user(resolved_packing, qr_record.item_id)
     _clear_previous_qr_pending(qr_record.id)
-
-    # logger.info(f"Caching pending for QR {qr_record.id} with payload: {cache_payload}")
+    _apply_split_flag_to_cache_payload(cache_payload, is_split)
 
     cache_set(
         f"inbound:pending:qr:{qr_record.id}",
@@ -605,6 +617,7 @@ def assign_packing_to_item(
     manufacturing_user: Optional[str] = None,
     qc_user: Optional[str] = None,
     packing_user: Optional[str] = None,
+    is_split: Optional[bool] = None,
 ) -> dict:
     qr_record = get_qr_code_by_code(db, qr_code)
     logger.info(f"----qr_record: {qr_record}----")
@@ -686,6 +699,7 @@ def assign_packing_to_item(
     if needs_qc_packing:
         cache_payload["qc_user"] = resolved_qc
         cache_payload["packing_user"] = resolved_packing
+    _apply_split_flag_to_cache_payload(cache_payload, is_split)
 
     cache_set(
         f"inbound:assign:item:{qr_record.id}",
@@ -840,12 +854,7 @@ def assign_or_get_item_stock(
         cache_payload["qc_user"] = resolved_qc
         cache_payload["packing_user"] = resolved_packing
 
-    split_details = _split_details_from_flag(is_split)
-    if split_details:
-        cache_payload["details"] = split_details
-        cache_payload["is_split"] = True
-    else:
-        cache_payload["is_split"] = False
+    _apply_split_flag_to_cache_payload(cache_payload, is_split)
 
     cache_set(
         f"inbound:assign:location:{location.id}:{qr_record.id}",
