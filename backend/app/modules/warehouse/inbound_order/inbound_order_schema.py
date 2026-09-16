@@ -211,6 +211,8 @@ class AssignOrGetItemStockResponse(BaseModel):
     location_code: Optional[str] = None
     warehouse_id: Optional[int] = None
     order_code: Optional[str] = None
+    success: Optional[bool] = None
+    message: Optional[str] = None
 
 
 class AssignedItemStockResponse(BaseModel):

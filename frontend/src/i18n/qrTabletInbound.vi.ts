@@ -7,6 +7,8 @@ export const QR_TABLET_INBOUND_VI = {
   pageSubtitle:
     "Quét mã sản phẩm để gán vị trí, hoặc quét vị trí để tạo đơn nhập.",
   startScan: "Bắt đầu quét mã",
+  assignFinishedProductScan: "Quét phiếu thành phẩm",
+  assignPackingSlipScan: "Quét phiếu đóng gói",
   importQrTestNormal: "Import ảnh QR (quét thường)",
   importQrTestPacking: "Import ảnh QR (đóng gói)",
   startPackingScan: "Quét QR đóng gói",
@@ -24,6 +26,7 @@ export const QR_TABLET_INBOUND_VI = {
   labelProduct: "Sản phẩm",
   labelQuantity: "Số lượng",
   labelUnit: "Đơn vị",
+  labelConvertedQuantity: "Quy đổi",
   labelCavity: "Số cavity",
   labelLot: "Số lô",
   labelManufacturing: "Người sản xuất",
@@ -102,6 +105,18 @@ export const QR_TABLET_INBOUND_VI = {
   splitProductLabel: "Hàng lẻ",
   splitProductHint:
     "Đánh dấu QR này là hàng lẻ; số lượng trên form sẽ được ghi vào detail.split khi tạo đơn.",
+  splitStockPreviewTitle: "Có hàng lẻ trong kho",
+  splitStockPreviewHint:
+    "Sản phẩm này đang có hàng lẻ khả dụng. Bạn có thể tiếp tục gán QR hoặc tạo đơn xuất hàng lẻ.",
+  splitStockSummary: "{count} dòng — tổng {quantity}",
+  splitStockColumnLot: "Số lô",
+  splitStockColumnQuantity: "Số lượng",
+  splitStockColumnLocation: "Vị trí",
+  splitStockColumnCreatedAt: "Ngày tạo",
+  splitStockCloseButton: "Đóng",
+  splitStockExportButton: "Xuất hàng lẻ",
+  splitStockScanBlocked:
+    "Hoàn tất thao tác hàng lẻ trước khi quét QR tiếp theo.",
 } as const;
 
 export type QrTabletInboundMessageKey = keyof typeof QR_TABLET_INBOUND_VI;
@@ -176,4 +191,13 @@ export function formatAssignAggregatedHint(count: number): string {
     "{count}",
     String(count),
   );
+}
+
+export function formatSplitStockSummary(
+  count: number,
+  quantity: number,
+): string {
+  return QR_TABLET_INBOUND_VI.splitStockSummary
+    .replace("{count}", String(count))
+    .replace("{quantity}", String(quantity));
 }

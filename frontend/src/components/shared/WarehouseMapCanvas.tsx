@@ -32,6 +32,7 @@ import WarehouseMapLegend from './WarehouseMapLegend';
 import WarehouseMapZoomControls from './WarehouseMapZoomControls';
 import { useAppStore } from '@/store/useAppStore';
 import { useAuthStore } from '@/store/useAuthStore';
+import { isAdminRole, resolveRoles } from '@/utils/authSession';
 import { useActiveWarehouseMap, useFullLocations, useDownloadWarehouseMap } from '@/hooks/useWarehouseMap';
 import { message } from '@/components/ui';
 import type { MapData, NodeInfo, FullLocationDetail } from '@/types/warehouseMap';
@@ -91,12 +92,10 @@ const WarehouseMapCanvas: React.FC<WarehouseMapCanvasProps> = ({
   // ─── Zustand stores ────────────────────────────────────────────────────────
   const selectedWarehouseId = useAppStore((s) => s.selectedWarehouseId);
   const resolvedWarehouseId = warehouseIdProp ?? selectedWarehouseId;
-  const roleCanonical = useAuthStore((s) => s.role_canonical);
+  const access = useAuthStore((s) => s.access);
+  const roles = useAuthStore((s) => s.roles);
   const role = useAuthStore((s) => s.role);
-  const isAdmin =
-    roleCanonical === 'A001' ||
-    roleCanonical?.toLowerCase() === 'admin' ||
-    role?.toLowerCase() === 'admin';
+  const isAdmin = access?.is_admin ?? isAdminRole(resolveRoles(roles, role));
 
   // ─── React Query hooks ─────────────────────────────────────────────────────
   const {

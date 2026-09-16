@@ -371,6 +371,7 @@ def assign_for_packing_user(
     relation: Optional[int] = None,
 ) -> dict:
     qr_record = get_qr_code_by_code(db, qr_code)
+    logger.info(f"qr_record: {qr_code} --- {qr_record}")
     if qr_record is None:
         raise ValueError("Invalid QR code")
     if not _qr_type_needs_qc_packing(qr_record.qr_type):
@@ -606,6 +607,7 @@ def assign_packing_to_item(
     packing_user: Optional[str] = None,
 ) -> dict:
     qr_record = get_qr_code_by_code(db, qr_code)
+    logger.info(f"----qr_record: {qr_record}----")
 
     if qr_record is None:
         raise ValueError("Invalid QR code")
@@ -1044,6 +1046,8 @@ def assign_stock_to_location(
     if not qr_code:
         raise ValueError("qr_code is required")
 
+    logger.info(f"---{qr_code}---")
+
     qr_record = db.query(QR_Code).filter(QR_Code.code == qr_code).first()
     location = _resolve_location(db, raw, warehouse_id)
 
@@ -1131,7 +1135,7 @@ def assign_stock_to_location(
         item_stock = qr_record.item_stock
         detail_type = "change_location"
 
-    inbound = _create_inbound_order_qr_manual(
+    created = _create_inbound_order_qr_manual(
         db,
         item_stock,
         user_id=user_id,
@@ -1143,7 +1147,8 @@ def assign_stock_to_location(
     db.commit()
     return {
         "action": AssignOrGetItemStockAction.CREATED,
-        "order_code": inbound.order_code,
+        "success": created["success"],
+        "message": created["message"],
     }
 
 
@@ -1158,52 +1163,74 @@ def _create_inbound_order_qr_manual(
     note: Optional[str] = None,
     detail_type: Optional[str] = None,
     to_location: Optional[Location] = None,
-) -> InboundOrder:
+) -> dict:
     if not item_stock.id:
         raise ValueError("ItemStock must be flushed before wrapping inbound order")
     if not item_stock.location_id:
         raise ValueError("ItemStock requires destination location_id")
-    if item_stock.inbound_order_detail_id:
-        raise ValueError("ItemStock already linked to an inbound detail")
     location = item_stock.location  # hoặc query Location
     if not location or not location.warehouse_id:
         raise ValueError("Location / warehouse not found")
     if not item_stock.lot_number_from or not item_stock.lot_number_to:
         raise ValueError("ItemStock requires lot_number_from and lot_number_to")
     
-    inbound_order = InboundOrder(
-        warehouse_id=location.warehouse_id,
-        order_code=order_code or f"INB-M-{uuid4().hex[:8].upper()}",
-        note=note,
-        created_by_id=user_id,
-        details={},
-    )
-    db.add(inbound_order)
-    db.flush()
+    from_location_id = item_stock.location_id
+    
+    success_message: str
+
     if detail_type == "change_location":
         if not to_location:
             raise ValueError("To location is required for change location")
         to_location_id = to_location.id
+        location_label = to_location.location_name or to_location.location_code
+        success_message = f"Đã chuyển hàng sang vị trí {location_label}"
     else:
+        inbound_order = InboundOrder(
+            warehouse_id=location.warehouse_id,
+            order_code=order_code or f"INB-M-{uuid4().hex[:8].upper()}",
+            note=note,
+            created_by_id=user_id,
+            details={},
+        )
+        db.add(inbound_order)
+        db.flush()
         to_location_id = item_stock.location_id
 
-    from_location_id = item_stock.location_id
+        detail_status = "completed"
+        detail = InboundOrderDetail(
+            inbound_order_id=inbound_order.id,
+            from_location_id=from_location_id,
+            to_location_id=to_location_id,
+            detail_type=detail_type,
+            status=detail_status,
+            details={},
+        )
+        db.add(detail)
+        db.flush()
+        item_stock.inbound_order_detail_id = detail.id
 
-    detail_status = "completed"
-    detail = InboundOrderDetail(
-        inbound_order_id=inbound_order.id,
-        from_location_id=from_location_id,
-        to_location_id=to_location_id,
-        detail_type=detail_type,
-        status=detail_status,
-        details={},
-    )
-    db.add(detail)
-    db.flush()
+        allocation = InboundOrderAllocation(
+            inbound_order_detail_id=detail.id,
+            item_stock_id=item_stock.id,
+            unit_id=allocation_unit_id,
+            quantity=allocation_quantity,
+        )
+        db.add(allocation)
+        db.flush()
 
-    item_stock.inbound_order_detail_id = detail.id
+        db.add(History(
+            inbound_order_id=inbound_order.id,
+            old_status="none",
+            new_status=detail_status,
+            description=f"{detail_type} inbound created from QR scan",
+            details={"item_stock_id": item_stock.id, "from_location_id": from_location_id, "to_location_id": to_location_id},
+            created_by_id=user_id,
+        ))
+        db.flush()
+        success_message = f"Đã tạo đơn nhập {inbound_order.order_code} thành công"
+
     item_stock.location_id = to_location_id
-    item_stock.status = "available"   
+    item_stock.status = "available"
 
     db.add(Transaction(
         from_location_id=from_location_id,
@@ -1213,27 +1240,13 @@ def _create_inbound_order_qr_manual(
         quantity=int(item_stock.quantity),
         created_by_id=user_id,
     ))
-
-
-    allocation = InboundOrderAllocation(
-        inbound_order_detail_id=detail.id,
-        item_stock_id=item_stock.id,
-        unit_id=allocation_unit_id,
-        quantity=allocation_quantity,
-    )
-    db.add(allocation)
     db.flush()
 
-    db.add(History(
-        inbound_order_id=inbound_order.id,
-        old_status="none",
-        new_status=detail_status,
-        description=f"{detail_type} inbound created from QR scan",
-        details={"item_stock_id": item_stock.id, "from_location_id": from_location_id, "to_location_id": to_location_id},
-        created_by_id=user_id,
-    ))
-    db.flush()
-    return inbound_order
+    return {
+        "success": True,
+        "message": success_message,
+    }
+
 
 # def outbound_stock_taking_manual(
 #     db: Session,

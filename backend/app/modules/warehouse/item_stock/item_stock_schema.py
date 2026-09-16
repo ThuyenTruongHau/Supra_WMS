@@ -103,3 +103,8 @@ class ItemStockListResponse(BaseModel):
     total: int
     page: int
     page_size: int
+
+
+class ItemStockSplitListResponse(BaseModel):
+    items: list[ItemStockResponse]
+    total: int

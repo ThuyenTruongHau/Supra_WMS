@@ -46,6 +46,7 @@ import {
 import { formatQuantity } from "@/utils/formatQuantity";
 import dayjs from "dayjs";
 import KeyValueDetailsEditor from "@/components/shared/KeyValueDetailsEditor";
+import { RequiredFieldLabel } from "@/components/shared/RequiredFieldLabel";
 import {
   detailsToEntries,
   entriesToDetails,
@@ -808,9 +809,12 @@ export default function CreateImportModal({
           className="p-3 bg-white border border-stripe-hairline rounded-md"
         >
           <div className="mb-2 flex items-center justify-between">
-            <span className="text-xs font-medium text-slate-400">
+            <RequiredFieldLabel
+              required
+              className="mb-0 text-xs font-medium text-slate-400"
+            >
               Mã sản phẩm {itemIndex + 1}
-            </span>
+            </RequiredFieldLabel>
             {group.items.length > 1 && (
               <Button
                 variant="dangerText"
@@ -884,32 +888,39 @@ export default function CreateImportModal({
               )}
             </div>
             <div className="grid grid-cols-3 gap-3">
-              <Input
-                type="number"
-                min={0}
-                prefix={<span className="text-xs text-slate-400">SL:</span>}
-                value={item.quantity > 0 ? item.quantity : ""}
-                placeholder="SL"
-                onChange={(e) => {
-                  const raw = e.target.value;
-                  if (raw === "") {
-                    updateItem(group.key, item.key, { quantity: 0 });
-                    return;
-                  }
-                  const quantity = Number(raw);
-                  if (Number.isNaN(quantity)) return;
-                  updateItem(group.key, item.key, { quantity });
-                  if (item.item_id && item.unit_id && quantity > 0) {
-                    void refreshConvertedQuantity(
-                      group.key,
-                      item.key,
-                      item.item_id,
-                      item.unit_id,
-                      quantity,
-                    );
-                  }
-                }}
-              />
+              <div>
+                <RequiredFieldLabel
+                  required
+                  className="mb-1 text-xs font-medium text-slate-500"
+                >
+                  Số lượng
+                </RequiredFieldLabel>
+                <Input
+                  type="number"
+                  min={0}
+                  value={item.quantity > 0 ? item.quantity : ""}
+                  placeholder="SL"
+                  onChange={(e) => {
+                    const raw = e.target.value;
+                    if (raw === "") {
+                      updateItem(group.key, item.key, { quantity: 0 });
+                      return;
+                    }
+                    const quantity = Number(raw);
+                    if (Number.isNaN(quantity)) return;
+                    updateItem(group.key, item.key, { quantity });
+                    if (item.item_id && item.unit_id && quantity > 0) {
+                      void refreshConvertedQuantity(
+                        group.key,
+                        item.key,
+                        item.item_id,
+                        item.unit_id,
+                        quantity,
+                      );
+                    }
+                  }}
+                />
+              </div>
               <UnitSearchSelect
                 placeholder="Gõ 1–2 ký tự để gợi ý đơn vị"
                 value={item.unit_id}
@@ -966,15 +977,23 @@ export default function CreateImportModal({
               />
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <Input
-                placeholder="Số lô * (vd: 09-10/04/26)"
-                value={item.lot_number || ""}
-                onChange={(e) =>
-                  updateItem(group.key, item.key, {
-                    lot_number: e.target.value,
-                  })
-                }
-              />
+              <div>
+                <RequiredFieldLabel
+                  required={lotNumberValidation?.required !== false}
+                  className="mb-1 text-xs font-medium text-slate-500"
+                >
+                  Số lô
+                </RequiredFieldLabel>
+                <Input
+                  placeholder="vd: 09-10/04/26"
+                  value={item.lot_number || ""}
+                  onChange={(e) =>
+                    updateItem(group.key, item.key, {
+                      lot_number: e.target.value,
+                    })
+                  }
+                />
+              </div>
               <DatePicker
                 className="w-full"
                 placeholder="Hạn sử dụng"

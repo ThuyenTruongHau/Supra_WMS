@@ -5,17 +5,24 @@ from typing import Optional
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.modules.warehouse.item.item_model import Item
-from app.modules.warehouse.item_stock.item_stock_model import ItemStock
+from app.modules.warehouse.item_stock.item_stock_model import (
+    ItemStock,
+    countable_stock_level_criterion,
+    positive_stock_quantity_criterion,
+)
 from app.modules.warehouse.item_stock.item_stock_schema import (
     ItemStockCreate,
     ItemStockListResponse,
     ItemStockResponse,
+    ItemStockSplitListResponse,
     ItemStockUpdate,
 )
 from app.modules.warehouse.location_map.location_model import Location
 from app.modules.warehouse.transaction_history.history_model import Transaction
 from app.modules.warehouse.unit.unit_model import Unit
+from app.modules.warehouse.warehouse_zone.warehouse_model import Zone
 
 
 def _stock_query(db: Session, *, include_inactive: bool = False):
@@ -176,3 +183,24 @@ def delete_item_stock(db: Session, stock_id: int) -> bool:
     stock.is_active = False
     db.commit()
     return True
+
+def get_stock_split(db: Session, item_id: int) -> ItemStockSplitListResponse:
+    stocks = (
+        _stock_query(db)
+        .join(Location, Location.id == ItemStock.location_id)
+        .join(Zone, Zone.id == Location.zone_id)
+        .filter(
+            ItemStock.item_id == item_id,
+            ItemStock.status == "split",
+            Zone.code.in_(settings.zone_storage),
+            ItemStock.available_quantity > 0,
+            positive_stock_quantity_criterion(),
+            countable_stock_level_criterion(),
+        )
+        .order_by(ItemStock.created_at.asc(), ItemStock.id.asc())
+        .all()
+    )
+    return ItemStockSplitListResponse(
+        items=[ItemStockResponse.model_validate(s) for s in stocks],
+        total=len(stocks),
+    )

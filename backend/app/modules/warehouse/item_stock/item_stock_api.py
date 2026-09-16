@@ -12,6 +12,7 @@ from app.modules.warehouse.item_stock.item_stock_schema import (
     ItemStockCreate,
     ItemStockListResponse,
     ItemStockResponse,
+    ItemStockSplitListResponse,
     ItemStockUpdate,
 )
 
@@ -57,6 +58,18 @@ def create_item_stock(body: ItemStockCreate, db: DbSession):
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
     return ItemStockResponse.model_validate(stock)
+
+
+@router.get(
+    "/item-stocks/split",
+    response_model=ItemStockSplitListResponse,
+    dependencies=[Depends(require_permission("item_stock:read"))],
+)
+def get_stock_split(
+    db: DbSession,
+    item_id: int = Query(..., gt=0),
+):
+    return item_stock_service.get_stock_split(db, item_id)
 
 
 @router.get(

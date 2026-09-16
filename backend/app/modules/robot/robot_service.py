@@ -71,9 +71,11 @@ class TaskStatusService:
             .all()
         )
         for stock in stocks:
+            logger.info(f"Current status: {stock.status}")
             stock.location_id = detail.to_location_id
             if stock.status != "split":
                 stock.status = "available"
+            logger.info(f"New status: {stock.status}")
 
             db.add(Transaction(
                     from_location_id=detail.from_location_id,

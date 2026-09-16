@@ -7,7 +7,7 @@ from collections import defaultdict
 
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload, selectinload
-from sqlalchemy import case, func, exists, select, and_
+from sqlalchemy import case, func, exists, select, and_, or_
 
 from app.core.config import settings
 from app.modules.warehouse.item.item_model import Item
@@ -1376,22 +1376,46 @@ def confirm_no_qr(db: Session, order_id: str) -> dict[str, int] | None:
 
     return _settle_outbound_stock(db, allocations)
 
+
+def _resolve_location_by_scan_code(db: Session, code: str) -> Location | None:
+    normalized = (code or "").strip()
+    if not normalized:
+        return None
+    return (
+        db.query(Location)
+        .filter(
+            or_(
+                Location.location_code == normalized,
+                Location.bin_code == normalized,
+                Location.location_name == normalized,
+            )
+        )
+        .order_by(Location.id)
+        .first()
+    )
+
+
 def execute_qr_manual(
     db: Session,
     allocation_ids: list[int],
     qr_code: str,
-    to_location_id: int,
+    to_location_id: Optional[int] = None,
 ) -> dict:
     if not qr_code:
         raise ValueError("QR code is required")
 
+    logger.info(f"---{qr_code}---")
+
     qr_record = db.query(QR_Code).filter(QR_Code.code == qr_code).first()
+    resolved_to_location_id = to_location_id
+
     if not qr_record:
-        location = db.query(Location).filter(Location.location_code == qr_code).first()
+        location = _resolve_location_by_scan_code(db, qr_code)
         if not location:
             raise ValueError("QR code is invalid")
 
-        if location.id != to_location_id:
+        resolved_to_location_id = location.id
+        if to_location_id is not None and to_location_id != resolved_to_location_id:
             raise ValueError("Location code is not in the order")
 
         for allocation_id in allocation_ids:
@@ -1410,21 +1434,30 @@ def execute_qr_manual(
                 raise ValueError("Allocation not found")
             if allocation.status != "pre_completed":
                 raise ValueError("Allocation is not pre_completed")
+            if (
+                allocation.to_location_id is not None
+                and allocation.to_location_id != resolved_to_location_id
+            ):
+                raise ValueError("Location code is not in the order")
 
             stock = allocation.item_stock
             if not stock:
                 raise ValueError("Item stock not found")
+            if stock.quantity < allocation.quantity:
+                raise ValueError(
+                    f"Stock quantity is not enough: {stock.quantity} < {allocation.quantity}"
+                )
 
-            allocation.to_location_id = to_location_id
-            if stock.location_id == to_location_id:
-                allocation.status = "completed"
-                stock.quantity -= allocation.quantity
+            allocation.to_location_id = resolved_to_location_id
+            stock.location_id = resolved_to_location_id
+            allocation.status = "completed"
+            stock.quantity -= int(allocation.quantity)
             db.flush()
 
             db.add(
                 Transaction(
                     from_location_id=allocation.from_location_id,
-                    to_location_id=to_location_id,
+                    to_location_id=resolved_to_location_id,
                     transaction_type="outbound",
                     item_stock_id=allocation.item_stock_id,
                     quantity=int(allocation.quantity),
@@ -1436,9 +1469,6 @@ def execute_qr_manual(
         stock = qr_record.item_stock
         if not stock:
             raise ValueError("Item stock not found for QR code")
-
-        stock.location_id = to_location_id
-        db.flush()
 
         for allocation_id in allocation_ids:
             allocation = (
@@ -1455,7 +1485,6 @@ def execute_qr_manual(
                 raise ValueError("Allocation is not in the order")
 
             allocation.status = "pre_completed"
-            allocation.item_stock.location_id = to_location_id
             db.flush()
 
     try:
@@ -1467,5 +1496,5 @@ def execute_qr_manual(
     return {
         "allocation_ids": allocation_ids,
         "qr_code": qr_code,
-        "to_location_id": to_location_id,
+        "to_location_id": resolved_to_location_id,
     }

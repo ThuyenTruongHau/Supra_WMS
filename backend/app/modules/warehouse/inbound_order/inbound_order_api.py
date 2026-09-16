@@ -292,12 +292,11 @@ def _assign_or_get_item_stocks(db: Session, body: AssignOrGetItemStockRequest):
 @router.post(
     "/inbound-orders/manual/scan",
     response_model=AssignOrGetItemStockResponse,
-    dependencies=[Depends(_INBOUND_CREATE)],
 )
 def manual_inbound_scan(
     body: AssignOrGetItemStockRequest,
     db: DbSession,
-    current_user: Annotated[User, Depends(_INBOUND_CREATE)],
+    current_user: Annotated[User, Depends(get_dev_admin_user)],
 ):
     try:
         result = qr_code_module.assign_stock_to_location(

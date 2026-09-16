@@ -320,6 +320,8 @@ export interface AssignOrGetItemStockResponse {
   location_code?: string | null;
   warehouse_id?: number | null;
   order_code?: string | null;
+  success?: boolean | null;
+  message?: string | null;
 }
 
 export const isAssignOrGetPreview = (
@@ -361,8 +363,12 @@ export const isManualInboundCreated = (
   value: AssignOrGetItemStockResponse,
 ): value is AssignOrGetItemStockResponse & {
   action: "created";
-  order_code: string;
-} => value.action === "created" && !!value.order_code;
+  success: true;
+  message: string;
+} =>
+  value.action === "created" &&
+  value.success === true &&
+  !!value.message?.trim();
 
 export interface InboundCallerResponse {
   order: InboundOrder;

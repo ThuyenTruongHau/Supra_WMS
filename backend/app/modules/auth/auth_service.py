@@ -14,6 +14,7 @@ from app.core.security import (
     get_password_hash,
     verify_password,
 )
+from app.modules.auth.auth_access import build_user_access_summary, user_to_response
 from app.modules.auth.auth_model import User, Role, Permission
 from app.modules.auth.auth_schema import (
     MODULE_NAMES,
@@ -206,7 +207,7 @@ def login(db: Session, body: LoginRequest) -> LoginResponse:
     if not user:
         raise ValueError("Invalid username or password")
     return LoginResponse(
-        user=UserResponse.model_validate(user),
+        user=user_to_response(db, user),
         tokens=TokenResponse(
             access_token=create_access_token({"sub": user.username}),
             refresh_token=create_refresh_token({"sub": user.username}),
@@ -257,6 +258,7 @@ def sign_up(db: Session, user_in: UserCreate) -> UserSignupResponse:
         email=new_user.email,
         roles=new_user.roles,
         warehouses=new_user.warehouses,
+        access=build_user_access_summary(db, new_user),
         is_active=new_user.is_active,
         tokens=tokens,
     )
@@ -302,7 +304,7 @@ def list_users(db: Session, page: int = 1, page_size: int = 20) -> UserListRespo
         .all()
     )
     return UserListResponse(
-        items=[UserResponse.model_validate(u) for u in users],
+        items=[user_to_response(db, u) for u in users],
         total=total,
         page=page,
         page_size=page_size,

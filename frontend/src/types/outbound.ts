@@ -173,12 +173,12 @@ export interface OutboundRobotTaskExecuteRequest {
 export interface ExecuteQrManualRequest {
   allocation_ids: number[];
   qr_code: string;
-  to_location_id: number;
+  to_location_id?: number;
 }
 
 export interface ExecuteQrManualResponse {
   allocation_ids: number[];
   qr_code: string;
-  to_location_id: number;
+  to_location_id?: number | null;
   message: string;
 }

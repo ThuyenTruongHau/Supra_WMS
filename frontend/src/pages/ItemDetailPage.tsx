@@ -140,7 +140,7 @@ function formatDate(date?: string | null) {
 }
 
 const TABLE_CLASS =
-  "[&_.ant-table-thead_th]:!bg-slate-50 [&_.ant-table-thead_th]:!text-slate-600 [&_.ant-table-thead_th]:!font-semibold [&_.ant-table-thead_th]:!text-base [&_.ant-table-tbody_td]:!text-base [&_.ant-table-thead_th]:!py-3 [&_.ant-table-tbody_td]:!py-3 [&_.ant-table-row]:hover:bg-slate-50/50";
+  "[&_.ant-table-thead_th]:!bg-slate-50 [&_.ant-table-thead_th]:!text-slate-600 [&_.ant-table-thead_th]:!font-semibold [&_.ant-table-thead_th]:!text-base [&_.ant-table-tbody_td]:!text-base [&_.ant-table-thead_th]:!py-3 [&_.ant-table-tbody_td]:!py-3 [&_.ant-table-row]:hover:bg-slate-50/50 [&_.ant-table-cell]:!text-center";
 
 const locationColumns: ColumnsType<ItemStock> = [
   {
@@ -154,7 +154,7 @@ const locationColumns: ColumnsType<ItemStock> = [
     title: "Số lượng",
     dataIndex: "quantity",
     key: "quantity",
-    align: "right",
+    align: "center",
     render: (qty: number | string) => (
       <span className="font-semibold text-brand-dark">
         {formatQuantity(qty)}
@@ -165,7 +165,7 @@ const locationColumns: ColumnsType<ItemStock> = [
     title: "Số Lot",
     dataIndex: "lot_number",
     key: "lot_number",
-    align: "right",
+    align: "center",
     render: (lotNumber: string | null) => (
       <span className="font-semibold text-brand-dark">{lotNumber || "—"}</span>
     ),
@@ -174,7 +174,7 @@ const locationColumns: ColumnsType<ItemStock> = [
     title: "Hạn sử dụng",
     dataIndex: "expiry_date",
     key: "expiry_date",
-    align: "right",
+    align: "center",
     render: (date: string | null) => (
       <span className="font-semibold text-brand-dark">{formatDate(date)}</span>
     ),

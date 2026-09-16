@@ -29,6 +29,7 @@ import {
 import { formatQuantity } from "@/utils/formatQuantity";
 import dayjs from "dayjs";
 import KeyValueDetailsEditor from "@/components/shared/KeyValueDetailsEditor";
+import { RequiredFieldLabel } from "@/components/shared/RequiredFieldLabel";
 import {
   createEmptyKeyValueEntry,
   detailsToEntries,
@@ -58,7 +59,7 @@ export interface OutboundItemDraft {
 interface CreateOutboundModalProps {
   open: boolean;
   onCancel: () => void;
-  onSuccess: () => void;
+  onSuccess: (created?: { id: number }) => void;
   mode?: "create" | "edit";
   editOrderId?: number;
   editOrderCode?: string;
@@ -84,6 +85,47 @@ const OUTBOUND_ORDER_TYPE_OPTIONS = [
   { value: "Lấy lỗi", label: "Lấy lỗi" },
   { value: "Lấy lẻ", label: "Lấy lẻ" },
 ];
+
+const OUTBOUND_TYPES_WITH_LOT = new Set([
+  "tuyển chọn",
+  "lấy lỗi",
+  "lấy lẻ",
+]);
+
+function normalizeOutboundOrderType(value: string | undefined): string {
+  return (value ?? "").trim().toLowerCase();
+}
+
+function outboundTypeRequiresLotNumber(typeValue: string | undefined): boolean {
+  return OUTBOUND_TYPES_WITH_LOT.has(normalizeOutboundOrderType(typeValue));
+}
+
+function ensureLotNumberDetailEntry(entries: KeyValueEntry[]): KeyValueEntry[] {
+  const hasLotNumber = entries.some(
+    (entry) => entry.key.trim().toLowerCase() === "lot_number",
+  );
+  if (hasLotNumber) {
+    return entries;
+  }
+  return [
+    ...entries,
+    {
+      id: nextKeyValueEntryId("outbound-order"),
+      key: "lot_number",
+      value: "",
+    },
+  ];
+}
+
+function applyOutboundTypeDetailRules(entries: KeyValueEntry[]): KeyValueEntry[] {
+  const typeEntry = entries.find(
+    (entry) => entry.key.trim().toLowerCase() === "type",
+  );
+  if (!outboundTypeRequiresLotNumber(typeEntry?.value)) {
+    return entries;
+  }
+  return ensureLotNumberDetailEntry(entries);
+}
 
 function appendOutboundOrderDetailEntry(entries: KeyValueEntry[]): KeyValueEntry[] {
   if (entries.length === 0) {
@@ -188,7 +230,9 @@ export default function CreateOutboundModal({
     if (isEdit) {
       setOrderCode(editOrderCode ?? "");
       setNote(initialNote ?? "");
-      setDetailEntries(detailsToEntries(initialDetails));
+      setDetailEntries(
+        applyOutboundTypeDetailRules(detailsToEntries(initialDetails)),
+      );
       setOriginalItems(
         initialItems && initialItems.length > 0
           ? initialItems.map((item) => ({ ...item }))
@@ -197,7 +241,9 @@ export default function CreateOutboundModal({
     } else {
       setOrderCode(`OUT-${dayjs().format("YYYYMMDD-HHmmss")}`);
       setNote("");
-      setDetailEntries([]);
+      setDetailEntries(
+        applyOutboundTypeDetailRules(detailsToEntries(initialDetails)),
+      );
       setOriginalItems([]);
     }
   }, [open, isEdit, editOrderCode, initialNote, initialItems, initialDetails]);
@@ -274,7 +320,7 @@ export default function CreateOutboundModal({
   };
 
   useEffect(() => {
-    if (!open || !isEdit || !initialItems?.length) return;
+    if (!open || !initialItems?.length) return;
 
     let cancelled = false;
 
@@ -439,7 +485,7 @@ export default function CreateOutboundModal({
         data: createPayload,
       });
 
-      await createMutation.mutateAsync({
+      const created = await createMutation.mutateAsync({
         outboundType,
         data: createPayload,
       });
@@ -447,7 +493,7 @@ export default function CreateOutboundModal({
         content: "Tạo đơn xuất thành công!",
         key: "submit",
       });
-      onSuccess();
+      onSuccess({ id: created.id });
     } catch (err) {
       message.error({ content: errorMessage(err), key: "submit" });
     }
@@ -456,9 +502,19 @@ export default function CreateOutboundModal({
   const isSubmitting = createMutation.isPending || updateMutation.isPending;
 
   const updateOrderDetailEntry = (id: string, patch: Partial<KeyValueEntry>) => {
-    setDetailEntries((prev) =>
-      prev.map((entry) => (entry.id === id ? { ...entry, ...patch } : entry)),
-    );
+    setDetailEntries((prev) => {
+      const next = prev.map((entry) =>
+        entry.id === id ? { ...entry, ...patch } : entry,
+      );
+      const updated = next.find((entry) => entry.id === id);
+      const touchesTypeKey =
+        updated?.key.trim().toLowerCase() === "type" ||
+        patch.key?.trim().toLowerCase() === "type";
+      if (touchesTypeKey && ("value" in patch || "key" in patch)) {
+        return applyOutboundTypeDetailRules(next);
+      }
+      return next;
+    });
   };
 
   const removeOrderDetailEntry = (id: string) => {
@@ -549,7 +605,7 @@ export default function CreateOutboundModal({
       </div>
 
       <div>
-        <p className="mb-2 text-sm font-medium text-slate-600">Mã sản phẩm</p>
+        <RequiredFieldLabel required>Mã sản phẩm</RequiredFieldLabel>
         {item.detail_id ? (
           <Input
             value={
@@ -626,31 +682,38 @@ export default function CreateOutboundModal({
       </div>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <Input
-          type="number"
-          min={0}
-          prefix={<span className="text-xs text-slate-400">SL:</span>}
-          value={item.quantity > 0 ? item.quantity : ""}
-          placeholder="SL"
-          onChange={(e) => {
-            const raw = e.target.value;
-            if (raw === "") {
-              updateItem(item.key, { quantity: 0 });
-              return;
-            }
-            const quantity = Number(raw);
-            if (Number.isNaN(quantity)) return;
-            updateItem(item.key, { quantity });
-            if (item.item_id && item.unit_id && quantity > 0) {
-              void refreshConvertedQuantity(
-                item.key,
-                item.item_id,
-                item.unit_id,
-                quantity,
-              );
-            }
-          }}
-        />
+        <div>
+          <RequiredFieldLabel
+            required
+            className="mb-1 text-xs font-medium text-slate-500"
+          >
+            Số lượng
+          </RequiredFieldLabel>
+          <Input
+            type="number"
+            min={0}
+            value={item.quantity > 0 ? item.quantity : ""}
+            placeholder="SL"
+            onChange={(e) => {
+              const raw = e.target.value;
+              if (raw === "") {
+                updateItem(item.key, { quantity: 0 });
+                return;
+              }
+              const quantity = Number(raw);
+              if (Number.isNaN(quantity)) return;
+              updateItem(item.key, { quantity });
+              if (item.item_id && item.unit_id && quantity > 0) {
+                void refreshConvertedQuantity(
+                  item.key,
+                  item.item_id,
+                  item.unit_id,
+                  quantity,
+                );
+              }
+            }}
+          />
+        </div>
         <Input
           disabled
           prefix={<span className="text-xs text-slate-400">Tồn kho:</span>}

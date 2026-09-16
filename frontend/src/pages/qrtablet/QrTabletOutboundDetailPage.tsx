@@ -49,7 +49,7 @@ import { getApiErrorMessage } from "@/utils/apiErrorMessage";
 import { QrCameraOverlay } from "@/components/qr-scan";
 
 const TABLE_CLASS =
-  "[&_.ant-table-thead_th]:!bg-slate-50 [&_.ant-table-thead_th]:!text-slate-600 [&_.ant-table-thead_th]:!font-semibold [&_.ant-table-thead_th]:!text-base [&_.ant-table-tbody_td]:!text-base [&_.ant-table-thead_th]:!py-3 [&_.ant-table-tbody_td]:!py-3 [&_.ant-table-row]:hover:bg-slate-50/50";
+  "[&_.ant-table-thead_th]:!bg-slate-50 [&_.ant-table-thead_th]:!text-slate-600 [&_.ant-table-thead_th]:!font-semibold [&_.ant-table-thead_th]:!text-base [&_.ant-table-tbody_td]:!text-base [&_.ant-table-thead_th]:!py-3 [&_.ant-table-tbody_td]:!py-3 [&_.ant-table-row]:hover:bg-slate-50/50 [&_.ant-table-cell]:!text-center";
 
 const OUTBOUND_DETAIL_TABS = [
   { key: "list" as const, label: "Danh sách" },
@@ -102,6 +102,10 @@ function getManualScanTitle(task: OutboundRobotTask): string {
   if (status === "initialize") return "Quét QR sản phẩm";
   if (status === "pre_completed") return "Quét QR vị trí đích";
   return "Quét QR xuất kho";
+}
+
+function canShowManualQrScan(displayStatus: string): boolean {
+  return displayStatus === "initialize" || displayStatus === "pre_completed";
 }
 
 function getRobotTaskDisplayStatus(
@@ -427,7 +431,11 @@ export default function QrTabletOutboundDetailPage() {
       kind: "start" | "end",
     ) => {
       const first = record.allocations[0];
-      const editable = record.status === "initialize";
+      const allocationStatus = first?.status;
+      const editable =
+        kind === "end" && isManualOutbound
+          ? allocationStatus === "pre_completed"
+          : record.status === "initialize";
       const draft = taskLocationDraft[record.order_id] ?? {};
 
       const allocationId =
@@ -450,6 +458,10 @@ export default function QrTabletOutboundDetailPage() {
           allocationCode,
           allocationId,
         );
+      }
+
+      if (isManualOutbound && kind === "end" && allocationStatus === "initialize") {
+        return "—";
       }
 
       if (!editable) return "—";
@@ -482,6 +494,7 @@ export default function QrTabletOutboundDetailPage() {
     [
       getTaskLocationSelectOptions,
       handleTaskLocationChange,
+      isManualOutbound,
       useManualAllocationFlow,
       outboundBufferLabelById,
       outboundBufferLocationsLoading,
@@ -739,13 +752,6 @@ export default function QrTabletOutboundDetailPage() {
   const { completedCount, totalCount, progressPercent, allInitialize, statusCounts } =
     useMemo(() => computeDetailProgress(details), [details]);
 
-  const canManualQrScan = useMemo(
-    () =>
-      isManualOutbound &&
-      (order?.status === "initialize" || order?.status === "in_progress"),
-    [isManualOutbound, order?.status],
-  );
-
   const hasPreCompletedAllocation = useMemo(
     () =>
       !useManualAllocationFlow &&
@@ -763,17 +769,17 @@ export default function QrTabletOutboundDetailPage() {
       const task = manualScanTask;
       if (!task || !orderId) return;
 
-      const { endId, needsEndPick } = getTaskLocationIds(task);
-      if (needsEndPick && !endId) {
-        message.warning("Chọn vị trí đích trước khi quét");
-        return;
-      }
-      if (!endId) {
-        message.warning("Chọn vị trí đích trước khi quét");
+      const allocationStatus = task.allocations[0]?.status;
+      const { endId } = getTaskLocationIds(task);
+
+      if (
+        allocationStatus !== "initialize" &&
+        allocationStatus !== "pre_completed"
+      ) {
+        message.warning("Trạng thái phân bổ không hợp lệ để quét QR");
         return;
       }
 
-      const allocationStatus = task.allocations[0]?.status;
       setManualScanTask(null);
 
       try {
@@ -783,7 +789,7 @@ export default function QrTabletOutboundDetailPage() {
           body: {
             allocation_ids: task.allocations.map((allocation) => allocation.id),
             qr_code: scanned.trim(),
-            to_location_id: endId,
+            ...(endId ? { to_location_id: endId } : {}),
           },
         });
         message.success(
@@ -1083,35 +1089,25 @@ export default function QrTabletOutboundDetailPage() {
         );
 
         if (isManualOutbound) {
-          const { endId, needsEndPick } = getTaskLocationIds(record);
-          const missingEnd = needsEndPick && !endId;
           const showQrScan =
-            canManualQrScan &&
-            displayStatus !== "completed" &&
+            canShowManualQrScan(displayStatus) &&
             record.allocations.length > 0;
 
-          return (
-            <Space size="small" wrap>
-              <OutboundStatusTag status={displayStatus} size="sm" />
-              {showQrScan && (
-                <Button
-                  variant="primary"
-                  icon={<ScanOutlined />}
-                  size="small"
-                  loading={scanningTaskOrderId === record.order_id}
-                  disabled={missingEnd}
-                  title={
-                    missingEnd
-                      ? "Chọn vị trí đích trước khi quét"
-                      : undefined
-                  }
-                  onClick={() => setManualScanTask(record)}
-                >
-                  Quét QR
-                </Button>
-              )}
-            </Space>
-          );
+          if (showQrScan) {
+            return (
+              <Button
+                variant="primary"
+                icon={<ScanOutlined />}
+                size="small"
+                loading={scanningTaskOrderId === record.order_id}
+                onClick={() => setManualScanTask(record)}
+              >
+                Quét QR
+              </Button>
+            );
+          }
+
+          return <OutboundStatusTag status={displayStatus} size="sm" />;
         }
 
         if (displayStatus === "initialize") {
