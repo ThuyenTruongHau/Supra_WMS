@@ -261,7 +261,7 @@ export default function EntryPointSettingPage() {
           }
           onChange={(checked) => {
             updateStatusMutation.mutate(
-              { id: record.id, is_active: checked },
+              { id: record.id, zone_id: activeZoneId ?? 0, is_active: checked },
               {
                 onError: (err) =>
                   message.error(
@@ -283,7 +283,7 @@ export default function EntryPointSettingPage() {
             title="Vô hiệu hóa điểm nhập"
             description="Start-point sẽ được deactivate (không xóa cứng)."
             onConfirm={() => {
-              deleteMutation.mutate(record.id, {
+              deleteMutation.mutate({ id: record.id, zone_id: activeZoneId ?? 0 }, {
                 onSuccess: () => message.success("Đã vô hiệu hóa điểm nhập."),
                 onError: (err) =>
                   message.error(
@@ -297,7 +297,7 @@ export default function EntryPointSettingPage() {
               danger: true,
               loading:
                 deleteMutation.isPending &&
-                deleteMutation.variables === record.id,
+                deleteMutation.variables?.id === record.id,
             }}
           >
             <Tooltip title="Vô hiệu hóa">
@@ -373,7 +373,7 @@ export default function EntryPointSettingPage() {
           resetCreateForm();
         }}
         footer={null}
-        destroyOnClose
+        destroyOnHidden
       >
         <Form
           form={form}
@@ -466,7 +466,7 @@ export default function EntryPointSettingPage() {
         width="90vw"
         style={{ top: 20 }}
         styles={{ body: { height: "80vh", padding: 0 } }}
-        destroyOnClose
+        destroyOnHidden
       >
         <div className="w-full h-full relative">
           {isResolvingLocation && (

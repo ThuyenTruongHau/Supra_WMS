@@ -69,7 +69,7 @@ export default function UnassignSortingStationModal({
           onUnassigned?.();
           onClose();
         },
-        onError: (err) => {
+        onError: (err: any) => {
           message.error(
             err.response?.data?.detail ?? "Không hủy gán được sorting station",
           );
@@ -112,7 +112,7 @@ export default function UnassignSortingStationModal({
             // Fill đã clear; gán vẫn còn trên map qua assignment_labels
           }
         },
-        onError: (err) => {
+        onError: (err: any) => {
           message.error(
             err.response?.data?.detail ?? "Không clear được đơn chia",
           );
@@ -127,7 +127,7 @@ export default function UnassignSortingStationModal({
       onCancel={busy ? undefined : onClose}
       title="Hủy gán vị trí chia chọn"
       width={OPERATOR_DESKTOP.modal.sm}
-      destroyOnClose
+      destroyOnHidden
       zIndex={zIndex}
       footer={
         <div className="flex flex-wrap justify-end gap-2">

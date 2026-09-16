@@ -121,7 +121,7 @@ export default function SortingStationProductsModal({
       title="Hàng cần lấy"
       width="min(1200px, 92vw)"
       centered
-      destroyOnClose
+      destroyOnHidden
       zIndex={zIndex}
       styles={{
         body: {

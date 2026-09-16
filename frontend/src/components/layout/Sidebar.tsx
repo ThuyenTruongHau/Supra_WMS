@@ -283,7 +283,7 @@ export default function Sidebar() {
                   label: "Tổng quan",
                 },
                 {
-                  to: "/products",
+                  to: "/items",
                   icon: <BoxPlotOutlined />,
                   label: "Sản phẩm",
                 },

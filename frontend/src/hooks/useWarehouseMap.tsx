@@ -30,8 +30,6 @@ import type {
   WarehouseMapImportResult,
   WarehouseLocationItemStockDetail,
 } from '@/types/warehouseMap';
-import { AxiosError } from 'axios';
-import { ApiErrorResponse } from '@/types/apiError';
 import { LIVE_QUERY_OPTIONS } from '@/utils/liveQueryOptions';
 
 export const useActiveWarehouseMap = (warehouseId: number) => {

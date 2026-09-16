@@ -17,6 +17,9 @@ import {
   cn,
   message,
 } from "@/components/ui";
+import { Spin } from "antd";
+import { useQueryClient } from "@tanstack/react-query";
+import dayjs from "dayjs";
 import {
   OPERATOR_DESKTOP,
   OPERATOR_MAP_TUNING,
@@ -59,14 +62,14 @@ import type {
   InboundAssignedDetail,
   InboundBufferAssignment,
   InboundDetailInput,
+  MasanCreatePayload,
 } from "@/types/inbound";
 import { getApiErrorDetail } from "@/types/apiError";
 import {
-  parseInboundExcelFile,
-  type ImportError,
-  type ImportPreviewRow,
-} from "@/utils/inboundExcelImport";
-import { applyImportLocationSuggestions } from "@/utils/inboundLocationPreview";
+  parseMasanInboundExcelApi,
+  suggestMasanAllocationApi,
+  createMasanInboundOrderApi,
+} from "@/api/inbound";
 import type { EmptyLocation } from "@/types/warehouseLocation";
 import { SOURCE_TABS, type SourceTabKey } from "@/data/mockOperatorInbound";
 import { toDisplayInteger } from "@/utils/number";
@@ -77,8 +80,6 @@ import {
 } from "@/utils/operatorHeaderMetrics";
 
 type SideListTab = "orders" | "commands";
-
-type ImportPreviewTableRow = ImportPreviewRow & { rowIndex: number };
 
 function formatAssignedSkuLot(row: InboundAssignedDetail): string {
   const sku = row.product_sku?.trim() || "—";
@@ -158,89 +159,32 @@ export default function OperatorInboundPage() {
   const [locationInfoOpen, setLocationInfoOpen] = useState(false);
   const [infoLocationId, setInfoLocationId] = useState<number | null>(null);
 
-  const [isImportPreviewOpen, setIsImportPreviewOpen] = useState(false);
-  const [importPreviewRows, setImportPreviewRows] = useState<
-    ImportPreviewRow[]
-  >([]);
-  const [importWarnings, setImportWarnings] = useState<ImportError[]>([]);
-  const [importDetails, setImportDetails] = useState<InboundDetailInput[]>([]);
-  const [locationAssignments, setLocationAssignments] = useState<number[]>([]);
-  const [locationOptionsByRow, setLocationOptionsByRow] = useState<
-    Record<number, EmptyLocation[]>
-  >({});
-  const [locationLookup, setLocationLookup] = useState<
-    Record<number, EmptyLocation>
-  >({});
-  const [isLoadingLocationSuggest, setIsLoadingLocationSuggest] =
-    useState(false);
-  const [isParsingExcel, setIsParsingExcel] = useState(false);
+  const [isMasanImporting, setIsMasanImporting] = useState(false);
+  const [isMasanPreviewOpen, setIsMasanPreviewOpen] = useState(false);
+  const [masanDraftPayload, setMasanDraftPayload] = useState<MasanCreatePayload | null>(null);
+  const [masanPreviewData, setMasanPreviewData] = useState<any[]>([]);
+
   const [isExportingDailyExcel, setIsExportingDailyExcel] = useState(false);
   const [isExportingDetailReport, setIsExportingDetailReport] = useState(false);
 
   const sendCommandsMutation = useSendInboundCommands();
+  const queryClient = useQueryClient();
 
   const resetImportState = () => {
-    setImportPreviewRows([]);
-    setImportWarnings([]);
-    setImportDetails([]);
-    setLocationAssignments([]);
-    setLocationOptionsByRow({});
-    setLocationLookup({});
+    setMasanDraftPayload(null);
+    setMasanPreviewData([]);
   };
 
   const closeImportPreview = () => {
-    setIsImportPreviewOpen(false);
+    setIsMasanPreviewOpen(false);
     resetImportState();
-  };
-
-  const loadLocationOptionsForRow = async (rowIndex: number) => {
-    const excludeLocationIds = locationAssignments.filter(
-      (locationId, index) => index !== rowIndex && locationId > 0,
-    );
-
-    try {
-      const response = await listEmptyLocationsApi({
-        zoneId,
-        excludeLocationIds,
-      });
-
-      const currentId = locationAssignments[rowIndex];
-      const merged = [...response.locations];
-      const currentLocation = currentId ? locationLookup[currentId] : undefined;
-      if (currentLocation && !merged.some((loc) => loc.id === currentId)) {
-        merged.unshift(currentLocation);
-      }
-
-      setLocationLookup((prev) => {
-        const next = { ...prev };
-        for (const location of merged) {
-          next[location.id] = location;
-        }
-        return next;
-      });
-      setLocationOptionsByRow((prev) => ({ ...prev, [rowIndex]: merged }));
-    } catch (err: unknown) {
-      message.error(
-        getApiErrorDetail(err, "Không thể tải danh sách vị trí trống"),
-      );
-    }
-  };
-
-  const handleLocationChange = (rowIndex: number, locationId: number) => {
-    setLocationAssignments((prev) => {
-      const next = [...prev];
-      next[rowIndex] = locationId;
-      return next;
-    });
   };
 
   const handleImportClick = () => {
     fileInputRef.current?.click();
   };
 
-  const handleImportFileChange = async (
-    event: ChangeEvent<HTMLInputElement>,
-  ) => {
+  const handleImportFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     event.target.value = "";
     if (!file) return;
@@ -250,26 +194,28 @@ export default function OperatorInboundPage() {
       return;
     }
 
-    setIsParsingExcel(true);
+    setIsMasanImporting(true);
     resetImportState();
 
     try {
-      const locations = await getAllLocationsByZoneApi(zoneId);
-      const result = await parseInboundExcelFile(file, products, locations);
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('warehouse_id', zoneId.toString());
+      formData.append('inbound_type', 'auto');
 
-      if (result.errors.length > 0) {
+      const parseResult = await parseMasanInboundExcelApi(formData);
+      
+      const errors = parseResult.preview_rows.filter((r: any) => r.error !== null);
+      if (errors.length > 0) {
         Modal.error({
-          title: "Không thể import file Excel",
+          title: "Lỗi file Excel",
           width: OPERATOR_DESKTOP.modal.sm,
+          destroyOnHidden: true,
           content: (
-            <ul
-              className={`mt-2 ${operatorDesktopClass.listMax64} list-disc space-y-1 overflow-y-auto pl-5 text-sm`}
-            >
-              {result.errors.map((err, index) => (
-                <li key={`${err.excelRowNumber ?? "global"}-${index}`}>
-                  {err.excelRowNumber
-                    ? `Dòng ${err.excelRowNumber}: ${err.message}`
-                    : err.message}
+            <ul className={`mt-2 ${operatorDesktopClass.listMax64} list-disc space-y-1 overflow-y-auto pl-5 text-sm`}>
+              {errors.map((err: any, index: number) => (
+                <li key={index}>
+                  Dòng {err.row_no}: {err.error}
                 </li>
               ))}
             </ul>
@@ -278,75 +224,64 @@ export default function OperatorInboundPage() {
         return;
       }
 
-      setImportDetails(result.details);
-      setImportPreviewRows(result.previewRows);
-      setImportWarnings(result.warnings);
-
-      setIsLoadingLocationSuggest(true);
-      try {
-        const { lookup, optionsByRow, assignments } =
-          await applyImportLocationSuggestions(
-            zoneId,
-            result.details,
-            locations,
-          );
-
-        setLocationLookup(lookup);
-        setLocationAssignments(assignments);
-        setLocationOptionsByRow(optionsByRow);
-        setIsImportPreviewOpen(true);
-      } catch (err: unknown) {
-        message.error(
-          getApiErrorDetail(err, "Không thể gợi ý vị trí cất hàng"),
-        );
-      } finally {
-        setIsLoadingLocationSuggest(false);
+      if (!parseResult.suggest_allocation || parseResult.suggest_allocation.line_items.length === 0) {
+        message.error("Không có dòng dữ liệu hợp lệ để tạo đơn.");
+        return;
       }
-    } catch {
-      message.error("Không thể đọc file Excel");
+
+      const suggestResult = await suggestMasanAllocationApi(parseResult.suggest_allocation);
+
+      const orderCode = `IN-${dayjs().format("YYYYMMDD-HHmmss")}`;
+      const createPayload: MasanCreatePayload = {
+        order_code: orderCode,
+        note: "Import Masan",
+        warehouse_id: zoneId,
+        details: {
+          source: "masan_import",
+          total_rows: parseResult.total_rows,
+          valid_rows: parseResult.valid_rows,
+          invalid_rows: parseResult.invalid_rows
+        },
+        line_items: parseResult.suggest_allocation.line_items.map((line, i) => {
+          const suggestedLine = suggestResult.line_items[i];
+          return {
+            from_location_id: line.details.from_location_id,
+            to_location_id: suggestedLine.target_location_id,
+            details: line.details,
+            allocations: suggestedLine.line_items,
+            _preview_sku: line.details.sku,
+            _preview_vehicle: line.details.vehicle_no,
+            _preview_to_location_name: suggestedLine.target_location_name,
+            _preview_quantity: suggestedLine.line_items.reduce((sum, item) => sum + item.quantity, 0)
+          };
+        })
+      };
+
+      setMasanDraftPayload(createPayload);
+      setMasanPreviewData(createPayload.line_items);
+      setIsMasanPreviewOpen(true);
+    } catch (err: unknown) {
+      message.error(getApiErrorDetail(err, "Không thể đọc hoặc phân bổ vị trí từ file Excel"));
     } finally {
-      setIsParsingExcel(false);
+      setIsMasanImporting(false);
     }
   };
 
   const handleConfirmImport = async () => {
-    if (importDetails.length === 0) {
-      message.error("Không có dòng dữ liệu để tạo đơn");
-      return;
-    }
+    if (!masanDraftPayload) return;
 
-    if (locationAssignments.length !== importDetails.length) {
-      message.error("Chưa gán đủ vị trí cất cho các dòng");
-      return;
-    }
-
-    if (locationAssignments.some((locationId) => !locationId)) {
-      message.error("Vui lòng chọn vị trí cất cho tất cả dòng");
-      return;
-    }
-
-    if (new Set(locationAssignments).size !== locationAssignments.length) {
-      message.error("Vị trí cất không được trùng nhau giữa các dòng");
-      return;
-    }
-
-    const details = importDetails.map((detail, index) => ({
-      ...detail,
-      assigned_location_id: locationAssignments[index],
-    }));
-
+    setIsMasanImporting(true);
     try {
-      await createMutation.mutateAsync({
-        zone_id: zoneId,
-        details,
-      });
-      message.success("Import đơn nhập thành công!");
-      setIsImportPreviewOpen(false);
+      await createMasanInboundOrderApi(masanDraftPayload, "auto");
+      message.success("Import đơn nhập Masan thành công!");
+      setIsMasanPreviewOpen(false);
       resetImportState();
+      queryClient.invalidateQueries({ queryKey: ["inbound-orders"] });
+      queryClient.invalidateQueries({ queryKey: ["inbound", "oldest-incomplete"] });
     } catch (err: unknown) {
-      message.error(
-        getApiErrorDetail(err, "Không thể tạo đơn nhập từ file Excel"),
-      );
+      message.error(getApiErrorDetail(err, "Không thể tạo đơn nhập từ file Excel"));
+    } finally {
+      setIsMasanImporting(false);
     }
   };
 
@@ -689,88 +624,6 @@ export default function OperatorInboundPage() {
     },
   ];
 
-  const importTw = operatorDesktopTableWidths.inboundImportPreview;
-  const locationPreviewColumns: ColumnsType<ImportPreviewTableRow> = useMemo(
-    () => [
-      {
-        title: "Dòng Excel",
-        dataIndex: "excelRowNumber",
-        width: importTw.excelRow,
-      },
-      {
-        title: "Mã Item",
-        dataIndex: "sku",
-        width: importTw.sku,
-      },
-      {
-        title: "Tên Item",
-        dataIndex: "productName",
-        width: importTw.productName,
-        render: (name: string, record) => (
-          <div
-            className={`min-w-[180px] max-w-[320px] whitespace-normal break-words text-sm leading-snug ${record.nameMismatch ? "text-warning-700" : ""
-              }`}
-          >
-            {name}
-          </div>
-        ),
-      },
-      {
-        title: "LOT",
-        dataIndex: "lotNumber",
-        width: importTw.lot,
-        render: (lot: string) => lot || "—",
-      },
-      {
-        title: "Tổng SL",
-        dataIndex: "totalQuantity",
-        width: importTw.totalQty,
-        align: "right",
-      },
-      {
-        title: "SL/pallet",
-        dataIndex: "expectedQuantity",
-        width: importTw.expectedQty,
-        align: "right",
-      },
-      {
-        title: "Pallet",
-        dataIndex: "palletQuantity",
-        width: importTw.pallet,
-        align: "right",
-      },
-      {
-        title: "Vị trí cất (R-C-B)",
-        key: "assigned_location",
-        width: importTw.location,
-        render: (_: unknown, record: ImportPreviewTableRow) => (
-          <Select
-            showSearch
-            optionFilterProp="label"
-            placeholder="Chọn vị trí"
-            value={locationAssignments[record.rowIndex] || undefined}
-            options={(locationOptionsByRow[record.rowIndex] ?? []).map(
-              (location) => ({
-                value: location.id,
-                label: formatEmptyLocationLabel(location),
-              }),
-            )}
-            onDropdownVisibleChange={(open) => {
-              if (open) {
-                void loadLocationOptionsForRow(record.rowIndex);
-              }
-            }}
-            onChange={(value) =>
-              handleLocationChange(record.rowIndex, Number(value))
-            }
-            className="!w-full"
-          />
-        ),
-      },
-    ],
-    [locationAssignments, locationOptionsByRow],
-  );
-
   const clockLabel = clock.toLocaleTimeString("vi-VN", {
     hour: "2-digit",
     minute: "2-digit",
@@ -867,7 +720,7 @@ export default function OperatorInboundPage() {
             <DirectOutboundFromInboundBoard
               zoneId={zoneId}
               onImportClick={handleImportClick}
-              importLoading={isParsingExcel}
+              importLoading={isMasanImporting}
               importDisabled={zoneId <= 0}
             />
           </div>
@@ -892,7 +745,7 @@ export default function OperatorInboundPage() {
                     variant="primary"
                     icon={<UploadOutlined />}
                     onClick={handleImportClick}
-                    loading={isParsingExcel}
+                    loading={isMasanImporting}
                     disabled={zoneId <= 0}
                     className="!h-10 !px-4 !text-base"
                   >
@@ -1073,23 +926,13 @@ export default function OperatorInboundPage() {
       />
 
       <Modal
-        open={isImportPreviewOpen}
+        open={isMasanPreviewOpen}
         onCancel={closeImportPreview}
         width={OPERATOR_DESKTOP.modal.importInbound.width}
-        style={{
-          top: OPERATOR_DESKTOP.modal.importInbound.top,
-          maxWidth: OPERATOR_DESKTOP.modal.importInbound.maxWidth,
-        }}
-        styles={{
-          body: {
-            maxHeight: OPERATOR_DESKTOP.modal.importInbound.bodyMaxHeight,
-            overflow: "auto",
-          },
-        }}
         destroyOnHidden
         title={
           <span className="text-brand-dark font-semibold">
-            Xem trước import Excel
+            Xem trước import Masan
           </span>
         }
         footer={
@@ -1099,51 +942,52 @@ export default function OperatorInboundPage() {
             </Button>
             <Button
               variant="primary"
-              loading={createMutation.isPending || isLoadingLocationSuggest}
-              disabled={isLoadingLocationSuggest}
+              loading={isMasanImporting}
+              disabled={isMasanImporting}
               onClick={() => void handleConfirmImport()}
             >
-              {`Xác nhận import (${importPreviewRows.length} dòng)`}
+              {`Xác nhận tạo đơn (${masanPreviewData.length} dòng)`}
             </Button>
           </Space>
         }
       >
-        {importWarnings.length > 0 && (
-          <div className="mb-4 rounded-lg border border-warning-200 bg-warning-50 px-4 py-3 text-sm text-warning-800">
-            <p className="font-semibold">Cảnh báo</p>
-            <ul className="mt-1 list-disc space-y-1 pl-5">
-              {importWarnings.map((warning, index) => (
-                <li key={`${warning.excelRowNumber ?? "warn"}-${index}`}>
-                  {warning.excelRowNumber
-                    ? `Dòng ${warning.excelRowNumber}: ${warning.message}`
-                    : warning.message}
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-
         <p className="mb-3 text-sm text-gray-500">
-          Sẽ tạo 1 đơn nhập trạng thái <strong>Khởi tạo</strong> với{" "}
-          {importPreviewRows.length} dòng chi tiết. Hệ thống đã gợi ý vị trí cất
-          trống theo thứ tự hàng 1 → hàng N; bạn có thể đổi từng vị trí trước
-          khi xác nhận.
+          Hệ thống đã tự động gợi ý vị trí cất. Vui lòng kiểm tra lại trước khi xác nhận tạo đơn.
         </p>
 
-        <Table<ImportPreviewTableRow>
-          rowKey={(record) => String(record.rowIndex)}
-          dataSource={importPreviewRows.map((row, rowIndex) => ({
-            ...row,
-            rowIndex,
-          }))}
-          loading={isLoadingLocationSuggest}
+        <Table
+          rowKey={(record, index) => String(index)}
+          dataSource={masanPreviewData}
           pagination={false}
-          scroll={{ x: 1100 }}
+          scroll={{ x: 800, y: 400 }}
           className="[&_.ant-table-tbody_td]:align-top"
           size="small"
-          columns={locationPreviewColumns}
+          columns={[
+            {
+              title: "SKU",
+              dataIndex: "_preview_sku",
+              key: "sku",
+            },
+            {
+              title: "Số xe",
+              dataIndex: "_preview_vehicle",
+              key: "vehicle",
+            },
+            {
+              title: "Vị trí gợi ý",
+              dataIndex: "_preview_to_location_name",
+              key: "location",
+              render: (val) => <span className="font-bold text-brand-primary">{val}</span>
+            },
+            {
+              title: "Số lượng",
+              dataIndex: "_preview_quantity",
+              key: "qty",
+            }
+          ]}
         />
       </Modal>
+      <Spin spinning={isMasanImporting} fullscreen />
     </div>
   );
 }

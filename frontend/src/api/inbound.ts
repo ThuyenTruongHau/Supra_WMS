@@ -22,6 +22,10 @@ import type {
   UnassignInboundFromBufferInput,
   UpdateInboundDetailPickupInput,
   UpdateInboundInput,
+  MasanParsePreviewResponse,
+  MasanSuggestAllocationPayload,
+  MasanSuggestAllocationResponse,
+  MasanCreatePayload
 } from '@/types/inbound'
 
 export const listInboundOrdersApi = async (
@@ -267,3 +271,43 @@ export const directOutboundFromInboundApi = async (
   )
   return response.data
 }
+
+export const parseMasanInboundExcelApi = async (
+  formData: FormData,
+): Promise<MasanParsePreviewResponse> => {
+  const response = await axiosInstance.post<MasanParsePreviewResponse>(
+    '/api/v1/masan/inbound-orders/parse-preview',
+    formData,
+    {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    }
+  )
+  return response.data
+}
+
+export const suggestMasanAllocationApi = async (
+  data: MasanSuggestAllocationPayload,
+): Promise<MasanSuggestAllocationResponse> => {
+  const response = await axiosInstance.post<MasanSuggestAllocationResponse>(
+    '/api/v1/inbound-orders/suggest-allocation',
+    data,
+  )
+  return response.data
+}
+
+export const createMasanInboundOrderApi = async (
+  data: MasanCreatePayload,
+  inboundType = 'auto',
+): Promise<InboundOrder> => {
+  const response = await axiosInstance.post<InboundOrder>(
+    `/api/v1/inbound-orders`,
+    data,
+    {
+      params: { inbound_type: inboundType },
+    }
+  )
+  return response.data
+}
+

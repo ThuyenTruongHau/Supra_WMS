@@ -275,7 +275,7 @@ export default function AssignOutboundStationModal({
         setPreview(data);
         setStep(2);
       },
-      onError: (err) => {
+      onError: (err: any) => {
         message.error(
           err.response?.data?.detail ?? "Không lập được kế hoạch lấy kho",
         );
@@ -299,7 +299,7 @@ export default function AssignOutboundStationModal({
         );
         onClose();
       },
-      onError: (err) => {
+      onError: (err: any) => {
         message.error(
           err.response?.data?.detail ?? "Không tạo được lệnh lấy hàng",
         );
@@ -313,7 +313,7 @@ export default function AssignOutboundStationModal({
       onCancel={busy ? undefined : onClose}
       title={`Outbound station · ${locationCode}`}
       width={OPERATOR_DESKTOP.modal.xl}
-      destroyOnClose
+      destroyOnHidden
       zIndex={zIndex}
       footer={
         <div className="flex flex-wrap items-center justify-between gap-2">
@@ -380,7 +380,7 @@ export default function AssignOutboundStationModal({
               </div>
             ) : aggregateQuery.isError ? (
               <div className="rounded-xl border border-error-200 bg-error-50 px-4 py-10 text-center text-sm text-error-600">
-                {aggregateQuery.error.response?.data?.detail ??
+                {(aggregateQuery.error as any)?.response?.data?.detail ??
                   "Không tải được tổng hợp mặt hàng"}
               </div>
             ) : productCount === 0 ? (

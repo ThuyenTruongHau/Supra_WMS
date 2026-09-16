@@ -29,6 +29,14 @@ import QrTabletOutboundPage from "@/pages/qrtablet/QrTabletOutboundPage";
 import QrTabletOutboundDetailPage from "@/pages/qrtablet/QrTabletOutboundDetailPage";
 import QrTabletStocktakePage from "@/pages/qrtablet/QrTabletStocktakePage";
 
+import { RoleGatePage } from "../components/auth/RoleGatePage";
+import { RoleHomeRedirect } from "@/components/auth/RoleHomeRedirect";
+import OperatorOverviewPage from "@/pages/OperatorOverviewPage";
+import OperatorInboundPage from "@/pages/OperatorInboundPage";
+import OperatorOutboundPage from "@/pages/OperatorOutboundPage";
+import OperatorSortingWavePage from "@/pages/OperatorSortingWavePage";
+import BlankPage from "@/pages/BlankPage";
+
 
 export default function AppRoutes() {
   return (
@@ -75,13 +83,24 @@ export default function AppRoutes() {
         }
       >
         <Route index element={<Navigate to="/report" replace />} />
+        <Route index element={<RoleHomeRedirect />} />
+        <Route
+          path="overview"
+          element={
+            <RoleGatePage
+              admin={<Navigate to="/report" replace />}
+              operator={<OperatorOverviewPage />}
+            />
+          }
+        />
         <Route path="dashboard" element={<DashboardPage />} />
         <Route path="items" element={<ItemPage />} />
         <Route path="items/:id" element={<ItemDetailPage />} />
         <Route path="zones" element={<ZoneSettingPage />} />
-        <Route path="import" element={<ImportPage />} />
+        <Route path="import" element={<RoleGatePage admin={<ImportPage />} operator={<OperatorInboundPage />} />} />
         <Route path="import/:id" element={<ImportDetailPage />} />
-        <Route path="export" element={<OutboundPage />} />
+        <Route path="export" element={<RoleGatePage admin={<OutboundPage />} operator={<OperatorOutboundPage />} />} />
+        <Route path="export/sorting-waves" element={<RoleGatePage admin={<div>Tính năng chia chọn của Admin chưa hoàn thiện</div>} operator={<OperatorSortingWavePage />} />} />
         <Route path="export/:orderId" element={<OutboundDetailPage />} />
         <Route path="inventory" element={<StocktakePage />} />
         <Route path="inventory/:id" element={<StocktakeDetailPage />} />

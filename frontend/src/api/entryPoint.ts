@@ -1,10 +1,7 @@
 import axiosInstance from './axiosInstance';
-import { EntryPoint, CreateEntryPointRequest } from '@/types/entryPoint';
+import { EntryPoint, CreateEntryPointRequest, EntryPointListParams } from '@/types/entryPoint';
 
-export const getEntryPointsApi = async (zone_id?: number, code?: string): Promise<EntryPoint[]> => {
-    const params: Record<string, any> = {};
-    if (zone_id) params.zone_id = zone_id;
-    if (code) params.code = code;
+export const getEntryPointsApi = async (params: EntryPointListParams): Promise<EntryPoint[]> => {
     const response = await axiosInstance.get<EntryPoint[]>('/api/v1/start-points', { params });
     return response.data;
 };

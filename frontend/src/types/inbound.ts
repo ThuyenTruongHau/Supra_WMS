@@ -364,3 +364,103 @@ export interface InboundDailyReport {
   subtitle: string
   lines: InboundDailyReportLine[]
 }
+
+export interface MasanImportPreviewRow {
+  row_no: number
+  inbound_datetime: string | null
+  vehicle_no: string | null
+  from_warehouse: string | null
+  to_warehouse: string | null
+  delivery: string | null
+  nvt: string | null
+  sku: string | null
+  item_name: string | null
+  lot: string | null
+  lot_status: string | null
+  quantity: number | null
+  pallet_count: string | null
+  storage_location: string | null
+  from_location_id: number | null
+  from_location_name: string | null
+  locator: string | null
+  item_id: number | null
+  unit_id: number | null
+  suggest_group_index: number | null
+  error: string | null
+}
+
+export interface MasanSuggestAllocationItem {
+  item_id: number
+  quantity: number
+  unit_id: number
+  lot_number_from: string | null
+  lot_number_to: string | null
+  lot_number: string | null
+}
+
+export interface MasanSuggestAllocationDetail {
+  row_no?: number
+  vehicle_no: string
+  sku?: string
+  storage_location?: string
+  from_location_id: number
+  from_location_name: string
+  source: string
+}
+
+export interface MasanSuggestAllocationLine {
+  items: MasanSuggestAllocationItem[]
+  details: MasanSuggestAllocationDetail
+}
+
+export interface MasanSuggestAllocationPayload {
+  warehouse_id: number
+  detail_type: string
+  line_items: MasanSuggestAllocationLine[]
+}
+
+export interface MasanParsePreviewResponse {
+  preview_rows: MasanImportPreviewRow[]
+  suggest_allocation: MasanSuggestAllocationPayload
+  total_rows: number
+  valid_rows: number
+  invalid_rows: number
+  group_count: number
+  warnings: string[]
+}
+
+export interface MasanSuggestTargetLine {
+  item_id: number
+  quantity: number
+  unit_id: number
+  lot_number_from: string | null
+  lot_number_to: string | null
+  lot_number: string | null
+  details: Record<string, any>
+}
+
+export interface MasanSuggestResponseLine {
+  detail_type: string
+  target_location_name: string
+  target_location_id: number
+  line_items: MasanSuggestTargetLine[]
+}
+
+export interface MasanSuggestAllocationResponse {
+  line_items: MasanSuggestResponseLine[]
+}
+
+export interface MasanCreatePayloadLine {
+  from_location_id: number
+  to_location_id: number
+  details: Record<string, any>
+  allocations: MasanSuggestTargetLine[]
+}
+
+export interface MasanCreatePayload {
+  order_code: string
+  note: string
+  warehouse_id: number
+  details: Record<string, any>
+  line_items: MasanCreatePayloadLine[]
+}

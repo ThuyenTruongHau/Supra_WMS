@@ -256,7 +256,7 @@ export default function AssignSortingStationModal({
           </Button>
         </div>
       }
-      destroyOnClose
+      destroyOnHidden
     >
       <div className="space-y-4">
         <LocationBanner locationCode={locationCode} />

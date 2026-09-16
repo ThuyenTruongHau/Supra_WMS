@@ -1,4 +1,6 @@
 import { useMemo, useState } from "react";
+import type { AxiosError } from "axios";
+import type { ApiErrorResponse } from "@/types/apiError";
 import {
   Card,
   Table,
@@ -135,7 +137,7 @@ export default function UserSettingPage() {
               message.success("Xóa người dùng thành công!");
               resolve(null);
             },
-            onError: (err) => {
+            onError: (err: any) => {
               message.error(
                 err.response?.data?.detail || "Không thể xóa người dùng",
               );
@@ -205,7 +207,7 @@ export default function UserSettingPage() {
             message.success("Cập nhật người dùng thành công!");
             handleCloseModal();
           },
-          onError: (err) => {
+          onError: (err: any) => {
             message.error(
               err.response?.data?.detail || "Không thể cập nhật người dùng",
             );
@@ -231,7 +233,7 @@ export default function UserSettingPage() {
         message.success("Thêm người dùng thành công!");
         handleCloseModal();
       },
-      onError: (err) => {
+      onError: (err: any) => {
         message.error(
           err.response?.data?.detail || "Không thể thêm người dùng mới",
         );
@@ -384,7 +386,7 @@ export default function UserSettingPage() {
         open={isModalOpen}
         onCancel={handleCloseModal}
         footer={null}
-        destroyOnClose
+        destroyOnHidden
         centered
         width="60vw"
         className="!max-w-[60vw] [&_.ant-modal-content]:!h-[60vh] [&_.ant-modal-content]:!flex [&_.ant-modal-content]:!flex-col [&_.ant-modal-body]:!flex-1 [&_.ant-modal-body]:!overflow-hidden [&_.ant-modal-body]:!flex [&_.ant-modal-body]:!flex-col"
@@ -457,9 +459,9 @@ export default function UserSettingPage() {
                   editingUser
                     ? [{ min: 8, message: "Tối thiểu 8 ký tự" }]
                     : [
-                        { required: true, message: "Vui lòng nhập mật khẩu!" },
-                        { min: 8, message: "Tối thiểu 8 ký tự" },
-                      ]
+                      { required: true, message: "Vui lòng nhập mật khẩu!" },
+                      { min: 8, message: "Tối thiểu 8 ký tự" },
+                    ]
                 }
               >
                 <Input.Password placeholder="Tối thiểu 8 ký tự" />
@@ -473,38 +475,38 @@ export default function UserSettingPage() {
                 rules={
                   editingUser
                     ? [
-                        ({ getFieldValue }) => ({
-                          validator(_, value) {
-                            const password = getFieldValue("password");
-                            if (!password) return Promise.resolve();
-                            if (!value) {
-                              return Promise.reject(
-                                new Error("Vui lòng nhập lại mật khẩu!"),
-                              );
-                            }
-                            if (password === value) return Promise.resolve();
+                      ({ getFieldValue }) => ({
+                        validator(_, value) {
+                          const password = getFieldValue("password");
+                          if (!password) return Promise.resolve();
+                          if (!value) {
                             return Promise.reject(
-                              new Error("Mật khẩu không khớp!"),
+                              new Error("Vui lòng nhập lại mật khẩu!"),
                             );
-                          },
-                        }),
-                      ]
-                    : [
-                        {
-                          required: true,
-                          message: "Vui lòng nhập lại mật khẩu!",
+                          }
+                          if (password === value) return Promise.resolve();
+                          return Promise.reject(
+                            new Error("Mật khẩu không khớp!"),
+                          );
                         },
-                        ({ getFieldValue }) => ({
-                          validator(_, value) {
-                            if (!value || getFieldValue("password") === value) {
-                              return Promise.resolve();
-                            }
-                            return Promise.reject(
-                              new Error("Mật khẩu không khớp!"),
-                            );
-                          },
-                        }),
-                      ]
+                      }),
+                    ]
+                    : [
+                      {
+                        required: true,
+                        message: "Vui lòng nhập lại mật khẩu!",
+                      },
+                      ({ getFieldValue }) => ({
+                        validator(_, value) {
+                          if (!value || getFieldValue("password") === value) {
+                            return Promise.resolve();
+                          }
+                          return Promise.reject(
+                            new Error("Mật khẩu không khớp!"),
+                          );
+                        },
+                      }),
+                    ]
                 }
               >
                 <Input.Password placeholder="Nhập lại mật khẩu" />
