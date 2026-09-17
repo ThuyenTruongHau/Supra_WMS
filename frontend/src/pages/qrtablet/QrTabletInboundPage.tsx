@@ -23,6 +23,7 @@ import {
   useAssignPackingToItem,
 } from "@/hooks/useInboundOrder";
 import { getStaffUsernamesApi } from "@/api/auth";
+import { useInboundBufferLocations } from "@/hooks/useWarehouseMap";
 import { convertQuantityApi, getItemAvailableUnitsApi } from "@/api/itemUnit";
 import { formatQuantity } from "@/utils/formatQuantity";
 import {
@@ -65,7 +66,6 @@ import {
   formatFeBatchSendProgress,
   formatFeBatchSubmitHint,
   formatManualLocationReceived,
-  formatManualPendingLocationLabel,
   formatPackerBatchSendProgress,
   formatPackerPendingItemMismatch,
   formatPendingCached,
@@ -97,6 +97,11 @@ import {
   shouldShowSplitProductToggle,
   splitProductSubmitFlag,
 } from "@/config/splitProductConfig";
+import { resolveInboundLotValidation } from "@/config/warehouseMode";
+import {
+  LOT_NUMBER_LEGACY_HINT,
+  validateLotNumber,
+} from "@/utils/lotNumberValidation";
 
 type ScanMode = "idle" | "product" | "location" | "packingAssign";
 
@@ -235,6 +240,21 @@ export default function QrTabletInboundPage() {
   const [unitId, setUnitId] = useState<number | undefined>();
   const [lotNumber, setLotNumber] = useState("");
   const [manufacturingUsers, setManufacturingUsers] = useState<string[]>([]);
+  const [manufacturingMachine, setManufacturingMachine] = useState<
+    string | undefined
+  >();
+  const {
+    data: inboundBufferData,
+    isLoading: inboundBufferLoading,
+  } = useInboundBufferLocations(selectedWarehouseId ?? 0, !!preview);
+  const manufacturingMachineOptions = useMemo(
+    () =>
+      (inboundBufferData?.items ?? []).map((loc) => ({
+        value: loc.location_name ?? loc.location_code,
+        label: `${loc.location_code}${loc.location_name ? ` — ${loc.location_name}` : ""}`,
+      })),
+    [inboundBufferData],
+  );
   const [qcUsers, setQcUsers] = useState<string[]>([]);
   const [packingUser, setPackingUser] = useState<string | undefined>();
   const [cavityNumber, setCavityNumber] = useState<string | undefined>();
@@ -359,6 +379,7 @@ export default function QrTabletInboundPage() {
       setLotNumber("");
       setCavityNumber(undefined);
       setManufacturingUsers([]);
+      setManufacturingMachine(undefined);
       setQcUsers([]);
       setPackingUser(undefined);
       setUnitOptions([]);
@@ -492,7 +513,15 @@ export default function QrTabletInboundPage() {
   );
 
   const manufacturingReady = isStaffListReady(manufacturingUsers);
-  const lotReady = !!(lotNumber ?? "").trim();
+  const lotValidation = useMemo(
+    () => resolveInboundLotValidation(selectedWarehouseId ?? 0),
+    [selectedWarehouseId],
+  );
+  const lotValidationResult = useMemo(
+    () => validateLotNumber(lotNumber, lotValidation),
+    [lotNumber, lotValidation],
+  );
+  const lotReady = lotValidationResult.valid;
 
   const isPackingFormReady = useMemo(
     () =>
@@ -586,6 +615,7 @@ export default function QrTabletInboundPage() {
     setLotNumber("");
     setCavityNumber(undefined);
     setManufacturingUsers([]);
+    setManufacturingMachine(undefined);
     setQcUsers([]);
     setPackingUser(undefined);
       setUnitOptions([]);
@@ -648,6 +678,7 @@ export default function QrTabletInboundPage() {
       setUnitId(aggregated.unit_id);
       setLotNumber(aggregated.lot_number);
       setCavityNumber(aggregated.cavity_number);
+      setManufacturingMachine(aggregated.manufacturing_machine ?? undefined);
       setManufacturingUsers(
         filterKnownStaff(
           parseStaffList(aggregated.manufacturing_user),
@@ -716,6 +747,7 @@ export default function QrTabletInboundPage() {
       setUnitId(result.unit_id);
       setLotNumber(result.lot_number ?? "");
       setCavityNumber(result.cavity_number ?? result.cavity_numbers?.[0]);
+      setManufacturingMachine(result.manufacturing_machine ?? undefined);
       setManufacturingUsers(
         filterKnownStaff(parseStaffList(result.manufacturing_user), staffUsernameSet),
       );
@@ -930,6 +962,7 @@ export default function QrTabletInboundPage() {
       lot_number: (lotNumber ?? "").trim() || undefined,
       cavity_number: cavityNumber || undefined,
       manufacturing_user: selectedStaffList(manufacturingUsers),
+      manufacturing_machine: manufacturingMachine || undefined,
       qc_user: showQcUser ? selectedStaffList(qcUsers) : undefined,
       packing_user: isAssignAggregatedForm
         ? assignAggregatedSubmitFields?.packing_user
@@ -947,6 +980,7 @@ export default function QrTabletInboundPage() {
     isAssignAggregatedForm,
     isSplitProduct,
     lotNumber,
+    manufacturingMachine,
     manufacturingUsers,
     packingUser,
     qcUsers,
@@ -969,6 +1003,14 @@ export default function QrTabletInboundPage() {
     [buildSharedAssignFields],
   );
 
+  const buildManualCachePayload = useCallback(
+    (productCode: string): AssignOrGetItemStockRequest => ({
+      raw: productCode,
+      ...buildSharedAssignFields(),
+    }),
+    [buildSharedAssignFields],
+  );
+
   const buildPackingCachePayloadForQr = useCallback(
     (qrCode: string): CacheForPackingUserRequest => ({
       qr_code: qrCode,
@@ -977,6 +1019,7 @@ export default function QrTabletInboundPage() {
       lot_number: (lotNumber ?? "").trim(),
       cavity_number: cavityNumber || undefined,
       manufacturing_user: selectedStaffList(manufacturingUsers),
+      manufacturing_machine: manufacturingMachine || undefined,
       qc_user: showQcUser ? selectedStaffList(qcUsers) : undefined,
       packing_user: selectedStaff(packingUser),
       is_split: splitProductSubmitFlag(
@@ -989,6 +1032,7 @@ export default function QrTabletInboundPage() {
       cavityNumber,
       isSplitProduct,
       lotNumber,
+      manufacturingMachine,
       manufacturingUsers,
       packingUser,
       qcUsers,
@@ -1012,6 +1056,7 @@ export default function QrTabletInboundPage() {
       lot_number: (lotNumber ?? "").trim(),
       cavity_number: cavityNumber || undefined,
       manufacturing_user: selectedStaffList(manufacturingUsers),
+      manufacturing_machine: manufacturingMachine || undefined,
       qc_user: showQcUser ? selectedStaffList(qcUsers) : undefined,
       packing_user: showPackingUser ? selectedStaff(packingUser) : undefined,
       is_split: splitProductSubmitFlag(
@@ -1023,6 +1068,7 @@ export default function QrTabletInboundPage() {
       cavityNumber,
       isSplitProduct,
       lotNumber,
+      manufacturingMachine,
       manufacturingUsers,
       packingUser,
       qcUsers,
@@ -1052,6 +1098,11 @@ export default function QrTabletInboundPage() {
     }
     return formatFeBatchSubmitHint(total, queue.length);
   }, [feBatchQueues, preview]);
+
+  const manualCacheTargetCount = useMemo(
+    () => countBatchSubmitTargets(feBatchQueues.product, preview?.code),
+    [feBatchQueues.product, preview?.code],
+  );
 
   const handleAssignPackToItem = useCallback(
     async (itemPreview: QrCodePreviewResponse) => {
@@ -1265,10 +1316,21 @@ export default function QrTabletInboundPage() {
       }
       if (isManualInboundCreated(result)) {
         resetPreview();
+        setPendingLocation(null);
         Modal.success({
           title: tQrTabletInbound("manualCreatedTitle"),
           content: result.message,
         });
+        return;
+      }
+      if (isAssignOrGetPendingCached(result)) {
+        message.success(
+          formatPendingCached(
+            result.pending.code,
+            result.pending.part_number,
+          ),
+        );
+        resetPreview();
         return;
       }
       message.error(tQrTabletInbound("unhandledResponse"));
@@ -1485,6 +1547,7 @@ export default function QrTabletInboundPage() {
         lot_number: aggregated.lot_number,
         cavity_number: aggregated.cavity_number,
         manufacturing_user: aggregated.manufacturing_user,
+        manufacturing_machine: aggregated.manufacturing_machine,
         qc_user: aggregated.qc_user,
         packing_user: user,
       });
@@ -1500,6 +1563,7 @@ export default function QrTabletInboundPage() {
           lot_number: lot,
           cavity_number: pack.cavity_number || undefined,
           manufacturing_user: pack.manufacturing_user!,
+          manufacturing_machine: pack.manufacturing_machine || undefined,
           qc_user: pack.qc_user || undefined,
           packing_user: user,
           relation: itemBatchAnchor.qr_code_id,
@@ -1608,13 +1672,13 @@ export default function QrTabletInboundPage() {
 
   const submitManualInboundBatch = useCallback(
     async (locationCode: string) => {
-      if (!preview) {
-        return;
-      }
       const targets = resolveBatchTargets(
         feBatchQueues.product,
-        preview.code,
+        preview?.code,
       );
+      if (targets.length === 0) {
+        return;
+      }
       beginFeBatchSending(targets.length);
       try {
         const batchResult = await executeFeBatchSubmit({
@@ -1626,6 +1690,7 @@ export default function QrTabletInboundPage() {
         removeFeBatchSucceeded("product", batchResult.succeeded);
         if (batchResult.failed.length === 0) {
           resetPreview();
+          setPendingLocation(null);
           Modal.success({
             title: tQrTabletInbound("manualCreatedTitle"),
             content: formatFeBatchSendComplete(batchResult.succeeded.length),
@@ -1661,6 +1726,66 @@ export default function QrTabletInboundPage() {
       updateFeBatchSendProgress,
     ],
   );
+
+  const handleManualClose = useCallback(async () => {
+    if (!isProductFormReady || !selectedWarehouseId) {
+      return;
+    }
+    const targets = resolveBatchTargets(
+      feBatchQueues.product,
+      preview?.code,
+    );
+    if (targets.length === 0) {
+      return;
+    }
+    beginFeBatchSending(targets.length);
+    try {
+      const batchResult = await executeFeBatchSubmit({
+        targets,
+        buildPayload: buildManualCachePayload,
+        mutate: (payload) => manualScanMutation.mutateAsync(payload),
+        onProgress: updateFeBatchSendProgress,
+      });
+      removeFeBatchSucceeded("product", batchResult.succeeded);
+      if (batchResult.failed.length === 0) {
+        resetPreview();
+        Modal.success({
+          title: formatFeBatchSendComplete(batchResult.succeeded.length),
+          centered: true,
+        });
+        return;
+      }
+      const details = batchResult.failed
+        .map((item) => `${item.code}: ${item.error}`)
+        .join("; ");
+      Modal.warning({
+        title: tQrTabletInbound("feBatchSendPartial"),
+        content: formatFeBatchSendPartial(
+          batchResult.succeeded.length,
+          targets.length,
+          batchResult.failed.length,
+          details,
+        ),
+        centered: true,
+      });
+    } catch (err) {
+      message.error(getApiErrorMessage(err));
+    } finally {
+      finishFeBatchSending();
+    }
+  }, [
+    beginFeBatchSending,
+    buildManualCachePayload,
+    feBatchQueues.product,
+    finishFeBatchSending,
+    isProductFormReady,
+    manualScanMutation,
+    preview?.code,
+    removeFeBatchSucceeded,
+    resetPreview,
+    selectedWarehouseId,
+    updateFeBatchSendProgress,
+  ]);
 
   const handleScan = useCallback(
     async (scanned: string) => {
@@ -1706,6 +1831,23 @@ export default function QrTabletInboundPage() {
           return;
         }
         if (!isAutoWarehouse) {
+          if (currentScanMode === "location" && isProductFormReady) {
+            const batchTargets = resolveBatchTargets(
+              feBatchQueues.product,
+              preview?.code,
+            );
+            if (batchTargets.length > 1) {
+              await submitManualInboundBatch(scanned);
+              return;
+            }
+            if (preview) {
+              const result = await manualScanMutation.mutateAsync(
+                buildScanPayloadForQr(preview.code, scanned),
+              );
+              await handleManualScanResponse(result);
+              return;
+            }
+          }
           const result = await manualScanMutation.mutateAsync(
             buildScanPayload(scanned),
           );
@@ -1742,6 +1884,7 @@ export default function QrTabletInboundPage() {
       applyPreviewResult,
       assignMutation,
       buildScanPayload,
+      buildScanPayloadForQr,
       collectMode,
       feBatchQueues.product,
       handleAssignOrGetResponse,
@@ -1750,6 +1893,7 @@ export default function QrTabletInboundPage() {
       handlePreviewWithSplitGate,
       isAutoWarehouse,
       isPackerMode,
+      isProductFormReady,
       beginFromLocationScan,
       manualScanMutation,
       preview,
@@ -1760,46 +1904,9 @@ export default function QrTabletInboundPage() {
       scanMode,
       splitPreviewOpen,
       submitAutoAssignBatch,
+      submitManualInboundBatch,
     ],
   );
-
-  const handleManualConfirm = useCallback(async () => {
-    if (!pendingLocation || !preview || !isProductFormReady) {
-      return;
-    }
-    if (!selectedWarehouseId) {
-      message.warning(tQrTabletInbound("selectWarehouseFirst"));
-      return;
-    }
-    try {
-      if (
-        isItemQrType(preview.qr_type) &&
-        resolveBatchTargets(feBatchQueues.product, preview.code).length > 1
-      ) {
-        await submitManualInboundBatch(pendingLocation.location_code);
-        return;
-      }
-      const result = await manualScanMutation.mutateAsync(
-        buildScanPayload(
-          pendingLocation.location_code,
-          pendingLocation.location_code,
-        ),
-      );
-      await handleManualScanResponse(result);
-    } catch (err) {
-      message.error(getApiErrorMessage(err));
-    }
-  }, [
-    buildScanPayload,
-    feBatchQueues.product,
-    handleManualScanResponse,
-    isProductFormReady,
-    manualScanMutation,
-    pendingLocation,
-    preview,
-    selectedWarehouseId,
-    submitManualInboundBatch,
-  ]);
 
   const handleImportDecoded = useCallback(
     async (text: string) => {
@@ -2059,6 +2166,10 @@ export default function QrTabletInboundPage() {
             label={tQrTabletInbound("labelManufacturing")}
             value={serializeStaffList(manufacturingUsers)}
           />
+          <PackerStockField
+            label={tQrTabletInbound("labelManufacturingMachine")}
+            value={manufacturingMachine}
+          />
           {showQcUser ? (
             <PackerStockField
               label={tQrTabletInbound("labelQc")}
@@ -2184,6 +2295,10 @@ export default function QrTabletInboundPage() {
               <PackerStockField
                 label={tQrTabletInbound("labelManufacturing")}
                 value={aggregatedBatchPreview.manufacturing_user}
+              />
+              <PackerStockField
+                label={tQrTabletInbound("labelManufacturingMachine")}
+                value={aggregatedBatchPreview.manufacturing_machine}
               />
               <PackerStockField
                 label={tQrTabletInbound("labelQc")}
@@ -2320,7 +2435,9 @@ export default function QrTabletInboundPage() {
         </p>
         {collectMode ? (
           <p className="mb-4 rounded-lg bg-brand-primary/10 px-3 py-2 text-center text-sm text-brand-dark">
-            {tQrTabletInbound("feBatchCollectHint")}
+            {isAutoWarehouse
+              ? tQrTabletInbound("feBatchCollectHint")
+              : tQrTabletInbound("manualFeBatchCollectHint")}
           </p>
         ) : null}
         <div className="flex flex-col gap-3">
@@ -2541,7 +2658,22 @@ export default function QrTabletInboundPage() {
                     />
                   </Form.Item>
                 )}
-                <Form.Item label={tQrTabletInbound("labelLot")} required>
+                <Form.Item
+                  label={tQrTabletInbound("labelLot")}
+                  required
+                  validateStatus={
+                    (lotNumber ?? "").trim() && !lotValidationResult.valid
+                      ? "error"
+                      : undefined
+                  }
+                  help={
+                    (lotNumber ?? "").trim() && !lotValidationResult.valid
+                      ? lotValidationResult.message
+                      : isAutoWarehouse
+                        ? LOT_NUMBER_LEGACY_HINT
+                        : undefined
+                  }
+                >
                   <Input
                     value={lotNumber}
                     onChange={(e) => setLotNumber(e.target.value)}
@@ -2553,6 +2685,22 @@ export default function QrTabletInboundPage() {
                   setManufacturingUsers,
                   requiresProductStaffFields,
                 )}
+                <Form.Item label={tQrTabletInbound("labelManufacturingMachine")}>
+                  <Select
+                    showSearch
+                    allowClear
+                    className="w-full"
+                    loading={inboundBufferLoading}
+                    options={manufacturingMachineOptions}
+                    placeholder={tQrTabletInbound("placeholderManufacturingMachine")}
+                    value={manufacturingMachine}
+                    onChange={(val) =>
+                      setManufacturingMachine(
+                        typeof val === "string" ? val : undefined,
+                      )
+                    }
+                  />
+                </Form.Item>
                 {showQcUser &&
                   renderStaffMultiSelect(
                     tQrTabletInbound("labelQc"),
@@ -2609,15 +2757,34 @@ export default function QrTabletInboundPage() {
                         onDecoded={handlePackingAssignImportDecoded}
                       />
                     </>
+                  ) : !isAutoWarehouse ? (
+                    <>
+                      <div className="flex gap-3">
+                        <Button
+                          variant="secondary"
+                          className="!h-12 flex-1 !text-lg"
+                          loading={isFeBatchSending}
+                          disabled={
+                            !isProductFormReady || manualCacheTargetCount === 0
+                          }
+                          onClick={() => void handleManualClose()}
+                        >
+                          {tQrTabletInbound("manualCloseButton")}
+                        </Button>
+                        <Button
+                          variant="primary"
+                          className="!h-12 flex-1 !text-lg"
+                          loading={scanPending}
+                          disabled={!isProductFormReady}
+                          onClick={() => setScanMode("location")}
+                        >
+                          {tQrTabletInbound("scanLocationButton")}
+                        </Button>
+                      </div>
+                      <QrImageImport onDecoded={handleImportDecoded} />
+                    </>
                   ) : (
                     <>
-                      {!isAutoWarehouse && pendingLocation && (
-                        <p className="rounded-lg bg-brand-primary/10 px-3 py-2 text-sm text-brand-dark">
-                          {formatManualPendingLocationLabel(
-                            pendingLocation.location_name,
-                          )}
-                        </p>
-                      )}
                       <Button
                         variant="primary"
                         className="!h-12 w-full !text-lg"
@@ -2627,17 +2794,6 @@ export default function QrTabletInboundPage() {
                       >
                         {tQrTabletInbound("scanLocationButton")}
                       </Button>
-                      {!isAutoWarehouse && pendingLocation && (
-                        <Button
-                          variant="secondary"
-                          className="!h-12 w-full !text-lg"
-                          loading={manualScanMutation.isPending}
-                          disabled={!isProductFormReady}
-                          onClick={() => void handleManualConfirm()}
-                        >
-                          {tQrTabletInbound("manualConfirmButton")}
-                        </Button>
-                      )}
                       <QrImageImport onDecoded={handleImportDecoded} />
                     </>
                   )}

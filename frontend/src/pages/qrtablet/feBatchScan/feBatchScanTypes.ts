@@ -1,13 +1,9 @@
+import type { QrCodePreviewResponse } from "@/types/inboundOrder";
+
 export type FeBatchQrKind = "product" | "pack";
 
-export type FeBatchEntry = {
-  qr_code_id: number;
-  code: string;
-  item_id: number;
-  item_sku: string;
-  item_name: string;
-  qr_type: string;
-};
+/** Full preview payload returned by the backend when collecting QR scans. */
+export type FeBatchEntry = QrCodePreviewResponse;
 
 export type FeBatchQueues = {
   product: FeBatchEntry[];

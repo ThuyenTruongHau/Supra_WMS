@@ -5,6 +5,7 @@ from decimal import Decimal
 from typing import Optional
 import json
 import math
+import threading
 import uuid
 from pathlib import Path
 
@@ -40,14 +41,18 @@ from app.modules.warehouse.item_stock.item_stock_model import (
     positive_stock_quantity_criterion,
 )
 from app.modules.warehouse.location_map.location_model import Location
-from app.modules.warehouse.item.item_celery_task import import_item_masan_task
+from app.core.database import db_session
+from app.modules.warehouse.item.item_celery_task import import_item_masan_upsert_task
 from app.modules.warehouse.item.item_import_utils import (
     get_import_file_path,
     get_import_job,
     import_item_storage_name,
+    mark_import_job_failed,
     new_import_job_payload,
+    run_import_item_staging_phase,
     save_import_item_file,
     save_import_job,
+    update_import_job,
 )
 from app.core.logger import get_logger
 
@@ -813,6 +818,54 @@ def render_qr_codes(payload: dict) -> str:
     )
 
 
+def _start_import_background(
+    job_id: str,
+    warehouse_id: int,
+    filename: str,
+    file_path: Path,
+) -> None:
+    def _run() -> None:
+        try:
+            with db_session() as bg_db:
+                run_import_item_staging_phase(
+                    bg_db,
+                    job_id,
+                    warehouse_id,
+                    file_path,
+                )
+            import_item_masan_upsert_task.delay(
+                job_id=job_id,
+                warehouse_id=warehouse_id,
+                filename=filename,
+            )
+        except Exception as exc:
+            logger.exception(
+                "item import staging failed job_id=%s warehouse_id=%s",
+                job_id,
+                warehouse_id,
+            )
+            try:
+                with db_session() as bg_db:
+                    mark_import_job_failed(
+                        bg_db,
+                        job_id,
+                        exc,
+                        warehouse_id=warehouse_id,
+                        filename=filename,
+                    )
+            except Exception:
+                update_import_job(
+                    job_id,
+                    status="failed",
+                    warehouse_id=warehouse_id,
+                    filename=filename,
+                    message=str(exc),
+                    error_count=1,
+                )
+
+    threading.Thread(target=_run, daemon=True).start()
+
+
 async def start_item_masan_import(
     db: Session,
     warehouse_id: int,
@@ -823,7 +876,7 @@ async def start_item_masan_import(
     if Path(file.filename or "").suffix.lower() != ".csv":
         raise ValueError("File must be a CSV file")
 
-    filename, _size = await save_import_item_file(file, warehouse_id)
+    filename, _size, file_path = await save_import_item_file(file, warehouse_id)
     job_id = str(uuid.uuid4())
 
     save_import_job(
@@ -831,10 +884,11 @@ async def start_item_masan_import(
         new_import_job_payload(job_id, warehouse_id, filename),
     )
 
-    import_item_masan_task.delay(
+    _start_import_background(
         job_id=job_id,
         warehouse_id=warehouse_id,
         filename=filename,
+        file_path=file_path,
     )
 
     return {

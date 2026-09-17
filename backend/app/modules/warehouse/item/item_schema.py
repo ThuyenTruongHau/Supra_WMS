@@ -132,6 +132,7 @@ class ItemDetailResponse(BaseModel):
     item: ItemResponse
     stocks: list[ItemStockInDetail]
     available_quantity: Decimal = Decimal("0")
+    split_quantity: Decimal = Decimal("0")
 
 
 # --- QR Code ---

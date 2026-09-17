@@ -52,6 +52,7 @@ export interface OutboundItemDraft {
   converted_quantity?: number;
   converted_unit_name?: string;
   warehouse_stock_quantity?: number | null;
+  warehouse_split_quantity?: number | null;
   warehouse_stock_loading?: boolean;
   detailEntries?: KeyValueEntry[];
 }
@@ -304,19 +305,32 @@ export default function CreateOutboundModal({
     updateItem(itemKey, {
       warehouse_stock_loading: true,
       warehouse_stock_quantity: undefined,
+      warehouse_split_quantity: undefined,
     });
     try {
       const detail = await getItemByIdApi(itemId);
       updateItem(itemKey, {
         warehouse_stock_loading: false,
         warehouse_stock_quantity: Number(detail.available_quantity ?? 0),
+        warehouse_split_quantity: Number(detail.split_quantity ?? 0),
       });
     } catch {
       updateItem(itemKey, {
         warehouse_stock_loading: false,
         warehouse_stock_quantity: null,
+        warehouse_split_quantity: null,
       });
     }
+  };
+
+  const formatWarehouseStockLabel = (
+    available: number | null | undefined,
+    split: number | null | undefined,
+  ) => {
+    if (available == null || split == null) {
+      return "—";
+    }
+    return `${formatQuantity(available)} - ${formatQuantity(split)}`;
   };
 
   useEffect(() => {
@@ -631,6 +645,7 @@ export default function CreateOutboundModal({
                   converted_quantity: undefined,
                   converted_unit_name: undefined,
                   warehouse_stock_quantity: undefined,
+                  warehouse_split_quantity: undefined,
                   warehouse_stock_loading: false,
                 });
               } else {
@@ -649,6 +664,7 @@ export default function CreateOutboundModal({
                   converted_quantity: undefined,
                   converted_unit_name: undefined,
                   warehouse_stock_quantity: undefined,
+                  warehouse_split_quantity: undefined,
                   warehouse_stock_loading: false,
                 });
                 return;
@@ -716,15 +732,16 @@ export default function CreateOutboundModal({
         </div>
         <Input
           disabled
-          prefix={<span className="text-xs text-slate-400">Tồn kho:</span>}
+          prefix={<span className="text-xs text-slate-400">Tồn - lẻ:</span>}
           value={
             !item.item_id
               ? "—"
               : item.warehouse_stock_loading
                 ? "..."
-                : item.warehouse_stock_quantity != null
-                  ? formatQuantity(item.warehouse_stock_quantity)
-                  : "—"
+                : formatWarehouseStockLabel(
+                    item.warehouse_stock_quantity,
+                    item.warehouse_split_quantity,
+                  )
           }
         />
         <Select

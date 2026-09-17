@@ -74,6 +74,8 @@ export interface ItemDetails {
   stocks: ItemStock[]
   /** Tồn available (không gồm hàng lẻ/split) — dùng preview form outbound */
   available_quantity?: number
+  /** Tồn lẻ/split — dùng preview form outbound */
+  split_quantity?: number
 }
 
 export interface ItemAnalyzeResponse {

@@ -30,6 +30,8 @@ export const QR_TABLET_INBOUND_VI = {
   labelCavity: "Số cavity",
   labelLot: "Số lô",
   labelManufacturing: "Người sản xuất",
+  labelManufacturingMachine: "Máy sản xuất",
+  placeholderManufacturingMachine: "Chọn vị trí zone nhập",
   labelQc: "Người kiểm tra",
   labelPacking: "Người đóng gói",
   placeholderCavity: "Chọn số cavity",
@@ -94,9 +96,10 @@ export const QR_TABLET_INBOUND_VI = {
   packerLocationNoPendingItems:
     "Người đóng gói chưa có item nào đã lưu tạm để nhập kho.",
   manualLocationReceived:
-    "Đã nhận vị trí {location}. Hoàn tất form rồi quét lại vị trí hoặc bấm xác nhận.",
-  manualPendingLocationLabel: "Vị trí đã quét: {location}",
-  manualConfirmButton: "Xác nhận nhập kho",
+    "Đã nhận vị trí {location}. Hoàn tất form rồi bấm Quét vị trí để tạo đơn.",
+  manualCloseButton: "Đóng",
+  manualFeBatchCollectHint:
+    "Quét liên tiếp: điền form một lần, bấm Đóng để lưu cache hoặc Quét vị trí để tạo đơn.",
   manualCreatedTitle: "Đã tạo đơn nhập",
   assignAggregatedHint:
     "Đã gom {count} pack vào item. Kiểm tra thông tin tổng hợp trước khi quét vị trí.",
@@ -189,13 +192,6 @@ export function formatPackerPendingItemMismatch(
 
 export function formatManualLocationReceived(location: string): string {
   return QR_TABLET_INBOUND_VI.manualLocationReceived.replace(
-    "{location}",
-    location,
-  );
-}
-
-export function formatManualPendingLocationLabel(location: string): string {
-  return QR_TABLET_INBOUND_VI.manualPendingLocationLabel.replace(
     "{location}",
     location,
   );

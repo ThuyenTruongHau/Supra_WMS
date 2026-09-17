@@ -81,6 +81,7 @@ class AssignOrGetItemStockRequest(BaseModel):
     lot_number: Optional[str] = Field(None, max_length=50)
     cavity_number: Optional[str] = Field(None, max_length=50)
     manufacturing_user: Optional[str] = Field(None, max_length=100)
+    manufacturing_machine: Optional[str] = Field(None, max_length=50)
     qc_user: Optional[str] = Field(None, max_length=100)
     packing_user: Optional[str] = Field(None, max_length=100)
     is_split: Optional[bool] = Field(
@@ -90,11 +91,16 @@ class AssignOrGetItemStockRequest(BaseModel):
 
     @model_validator(mode="after")
     def require_fields_when_assign(self) -> "AssignOrGetItemStockRequest":
-        has_location = self.location_id is not None or bool(self.raw)  
+        has_location = self.location_id is not None or bool(self.raw)
         if self.qr_code is not None and has_location:
             if self.quantity is None or self.unit_id is None:
                 raise ValueError(
                     "quantity and unit_id are required when assigning a QR code to a location"
+                )
+        if self.qr_code is None and self.raw is not None:
+            if self.quantity is None or self.unit_id is None:
+                raise ValueError(
+                    "quantity and unit_id are required when caching manual QR"
                 )
         return self
 
@@ -118,6 +124,7 @@ class QrCodePreviewResponse(BaseModel):
     cavity_number: Optional[str] = None
     qr_type: str = "item"
     manufacturing_user: Optional[str] = None
+    manufacturing_machine: Optional[str] = None
     qc_user: Optional[str] = None
     packing_user: Optional[str] = None
     is_split: bool = False
@@ -149,6 +156,7 @@ class CacheForPackingUserRequest(BaseModel):
     lot_number: str = Field(..., min_length=1, max_length=50)
     cavity_number: Optional[str] = Field(None, max_length=50)
     manufacturing_user: Optional[str] = Field(None, max_length=100)
+    manufacturing_machine: Optional[str] = Field(None, max_length=50)
     qc_user: Optional[str] = Field(None, max_length=100)
     packing_user: Optional[str] = Field(None, max_length=100)
     relation: Optional[int] = Field(
@@ -176,6 +184,7 @@ class AssignPackingToItemRequest(BaseModel):
     lot_number: Optional[str] = Field(None, max_length=50)
     cavity_number: Optional[str] = Field(None, max_length=50)
     manufacturing_user: Optional[str] = Field(None, max_length=100)
+    manufacturing_machine: Optional[str] = Field(None, max_length=50)
     qc_user: Optional[str] = Field(None, max_length=100)
     packing_user: Optional[str] = Field(None, max_length=100)
     is_split: Optional[bool] = Field(
@@ -240,6 +249,7 @@ class AssignedItemStockResponse(BaseModel):
     qr_type: Optional[str] = None
     cavity_number: Optional[str] = None
     manufacturing_user: Optional[str] = None
+    manufacturing_machine: Optional[str] = None
     qc_user: Optional[str] = None
     packing_user: Optional[str] = None
     stock_level: Optional[int] = None
@@ -263,6 +273,7 @@ class InboundOrderAllocationCreate(BaseModel):
     expiry_date: Optional[str] = None
     cavity_number: Optional[str] = None
     manufacturing_user: Optional[str] = None
+    manufacturing_machine: Optional[str] = None
     qc_user: Optional[str] = None
     packing_user: Optional[str] = None
 

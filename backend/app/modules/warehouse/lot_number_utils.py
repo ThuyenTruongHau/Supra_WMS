@@ -93,17 +93,27 @@ def resolve_lot_number_fields(
     legacy = normalize_lot_number(lot_number)
 
     if from_val and to_val:
-        f, _ = parse_legacy_lot_number(from_val)
-        _, t = parse_legacy_lot_number(to_val)
+        f, _ = resolve_lot_number_input(from_val)
+        _, t = resolve_lot_number_input(to_val)
         return f, t
     if from_val:
-        return parse_legacy_lot_number(from_val)
+        return resolve_lot_number_input(from_val)
     if to_val:
-        return parse_legacy_lot_number(to_val)
+        return resolve_lot_number_input(to_val)
     if legacy:
-        return parse_legacy_lot_number(legacy)
+        return resolve_lot_number_input(legacy)
     raise ValueError("lot_number_from and lot_number_to are required")
 
+def resolve_lot_number_input(value: str) -> tuple[str, str]:
+    s = normalize_lot_number(value)
+    if not s:
+        raise ValueError("lot_number is required")
+    if len(s) > 50:
+        raise ValueError("lot_number must be at most 50 characters")
+    try:
+        return parse_legacy_lot_number(s)
+    except ValueError:
+        return s, s  # lot_from = lot_to = raw user input
 
 def format_lot_number_display(
     lot_number_from: str | None,

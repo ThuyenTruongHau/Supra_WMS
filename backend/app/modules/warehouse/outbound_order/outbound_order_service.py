@@ -527,6 +527,13 @@ def _lot_as_date(col):
         else_=func.to_date(col, "DDMMYY"),
     )
 
+def _lot_sort_key(lot_col, fallback_ts):
+    return case(
+        (lot_col.op("~")(r"^\d{2}/\d{2}/\d{2}$"), func.to_date(lot_col, "DD/MM/YY")),
+        (lot_col.op("~")(r"^\d{6}$"), func.to_date(lot_col, "DDMMYY")),
+        else_=func.date(fallback_ts),
+    )
+
 def _strategy_loading_stocks(db: Session, item_id: int, strategy: str, lot_number: str = None):
     q = (
         db.query(ItemStock)
@@ -541,24 +548,36 @@ def _strategy_loading_stocks(db: Session, item_id: int, strategy: str, lot_numbe
     )
     
     if strategy == "fefo":
-        lot_from = ItemStock.lot_number_from
-        lot_to = ItemStock.lot_number_to
-        lot_date_from = case(
-            (
-                lot_from.op("~")(r"^\d{2}/\d{2}/\d{2}$"),
-                func.to_date(lot_from, "DD/MM/YY"),
-            ),
-            else_=func.to_date(lot_from, "DDMMYY"),
+        # lot_from = ItemStock.lot_number_from
+        # lot_to = ItemStock.lot_number_to
+        # lot_date_from = case(
+        #     (
+        #         lot_from.op("~")(r"^\d{2}/\d{2}/\d{2}$"),
+        #         func.to_date(lot_from, "DD/MM/YY"),
+        #     ),
+        #     else_=func.to_date(lot_from, "DDMMYY"),
+        # )
+        # lot_date_to = case(
+        #     (
+        #         lot_to.op("~")(r"^\d{2}/\d{2}/\d{2}$"),
+        #         func.to_date(lot_to, "DD/MM/YY"),
+        #     ),
+        #     else_=func.to_date(lot_to, "DDMMYY"),
+        # )
+
+        status_rank = case(
+            (ItemStock.status == "available", 0),
+            (ItemStock.status == "split", 1),
+            else_=2,
         )
-        lot_date_to = case(
-            (
-                lot_to.op("~")(r"^\d{2}/\d{2}/\d{2}$"),
-                func.to_date(lot_to, "DD/MM/YY"),
-            ),
-            else_=func.to_date(lot_to, "DDMMYY"),
+        q = q.filter(ItemStock.status.in_(["available", "split"]))
+        q = q.order_by(
+            status_rank.asc(),
+            _lot_sort_key(ItemStock.lot_number_from, ItemStock.created_at).asc(),
+            _lot_sort_key(ItemStock.lot_number_to, ItemStock.created_at).asc(),
+            ItemStock.created_at.asc(),
+            ItemStock.id.asc(),
         )
-        q = q.filter(ItemStock.status == "available")
-        q = q.order_by(lot_date_from.asc(), lot_date_to.asc(), ItemStock.id.asc())
     elif strategy == "re_qc":
         lot_from, lot_to = parse_legacy_lot_number(lot_number)
         start = lot_string_to_date(lot_from)
@@ -1238,7 +1257,7 @@ def execute_outbound_task(
                 old_status="initialize",
                 new_status="issued",
                 description=f"Outbound order {outbound_order.id} in progress",
-                details=json.dumps([{"taskPath": task_path}]),
+                details=[{"taskPath": task_path}],
                 created_by_id=outbound_order.created_by_id,
             )
         )

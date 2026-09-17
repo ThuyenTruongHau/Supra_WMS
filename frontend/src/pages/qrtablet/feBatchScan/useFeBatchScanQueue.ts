@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   addEntry,
+  normalizeFeBatchQueue,
   removeEntry,
 } from "./feBatchScanUtils";
 import {
@@ -21,8 +22,8 @@ function readPersistedQueues(): FeBatchQueues {
     }
     const parsed = JSON.parse(raw) as FeBatchQueues;
     return {
-      product: Array.isArray(parsed.product) ? parsed.product : [],
-      pack: Array.isArray(parsed.pack) ? parsed.pack : [],
+      product: normalizeFeBatchQueue(parsed.product),
+      pack: normalizeFeBatchQueue(parsed.pack),
     };
   } catch {
     return EMPTY_FE_BATCH_QUEUES;

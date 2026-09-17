@@ -475,7 +475,13 @@ export default function ItemPage() {
         Math.round((importJob.processed / importJob.total) * 100),
       );
     }
-    return importJob.status === "running" ? 30 : 10;
+    if (importJob.status === "running") {
+      return 30;
+    }
+    if (importJob.message && importJob.message !== "Đang chờ xử lý") {
+      return 15;
+    }
+    return 10;
   })();
 
   const columns: ColumnsType<Item> = [

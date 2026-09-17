@@ -13,6 +13,7 @@ import {
   ImportOutlined,
   ExportOutlined,
   AuditOutlined,
+  UnorderedListOutlined,
   BellOutlined,
   SettingOutlined,
   ClusterOutlined,
@@ -260,6 +261,11 @@ export default function Sidebar() {
             { to: "/import", icon: <ImportOutlined />, label: "Nhập kho" },
             { to: "/export", icon: <ExportOutlined />, label: "Xuất kho" },
             { to: "/inventory", icon: <AuditOutlined />, label: "Kiểm kê" },
+            {
+              to: "/backlog",
+              icon: <UnorderedListOutlined />,
+              label: "Backlog",
+            },
           ]}
           collapsed={collapsed}
         />

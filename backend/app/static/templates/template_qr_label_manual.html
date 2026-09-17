@@ -4,8 +4,9 @@
   <meta charset="utf-8" />
   <title>In QR — kho manual (3×5cm)</title>
   <!--
-    Template in QR cho kho MANUAL — nhãn 30×50mm, CHỈ có mã QR (không có dòng ghi tay).
-    Dùng cho mọi qr_type: item | pack | transit.
+    Template in QR cho kho MANUAL — nhãn 30×50mm.
+    qr_type=item (phiếu thành phẩm): mã sản phẩm (part_number) + QR.
+    qr_type=pack|transit: chỉ có QR (không có dòng ghi tay).
 
     Backend truyền dữ liệu qua window.__QR_LABEL_MANUAL_PRINT_DATA__
     rồi gọi QrLabelManualPrint.init().
@@ -131,6 +132,20 @@
       line-height: 1;
     }
 
+    .qr-part-number {
+      flex-shrink: 0;
+      width: 100%;
+      padding: 0 0.5mm;
+      margin-bottom: 0.5mm;
+      font-size: 6px;
+      font-weight: 700;
+      line-height: 1.1;
+      text-align: center;
+      word-break: break-all;
+      overflow: hidden;
+      max-height: 7mm;
+    }
+
     .qr-label-image {
       flex: 1;
       min-height: 0;
@@ -147,6 +162,10 @@
       max-height: 44mm;
       object-fit: contain;
       display: block;
+    }
+
+    .qr-label.has-part-number .qr-label-image img {
+      max-height: 36mm;
     }
 
     @media print {
@@ -224,10 +243,14 @@
         const quantity = Math.max(Number(data?.quantity) || 0, 0);
         const qrIds = Array.isArray(data?.qr_ids) ? data.qr_ids : [];
         const qrType = String(data?.qr_type ?? "item");
+        const partNumber = String(data?.part_number ?? "").trim();
+        const showPartNumber =
+          qrType.trim().toLowerCase() === "item" && partNumber.length > 0;
 
         return Array.from({ length: quantity }, (_, index) => ({
           qr_id: String(qrIds[index] ?? ""),
           qr_type: qrType,
+          part_number: showPartNumber ? partNumber : "",
         }));
       }
 
@@ -241,10 +264,16 @@
         const badgeHtml = badge
           ? `<span class="qr-type-badge">${badge}</span>`
           : "";
+        const partNumber = String(label.part_number ?? "").trim();
+        const partNumberHtml = partNumber
+          ? `<div class="qr-part-number">${escapeHtml(partNumber)}</div>`
+          : "";
+        const labelClass = partNumber ? "qr-label has-part-number" : "qr-label";
 
         return `
-          <div class="qr-label">
+          <div class="${labelClass}">
             ${badgeHtml}
+            ${partNumberHtml}
             <div class="qr-label-image">
               <img src="${qrImageUrl(label.qr_id)}" alt="QR" />
             </div>

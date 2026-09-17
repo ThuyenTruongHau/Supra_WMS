@@ -95,6 +95,7 @@ function mapAssignedStockToImportItem(
     qr_code: stock.code,
     cavity_number: normalizeUniqueCommaField(stock.cavity_number),
     manufacturing_user: normalizeUniqueCommaField(stock.manufacturing_user),
+    manufacturing_machine: normalizeUniqueCommaField(stock.manufacturing_machine),
     qc_user: normalizeUniqueCommaField(stock.qc_user),
     packing_user: normalizePackingUserField(stock.packing_user),
   };
@@ -184,6 +185,7 @@ export function hasTabletScanMetadata(item: ImportItemDraft): boolean {
   return Boolean(
     item.qr_code_id &&
       (item.manufacturing_user ||
+        item.manufacturing_machine ||
         item.qc_user ||
         item.packing_user ||
         item.cavity_number),
@@ -206,6 +208,7 @@ export function buildInboundAllocationPayload(
   if (includeTabletMetadata) {
     payload.cavity_number = item.cavity_number ?? null;
     payload.manufacturing_user = item.manufacturing_user ?? null;
+    payload.manufacturing_machine = item.manufacturing_machine ?? null;
     payload.qc_user = item.qc_user ?? null;
     payload.packing_user = item.packing_user ?? null;
   }

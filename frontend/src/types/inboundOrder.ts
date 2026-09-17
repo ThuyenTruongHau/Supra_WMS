@@ -134,6 +134,7 @@ export interface InboundOrderAllocationCreate {
   qr_code_id?: number | null;
   cavity_number?: string | null;
   manufacturing_user?: string | null;
+  manufacturing_machine?: string | null;
   qc_user?: string | null;
   packing_user?: string | null;
 }
@@ -194,6 +195,7 @@ export interface AssignOrGetItemStockRequest {
   lot_number?: string | null;
   cavity_number?: string | null;
   manufacturing_user?: string | null;
+  manufacturing_machine?: string | null;
   qc_user?: string | null;
   packing_user?: string | null;
   is_split?: boolean | null;
@@ -213,6 +215,7 @@ export interface QrCodePreviewResponse {
   cavity_number?: string | null;
   qr_type: string;
   manufacturing_user?: string | null;
+  manufacturing_machine?: string | null;
   qc_user?: string | null;
   packing_user?: string | null;
   is_split?: boolean;
@@ -251,6 +254,7 @@ export interface CacheForPackingUserRequest {
   lot_number: string;
   cavity_number?: string | null;
   manufacturing_user?: string | null;
+  manufacturing_machine?: string | null;
   qc_user?: string | null;
   packing_user?: string | null;
   /** Parent item qr_code_id; required when caching pack QR */
@@ -267,6 +271,7 @@ export interface AssignPackingToItemRequest {
   lot_number?: string;
   cavity_number?: string | null;
   manufacturing_user?: string;
+  manufacturing_machine?: string | null;
   qc_user?: string | null;
   packing_user?: string | null;
   is_split?: boolean;
@@ -294,6 +299,7 @@ export interface AssignedItemStock {
   qr_type?: string | null;
   cavity_number?: string | null;
   manufacturing_user?: string | null;
+  manufacturing_machine?: string | null;
   qc_user?: string | null;
   packing_user?: string | null;
   stock_level?: number | null;

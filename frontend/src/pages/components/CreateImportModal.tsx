@@ -59,7 +59,10 @@ import {
   type LotNumberValidationOptions,
 } from "@/utils/lotNumberValidation";
 import { translateStatus } from "@/i18n/statusLabels.vi";
-import { resolveInboundType } from "@/config/warehouseMode";
+import {
+  resolveInboundLotValidation,
+  resolveInboundType,
+} from "@/config/warehouseMode";
 import {
   buildInboundAllocationPayload,
   hasTabletScanMetadata,
@@ -87,6 +90,7 @@ export interface ImportItemDraft {
   /** Metadata từ cache scan (luồng QR tablet). */
   cavity_number?: string;
   manufacturing_user?: string;
+  manufacturing_machine?: string;
   qc_user?: string;
   packing_user?: string;
 }
@@ -146,7 +150,7 @@ export default function CreateImportModal({
   initialNote,
   initialGroups,
   initialDetails,
-  lotNumberValidation = { required: true, format: "legacy" },
+  lotNumberValidation,
   submitMode = "create",
   lockFromLocation = false,
   warehouseIdOverride,
@@ -158,6 +162,12 @@ export default function CreateImportModal({
   const inboundType = warehouseIdOverride
     ? resolveInboundType(warehouseIdOverride)
     : storeInboundType;
+  const effectiveLotNumberValidation = useMemo(
+    () =>
+      lotNumberValidation ??
+      resolveInboundLotValidation(warehouseId ?? 0),
+    [lotNumberValidation, warehouseId],
+  );
 
   const [step, setStep] = useState(0);
   const [orderCode, setOrderCode] = useState("");
@@ -352,7 +362,9 @@ export default function CreateImportModal({
   };
 
   useEffect(() => {
-    if (!open || !isEdit || !initialGroups?.length) return;
+    const shouldHydrateUnits =
+      open && initialGroups?.length && (isEdit || isQrTabletCaller);
+    if (!shouldHydrateUnits) return;
 
     let cancelled = false;
 
@@ -366,14 +378,34 @@ export default function CreateImportModal({
                 const available = await getItemAvailableUnitsApi(item.item_id!);
                 const baseQuantity =
                   item.quantity > 0 ? item.quantity : item.item_base_quantity ?? 1;
+
+                let converted_quantity: number | undefined;
+                let converted_unit_name: string | undefined;
+                if (
+                  isQrTabletCaller &&
+                  item.unit_id != null &&
+                  item.quantity > 0
+                ) {
+                  const converted = await convertQuantityApi({
+                    item_id: item.item_id!,
+                    unit_id: item.unit_id,
+                    quantity: item.quantity,
+                  });
+                  converted_quantity = Number(converted.converted_quantity);
+                  converted_unit_name = converted.base_unit_name;
+                }
+
                 return {
                   groupKey: group.key,
                   itemKey: item.key,
+                  item_base_quantity: baseQuantity,
                   unit_options: formatUnitSelectOptions(
                     available.units,
                     available.base_unit_name,
                     baseQuantity,
                   ),
+                  converted_quantity,
+                  converted_unit_name,
                 };
               }),
           ),
@@ -386,7 +418,14 @@ export default function CreateImportModal({
               const loaded = entries.find(
                 (e) => e.groupKey === g.key && e.itemKey === i.key,
               );
-              return loaded ? { ...i, unit_options: loaded.unit_options } : i;
+              if (!loaded) return i;
+              return {
+                ...i,
+                unit_options: loaded.unit_options,
+                item_base_quantity: loaded.item_base_quantity,
+                converted_quantity: loaded.converted_quantity,
+                converted_unit_name: loaded.converted_unit_name,
+              };
             }),
           })),
         );
@@ -398,7 +437,7 @@ export default function CreateImportModal({
     return () => {
       cancelled = true;
     };
-  }, [open, isEdit, initialGroups]);
+  }, [open, isEdit, isQrTabletCaller, initialGroups]);
 
   const handleAddGroup = () => {
     if (isEdit) return;
@@ -456,8 +495,11 @@ export default function CreateImportModal({
         }
       }
     }
-    if (lotNumberValidation) {
-      const lotResult = validateGroupsLotNumbers(groups, lotNumberValidation);
+    if (effectiveLotNumberValidation) {
+      const lotResult = validateGroupsLotNumbers(
+        groups,
+        effectiveLotNumberValidation,
+      );
       if (!lotResult.valid) {
         message.error(lotResult.message ?? "Số lô không hợp lệ");
         return false;
@@ -979,13 +1021,17 @@ export default function CreateImportModal({
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <RequiredFieldLabel
-                  required={lotNumberValidation?.required !== false}
+                  required={effectiveLotNumberValidation.required !== false}
                   className="mb-1 text-xs font-medium text-slate-500"
                 >
                   Số lô
                 </RequiredFieldLabel>
                 <Input
-                  placeholder="vd: 09-10/04/26"
+                  placeholder={
+                    effectiveLotNumberValidation.format === "legacy"
+                      ? "vd: 09-10/04/26"
+                      : "Nhập số lô"
+                  }
                   value={item.lot_number || ""}
                   onChange={(e) =>
                     updateItem(group.key, item.key, {
@@ -1024,7 +1070,14 @@ export default function CreateImportModal({
                     value={item.cavity_number ?? ""}
                   />
                 </div>
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                  <Input
+                    disabled
+                    prefix={
+                      <span className="text-xs text-slate-400">Máy SX:</span>
+                    }
+                    value={item.manufacturing_machine ?? ""}
+                  />
                   <Input
                     disabled
                     prefix={
