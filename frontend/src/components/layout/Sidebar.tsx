@@ -1,11 +1,8 @@
 import { useEffect, useState } from "react";
-import { Navigate, Link, useLocation } from "react-router-dom";
+import { matchPath, Navigate, NavLink, useLocation } from "react-router-dom";
 import logo_thado from "@/assets/logo_thadorobot.png";
 import { useLogout } from "@/hooks/useAuth";
 import { useAuthStore } from "@/store/useAuthStore";
-import { MOCK_NOTIFICATIONS } from "@/data/mockNotifications";
-import { useNotificationStore } from "@/store/useNotificationStore";
-import { isAdminRole } from "@/constants/roles";
 import { SNAPSHOT_MODE } from "@/snapshot/snapshotConfig";
 import {
   LogoutOutlined,
@@ -15,13 +12,14 @@ import {
   BoxPlotOutlined,
   ImportOutlined,
   ExportOutlined,
-  PartitionOutlined,
   AuditOutlined,
   BellOutlined,
   SettingOutlined,
+  ClusterOutlined,
   RightOutlined,
   UserOutlined,
   HomeOutlined,
+  QrcodeOutlined,
 } from "@ant-design/icons";
 
 interface SidebarLinkProps {
@@ -29,7 +27,6 @@ interface SidebarLinkProps {
   icon: React.ReactNode;
   label: string;
   collapsed: boolean;
-  badge?: number;
 }
 
 interface SubLinkProps {
@@ -53,97 +50,79 @@ interface SidebarGroupProps {
   collapsed: boolean;
 }
 
-function isSubLinkActive(to: string, pathname: string): boolean {
-  if (to === "/export") {
-    if (pathname === "/export") return true;
-    if (pathname.startsWith("/export/sorting-waves")) return false;
-    return pathname.startsWith("/export/");
-  }
-
-  if (to === "/export/sorting-waves") {
-    return (
-      pathname === "/export/sorting-waves" ||
-      pathname.startsWith("/export/sorting-waves/")
-    );
-  }
-
-  if (to === "/dashboard") {
-    return pathname === to;
-  }
-
-  return pathname === to || pathname.startsWith(`${to}/`);
-}
-
 function isGroupActive(items: SidebarGroupItem[], pathname: string) {
-  return items.some((item) => isSubLinkActive(item.to, pathname));
+  return items.some((item) =>
+    matchPath({ path: item.to, end: true }, pathname),
+  );
 }
 
-function SidebarLink({ to, icon, label, collapsed, badge }: SidebarLinkProps) {
-  const { pathname } = useLocation();
-  const isActive = isSubLinkActive(to, pathname);
-
+function SidebarLink({ to, icon, label, collapsed }: SidebarLinkProps) {
   return (
-    <Link to={to} className="group block" title={collapsed ? label : undefined}>
-      <div
-        className={`flex items-center rounded-xl transition-all duration-300 py-2 ${collapsed ? "justify-center px-1.5 gap-0" : "px-3 gap-3"} ${
-          isActive
-            ? "text-stripe-primary-soft font-semibold bg-sidebar-hover/60"
-            : "text-sidebar-mute hover:text-white hover:bg-sidebar-hover/40"
-        }`}
-      >
+    <NavLink
+      to={to}
+      className="group block"
+      title={collapsed ? label : undefined}
+    >
+      {({ isActive }) => (
         <div
-          className={`relative w-9 h-9 flex items-center justify-center rounded-lg transition-all shrink-0 ${
+          className={`flex items-center rounded-xl transition-all duration-300 py-2 ${collapsed ? "justify-center px-1.5 gap-0" : "px-3 gap-3"} ${
             isActive
-              ? "bg-brand-primary text-white shadow-lg shadow-brand-primary/25"
-              : "bg-sidebar-hover text-sidebar-mute group-hover:bg-brand-primary/30 group-hover:text-white"
+              ? "text-stripe-primary-soft font-semibold bg-slate-800/40"
+              : "text-slate-400 hover:text-white hover:bg-slate-800/20"
           }`}
         >
-          {icon}
-          {badge != null && badge > 0 && (
-            <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
-              {badge > 9 ? "9+" : badge}
-            </span>
-          )}
+          <div
+            className={`w-9 h-9 flex items-center justify-center rounded-lg transition-all shrink-0 ${
+              isActive
+                ? "bg-brand-primary text-white shadow-lg shadow-brand-primary/20"
+                : "bg-slate-800 text-slate-400 group-hover:bg-slate-700 group-hover:text-white"
+            }`}
+          >
+            {icon}
+          </div>
+          <span
+            className={`text-sm tracking-wide transition-all duration-300 overflow-hidden whitespace-nowrap ${collapsed ? "opacity-0 max-w-0" : "opacity-100 max-w-[150px]"}`}
+          >
+            {label}
+          </span>
         </div>
-        <span
-          className={`text-sm tracking-wide transition-all duration-300 overflow-hidden whitespace-nowrap ${collapsed ? "opacity-0 max-w-0" : "opacity-100 max-w-[150px]"}`}
-        >
-          {label}
-        </span>
-      </div>
-    </Link>
+      )}
+    </NavLink>
   );
 }
 
 function SubLink({ to, icon, label, collapsed }: SubLinkProps) {
-  const { pathname } = useLocation();
-  const isActive = isSubLinkActive(to, pathname);
-
   return (
-    <Link to={to} className="group block" title={collapsed ? label : undefined}>
-      <div
-        className={`flex items-center rounded-lg transition-all duration-300 py-1.5 ${collapsed ? "justify-center px-1.5 gap-0" : "px-3 gap-3"} ${
-          isActive
-            ? "text-stripe-primary-soft font-semibold bg-sidebar-hover/50"
-            : "text-sidebar-mute hover:text-white hover:bg-sidebar-hover/30"
-        }`}
-      >
+    <NavLink
+      to={to}
+      className="group block"
+      title={collapsed ? label : undefined}
+    >
+      {({ isActive }) => (
         <div
-          className={`w-7 h-7 flex items-center justify-center rounded-md transition-all shrink-0 ${
+          className={`flex items-center rounded-lg transition-all duration-300 py-1.5 ${collapsed ? "justify-center px-1.5 gap-0" : "px-3 gap-3"} ${
             isActive
-              ? "text-stripe-primary-soft"
-              : "text-sidebar-mute/80 group-hover:text-white"
+              ? "text-stripe-primary-soft font-semibold bg-slate-800/30"
+              : "text-slate-400 hover:text-white hover:bg-slate-800/10"
           }`}
         >
-          {icon}
+          <div
+            className={`w-7 h-7 flex items-center justify-center rounded-md transition-all shrink-0 ${
+              isActive
+                ? "text-stripe-primary-soft"
+                : "text-slate-500 group-hover:text-slate-300"
+            }`}
+          >
+            {icon}
+          </div>
+          <span
+            className={`text-xs tracking-wide transition-all duration-300 overflow-hidden whitespace-nowrap ${collapsed ? "opacity-0 max-w-0" : "opacity-100 max-w-[120px]"}`}
+          >
+            {label}
+          </span>
         </div>
-        <span
-          className={`text-xs tracking-wide transition-all duration-300 overflow-hidden whitespace-nowrap ${collapsed ? "opacity-0 max-w-0" : "opacity-100 max-w-[120px]"}`}
-        >
-          {label}
-        </span>
-      </div>
-    </Link>
+      )}
+    </NavLink>
   );
 }
 
@@ -172,8 +151,8 @@ function SidebarGroup({
         onClick={() => setOpen(!open)}
         className={`group flex w-full items-center rounded-xl cursor-pointer transition-all duration-300 ${collapsed ? "justify-center px-1.5 gap-0" : "justify-between px-3 gap-3"} ${
           isActive
-            ? "text-stripe-primary-soft font-semibold bg-sidebar-hover/60"
-            : "text-sidebar-mute hover:text-white hover:bg-sidebar-hover/40"
+            ? "text-stripe-primary-soft font-semibold bg-slate-800/40"
+            : "text-slate-400 hover:text-white hover:bg-slate-800/20"
         }`}
       >
         <div
@@ -182,8 +161,8 @@ function SidebarGroup({
           <div
             className={`w-9 h-9 flex items-center justify-center rounded-lg transition-all shrink-0 ${
               isActive
-                ? "bg-brand-primary text-white shadow-lg shadow-brand-primary/25"
-                : "bg-sidebar-hover text-sidebar-mute group-hover:bg-brand-primary/30 group-hover:text-white"
+                ? "bg-brand-primary text-white shadow-lg shadow-brand-primary/20"
+                : "bg-slate-800 text-slate-400 group-hover:bg-slate-700 group-hover:text-white"
             }`}
           >
             {icon}
@@ -198,14 +177,14 @@ function SidebarGroup({
           className={`transition-all duration-300 overflow-hidden ${collapsed ? "opacity-0 max-w-0" : "opacity-100 max-w-[20px] mr-1"}`}
         >
           <RightOutlined
-            className={`inline-block text-xs text-sidebar-mute transition-transform duration-200 ${open ? "rotate-90" : "rotate-0"}`}
+            className={`inline-block text-xs text-slate-500 transition-transform duration-200 ${open ? "rotate-90" : "rotate-0"}`}
           />
         </div>
       </button>
 
       {open && (
         <div
-          className={`flex flex-col gap-1 mt-1 transition-all duration-300 ${collapsed ? "w-full items-center gap-0.5" : "pl-4 ml-7 border-l border-sidebar-hover"}`}
+          className={`flex flex-col gap-1 mt-1 transition-all duration-300 ${collapsed ? "w-full items-center gap-0.5" : "pl-4 ml-7 border-l border-slate-800"}`}
         >
           {items.map((item) => (
             <SubLink key={item.to} {...item} collapsed={collapsed} />
@@ -217,14 +196,9 @@ function SidebarGroup({
 }
 
 export default function Sidebar() {
-  const { username, role, role_canonical, isAuthenticated } = useAuthStore();
+  const { username, role, isAuthenticated } = useAuthStore();
   const logout = useLogout();
   const [collapsed, setCollapsed] = useState(false);
-  const { readIds } = useNotificationStore();
-  const unreadNotificationCount = MOCK_NOTIFICATIONS.filter(
-    (item) => !readIds.includes(item.id),
-  ).length;
-  const isAdmin = isAdminRole(role_canonical);
 
   if (!SNAPSHOT_MODE && !isAuthenticated) {
     return <Navigate to="/login" replace />;
@@ -240,11 +214,11 @@ export default function Sidebar() {
 
   return (
     <aside
-      className={`relative h-screen bg-sidebar text-white flex flex-col border-r border-sidebar-hover transition-all duration-300 cursor-pointer ${collapsed ? "w-[72px]" : "w-64"}`}
+      className={`relative h-screen bg-slate-900 text-white flex flex-col border-r border-slate-800 transition-all duration-300 cursor-pointer ${collapsed ? "w-[72px]" : "w-64"}`}
       onClick={handleSidebarClick}
     >
       <div
-        className={`flex h-16 shrink-0 items-center border-b border-sidebar-hover font-bold transition-all duration-300 ${collapsed ? "justify-center px-2" : "px-6"}`}
+        className={`flex h-16 shrink-0 items-center border-b border-slate-800 font-bold transition-all duration-300 ${collapsed ? "justify-center px-2" : "px-6"}`}
       >
         <a
           className="flex items-center gap-2"
@@ -264,108 +238,65 @@ export default function Sidebar() {
         </a>
       </div>
 
-      <nav className="flex flex-col gap-1 flex-1 overflow-y-auto mt-6 px-3">
-        {isAdmin ? (
-          <>
-            <SidebarLink
-              to="/report"
-              icon={<BarChartOutlined className="text-lg" />}
-              label="Báo cáo"
-              collapsed={collapsed}
-            />
+      <nav className="flex flex-col gap-1 flex-1 overflow-y-auto mt-6 px-3 overflow-x-hidden">
+        <SidebarLink
+          to="/report"
+          icon={<BarChartOutlined className="text-lg" />}
+          label="Báo cáo"
+          collapsed={collapsed}
+        />
 
-            <SidebarGroup
-              label="Quản lý kho"
-              icon={<ShopOutlined className="text-lg" />}
-              items={[
-                {
-                  to: "/dashboard",
-                  icon: <AppstoreOutlined />,
-                  label: "Tổng quan",
-                },
-                {
-                  to: "/items",
-                  icon: <BoxPlotOutlined />,
-                  label: "Sản phẩm",
-                },
-                { to: "/import", icon: <ImportOutlined />, label: "Nhập kho" },
-                { to: "/export", icon: <ExportOutlined />, label: "Xuất kho" },
-                {
-                  to: "/export/sorting-waves",
-                  icon: <PartitionOutlined />,
-                  label: "Quản lý chia chọn",
-                },
-                { to: "/inventory", icon: <AuditOutlined />, label: "Kiểm kê" },
-              ]}
-              collapsed={collapsed}
-            />
-            <SidebarLink
-              to="/notification"
-              icon={<BellOutlined className="text-lg" />}
-              label="Thông báo"
-              collapsed={collapsed}
-              badge={unreadNotificationCount}
-            />
-            <SidebarGroup
-              label="Cài đặt"
-              icon={<SettingOutlined className="text-lg" />}
-              items={[
-                {
-                  to: "/setting/users",
-                  icon: <UserOutlined />,
-                  label: "Người dùng",
-                },
-                {
-                  to: "/setting/warehouse",
-                  icon: <HomeOutlined />,
-                  label: "Kho",
-                },
-                {
-                  to: "/setting/entry-points",
-                  icon: <ImportOutlined />,
-                  label: "Điểm nhập",
-                },
-                {
-                  to: "/setting/exit-points",
-                  icon: <ExportOutlined />,
-                  label: "Điểm xuất",
-                },
-              ]}
-              collapsed={collapsed}
-            />
-          </>
-        ) : (
-          <>
-            <SidebarLink
-              to="/overview"
-              icon={<AppstoreOutlined className="text-lg" />}
-              label="Tổng quan"
-              collapsed={collapsed}
-            />
-            <SidebarLink
-              to="/import"
-              icon={<ImportOutlined className="text-lg" />}
-              label="Đơn nhập"
-              collapsed={collapsed}
-            />
-            <SidebarLink
-              to="/export"
-              icon={<ExportOutlined className="text-lg" />}
-              label="Đơn xuất và chia chọn"
-              collapsed={collapsed}
-            />
-            <SidebarLink
-              to="/export/sorting-waves"
-              icon={<PartitionOutlined className="text-lg" />}
-              label="Màn hình chia chọn"
-              collapsed={collapsed}
-            />
-          </>
-        )}
+        <SidebarGroup
+          label="Quản lý kho"
+          icon={<ShopOutlined className="text-lg" />}
+          items={[
+            {
+              to: "/dashboard",
+              icon: <AppstoreOutlined />,
+              label: "Tổng quan",
+            },
+            { to: "/items", icon: <BoxPlotOutlined />, label: "Sản phẩm" },
+            { to: "/zones", icon: <ClusterOutlined />, label: "Zone" },
+            { to: "/import", icon: <ImportOutlined />, label: "Nhập kho" },
+            { to: "/export", icon: <ExportOutlined />, label: "Xuất kho" },
+            { to: "/inventory", icon: <AuditOutlined />, label: "Kiểm kê" },
+          ]}
+          collapsed={collapsed}
+        />
+        <SidebarLink
+          to="/notification"
+          icon={<BellOutlined className="text-lg" />}
+          label="Thông báo"
+          collapsed={collapsed}
+        />
+        <SidebarGroup
+          label="Cài đặt"
+          icon={<SettingOutlined className="text-lg" />}
+          items={[
+            {
+              to: "/setting/users",
+              icon: <UserOutlined />,
+              label: "Người dùng",
+            },
+            { to: "/setting/warehouse", icon: <HomeOutlined />, label: "Kho" },
+            {
+              to: "/setting/units",
+              icon: <ExportOutlined />,
+              label: "Đơn vị",
+            },
+            {
+              to: "/setting/qr-codes",
+              icon: <QrcodeOutlined />,
+              label: "Quản lý QR",
+            },
+            // { to: "/setting/items", icon: <BoxPlotOutlined />, label: "Sản phẩm" },
+          ]}
+          collapsed={collapsed}
+        />
       </nav>
 
       <div
-        className={`border-t border-sidebar-hover bg-black/15 p-4 flex transition-all duration-300 ${collapsed ? "flex-col gap-3 items-center justify-center" : "items-center justify-between"}`}
+        className={`border-t border-slate-800 bg-slate-950/20 p-4 flex transition-all duration-300 ${collapsed ? "flex-col gap-3 items-center justify-center" : "items-center justify-between"}`}
       >
         <div
           className={`flex items-center transition-all duration-300 ${collapsed ? "justify-center gap-0" : "gap-3"}`}
@@ -373,17 +304,17 @@ export default function Sidebar() {
           <button
             type="button"
             data-no-collapse
-            className="w-9 h-9 rounded-full bg-sidebar-hover flex items-center justify-center text-white font-bold border border-brand-primary/40 text-sm uppercase shrink-0"
+            className="w-9 h-9 rounded-full bg-slate-800 flex items-center justify-center text-slate-200 font-bold border border-slate-700 text-sm uppercase shrink-0"
           >
             {username ? username[0] : "U"}
           </button>
           <div
             className={`transition-all duration-300 overflow-hidden whitespace-nowrap ${collapsed ? "opacity-0 max-w-0" : "opacity-100 max-w-[120px]"}`}
           >
-            <div className="text-sm font-medium text-sidebar-mute tracking-wide">
+            <div className="text-sm font-medium text-slate-300 tracking-wide">
               {username || "User"}
             </div>
-            <div className="text-[10px] text-sidebar-mute/70 uppercase tracking-wider">
+            <div className="text-[10px] text-slate-500 uppercase tracking-wider">
               {role || "Role"}
             </div>
           </div>
@@ -391,7 +322,7 @@ export default function Sidebar() {
         <button
           type="button"
           onClick={logout}
-          className="text-sidebar-mute hover:text-stripe-error p-1.5 rounded-lg hover:bg-sidebar-hover transition-colors cursor-pointer flex items-center justify-center shrink-0"
+          className="text-slate-400 hover:text-red-400 p-1.5 rounded-lg hover:bg-slate-800 transition-colors cursor-pointer flex items-center justify-center shrink-0"
           title="Đăng xuất"
         >
           <LogoutOutlined className="text-base" />
