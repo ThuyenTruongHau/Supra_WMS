@@ -19,6 +19,9 @@ export const SHELF_SELECTED_COLOR = '#22c55e'; // Kệ đang được chọn (pi
 export const SHELF_STROKE_COLOR = '#2d4f7c';
 export const SHELF_SELECTED_STROKE_COLOR = '#15803d';
 export const PADDING = 0.05; // 5% border padding when fitting to canvas
+export const BOX_SELECT_DRAG_THRESHOLD = 4; // px — below this, treat as click not box
+export const BOX_SELECT_FILL = 'rgba(34, 197, 94, 0.15)';
+export const BOX_SELECT_STROKE = '#22c55e';
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -28,6 +31,24 @@ export const PADDING = 0.05; // 5% border padding when fitting to canvas
  * system (Y ↓) matches the map data coordinate system (Y ↑).
  * This is done ONCE at load time — never repeated per frame.
  */
+export function getShelfNodesInWorldRect(
+  nodes: NodeInfo[],
+  minWx: number,
+  maxWx: number,
+  minWy: number,
+  maxWy: number,
+): NodeInfo[] {
+  return nodes.filter(
+    (node) =>
+      node.type === 1 &&
+      node.content &&
+      node.x >= minWx &&
+      node.x <= maxWx &&
+      node.y >= minWy &&
+      node.y <= maxWy,
+  );
+}
+
 export function parseNode(row: (number | string | number[])[], mapHeight: number): NodeInfo {
   return {
     x: row[0] as number,

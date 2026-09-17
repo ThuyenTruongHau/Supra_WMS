@@ -14,6 +14,11 @@ import CreateOutboundModal from "./components/CreateOutboundModal";
 import { useGetOutboundOrders } from "@/hooks/useOutbound";
 import { useAppStore } from "@/store/useAppStore";
 import type { OutboundOrder } from "@/types/outbound";
+import { parseMasanOutboundPreviewApi } from "@/api/masanOutbound";
+import { createOutboundOrderApi } from "@/api/outboundOrder";
+import { resolveOutboundType } from "@/config/warehouseMode";
+import { getApiErrorMessage } from "@/utils/apiErrorMessage";
+import { buildMasanOutboundCreateRequest } from "@/utils/masanOutboundImport";
 import dayjs from "dayjs";
 import { useUser } from "@/hooks/useAuth";
 
@@ -33,6 +38,7 @@ export default function OutboundPage() {
   const [searchInput, setSearchInput] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [importing, setImporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -134,6 +140,58 @@ export default function OutboundPage() {
 
   const total = ordersData?.total ?? 0;
 
+  const handleImportExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!selectedWarehouseId) {
+      message.warning("Vui lòng chọn kho trước khi import");
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      return;
+    }
+
+    setImporting(true);
+    const messageKey = "masan-outbound-import";
+
+    try {
+      const outboundType = resolveOutboundType(selectedWarehouseId);
+
+      message.loading({ content: "Đang đọc file Excel...", key: messageKey });
+      const parseResult = await parseMasanOutboundPreviewApi(
+        file,
+        selectedWarehouseId,
+        outboundType,
+      );
+
+      if (parseResult.invalid_rows > 0) {
+        message.warning(
+          `${parseResult.invalid_rows} dòng lỗi sẽ bỏ qua; tiếp tục với ${parseResult.valid_rows} dòng hợp lệ`,
+        );
+      }
+
+      const orderCode = `OUT-${dayjs().format("YYYYMMDD-HHmmss")}`;
+      const createPayload = buildMasanOutboundCreateRequest(parseResult, {
+        warehouseId: selectedWarehouseId,
+        orderCode,
+      });
+
+      message.loading({ content: "Đang tạo đơn xuất...", key: messageKey });
+      const order = await createOutboundOrderApi(createPayload, outboundType);
+
+      message.success({
+        content: `Đã tạo đơn ${order.order_code} với ${parseResult.valid_rows} dòng`,
+        key: messageKey,
+      });
+      void refetch();
+      navigate(`/export/${order.id}`);
+    } catch (err) {
+      message.error({ content: getApiErrorMessage(err), key: messageKey });
+    } finally {
+      setImporting(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
   return (
     <div className="space-y-6">
       <Hero title="Quản lý Xuất kho" list={kpiData} />
@@ -183,14 +241,12 @@ export default function OutboundPage() {
               accept=".xlsx,.xls"
               ref={fileInputRef}
               className="hidden"
-              onChange={() => {
-                message.info("Tính năng đang phát triển");
-                if (fileInputRef.current) fileInputRef.current.value = "";
-              }}
+              onChange={handleImportExcel}
             />
             <Button
               variant="secondary"
               icon={<UploadOutlined />}
+              loading={importing}
               onClick={() => fileInputRef.current?.click()}
             >
               Import Excel

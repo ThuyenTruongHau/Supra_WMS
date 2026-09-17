@@ -52,6 +52,10 @@ import {
   SHELF_STROKE_COLOR,
   SHELF_SELECTED_STROKE_COLOR,
   PADDING,
+  BOX_SELECT_DRAG_THRESHOLD,
+  BOX_SELECT_FILL,
+  BOX_SELECT_STROKE,
+  getShelfNodesInWorldRect,
   parseNode,
 } from '@/utils/warehouseMapUtils';
 
@@ -72,6 +76,12 @@ interface WarehouseMapCanvasProps {
   locationOverrides?: FullLocationDetail[];
   /** Bỏ gọi API preview/full-locations; chỉ dùng locationOverrides. */
   skipFullLocationsFetch?: boolean;
+  /** Bật kéo vùng chọn nhiều điểm (picker mode). */
+  enableBoxSelect?: boolean;
+  /** Khi true, kéo chuột trái vẽ vùng chọn thay vì pan. */
+  boxSelectActive?: boolean;
+  /** Callback khi hoàn tất kéo vùng — trả về các shelf node trong vùng. */
+  onBoxSelect?: (nodes: NodeInfo[]) => void;
 }
 
 
@@ -85,6 +95,9 @@ const WarehouseMapCanvas: React.FC<WarehouseMapCanvasProps> = ({
   warehouseId: warehouseIdProp,
   locationOverrides,
   skipFullLocationsFetch = false,
+  enableBoxSelect = false,
+  boxSelectActive = false,
+  onBoxSelect,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -179,6 +192,22 @@ const WarehouseMapCanvas: React.FC<WarehouseMapCanvasProps> = ({
   // Pan state
   const isPanningRef = useRef(false);
   const lastMouseRef = useRef({ x: 0, y: 0 });
+
+  // Box-select state
+  const isBoxSelectingRef = useRef(false);
+  const boxStartScreenRef = useRef({ x: 0, y: 0 });
+  const boxEndScreenRef = useRef({ x: 0, y: 0 });
+  const suppressNextClickRef = useRef(false);
+  const boxSelectActiveRef = useRef(boxSelectActive);
+  const enableBoxSelectRef = useRef(enableBoxSelect);
+
+  useEffect(() => {
+    boxSelectActiveRef.current = boxSelectActive;
+    enableBoxSelectRef.current = enableBoxSelect;
+    if (canvasRef.current) {
+      canvasRef.current.style.cursor = boxSelectActive ? 'crosshair' : 'grab';
+    }
+  }, [boxSelectActive, enableBoxSelect]);
 
   // UI state
   const [drawerVisible, setDrawerVisible] = useState(false);
@@ -349,6 +378,24 @@ const WarehouseMapCanvas: React.FC<WarehouseMapCanvasProps> = ({
     }
 
     ctx.restore();
+
+    // ── Selection box overlay (screen space) ─────────────────────────────────
+    if (isBoxSelectingRef.current && enableBoxSelectRef.current) {
+      const x1 = Math.min(boxStartScreenRef.current.x, boxEndScreenRef.current.x);
+      const y1 = Math.min(boxStartScreenRef.current.y, boxEndScreenRef.current.y);
+      const w = Math.abs(boxEndScreenRef.current.x - boxStartScreenRef.current.x);
+      const h = Math.abs(boxEndScreenRef.current.y - boxStartScreenRef.current.y);
+
+      ctx.save();
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.fillStyle = BOX_SELECT_FILL;
+      ctx.strokeStyle = BOX_SELECT_STROKE;
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([5, 4]);
+      ctx.fillRect(x1, y1, w, h);
+      ctx.strokeRect(x1, y1, w, h);
+      ctx.restore();
+    }
   }, []);
 
   // ─── Fit Map to Canvas ──────────────────────────────────────────────────────
@@ -441,6 +488,22 @@ const WarehouseMapCanvas: React.FC<WarehouseMapCanvasProps> = ({
     return { cx: e.clientX - rect.left, cy: e.clientY - rect.top };
   }, []);
 
+  const getShelfNodesInScreenRect = useCallback(
+    (sx1: number, sy1: number, sx2: number, sy2: number) => {
+      const topLeft = screenToWorld(Math.min(sx1, sx2), Math.min(sy1, sy2));
+      const bottomRight = screenToWorld(Math.max(sx1, sx2), Math.max(sy1, sy2));
+
+      return getShelfNodesInWorldRect(
+        nodesRef.current,
+        Math.min(topLeft.wx, bottomRight.wx),
+        Math.max(topLeft.wx, bottomRight.wx),
+        Math.min(topLeft.wy, bottomRight.wy),
+        Math.max(topLeft.wy, bottomRight.wy),
+      );
+    },
+    [screenToWorld],
+  );
+
   // ─── Zoom (wheel + buttons) ───────────────────────────────────────────────────
 
   const applyZoom = useCallback(
@@ -489,15 +552,36 @@ const WarehouseMapCanvas: React.FC<WarehouseMapCanvasProps> = ({
   const handleMouseDown = useCallback(
     (e: MouseEvent) => {
       if (e.button !== 0) return;
+
+      const useBoxSelect =
+        enableBoxSelectRef.current &&
+        (boxSelectActiveRef.current || e.shiftKey);
+
+      if (useBoxSelect) {
+        const { cx, cy } = getCanvasPos(e);
+        isBoxSelectingRef.current = true;
+        boxStartScreenRef.current = { x: cx, y: cy };
+        boxEndScreenRef.current = { x: cx, y: cy };
+        if (canvasRef.current) canvasRef.current.style.cursor = 'crosshair';
+        return;
+      }
+
       isPanningRef.current = true;
       lastMouseRef.current = { x: e.clientX, y: e.clientY };
       if (canvasRef.current) canvasRef.current.style.cursor = 'grabbing';
     },
-    [],
+    [getCanvasPos],
   );
 
   const handleMouseMove = useCallback(
     (e: MouseEvent) => {
+      if (isBoxSelectingRef.current) {
+        const { cx, cy } = getCanvasPos(e);
+        boxEndScreenRef.current = { x: cx, y: cy };
+        draw();
+        return;
+      }
+
       if (!isPanningRef.current) return;
       const dx = e.clientX - lastMouseRef.current.x;
       const dy = e.clientY - lastMouseRef.current.y;
@@ -506,19 +590,54 @@ const WarehouseMapCanvas: React.FC<WarehouseMapCanvasProps> = ({
       lastMouseRef.current = { x: e.clientX, y: e.clientY };
       draw();
     },
-    [draw],
+    [draw, getCanvasPos],
   );
 
   const handleMouseUp = useCallback(() => {
+    if (isBoxSelectingRef.current) {
+      const { x: sx1, y: sy1 } = boxStartScreenRef.current;
+      const { x: sx2, y: sy2 } = boxEndScreenRef.current;
+      const dragDx = Math.abs(sx2 - sx1);
+      const dragDy = Math.abs(sy2 - sy1);
+
+      isBoxSelectingRef.current = false;
+
+      if (
+        dragDx >= BOX_SELECT_DRAG_THRESHOLD ||
+        dragDy >= BOX_SELECT_DRAG_THRESHOLD
+      ) {
+        suppressNextClickRef.current = true;
+        const nodes = getShelfNodesInScreenRect(sx1, sy1, sx2, sy2);
+        onBoxSelect?.(nodes);
+      }
+
+      if (canvasRef.current) {
+        canvasRef.current.style.cursor = boxSelectActiveRef.current
+          ? 'crosshair'
+          : 'grab';
+      }
+      draw();
+      return;
+    }
+
     isPanningRef.current = false;
-    if (canvasRef.current) canvasRef.current.style.cursor = 'grab';
-  }, []);
+    if (canvasRef.current) {
+      canvasRef.current.style.cursor = boxSelectActiveRef.current
+        ? 'crosshair'
+        : 'grab';
+    }
+  }, [draw, getShelfNodesInScreenRect, onBoxSelect]);
 
   // ─── Click → Hit Detection → Drawer ────────────────────────────────────────
 
   const handleClick = useCallback(
     (e: MouseEvent) => {
       if (!mapDataRef.current) return;
+
+      if (suppressNextClickRef.current) {
+        suppressNextClickRef.current = false;
+        return;
+      }
 
       const { cx, cy } = getCanvasPos(e);
       const { wx, wy } = screenToWorld(cx, cy);

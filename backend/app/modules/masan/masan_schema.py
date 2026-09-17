@@ -42,3 +42,38 @@ class MasanInboundParseResponse(BaseModel):
     invalid_rows: int
     group_count: int
     warnings: list[str] = Field(default_factory=list)
+
+
+class MasanOutboundPreviewRow(BaseModel):
+    row_no: int
+    vehicle_no: Optional[str] = None
+    customer_name: Optional[str] = None
+    trip: Optional[str] = None
+    nvt: Optional[str] = None
+    sku: str
+    item_name: Optional[str] = None
+    lot_number: Optional[str] = None
+    lot_status: Optional[str] = None
+    quantity: int = 0
+    pallet_count: Optional[str] = None
+    locator: Optional[str] = None
+    item_id: Optional[int] = None
+    unit_id: Optional[int] = None
+    error: Optional[str] = None
+
+
+class MasanOutboundLineItem(BaseModel):
+    item_id: int = Field(..., gt=0)
+    quantity: int = Field(..., gt=0)
+    unit_id: int = Field(..., gt=0)
+    detail_type: str = Field(..., min_length=1, max_length=50)
+    details: dict[str, Any] = Field(default_factory=dict)
+
+
+class MasanOutboundParseResponse(BaseModel):
+    preview_rows: list[MasanOutboundPreviewRow]
+    line_items: list[MasanOutboundLineItem]
+    total_rows: int
+    valid_rows: int
+    invalid_rows: int
+    warnings: list[str] = Field(default_factory=list)

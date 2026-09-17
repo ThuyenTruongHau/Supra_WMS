@@ -10,7 +10,9 @@ import {
   CheckCircleOutlined,
   PlayCircleOutlined,
   EnvironmentOutlined,
+  DownloadOutlined,
 } from "@ant-design/icons";
+import { exportOutboundOrderSoApi } from "@/api/masanOutbound";
 import {
   useGetOutboundOrderById,
   useGetOutboundOrderDetails,
@@ -82,9 +84,19 @@ function formatDetailLineKey(key: string): string {
   return DETAIL_LINE_FIELD_LABELS[key] ?? key.replace(/_/g, " ");
 }
 
+/** Keys already shown in the row table — hide in expanded "Chi tiết dòng". */
+const DETAIL_EXPAND_HIDDEN_KEYS = new Set([
+  "lot",
+  "lot_number",
+  "sku",
+  "part_number",
+  "item_name",
+]);
+
 function getDetailEntries(details: Record<string, unknown> | undefined) {
   return Object.entries(details ?? {}).filter(
-    ([, value]) =>
+    ([key, value]) =>
+      !DETAIL_EXPAND_HIDDEN_KEYS.has(key) &&
       value !== null &&
       value !== undefined &&
       value !== "" &&
@@ -216,6 +228,7 @@ export default function OutboundDetailPage() {
   const [confirmingTaskOrderId, setConfirmingTaskOrderId] = useState<
     string | null
   >(null);
+  const [exporting, setExporting] = useState(false);
 
   const {
     data: order,
@@ -784,6 +797,21 @@ export default function OutboundDetailPage() {
 
   const isLoading = isOrderLoading || isDetailsLoading || isLackedLoading;
 
+  const handleExport = async () => {
+    if (!order?.id) return;
+
+    setExporting(true);
+    try {
+      message.loading({ content: "Đang xuất Excel...", key: "export" });
+      await exportOutboundOrderSoApi(order.id);
+      message.success({ content: "Đã tải file Excel", key: "export" });
+    } catch (err) {
+      message.error({ content: apiError(err), key: "export" });
+    } finally {
+      setExporting(false);
+    }
+  };
+
   const handleDelete = () => {
     if (!order?.order_code) return;
     Modal.confirmDelete({
@@ -1077,26 +1105,26 @@ export default function OutboundDetailPage() {
 
   const renderExpandedRow = (record: OutboundOrderDetail) => (
     <div className="mx-2 my-1 space-y-2 rounded-lg bg-slate-50/60 px-3 py-2">
+      <DetailsEntriesPanel
+        entries={getDetailEntries(record.details)}
+        formatKey={formatDetailLineKey}
+        title="Chi tiết dòng"
+        emptyText="Không có dữ liệu bổ sung"
+      />
       <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">
         Phân bổ xuất
       </div>
-        {record.allocations.length > 0 ? (
-          <Table
-            columns={allocationColumns}
-            dataSource={record.allocations}
-            pagination={false}
-            rowKey="id"
-            size="small"
-          />
-        ) : (
-          <p className="text-sm text-slate-400 italic">Chưa có phân bổ</p>
-        )}
-        <DetailsEntriesPanel
-          entries={getDetailEntries(record.details)}
-          formatKey={formatDetailLineKey}
-          title="Chi tiết dòng"
-          emptyText="Không có dữ liệu bổ sung"
-      />
+      {record.allocations.length > 0 ? (
+        <Table
+          columns={allocationColumns}
+          dataSource={record.allocations}
+          pagination={false}
+          rowKey="id"
+          size="small"
+        />
+      ) : (
+        <p className="text-sm text-slate-400 italic">Chưa có phân bổ</p>
+      )}
     </div>
   );
 
@@ -1204,6 +1232,15 @@ export default function OutboundDetailPage() {
           </div>
         </div>
         <Space className="shrink-0">
+          <Button
+            variant="secondary"
+            icon={<DownloadOutlined />}
+            disabled={!order?.id || details.length === 0}
+            loading={exporting}
+            onClick={() => void handleExport()}
+          >
+            Export Excel
+          </Button>
           <Button
             icon={<EnvironmentOutlined />}
             disabled={!warehouseId || outboundPickLocations.length === 0}

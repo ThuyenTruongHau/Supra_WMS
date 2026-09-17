@@ -13,8 +13,9 @@ from app.modules.masan.masan_inbound_excel import (
     COLUMN_ALIASES,
     DATA_START_ROW,
     EXPORT_HEADERS,
-    EXPORT_TITLE,
     HEADER_ROW,
+    normalize_export_cell_value,
+    style_masan_export_worksheet,
 )
 from app.modules.masan.masan_schema import (
     MasanInboundParseResponse,
@@ -166,7 +167,6 @@ def parse_masan_inbound_rows(content: bytes) -> list[dict[str, Any]]:
 
 def _build_line_item_details(row: dict[str, Any]) -> dict[str, Any]:
     return {
-        "row_no": row.get("row_no"),
         "inbound_datetime": row.get("inbound_datetime"),
         "vehicle_no": row.get("vehicle_no"),
         "from_warehouse": row.get("from_warehouse"),
@@ -182,7 +182,6 @@ def _build_line_item_details(row: dict[str, Any]) -> dict[str, Any]:
         "from_location_id": row.get("from_location_id"),
         "from_location_name": row.get("from_location_name"),
         "locator": row.get("locator"),
-        "source": "masan_import",
     }
 
 
@@ -426,15 +425,20 @@ def _build_export_workbook(rows: list[list[Any]]) -> bytes:
     ws = wb.active
     ws.title = "Sheet1"
 
-    ws.merge_cells(start_row=1, start_column=2, end_row=1, end_column=len(EXPORT_HEADERS))
-    ws.cell(row=1, column=2, value=EXPORT_TITLE)
-
     for col_idx, header in enumerate(EXPORT_HEADERS, start=1):
         ws.cell(row=HEADER_ROW, column=col_idx, value=header)
 
+    last_data_row = DATA_START_ROW - 1
     for row_idx, row_values in enumerate(rows, start=DATA_START_ROW):
+        last_data_row = row_idx
         for col_idx, value in enumerate(row_values, start=1):
-            ws.cell(row=row_idx, column=col_idx, value=value)
+            ws.cell(
+                row=row_idx,
+                column=col_idx,
+                value=normalize_export_cell_value(col_idx, value),
+            )
+
+    style_masan_export_worksheet(ws, last_data_row=last_data_row)
 
     buffer = BytesIO()
     wb.save(buffer)

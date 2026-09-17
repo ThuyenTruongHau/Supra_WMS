@@ -50,12 +50,6 @@ export function buildMasanInboundCreateRequest(
     order_code: orderCode,
     note: note ?? "Import Masan",
     warehouse_id: warehouseId,
-    details: {
-      source: "masan_import",
-      total_rows: parseResult.total_rows,
-      valid_rows: parseResult.valid_rows,
-      invalid_rows: parseResult.invalid_rows,
-    },
     line_items,
   };
 }

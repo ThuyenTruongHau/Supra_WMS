@@ -64,9 +64,35 @@ function formatDetailLineKey(key: string): string {
   return DETAIL_LINE_FIELD_LABELS[key] ?? key.replace(/_/g, " ");
 }
 
-function getDetailEntries(details: Record<string, unknown> | undefined) {
+/** Keys already shown in the row / allocation table — hide in expanded "Chi tiết dòng". */
+const DETAIL_EXPAND_HIDDEN_KEYS = new Set([
+  "lot",
+  "lot_number",
+  "sku",
+  "part_number",
+  "item_name",
+  "from_location_id",
+  "from_location_name",
+  "storage_location",
+  "row_no",
+  "source",
+]);
+
+/** Import metadata — not shown on order summary. */
+const ORDER_EXPAND_HIDDEN_KEYS = new Set([
+  "source",
+  "total_rows",
+  "valid_rows",
+  "invalid_rows",
+]);
+
+function getDetailEntries(
+  details: Record<string, unknown> | undefined,
+  hiddenKeys: Set<string> = DETAIL_EXPAND_HIDDEN_KEYS,
+) {
   return Object.entries(details ?? {}).filter(
-    ([, value]) =>
+    ([key, value]) =>
+      !hiddenKeys.has(key) &&
       value !== null &&
       value !== undefined &&
       value !== "" &&
@@ -206,7 +232,7 @@ export default function ImportDetailPage() {
   }, [users]);
 
   const orderExtraDetails = useMemo(
-    () => getDetailEntries(orderMeta?.details),
+    () => getDetailEntries(orderMeta?.details, ORDER_EXPAND_HIDDEN_KEYS),
     [orderMeta],
   );
 

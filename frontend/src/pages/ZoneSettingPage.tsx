@@ -16,6 +16,8 @@ import {
   SearchOutlined,
   EditOutlined,
   PrinterOutlined,
+  DragOutlined,
+  AimOutlined,
 } from '@ant-design/icons';
 import { Popconfirm, Tag, Tooltip } from 'antd';
 import Hero from '@/components/shared/Hero';
@@ -53,6 +55,7 @@ export default function ZoneSettingPage() {
   const [qrPrintZone, setQrPrintZone] = useState<Zone | null>(null);
   const [editingZone, setEditingZone] = useState<Zone | null>(null);
   const [selectedLocationCodes, setSelectedLocationCodes] = useState<string[]>([]);
+  const [isBoxSelectMode, setIsBoxSelectMode] = useState(false);
   const [form] = Form.useForm<ZoneFormValues>();
 
   const { data: zones = [], isLoading: isZonesLoading } = useZones(selectedWarehouseId);
@@ -220,6 +223,58 @@ export default function ZoneSettingPage() {
         ? prev.filter((c) => c !== normalized)
         : [...prev, normalized],
     );
+  };
+
+  const toggleLocationCodes = (codes: string[]) => {
+    setSelectedLocationCodes((prev) => {
+      const next = new Set(prev);
+      for (const code of codes) {
+        const normalized = String(code);
+        if (next.has(normalized)) next.delete(normalized);
+        else next.add(normalized);
+      }
+      return Array.from(next);
+    });
+  };
+
+  const handleBoxSelect = (nodes: NodeInfo[]) => {
+    const validCodes: string[] = [];
+    let skipped = 0;
+
+    for (const node of nodes) {
+      const code = String(node.content);
+      if (!codeToLocationId.has(code)) {
+        skipped += 1;
+        continue;
+      }
+      validCodes.push(code);
+    }
+
+    if (validCodes.length === 0) {
+      message.info(
+        skipped > 0
+          ? 'Không có điểm hợp lệ trong vùng chọn (có thể chưa import map).'
+          : 'Không có điểm nào trong vùng chọn.',
+      );
+      return;
+    }
+
+    const selectedSet = new Set(selectedLocationCodes);
+    let added = 0;
+    let removed = 0;
+    for (const code of validCodes) {
+      if (selectedSet.has(code)) removed += 1;
+      else added += 1;
+    }
+
+    toggleLocationCodes(validCodes);
+
+    const skipNote =
+      skipped > 0 ? ` (bỏ qua ${skipped} điểm chưa có trong DB)` : '';
+    const parts: string[] = [];
+    if (added > 0) parts.push(`thêm ${added} điểm`);
+    if (removed > 0) parts.push(`bỏ ${removed} điểm`);
+    message.success(`Đã ${parts.join(', ')}${skipNote}`);
   };
 
   const columns = [
@@ -433,13 +488,45 @@ export default function ZoneSettingPage() {
       <Modal
         title="Chọn các điểm trên Bản đồ"
         open={isMapModalOpen}
-        onCancel={() => setIsMapModalOpen(false)}
+        onCancel={() => {
+          setIsMapModalOpen(false);
+          setIsBoxSelectMode(false);
+        }}
         footer={
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-slate-500">
-              Đã chọn {selectedLocationCodes.length} điểm — click kệ để thêm/bỏ
-            </span>
-            <Button variant="primary" onClick={() => setIsMapModalOpen(false)}>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="text-sm text-slate-500">
+                Đã chọn {selectedLocationCodes.length} điểm
+              </span>
+              <Space.Compact>
+                <Button
+                  variant={isBoxSelectMode ? undefined : 'primary'}
+                  icon={<AimOutlined />}
+                  onClick={() => setIsBoxSelectMode(false)}
+                >
+                  Di chuyển map
+                </Button>
+                <Button
+                  variant={isBoxSelectMode ? 'primary' : undefined}
+                  icon={<DragOutlined />}
+                  onClick={() => setIsBoxSelectMode(true)}
+                >
+                  Kéo chọn vùng
+                </Button>
+              </Space.Compact>
+              <span className="text-xs text-slate-400">
+                {isBoxSelectMode
+                  ? 'Kéo vùng: điểm chưa chọn → thêm, điểm đã chọn → bỏ'
+                  : 'Click kệ để thêm/bỏ — giữ Shift + kéo để chọn vùng'}
+              </span>
+            </div>
+            <Button
+              variant="primary"
+              onClick={() => {
+                setIsMapModalOpen(false);
+                setIsBoxSelectMode(false);
+              }}
+            >
               Xác nhận
             </Button>
           </div>
@@ -453,7 +540,10 @@ export default function ZoneSettingPage() {
           <WarehouseMapCanvas
             hideToolbar
             hideDrawer
+            enableBoxSelect
+            boxSelectActive={isBoxSelectMode}
             selectedLocationCodes={selectedLocationCodes}
+            onBoxSelect={handleBoxSelect}
             onNodeClick={(node: NodeInfo | null) => {
               if (!node || node.type !== 1 || !node.content) {
                 if (node) message.warning('Chỉ chọn được điểm kệ (shelf node).');
