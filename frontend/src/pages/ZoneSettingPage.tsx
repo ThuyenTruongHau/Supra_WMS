@@ -18,6 +18,7 @@ import {
   PrinterOutlined,
 } from '@ant-design/icons';
 import { Popconfirm, Tag, Tooltip } from 'antd';
+import { getApiErrorMessage } from '@/utils/apiErrorMessage';
 import Hero from '@/components/shared/Hero';
 import WarehouseMapCanvas from '@/components/shared/WarehouseMapCanvas';
 import type { NodeInfo } from '@/types/warehouseMap';
@@ -153,8 +154,8 @@ export default function ZoneSettingPage() {
       handleCloseModal();
     };
 
-    const onAssignError = (err: { response?: { data?: { detail?: string } } }) => {
-      message.error(err.response?.data?.detail ?? 'Không thể gán điểm cho Zone');
+    const onAssignError = (err: unknown) => {
+      message.error(getApiErrorMessage(err, 'Không thể gán điểm cho Zone'));
     };
 
     if (editingZone) {
@@ -175,7 +176,7 @@ export default function ZoneSettingPage() {
             );
           },
           onError: (err) => {
-            message.error(err.response?.data?.detail ?? 'Không thể cập nhật Zone');
+            message.error(getApiErrorMessage(err, 'Không thể cập nhật Zone'));
           },
         },
       );
@@ -197,7 +198,7 @@ export default function ZoneSettingPage() {
           );
         },
         onError: (err) => {
-          message.error(err.response?.data?.detail ?? 'Không thể thêm Zone');
+          message.error(getApiErrorMessage(err, 'Không thể thêm Zone'));
         },
       },
     );
@@ -281,7 +282,7 @@ export default function ZoneSettingPage() {
               deleteMutation.mutate(record.id, {
                 onSuccess: () => message.success('Xóa Zone thành công!'),
                 onError: (err) =>
-                  message.error(err.response?.data?.detail ?? 'Không thể xóa Zone'),
+                  message.error(getApiErrorMessage(err, 'Không thể xóa Zone')),
               });
             }}
             okText="Xóa"

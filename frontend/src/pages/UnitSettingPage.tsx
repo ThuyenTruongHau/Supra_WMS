@@ -13,6 +13,7 @@ import {
 } from '@/components/ui';
 import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined } from '@ant-design/icons';
 import Hero from '@/components/shared/Hero';
+import { getApiErrorMessage } from '@/utils/apiErrorMessage';
 import type { Unit } from '@/types/unit';
 import type { ItemUnit } from '@/types/itemUnit';
 import { useCreateUnit, useDeleteUnit, useUnits, useUpdateUnit } from '@/hooks/useUnit';
@@ -145,7 +146,7 @@ export default function UnitSettingPage() {
               resolve();
             },
             onError: (err) => {
-              message.error(err.response?.data?.detail ?? 'Không thể xóa đơn vị');
+              message.error(getApiErrorMessage(err, 'Không thể xóa đơn vị'));
               resolve();
             },
           });
@@ -168,7 +169,7 @@ export default function UnitSettingPage() {
               resolve();
             },
             onError: (err) => {
-              message.error(err.response?.data?.detail ?? 'Không thể xóa công thức quy đổi');
+              message.error(getApiErrorMessage(err, 'Không thể xóa công thức quy đổi'));
               resolve();
             },
           });
@@ -191,7 +192,7 @@ export default function UnitSettingPage() {
             handleCloseModal();
           },
           onError: (err) => {
-            message.error(err.response?.data?.detail ?? 'Không thể cập nhật đơn vị');
+            message.error(getApiErrorMessage(err, 'Không thể cập nhật đơn vị'));
           },
         },
       );
@@ -204,7 +205,7 @@ export default function UnitSettingPage() {
         handleCloseModal();
       },
       onError: (err) => {
-        message.error(err.response?.data?.detail ?? 'Không thể thêm đơn vị');
+        message.error(getApiErrorMessage(err, 'Không thể thêm đơn vị'));
       },
     });
   };
@@ -225,7 +226,7 @@ export default function UnitSettingPage() {
             handleCloseItemUnitModal();
           },
           onError: (err) => {
-            message.error(err.response?.data?.detail ?? 'Không thể cập nhật công thức quy đổi');
+            message.error(getApiErrorMessage(err, 'Không thể cập nhật công thức quy đổi'));
           },
         },
       );
@@ -238,7 +239,7 @@ export default function UnitSettingPage() {
         handleCloseItemUnitModal();
       },
       onError: (err) => {
-        message.error(err.response?.data?.detail ?? 'Không thể thêm công thức quy đổi');
+        message.error(getApiErrorMessage(err, 'Không thể thêm công thức quy đổi'));
       },
     });
   };

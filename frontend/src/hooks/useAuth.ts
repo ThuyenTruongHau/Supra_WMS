@@ -39,6 +39,7 @@ export const useLogin = () => {
         data.role_canonical,
         data.role,
         variables.username,
+        undefined, // zone_id
         roles,
         data.user.access,
       );

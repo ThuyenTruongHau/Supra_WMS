@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Card, Table, Button, Modal, Form, Input, InputNumber, Space, message, Select } from '@/components/ui';
 import { PlusOutlined, SearchOutlined, MinusCircleOutlined, EditOutlined } from '@ant-design/icons';
+import { getApiErrorMessage } from '@/utils/apiErrorMessage';
 import { useZone } from '@/hooks/useZone';
 import { useGetItems, useCreateItem, useUpdateItem } from '@/hooks/useItem';
 import { useUnits } from '@/hooks/useUnit';
@@ -114,7 +115,7 @@ export default function ItemSettingPage() {
             handleCloseCreate();
           },
           onError: (err) => {
-            message.error(err?.response?.data?.detail || err?.message || 'Có lỗi xảy ra khi cập nhật Item');
+            message.error(getApiErrorMessage(err, 'Có lỗi xảy ra khi cập nhật Item'));
           },
         },
       );

@@ -866,6 +866,7 @@ export function expandRowsToDetails(
         productName: row.productName || product.name,
         dbProductName: product.name,
         lotNumber: row.lotNumber,
+        lotStatus: row.lotStatus,
         totalQuantity: row.totalQuantity,
         expectedQuantity,
         palletQuantity: 1,

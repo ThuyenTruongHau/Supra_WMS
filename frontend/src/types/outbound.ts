@@ -15,6 +15,30 @@ export interface OutboundOrder {
   details: Record<string, unknown>;
   created_at: string | null;
   updated_at: string | null;
+  detail_groups: OutboundDetailGroup[];
+}
+
+export interface ItemOutbound {
+  id?: number;
+  product_id: number;
+  requested_quantity: number;
+  pallet_quantity?: number | null;
+  locator?: string | null;
+  status?: string;
+  product_sku?: string | null;
+  product_name?: string | null;
+  unit?: string | null;
+  unit_id?: number | null;
+}
+
+export interface OutboundDetailGroup {
+  id?: number;
+  customer_name: string;
+  vehicle_number: string;
+  carrier_name?: string | null;
+  trip_code?: string | null;
+  lot_number?: string | null;
+  items: ItemOutbound[];
 }
 
 export interface OutboundOrderListResponse {

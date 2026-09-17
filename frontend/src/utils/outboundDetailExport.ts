@@ -7,7 +7,6 @@ import {
   type VehicleInfoBlock,
 } from "@/utils/outboundViewTransform";
 import { effectivePalletQuantity } from "@/utils/palletQuantity";
-import { toDisplayInteger } from "@/utils/number";
 
 const TITLE = "BIỂU MẪU LẤY HÀNG THEO SO";
 const SUBTITLE = "(Cung cấp thông tin xuất hàng)";
@@ -149,14 +148,14 @@ function itemToLines(item: ItemOutbound, lot: string): SoPickLine[] {
         sku,
         name,
         lot: lotText,
-        quantity: toDisplayInteger(item.requested_quantity),
+        quantity: item.requested_quantity,
         palletCount,
         locator: locators[0] ?? "...",
       },
     ];
   }
 
-  const totalQty = toDisplayInteger(item.requested_quantity);
+  const totalQty = item.requested_quantity;
   const baseQty = Math.floor(totalQty / locators.length);
   let remainder = totalQty - baseQty * locators.length;
 
@@ -228,7 +227,7 @@ function writeInfoBlock(worksheet: XLSXStyle.WorkSheet, infoLines: InfoLine[]) {
   });
 }
 
-function buildMerges(dataRowCount: number): XLSXStyle.Range[] {
+function buildMerges(): XLSXStyle.Range[] {
   const merges: XLSXStyle.Range[] = [
     { s: { r: 0, c: 0 }, e: { r: 0, c: COL_COUNT - 1 } },
     { s: { r: 1, c: 0 }, e: { r: 1, c: COL_COUNT - 1 } },
@@ -316,7 +315,7 @@ function buildCustomerSheet(customer: CustomerViewNode): XLSXStyle.WorkSheet {
   const worksheet = XLSXStyle.utils.aoa_to_sheet(rows);
   writeInfoBlock(worksheet, infoLines);
 
-  worksheet["!merges"] = buildMerges(dataRows.length);
+  worksheet["!merges"] = buildMerges();
   worksheet["!cols"] = [
     { wch: 7 },
     { wch: 14 },
