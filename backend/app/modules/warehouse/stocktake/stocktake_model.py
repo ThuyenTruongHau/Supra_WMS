@@ -1,4 +1,4 @@
-from sqlalchemy import Column, DateTime, Integer, String, Text, ForeignKey, func, table, select, exists, case, and_, or_, column
+from sqlalchemy import Column, DateTime, Integer, String, Text, ForeignKey, func, table, select, exists, case, and_, column
 from sqlalchemy.orm import relationship, column_property
 
 from app.core.database import Base
@@ -19,6 +19,28 @@ def _stocktake_item_exists(stocktake_id_col, *criteria):
         )
         .correlate_except(_stocktake_item_tbl)
     )
+
+
+def _stocktake_has_any_item(stocktake_id_col):
+    return _stocktake_item_exists(stocktake_id_col)
+
+
+def _stocktake_has_item_status(stocktake_id_col, status_value: str):
+    return _stocktake_item_exists(
+        stocktake_id_col,
+        _stocktake_item_tbl.c.status == status_value,
+    )
+
+
+def _stocktake_all_items_status(stocktake_id_col, status_value: str):
+    return and_(
+        _stocktake_item_exists(stocktake_id_col),
+        ~_stocktake_item_exists(
+            stocktake_id_col,
+            _stocktake_item_tbl.c.status != status_value,
+        ),
+    )
+
 
 class Stocktake(Base):
     __tablename__ = "stocktake"
@@ -42,24 +64,19 @@ class Stocktake(Base):
     status = column_property(
         case(
             (
-                _stocktake_item_exists(
-                    id, _stocktake_item_tbl.c.status == "discrepancy"
-                ),
+                _stocktake_has_item_status(id, "discrepancy"),
                 "discrepancy",
             ),
             (
-                and_(
-                    _stocktake_item_exists(id),
-                    ~_stocktake_item_exists(
-                        id, _stocktake_item_tbl.c.status == "in_progress"
-                    ),
-                ),
+                _stocktake_all_items_status(id, "completed"),
                 "completed",
             ),
             (
-                _stocktake_item_exists(
-                    id, _stocktake_item_tbl.c.status == "in_progress"
-                ),
+                _stocktake_all_items_status(id, "initialize"),
+                "initialize",
+            ),
+            (
+                _stocktake_has_any_item(id),
                 "in_progress",
             ),
             else_="initialize",

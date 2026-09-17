@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { ColumnsType } from "antd/es/table";
 import { PrinterOutlined } from "@ant-design/icons";
 import {
@@ -8,6 +8,7 @@ import {
   cn,
 } from "@/components/ui";
 import Hero from "@/components/shared/Hero";
+import WarehouseSelector from "@/components/shared/WarehouseSelector";
 import { SkuSearchSelect } from "@/components/shared/SkuSearchSelect";
 import { useRecentQrCodes } from "@/hooks/useItem";
 import { useAppStore } from "@/store/useAppStore";
@@ -20,7 +21,7 @@ const SKU_BROWSE_PAGE_SIZE = 20;
 const PAGE_SIZE = 20;
 
 const TABLE_CLASS =
-  "[&_.ant-table-thead_th]:!bg-slate-50 [&_.ant-table-thead_th]:!text-slate-600 [&_.ant-table-thead_th]:!font-semibold [&_.ant-table-thead_th]:!text-base [&_.ant-table-tbody_td]:!text-base [&_.ant-table-thead_th]:!py-3 [&_.ant-table-tbody_td]:!py-3 [&_.ant-table-row]:hover:bg-slate-50/50";
+  "[&_.ant-table-thead_th]:!bg-slate-50 [&_.ant-table-thead_th]:!text-slate-600 [&_.ant-table-thead_th]:!font-semibold [&_.ant-table-thead_th]:!text-base [&_.ant-table-tbody_td]:!text-base [&_.ant-table-thead_th]:!py-3 [&_.ant-table-tbody_td]:!py-3 [&_.ant-table-row]:hover:bg-slate-50/50 [&_.ant-table-cell]:!text-center";
 
 const QR_STATUS_LABELS: Record<QRCodeStatus, string> = {
   available: "Khả dụng",
@@ -63,6 +64,12 @@ export default function QrCodeSettingPage() {
   const [isPrintOpen, setIsPrintOpen] = useState(false);
 
   const warehouseId = selectedWarehouseId ?? 0;
+
+  useEffect(() => {
+    setFilterSku(undefined);
+    setFilterItemId(null);
+    setPage(1);
+  }, [selectedWarehouseId]);
 
   const {
     data: recentQrCodesData,
@@ -117,13 +124,16 @@ export default function QrCodeSettingPage() {
       <Hero
         title="Quản lý QR"
         extra={
-          <Button
-            variant="primary"
-            icon={<PrinterOutlined />}
-            onClick={() => setIsPrintOpen(true)}
-          >
-            In mã QR
-          </Button>
+          <>
+            <WarehouseSelector />
+            <Button
+              variant="primary"
+              icon={<PrinterOutlined />}
+              onClick={() => setIsPrintOpen(true)}
+            >
+              In mã QR
+            </Button>
+          </>
         }
       />
 

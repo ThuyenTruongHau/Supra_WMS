@@ -132,6 +132,10 @@ export interface InboundOrderAllocationCreate {
   lot_number?: string | null;
   expiry_date?: string | null;
   qr_code_id?: number | null;
+  cavity_number?: string | null;
+  manufacturing_user?: string | null;
+  qc_user?: string | null;
+  packing_user?: string | null;
 }
 
 export interface InboundOrderDetailCreate {
@@ -182,8 +186,9 @@ export interface InboundOrderDeleteResponse {
 
 export interface AssignOrGetItemStockRequest {
   qr_code?: string | null;
+  raw?: string | null;
   location_id?: number | null;
-  location_code?: string | null;
+  warehouse_id?: number | null;
   quantity?: number | null;
   unit_id?: number | null;
   lot_number?: string | null;
@@ -191,6 +196,7 @@ export interface AssignOrGetItemStockRequest {
   manufacturing_user?: string | null;
   qc_user?: string | null;
   packing_user?: string | null;
+  is_split?: boolean | null;
 }
 
 export interface QrCodePreviewResponse {
@@ -205,16 +211,70 @@ export interface QrCodePreviewResponse {
   lot_number: string;
   cavity_numbers: string[];
   cavity_number?: string | null;
-  qr_type?: string | null;
-  /** Present (even as "") => show field on FE */
+  qr_type: string;
   manufacturing_user?: string | null;
   qc_user?: string | null;
   packing_user?: string | null;
+  is_split?: boolean;
+  /** Pack đã gán vào item qua assign:item — FE gom khi quét item (luồng assign thường) */
+  linked_packs?: AssignedItemStock[];
 }
 
 export interface AssignItemStockMetaResponse {
   part_number: string;
   location: string;
+}
+
+export interface QrCodePreviewRequest {
+  qr_code: string;
+  warehouse_id?: number | null;
+}
+
+export interface PendingCachedResponse {
+  qr_code_id: number;
+  code: string;
+  part_number: string;
+  item_name?: string;
+}
+
+export interface PackerItemAnchor {
+  qr_code_id: number;
+  code: string;
+  item_id: number;
+}
+
+export interface CacheForPackingUserRequest {
+  qr_code: string;
+  warehouse_id?: number | null;
+  quantity: number;
+  unit_id: number;
+  lot_number: string;
+  cavity_number?: string | null;
+  manufacturing_user?: string | null;
+  qc_user?: string | null;
+  packing_user?: string | null;
+  /** Parent item qr_code_id; required when caching pack QR */
+  relation?: number | null;
+  is_split?: boolean;
+}
+
+export interface AssignPackingToItemRequest {
+  qr_code: string;
+  warehouse_id?: number | null;
+  target_qr_id?: string | null;
+  quantity?: number;
+  unit_id?: number;
+  lot_number?: string;
+  cavity_number?: string | null;
+  manufacturing_user?: string;
+  qc_user?: string | null;
+  packing_user?: string | null;
+  is_split?: boolean;
+}
+
+export interface PackingUserPendingStocksResponse {
+  packing_user: string;
+  items: AssignedItemStock[];
 }
 
 export interface AssignedItemStock {
@@ -236,22 +296,81 @@ export interface AssignedItemStock {
   manufacturing_user?: string | null;
   qc_user?: string | null;
   packing_user?: string | null;
+  stock_level?: number | null;
+  is_split?: boolean;
+  details?: Record<string, unknown> | null;
+  /** `"item"` = item anchor; number = linked pack parent qr_code_id; null = unlinked pack */
+  relation?: number | string | null;
 }
 
-export type AssignOrGetItemStockResponse =
-  | QrCodePreviewResponse
-  | AssignItemStockMetaResponse
-  | AssignedItemStock[];
+export type AssignOrGetItemStockAction =
+  | "preview"
+  | "assigned"
+  | "location_stocks"
+  | "pending_cached"
+  | "location"
+  | "created";
 
-export const isAssignMetaResponse = (
-  value: AssignOrGetItemStockResponse,
-): value is AssignItemStockMetaResponse =>
-  !Array.isArray(value) && "part_number" in value && !("qr_code_id" in value);
+export interface AssignOrGetItemStockResponse {
+  action: AssignOrGetItemStockAction;
+  preview?: QrCodePreviewResponse | null;
+  assigned?: AssignItemStockMetaResponse | null;
+  location_stocks?: AssignedItemStock[];
+  pending?: PendingCachedResponse | null;
+  location_id?: number | null;
+  location_name?: string | null;
+  location_code?: string | null;
+  warehouse_id?: number | null;
+  order_code?: string | null;
+  success?: boolean | null;
+  message?: string | null;
+}
 
-export const isQrPreviewResponse = (
+export const isAssignOrGetPreview = (
   value: AssignOrGetItemStockResponse,
-): value is QrCodePreviewResponse =>
-  !Array.isArray(value) && "qr_code_id" in value;
+): value is AssignOrGetItemStockResponse & {
+  action: "preview";
+  preview: QrCodePreviewResponse;
+} => value.action === "preview" && !!value.preview;
+
+export const isAssignOrGetAssigned = (
+  value: AssignOrGetItemStockResponse,
+): value is AssignOrGetItemStockResponse & {
+  action: "assigned";
+  assigned: AssignItemStockMetaResponse;
+} => value.action === "assigned" && !!value.assigned;
+
+export const isAssignOrGetLocationStocks = (
+  value: AssignOrGetItemStockResponse,
+): value is AssignOrGetItemStockResponse & {
+  action: "location_stocks";
+  location_stocks: AssignedItemStock[];
+} => value.action === "location_stocks";
+
+export const isAssignOrGetPendingCached = (
+  value: AssignOrGetItemStockResponse,
+): value is AssignOrGetItemStockResponse & {
+  action: "pending_cached";
+  pending: PendingCachedResponse;
+} => value.action === "pending_cached" && !!value.pending;
+
+export const isManualInboundLocation = (
+  value: AssignOrGetItemStockResponse,
+): value is AssignOrGetItemStockResponse & {
+  action: "location";
+  location_id: number;
+} => value.action === "location" && value.location_id != null;
+
+export const isManualInboundCreated = (
+  value: AssignOrGetItemStockResponse,
+): value is AssignOrGetItemStockResponse & {
+  action: "created";
+  success: true;
+  message: string;
+} =>
+  value.action === "created" &&
+  value.success === true &&
+  !!value.message?.trim();
 
 export interface InboundCallerResponse {
   order: InboundOrder;

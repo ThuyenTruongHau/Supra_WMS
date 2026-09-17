@@ -26,6 +26,8 @@ from app.modules.warehouse.outbound_order.outbound_order_schema import (
     OutboundConfirmQrResponse,
     OutboundConfirmNoQrRequest,
     OutboundConfirmNoQrResponse,
+    ExecuteQrManualRequest,
+    ExecuteQrManualResponse,
 )
 from app.modules.warehouse.outbound_order import outbound_order_service
 from app.modules.warehouse.outbound_order.outbound_celery_task import (
@@ -36,6 +38,7 @@ from app.modules.warehouse.outbound_order.outbound_celery_task import (
     get_outbound_order_by_id_task,
     get_outbound_order_details_task,
     get_outbound_robot_tasks_task,
+    get_outbound_manual_allocation_tasks_task,
     update_outbound_order_task,
 )
 
@@ -137,6 +140,25 @@ def get_outbound_robot_tasks(db: DbSession, order_id: int):
     if not robot_tasks:
         raise HTTPException(status_code=404, detail="Robot tasks not found")
     return robot_tasks
+
+
+@router.get(
+    "/manual-allocation-tasks/{order_id}",
+    response_model=list[OutboundRobotTaskResponse],
+    dependencies=[Depends(_OUTBOUND_READ)],
+)
+def get_outbound_manual_allocation_tasks(db: DbSession, order_id: int):
+    try:
+        tasks = run_logic_task(
+            get_outbound_manual_allocation_tasks_task, order_id=order_id
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    if not tasks:
+        raise HTTPException(
+            status_code=404, detail="Manual allocation tasks not found"
+        )
+    return tasks
 
 
 @router.get(
@@ -305,3 +327,26 @@ def confirm_outbound_order_no_qr(
         overall=int(settle.get("overall", 0) if settle else 0),
         return_quantity=int(settle.get("return", 0) if settle else 0),
     )
+
+
+@router.post(
+    "/outbound-orders/execute-qr-manual",
+    response_model=ExecuteQrManualResponse,
+    dependencies=[Depends(_OUTBOUND_UPDATE)],
+)
+def execute_outbound_qr_manual(
+    body: ExecuteQrManualRequest,
+    db: DbSession,
+):
+    try:
+        result = outbound_order_service.execute_qr_manual(
+            db,
+            allocation_ids=body.allocation_ids,
+            qr_code=body.qr_code,
+            to_location_id=body.to_location_id,
+        )
+    except ValueError as e:
+        msg = str(e)
+        code = 404 if "not found" in msg.lower() else 400
+        raise HTTPException(status_code=code, detail=msg) from e
+    return ExecuteQrManualResponse.model_validate(result)

@@ -170,6 +170,7 @@ export interface OutboundRobotTaskExecuteRequest {
   allocations: AllocationOutboundTaskExecute[];
 }
 
+
 export interface OutboundOrderSummary {
   zone_id: number
   total_orders: number
@@ -375,3 +376,17 @@ export interface OutboundDailyReport {
   title: string
   subtitle: string
   lines: OutboundDailyReportLine[]
+}
+
+export interface ExecuteQrManualRequest {
+  allocation_ids: number[];
+  qr_code: string;
+  to_location_id?: number;
+}
+
+export interface ExecuteQrManualResponse {
+  allocation_ids: number[];
+  qr_code: string;
+  to_location_id?: number | null;
+  message: string;
+}

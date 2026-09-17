@@ -60,6 +60,7 @@ export interface ItemStock {
   item_id: number
   location_id: number
   location_code?: string | null
+  location_name?: string | null
   lot_number: string | null
   expiry_date: string | null
   quantity: number
@@ -71,6 +72,8 @@ export interface ItemStock {
 export interface ItemDetails {
   item: Item
   stocks: ItemStock[]
+  /** Tồn available (không gồm hàng lẻ/split) — dùng preview form outbound */
+  available_quantity?: number
 }
 
 export interface ItemAnalyzeResponse {
@@ -108,7 +111,7 @@ export interface ItemImportJobStatus {
 }
 
 export type QRCodeStatus = 'expired' | 'stocked' | 'available'
-export type QrPrintType = 'item' | 'transit'
+export type QrPrintType = 'item' | 'transit' | 'pack'
 
 export interface QRCodeRecent {
   id: number

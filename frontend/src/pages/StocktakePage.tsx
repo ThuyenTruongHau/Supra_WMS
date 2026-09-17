@@ -8,13 +8,15 @@ import { useGetStocktakeItems, useGetStocktakes } from "@/hooks/useStocktake";
 import type { Stocktake, StocktakeItemStock } from "@/types/stocktake";
 import InboundStatusTag from "@/components/shared/InboundStatusTag";
 import CreateStocktakeModal from "@/pages/components/CreateStocktakeModal";
+import StocktakeRecordCountModal from "@/pages/components/StocktakeRecordCountModal";
 import dayjs from "dayjs";
 
 const PAGE_SIZE = 20;
 const SEARCH_WIDTH = 280;
+const CHECKLIST_STATUSES = ["initialize", "in_progress"] as const;
 
 const TABLE_CLASS =
-  "[&_.ant-table-thead_th]:!bg-slate-50 [&_.ant-table-thead_th]:!text-slate-600 [&_.ant-table-thead_th]:!font-semibold [&_.ant-table-thead_th]:!text-base [&_.ant-table-tbody_td]:!text-base [&_.ant-table-thead_th]:!py-3 [&_.ant-table-tbody_td]:!py-3 [&_.ant-table-row]:hover:bg-slate-50/50";
+  "[&_.ant-table-thead_th]:!bg-slate-50 [&_.ant-table-thead_th]:!text-slate-600 [&_.ant-table-thead_th]:!font-semibold [&_.ant-table-thead_th]:!text-base [&_.ant-table-tbody_td]:!text-base [&_.ant-table-thead_th]:!py-3 [&_.ant-table-tbody_td]:!py-3 [&_.ant-table-row]:hover:bg-slate-50/50 [&_.ant-table-cell]:!text-center";
 
 const STOCKTAKE_TABS = [
   { key: "events" as const, label: "Sự kiện kiểm kê" },
@@ -28,6 +30,13 @@ function formatDate(date?: string | null) {
   return dayjs(date).format("DD/MM/YYYY HH:mm");
 }
 
+function displayLocationName(record: StocktakeItemStock): string {
+  return (
+    record.location_name ||
+    (record.location_id ? `#${record.location_id}` : "—")
+  );
+}
+
 export default function StocktakePage() {
   const navigate = useNavigate();
   const selectedWarehouseId = useAppStore((state) => state.selectedWarehouseId);
@@ -39,6 +48,9 @@ export default function StocktakePage() {
   const [searchInput, setSearchInput] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [recordTarget, setRecordTarget] = useState<StocktakeItemStock | null>(
+    null,
+  );
 
   useEffect(() => {
     setEventPage(1);
@@ -71,6 +83,7 @@ export default function StocktakePage() {
       warehouse_id: warehouseId,
       page: checklistPage,
       page_size: PAGE_SIZE,
+      statuses: [...CHECKLIST_STATUSES],
     });
 
   const events = stocktakesData?.items ?? [];
@@ -141,6 +154,12 @@ export default function StocktakePage() {
       ),
     },
     {
+      title: "Vị trí",
+      key: "location_name",
+      width: 200,
+      render: (_, record) => displayLocationName(record),
+    },
+    {
       title: "Mã sản phẩm",
       dataIndex: "item_sku",
       key: "item_sku",
@@ -155,21 +174,6 @@ export default function StocktakePage() {
       render: (name: string | null) => name || "—",
     },
     {
-      title: "Vị trí",
-      dataIndex: "location_code",
-      key: "location_code",
-      width: 180,
-      render: (_: string | null, record) =>
-        record.location_code || record.location_name || `#${record.location_id}`,
-    },
-    {
-      title: "ID lô",
-      dataIndex: "item_stock_id",
-      key: "item_stock_id",
-      width: 110,
-      render: (id: number) => `#${id}`,
-    },
-    {
       title: "Lot",
       dataIndex: "lot_number",
       key: "lot_number",
@@ -180,26 +184,40 @@ export default function StocktakePage() {
       dataIndex: "desired_quantity",
       key: "desired_quantity",
       width: 130,
-      align: "right",
+      align: "center",
     },
     {
       title: "SL thực tế",
       dataIndex: "actual_quantity",
       key: "actual_quantity",
       width: 130,
-      align: "right",
+      align: "center",
     },
     {
       title: "Trạng thái",
       dataIndex: "status",
       key: "status",
-      width: 160,
-      render: (status: string | null) =>
-        status ? (
+      width: 150,
+      render: (status: string | null, record) => {
+        if (status === "initialize") {
+          return (
+            <Button
+              variant="primary"
+              onClick={(e) => {
+                e.stopPropagation();
+                setRecordTarget(record);
+              }}
+            >
+              Ghi nhận
+            </Button>
+          );
+        }
+        return status ? (
           <InboundStatusTag status={status} size="sm" />
         ) : (
           "—"
-        ),
+        );
+      },
     },
   ];
 
@@ -314,6 +332,13 @@ export default function StocktakePage() {
           setEventPage(1);
           void refetchEvents();
         }}
+      />
+
+      <StocktakeRecordCountModal
+        open={recordTarget != null}
+        record={recordTarget}
+        onCancel={() => setRecordTarget(null)}
+        onSuccess={() => setRecordTarget(null)}
       />
     </div>
   );

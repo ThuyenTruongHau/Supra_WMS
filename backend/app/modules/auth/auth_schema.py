@@ -22,6 +22,20 @@ class WarehouseBrief(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class UserAccessSummary(BaseModel):
+    """Aggregated access profile for FE routing/UI — not raw RBAC permission codes.
+
+    - ``warehouse_scope=all``: admin may access every warehouse (list in ``warehouses``).
+    - ``warehouse_scope=assigned``: staff limited to ``warehouses``.
+    - ``modules``: tablet features (inbound/outbound/stocktake). Print QR is implicit on tablet.
+    """
+
+    is_admin: bool
+    warehouse_scope: Literal["all", "assigned"]
+    warehouses: list[WarehouseBrief] = Field(default_factory=list)
+    modules: list[ModuleName] = Field(default_factory=list)
+
+
 class LoginRequest(BaseModel):
     username: str
     password: str
@@ -69,6 +83,7 @@ class UserSignupResponse(BaseModel):
     email: EmailStr
     roles: list[RoleBrief]
     warehouses: list[WarehouseBrief] = Field(default_factory=list)
+    access: UserAccessSummary
     is_active: bool
     tokens: TokenResponse
 
@@ -119,6 +134,7 @@ class UserResponse(BaseModel):
     email: EmailStr
     roles: list[RoleBrief]
     warehouses: list[WarehouseBrief] = Field(default_factory=list)
+    access: UserAccessSummary
     is_active: bool
     created_at: datetime
     updated_at: datetime

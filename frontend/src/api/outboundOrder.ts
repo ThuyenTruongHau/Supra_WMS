@@ -13,6 +13,8 @@ import type {
   OutboundOrderUpdateRequest,
   OutboundRobotTask,
   OutboundRobotTaskExecuteRequest,
+  ExecuteQrManualRequest,
+  ExecuteQrManualResponse,
 } from "@/types/outbound";
 
 const BASE = "/api/v1/outbound-orders";
@@ -113,6 +115,22 @@ export const getOutboundRobotTasksApi = async (
   }
 };
 
+export const getOutboundManualAllocationTasksApi = async (
+  orderId: number,
+): Promise<OutboundRobotTask[]> => {
+  try {
+    const { data } = await axiosInstance.get<OutboundRobotTask[]>(
+      `/api/v1/manual-allocation-tasks/${orderId}`,
+    );
+    return Array.isArray(data) ? data : [];
+  } catch (err) {
+    if (isAxiosError(err) && err.response?.status === 404) {
+      return [];
+    }
+    throw err;
+  }
+};
+
 export const executeOutboundRobotTaskApi = async (
   body: OutboundRobotTaskExecuteRequest,
   detailType = "auto",
@@ -155,6 +173,16 @@ export const confirmOutboundOrderNoQrApi = async (
   const { data } = await axiosInstance.post<OutboundConfirmNoQrResponse>(
     `${BASE}/confirm-no-qr`,
     { order_id: robotTaskOrderId },
+  );
+  return data;
+};
+
+export const executeOutboundQrManualApi = async (
+  body: ExecuteQrManualRequest,
+): Promise<ExecuteQrManualResponse> => {
+  const { data } = await axiosInstance.post<ExecuteQrManualResponse>(
+    `${BASE}/execute-qr-manual`,
+    body,
   );
   return data;
 };

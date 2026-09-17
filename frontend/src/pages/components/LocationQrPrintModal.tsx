@@ -90,7 +90,10 @@ export default function LocationQrPrintModal({
 
     const locationIds = selectedRowKeys.map((key) => Number(key)).filter(Boolean);
     try {
-      const result = await printLocationQrCodes.mutateAsync(locationIds);
+      const result = await printLocationQrCodes.mutateAsync({
+        locationIds,
+        warehouseId,
+      });
       setPreviewHtml(result.html);
     } catch (err) {
       message.error(getErrorMessage(err, 'Không thể tạo mã QR vị trí'));
@@ -178,7 +181,7 @@ export default function LocationQrPrintModal({
         <div className="space-y-4">
           <p className="text-sm text-slate-600">
             Chọn các vị trí thuộc Zone <strong>{zoneLabel}</strong> cần in mã QR.
-            Mỗi vị trí in trên 1 trang A4.
+            Kho manual + zone storage: nhãn 90×90mm (6 nhãn/trang A4). Các zone khác: 2 nhãn/trang A4.
           </p>
 
           <Input
@@ -205,7 +208,7 @@ export default function LocationQrPrintModal({
                 ? 'Zone này chưa có vị trí nào'
                 : 'Chưa chọn Zone',
             }}
-            className="[&_.ant-table-thead_th]:bg-slate-50! [&_.ant-table-thead_th]:text-slate-600! [&_.ant-table-thead_th]:font-semibold!"
+            className="[&_.ant-table-thead_th]:bg-slate-50! [&_.ant-table-thead_th]:text-slate-600! [&_.ant-table-thead_th]:font-semibold! [&_.ant-table-cell]:text-center!"
           />
         </div>
       ) : (

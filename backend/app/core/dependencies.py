@@ -90,3 +90,24 @@ def require_permission(*codes: str) -> Callable:
             )
         return current_user
     return checker
+
+
+def get_dev_admin_user(
+    db: Annotated[Session, Depends(get_db)],
+) -> User:
+    """Temporary integration bypass: no Bearer token; always use active admin user."""
+    user = (
+        db.query(User)
+        .options(
+            selectinload(User.roles).selectinload(Role.permissions),
+            selectinload(User.warehouses),
+        )
+        .filter(User.username == "admin", User.is_active.is_(True))
+        .first()
+    )
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Dev admin user not found (expected username 'admin')",
+        )
+    return user

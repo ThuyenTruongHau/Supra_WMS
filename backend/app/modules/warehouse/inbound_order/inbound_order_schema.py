@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Optional, List
+from typing import Any, Optional, List, Union
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
@@ -74,7 +74,8 @@ class InboundReleaseLocationsResponse(BaseModel):
 class AssignOrGetItemStockRequest(BaseModel):
     qr_code: Optional[str] = Field(None, min_length=1, max_length=50)
     location_id: Optional[int] = Field(None, gt=0)
-    location_code: Optional[str] = Field(None, min_length=1, max_length=100)
+    raw: Optional[str] = Field(None, min_length=1, max_length=100)  
+    warehouse_id: Optional[int] = Field(None, gt=0)
     quantity: Optional[int] = Field(None, gt=0)
     unit_id: Optional[int] = Field(None, gt=0)
     lot_number: Optional[str] = Field(None, max_length=50)
@@ -82,16 +83,25 @@ class AssignOrGetItemStockRequest(BaseModel):
     manufacturing_user: Optional[str] = Field(None, max_length=100)
     qc_user: Optional[str] = Field(None, max_length=100)
     packing_user: Optional[str] = Field(None, max_length=100)
+    is_split: Optional[bool] = Field(
+        None,
+        description="When true, cache stock as Lấy lẻ (split) for inbound detail",
+    )
 
     @model_validator(mode="after")
     def require_fields_when_assign(self) -> "AssignOrGetItemStockRequest":
-        has_location = self.location_id is not None or bool(self.location_code)
+        has_location = self.location_id is not None or bool(self.raw)  
         if self.qr_code is not None and has_location:
             if self.quantity is None or self.unit_id is None:
                 raise ValueError(
                     "quantity and unit_id are required when assigning a QR code to a location"
                 )
         return self
+
+
+class QrCodePreviewRequest(BaseModel):
+    qr_code: str = Field(..., min_length=1, max_length=50)
+    warehouse_id: Optional[int] = Field(None, gt=0)
 
 
 class QrCodePreviewResponse(BaseModel):
@@ -106,14 +116,111 @@ class QrCodePreviewResponse(BaseModel):
     lot_number: str
     cavity_numbers: list[str] = Field(default_factory=list)
     cavity_number: Optional[str] = None
+    qr_type: str = "item"
     manufacturing_user: Optional[str] = None
     qc_user: Optional[str] = None
     packing_user: Optional[str] = None
+    is_split: bool = False
+    linked_packs: list["AssignedItemStockResponse"] = Field(default_factory=list)
 
 
 class AssignItemStockMetaResponse(BaseModel):
     part_number: str
     location: str
+
+
+class PendingCachedResponse(BaseModel):
+    qr_code_id: int
+    code: str
+    part_number: str
+    item_name: str = ""
+
+
+class PackingUserPendingStocksResponse(BaseModel):
+    packing_user: str
+    items: list["AssignedItemStockResponse"] = Field(default_factory=list)
+
+
+class CacheForPackingUserRequest(BaseModel):
+    qr_code: str = Field(..., min_length=1, max_length=50)
+    warehouse_id: Optional[int] = Field(None, gt=0)
+    quantity: int = Field(..., gt=0)
+    unit_id: int = Field(..., gt=0)
+    lot_number: str = Field(..., min_length=1, max_length=50)
+    cavity_number: Optional[str] = Field(None, max_length=50)
+    manufacturing_user: Optional[str] = Field(None, max_length=100)
+    qc_user: Optional[str] = Field(None, max_length=100)
+    packing_user: Optional[str] = Field(None, max_length=100)
+    relation: Optional[int] = Field(
+        None,
+        gt=0,
+        description="Parent item qr_code_id when linking pack to cached item",
+    )
+    is_split: Optional[bool] = Field(
+        None,
+        description="When true, cache stock as Lấy lẻ (split) for inbound detail",
+    )
+
+
+class AssignPackingToItemRequest(BaseModel):
+    qr_code: str = Field(..., min_length=1, max_length=50)
+    warehouse_id: Optional[int] = Field(None, gt=0)
+    target_qr_id: Optional[str] = Field(
+        None,
+        min_length=1,
+        max_length=50,
+        description="Item qr_code_id as string when linking pack to item anchor",
+    )
+    quantity: Optional[int] = Field(None, gt=0)
+    unit_id: Optional[int] = Field(None, gt=0)
+    lot_number: Optional[str] = Field(None, max_length=50)
+    cavity_number: Optional[str] = Field(None, max_length=50)
+    manufacturing_user: Optional[str] = Field(None, max_length=100)
+    qc_user: Optional[str] = Field(None, max_length=100)
+    packing_user: Optional[str] = Field(None, max_length=100)
+    is_split: Optional[bool] = Field(
+        None,
+        description="When true, cache stock as Lấy lẻ (split) for inbound detail",
+    )
+
+    @model_validator(mode="after")
+    def require_fields_when_assign(self) -> "AssignPackingToItemRequest":
+        if self.target_qr_id is not None:
+            if self.quantity is None or self.unit_id is None:
+                raise ValueError(
+                    "quantity and unit_id are required when assigning pack to item"
+                )
+            if not (self.lot_number or "").strip():
+                raise ValueError(
+                    "lot_number is required when assigning pack to item"
+                )
+        return self
+
+
+class AssignOrGetItemStockAction:
+    PREVIEW = "preview"
+    ASSIGNED = "assigned"
+    LOCATION_STOCKS = "location_stocks"
+    PENDING_CACHED = "pending_cached"
+    LOCATION = "location"
+    CREATED = "created"
+
+
+class AssignOrGetItemStockResponse(BaseModel):
+    """Unified scan response — FE branches on `action`."""
+
+    action: str
+    preview: Optional[QrCodePreviewResponse] = None
+    assigned: Optional[AssignItemStockMetaResponse] = None
+    location_stocks: list["AssignedItemStockResponse"] = Field(default_factory=list)
+    pending: Optional[PendingCachedResponse] = None
+    location_id: Optional[int] = None
+    location_name: Optional[str] = None
+    location_code: Optional[str] = None
+    warehouse_id: Optional[int] = None
+    order_code: Optional[str] = None
+    success: Optional[bool] = None
+    message: Optional[str] = None
 
 
 class AssignedItemStockResponse(BaseModel):
@@ -135,6 +242,15 @@ class AssignedItemStockResponse(BaseModel):
     manufacturing_user: Optional[str] = None
     qc_user: Optional[str] = None
     packing_user: Optional[str] = None
+    stock_level: Optional[int] = None
+    details: Optional[dict[str, Any]] = None
+    relation: Optional[Union[int, str]] = Field(
+        None,
+        description=(
+            'Pending link: "item" marks an item anchor row; '
+            "int is parent item qr_code_id for a linked pack; null is an unlinked pack"
+        ),
+    )
 
 class InboundOrderAllocationCreate(BaseModel):
     item_id: int = Field(..., gt=0)
@@ -145,6 +261,10 @@ class InboundOrderAllocationCreate(BaseModel):
     lot_number: Optional[str] = Field(None, max_length=50)
     qr_code_id: Optional[int] = None
     expiry_date: Optional[str] = None
+    cavity_number: Optional[str] = None
+    manufacturing_user: Optional[str] = None
+    qc_user: Optional[str] = None
+    packing_user: Optional[str] = None
 
     @model_validator(mode="after")
     def validate_lot_fields(self) -> "InboundOrderAllocationCreate":

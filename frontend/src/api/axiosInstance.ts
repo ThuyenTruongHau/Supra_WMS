@@ -1,6 +1,14 @@
 import axios, { InternalAxiosRequestConfig } from 'axios';
 import { useAuthStore } from '@/store/useAuthStore';
-import { refreshApi } from './auth';
+import { SNAPSHOT_MODE } from '@/snapshot/snapshotConfig';
+import { snapshotAdapter } from '@/snapshot/snapshotAdapter';
+import { refreshAccessTokenApi } from './authRefresh';
+import {
+  forceLogout,
+  hasValidRefreshToken,
+  isAuthApiUrl,
+  isRefreshApiUrl,
+} from '@/utils/authSession';
 
 interface CustomAxiosRequestConfig extends InternalAxiosRequestConfig {
   _retry?: boolean;
@@ -12,6 +20,8 @@ const axiosInstance = axios.create({
     'Content-Type': 'application/json',
   },
   timeout: 10000,
+  // Bản demo offline đọc dữ liệu từ snapshot thay vì gọi mạng.
+  adapter: SNAPSHOT_MODE ? snapshotAdapter : undefined,
 });
 
 let isRefreshing = false;
@@ -35,8 +45,7 @@ const processQueue = (error: unknown, access_token: string | null = null) => {
 axiosInstance.interceptors.request.use(
   (config) => {
     const access_token = useAuthStore.getState().access_token;
-    const isAuthRoute = config.url === '/auth/login' || config.url === '/auth/refresh';
-    if (access_token && config.headers && !isAuthRoute) {
+    if (access_token && config.headers && !isAuthApiUrl(config.url)) {
       config.headers.Authorization = `Bearer ${access_token}`;
     }
     // Let axios/browser set multipart boundary for file uploads
@@ -47,7 +56,7 @@ axiosInstance.interceptors.request.use(
   },
   (error) => {
     return Promise.reject(error);
-  }
+  },
 );
 
 // Response interceptor
@@ -58,13 +67,22 @@ axiosInstance.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config as CustomAxiosRequestConfig;
 
-    // Handle global errors (e.g., 401, 500)
-    if (error.response?.status === 401 && originalRequest && !originalRequest._retry) {
-      if (
-        originalRequest.url === '/auth/login' ||
-        originalRequest.url === '/auth/refresh'
-      ) {
-        useAuthStore.getState().clearAuth();
+    if (SNAPSHOT_MODE) {
+      return Promise.reject(error);
+    }
+
+    if (error.response?.status === 401 && originalRequest) {
+      if (isAuthApiUrl(originalRequest.url)) {
+        if (isRefreshApiUrl(originalRequest.url)) {
+          processQueue(error, null);
+          isRefreshing = false;
+          forceLogout();
+        }
+        return Promise.reject(error);
+      }
+
+      if (originalRequest._retry) {
+        forceLogout();
         return Promise.reject(error);
       }
 
@@ -78,28 +96,25 @@ axiosInstance.interceptors.response.use(
             }
             return axiosInstance(originalRequest);
           })
-          .catch((err) => {
-            return Promise.reject(err);
-          });
+          .catch((err) => Promise.reject(err));
       }
 
       originalRequest._retry = true;
       isRefreshing = true;
 
       const refresh_token = useAuthStore.getState().refresh_token;
-      if (!refresh_token) {
-        useAuthStore.getState().clearAuth();
-        if (window.location.pathname !== '/login') {
-          window.location.href = '/login';
-        }
+      if (!hasValidRefreshToken(refresh_token)) {
+        processQueue(error, null);
+        isRefreshing = false;
+        forceLogout();
         return Promise.reject(error);
       }
 
       try {
-        const data = await refreshApi(refresh_token);
-        const { access_token, refresh_token: newrefresh_token } = data;
+        const data = await refreshAccessTokenApi(refresh_token!);
+        const { access_token, refresh_token: newRefreshToken } = data;
 
-        useAuthStore.getState().setToken(access_token, newrefresh_token);
+        useAuthStore.getState().setToken(access_token, newRefreshToken);
 
         if (originalRequest.headers) {
           originalRequest.headers.Authorization = `Bearer ${access_token}`;
@@ -109,19 +124,14 @@ axiosInstance.interceptors.response.use(
         return axiosInstance(originalRequest);
       } catch (refreshError) {
         processQueue(refreshError, null);
-        useAuthStore.getState().clearAuth();
-        if (window.location.pathname !== '/login') {
-          window.location.href = '/login';
-        }
+        forceLogout();
         return Promise.reject(refreshError);
       } finally {
         isRefreshing = false;
       }
     }
     return Promise.reject(error);
-  }
+  },
 );
 
 export default axiosInstance;
-
-

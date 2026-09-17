@@ -6,6 +6,7 @@ import { useAuthStore } from "@/store/useAuthStore";
 import { MOCK_NOTIFICATIONS } from "@/data/mockNotifications";
 import { useNotificationStore } from "@/store/useNotificationStore";
 import { isAdminRole } from "@/constants/roles";
+import { SNAPSHOT_MODE } from "@/snapshot/snapshotConfig";
 import {
   LogoutOutlined,
   BarChartOutlined,
@@ -225,7 +226,7 @@ export default function Sidebar() {
   ).length;
   const isAdmin = isAdminRole(role_canonical);
 
-  if (!isAuthenticated) {
+  if (!SNAPSHOT_MODE && !isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
 

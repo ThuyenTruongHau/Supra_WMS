@@ -100,6 +100,7 @@ export interface NodeInfo {
   extraTypes: number[];
 }
 
+
 export interface MapLocationItemStock {
   sku: string;
   lot_number: string | null;
@@ -110,6 +111,7 @@ export interface FullLocationDetail {
   id: number;
   location_code: string;
   location_name?: string | null;
+  bin_code?: string | null;
   row: string | null;
   column: string | null;
   level: string | null;
@@ -127,6 +129,7 @@ export interface WarehouseLocationCell {
   id: number;
   location_code: string;
   location_name: string;
+  bin_code: string | null;
   node_name: string | null;
   warehouse_id: number;
   zone_id: number | null;

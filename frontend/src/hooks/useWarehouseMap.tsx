@@ -21,16 +21,19 @@ import {
   getFullLocationsApi,
   getLocationsByLogicApi,
   importWarehouseMapApi,
+  previewWarehouseMapImportApi,
   downloadActiveMapApi,
   getLocationDetailByIdApi,
 } from '@/api/warehouseMap';
 import type {
   MapData,
+  MapRemapEntry,
   FullLocationsResponse,
   WarehouseMapImportResult,
   WarehouseLocationItemStockDetail,
 } from '@/types/warehouseMap';
 import { LIVE_QUERY_OPTIONS } from '@/utils/liveQueryOptions';
+import type { OutboundLocationLogicType } from '@/utils/outboundLocationLogic';
 
 export const useActiveWarehouseMap = (warehouseId: number) => {
   return useQuery<MapData, AxiosError<ApiErrorResponse>>({
@@ -64,13 +67,45 @@ export const useInboundBufferLocations = (
 
 export const useOutboundBufferLocations = (
   warehouseId: number,
+  logicType: OutboundLocationLogicType = 'outbound_buffer',
   enabled = true,
 ) => {
   return useQuery({
-    queryKey: ['outbound-buffer-locations', warehouseId],
-    queryFn: () => getLocationsByLogicApi(warehouseId, 'outbound_buffer'),
+    queryKey: ['outbound-buffer-locations', warehouseId, logicType],
+    queryFn: () => getLocationsByLogicApi(warehouseId, logicType),
     enabled: enabled && warehouseId > 0,
     ...LIVE_QUERY_OPTIONS,
+  });
+};
+
+export const useStorageAreaLocations = (
+  warehouseId: number,
+  enabled = true,
+) => {
+  return useQuery({
+    queryKey: ['storage-area-locations', warehouseId],
+    queryFn: () => getLocationsByLogicApi(warehouseId, 'storage_area'),
+    enabled: enabled && warehouseId > 0,
+    ...LIVE_QUERY_OPTIONS,
+  });
+};
+
+interface ImportWarehouseMapVariables {
+  warehouseId: number;
+  file: File;
+  remap?: MapRemapEntry[];
+  zoneId?: number;
+}
+
+/** Dry run the import so the operator can review before anything is written. */
+export const usePreviewWarehouseMapImport = () => {
+  return useMutation<
+    WarehouseMapImportResult,
+    AxiosError<ApiErrorResponse>,
+    ImportWarehouseMapVariables
+  >({
+    mutationFn: ({ warehouseId, file, remap, zoneId }) =>
+      previewWarehouseMapImportApi(warehouseId, file, remap, zoneId),
   });
 };
 
@@ -79,10 +114,10 @@ export const useImportWarehouseMap = () => {
   return useMutation<
     WarehouseMapImportResult,
     AxiosError<ApiErrorResponse>,
-    { warehouseId: number; file: File }
+    ImportWarehouseMapVariables
   >({
-    mutationFn: ({ warehouseId, file }) =>
-      importWarehouseMapApi(warehouseId, file),
+    mutationFn: ({ warehouseId, file, remap, zoneId }) =>
+      importWarehouseMapApi(warehouseId, file, remap, zoneId),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({
         queryKey: ['warehouse-map', variables.warehouseId],
@@ -112,12 +147,15 @@ export const useDownloadWarehouseMap = () => {
   });
 };
 
-export const useLocationDetail = (locationId: number | undefined) => {
+export const useLocationDetail = (
+  locationId: number | undefined,
+  refreshToken = 0,
+) => {
   return useQuery<
     WarehouseLocationItemStockDetail,
     AxiosError<ApiErrorResponse>
   >({
-    queryKey: ['location-detail', locationId],
+    queryKey: ['location-detail', locationId, refreshToken],
     queryFn: () => getLocationDetailByIdApi(locationId as number),
     enabled: !!locationId && locationId > 0,
     ...LIVE_QUERY_OPTIONS,

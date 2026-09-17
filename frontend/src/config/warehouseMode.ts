@@ -47,3 +47,17 @@ export function syncWarehouseOperationTypes(warehouseId: number) {
   INBOUND_TYPE = resolveInboundType(warehouseId);
   OUTBOUND_TYPE = resolveOutboundType(warehouseId);
 }
+
+/** Kho manual dùng nhãn QR thuần (30×50mm); kho auto dùng phiếu Bacviet có dòng ghi tay. */
+export function isManualPrintWarehouse(warehouseId: number): boolean {
+  return OUTBOUND_MANUAL_WAREHOUSE_IDS.includes(warehouseId);
+}
+
+export const QR_PRINT_LABELS_PER_PAGE_AUTO = 9;
+export const QR_PRINT_LABELS_PER_PAGE_MANUAL = 30;
+
+export function resolveQrPrintLabelsPerPage(warehouseId: number): number {
+  return isManualPrintWarehouse(warehouseId)
+    ? QR_PRINT_LABELS_PER_PAGE_MANUAL
+    : QR_PRINT_LABELS_PER_PAGE_AUTO;
+}

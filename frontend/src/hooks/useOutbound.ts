@@ -9,9 +9,11 @@ import {
   updateOutboundOrderApi,
   deleteOutboundOrderApi,
   getOutboundRobotTasksApi,
+  getOutboundManualAllocationTasksApi,
   executeOutboundRobotTaskApi,
   confirmOutboundOrderQrApi,
   confirmOutboundOrderNoQrApi,
+  executeOutboundQrManualApi,
 } from "@/api/outboundOrder";
 import type {
   CalculateOutboundRequest,
@@ -20,6 +22,7 @@ import type {
   OutboundOrderDeleteResponse,
   OutboundOrderUpdateRequest,
   OutboundRobotTaskExecuteRequest,
+  ExecuteQrManualRequest,
 } from "@/types/outbound";
 import type { AxiosError } from "axios";
 import type { ApiErrorResponse } from "@/types/apiError";
@@ -83,6 +86,12 @@ export const useCalculateOutboundOrder = () => {
       queryClient.invalidateQueries({
         queryKey: ["outboundRobotTasks", variables.body.outbound_order_id],
       });
+      queryClient.invalidateQueries({
+        queryKey: [
+          "outboundManualAllocationTasks",
+          variables.body.outbound_order_id,
+        ],
+      });
     },
   });
 };
@@ -94,6 +103,18 @@ export const useGetOutboundRobotTasks = (
   return useQuery({
     queryKey: ["outboundRobotTasks", orderId],
     queryFn: () => getOutboundRobotTasksApi(orderId!),
+    enabled: !!orderId && orderId > 0 && enabled,
+    ...LIVE_QUERY_OPTIONS,
+  });
+};
+
+export const useGetOutboundManualAllocationTasks = (
+  orderId: number | undefined,
+  enabled: boolean,
+) => {
+  return useQuery({
+    queryKey: ["outboundManualAllocationTasks", orderId],
+    queryFn: () => getOutboundManualAllocationTasksApi(orderId!),
     enabled: !!orderId && orderId > 0 && enabled,
     ...LIVE_QUERY_OPTIONS,
   });
@@ -172,6 +193,34 @@ export const useExecuteOutboundRobotTask = () => {
       queryClient.invalidateQueries({
         queryKey: ["outboundRobotTasks", variables.orderId],
       });
+      queryClient.invalidateQueries({
+        queryKey: ["outboundManualAllocationTasks", variables.orderId],
+      });
+    },
+  });
+};
+
+export const useExecuteOutboundQrManual = () => {
+  const queryClient = useQueryClient();
+  return useMutation<
+    Awaited<ReturnType<typeof executeOutboundQrManualApi>>,
+    AxiosError<ApiErrorResponse>,
+    { orderId: number; body: ExecuteQrManualRequest }
+  >({
+    mutationFn: ({ body }) => executeOutboundQrManualApi(body),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["outboundOrder", variables.orderId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["outboundOrderDetails", variables.orderId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["outboundManualAllocationTasks", variables.orderId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["outboundOrderLacked", variables.orderId],
+      });
     },
   });
 };
@@ -194,6 +243,9 @@ export const useConfirmOutboundOrderQr = () => {
       });
       queryClient.invalidateQueries({
         queryKey: ["outboundRobotTasks", variables.orderId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["outboundManualAllocationTasks", variables.orderId],
       });
       queryClient.invalidateQueries({ queryKey: ["outboundOrders"] });
     },
@@ -218,6 +270,9 @@ export const useConfirmOutboundOrderNoQr = () => {
       });
       queryClient.invalidateQueries({
         queryKey: ["outboundRobotTasks", variables.orderId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["outboundManualAllocationTasks", variables.orderId],
       });
       queryClient.invalidateQueries({
         queryKey: ["outboundOrderLacked", variables.orderId],

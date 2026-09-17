@@ -1,14 +1,31 @@
-import { Navigate } from 'react-router-dom'
-import { useAuthStore } from '@/store/useAuthStore'
-import { getHomePathForRole } from '@/constants/roles'
+import { Navigate } from 'react-router-dom';
+import { useAuthStore } from '@/store/useAuthStore';
+import { SNAPSHOT_MODE } from '@/snapshot/snapshotConfig';
+import { getHomePath, getHomePathFromAccess, resolveRoles } from '@/utils/authSession';
 
 export function PublicRoute({ children }: { children: React.ReactNode }) {
-  const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
-  const roleCanonical = useAuthStore((s) => s.role_canonical)
+  if (SNAPSHOT_MODE) return <Navigate to="/report" replace />;
+
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const access = useAuthStore((s) => s.access);
+  const roles = useAuthStore((s) => s.roles);
+  const role = useAuthStore((s) => s.role);
+  const role_canonical = useAuthStore((s) => s.role_canonical);
 
   if (isAuthenticated) {
-    return <Navigate to={getHomePathForRole(roleCanonical)} replace />
+    if (access) {
+      return <Navigate to={getHomePathFromAccess(access)} replace />;
+    }
+    if (roles.length > 0 || role) {
+      return <Navigate to={getHomePath(resolveRoles(roles, role))} replace />;
+    }
+    
+    // Fallback for legacy local logic using role_canonical
+    const canonical = (role_canonical || '').toLowerCase();
+    const isWorker = canonical === 'o001' || canonical === 'operator';
+    const targetPath = isWorker ? '/worker/vehicles' : '/report';
+    return <Navigate to={targetPath} replace />;
   }
 
-  return children
+  return <>{children}</>;
 }

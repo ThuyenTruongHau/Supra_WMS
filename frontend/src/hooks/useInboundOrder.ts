@@ -9,16 +9,24 @@ import {
   deleteInboundOrderApi,
   acceptInboundTaskApi,
   assignOrGetItemStockApi,
+  manualInboundScanApi,
+  cacheForPackingUserApi,
+  getPackingUserStocksApi,
+  previewQrCodeApi,
+  assignPackingToItemApi,
   callerInboundOrderApi,
 } from "@/api/inboundOrder";
 import type {
   AssignOrGetItemStockRequest,
+  AssignPackingToItemRequest,
+  CacheForPackingUserRequest,
   GetInboundOrdersParams,
   InboundOrderCreateRequest,
   InboundOrderDeleteResponse,
   InboundOrderUpdateRequest,
   InboundReleaseLocationsRequest,
   InboundSuggestAllocationRequest,
+  QrCodePreviewRequest,
 } from "@/types/inboundOrder";
 import type { AxiosError } from "axios";
 import type { ApiErrorResponse } from "@/types/apiError";
@@ -44,13 +52,8 @@ export const useGetInboundOrderDetails = (orderCode: string | undefined) => {
 
 export const useSuggestInboundAllocation = () => {
   return useMutation({
-    mutationFn: ({
-      body,
-      qrType,
-    }: {
-      body: InboundSuggestAllocationRequest;
-      qrType: string;
-    }) => suggestInboundAllocationApi(body, qrType),
+    mutationFn: (body: InboundSuggestAllocationRequest) =>
+      suggestInboundAllocationApi(body),
   });
 };
 
@@ -123,6 +126,47 @@ export const useAssignOrGetItemStock = () => {
   return useMutation({
     mutationFn: (body: AssignOrGetItemStockRequest) =>
       assignOrGetItemStockApi(body),
+  });
+};
+
+export const useManualInboundScan = () => {
+  return useMutation({
+    mutationFn: (body: AssignOrGetItemStockRequest) =>
+      manualInboundScanApi(body),
+  });
+};
+
+export const usePreviewQrCode = () => {
+  return useMutation({
+    mutationFn: (body: QrCodePreviewRequest) => previewQrCodeApi(body),
+  });
+};
+
+export const useCacheForPackingUser = () => {
+  return useMutation({
+    mutationFn: (body: CacheForPackingUserRequest) =>
+      cacheForPackingUserApi(body),
+  });
+};
+
+export const useAssignPackingToItem = () => {
+  return useMutation({
+    mutationFn: (body: AssignPackingToItemRequest) =>
+      assignPackingToItemApi(body),
+  });
+};
+
+export const useGetPackingUserStocks = () => {
+  return useMutation({
+    mutationFn: ({
+      packingUser,
+      linked,
+      pendingRole,
+    }: {
+      packingUser: string;
+      linked?: boolean;
+      pendingRole?: "item" | "pack";
+    }) => getPackingUserStocksApi(packingUser, { linked, pendingRole }),
   });
 };
 

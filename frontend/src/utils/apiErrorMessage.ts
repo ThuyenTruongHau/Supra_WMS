@@ -2,7 +2,6 @@ import { isAxiosError } from "axios";
 import type { ApiErrorResponse, ValidationErrorItem } from "@/types/apiError";
 import {
   isQrTypeLocationConflictMessage,
-  isQrTypeSuggestionBlockedMessage,
   translateApiMessage,
 } from "@/i18n/apiMessages.vi";
 
@@ -125,9 +124,4 @@ function extractRawDetailMessage(err: unknown): string | null {
 export function isQrTypeLocationConflictError(err: unknown): boolean {
   const raw = extractRawDetailMessage(err);
   return raw ? isQrTypeLocationConflictMessage(raw) : false;
-}
-
-export function isQrTypeSuggestionBlockedError(err: unknown): boolean {
-  const raw = extractRawDetailMessage(err);
-  return raw ? isQrTypeSuggestionBlockedMessage(raw) : false;
 }

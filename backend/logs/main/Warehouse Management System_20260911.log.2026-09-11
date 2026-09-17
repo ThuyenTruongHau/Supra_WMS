@@ -1,0 +1,1435 @@
+2026-09-11 11:53:06,826 - main - INFO - Starting app
+2026-09-11 11:53:06,839 - main - INFO - Redis connected: redis://10.73.231.5:6379/0 (prefix=wms)
+2026-09-11 11:53:06,840 - main - INFO - Websocket manager started
+2026-09-11 13:00:13,218 - main - INFO - Stopping app
+2026-09-11 13:00:13,219 - main - INFO - Websocket manager stopped
+2026-09-11 13:00:20,937 - main - INFO - Starting app
+2026-09-11 13:00:20,975 - main - INFO - Redis connected: redis://10.73.231.5:6379/0 (prefix=wms)
+2026-09-11 13:00:20,975 - main - INFO - Websocket manager started
+2026-09-11 13:02:16,545 - main - INFO - Successfully logged in user admin
+2026-09-11 13:14:48,382 - main - INFO - outbound.get_robot_tasks order_id=28
+2026-09-11 13:14:48,383 - main - INFO - outbound.get_order_by_id order_id=28
+2026-09-11 13:14:48,807 - main - INFO - outbound.get_order_details order_id=28
+2026-09-11 13:14:48,817 - main - INFO - outbound.get_lacked_details order_id=28
+2026-09-11 13:15:32,800 - main - INFO - inbound.caller_order order_code=IN-20260911-131745
+2026-09-11 13:15:35,807 - main - INFO - ICS addTask response: {'code': 1000, 'data': 'TDS_Inbound_86758bd4', 'desc': '请求成功'}
+2026-09-11 13:15:37,086 - main - INFO - Processing task status for order_id=TDS_Inbound_86758bd4
+2026-09-11 13:16:28,337 - main - INFO - Processing task status for order_id=TDS_Inbound_86758bd4
+2026-09-11 13:16:28,686 - main - INFO - Processing task status for order_id=TDS_Inbound_86758bd4
+2026-09-11 13:16:35,819 - main - INFO - Processing task status for order_id=TDS_Inbound_86758bd4
+2026-09-11 13:16:35,936 - main - INFO - Processing task status for order_id=TDS_Inbound_86758bd4
+2026-09-11 13:17:58,523 - main - INFO - Processing task status for order_id=TDS_Inbound_86758bd4
+2026-09-11 13:17:58,832 - main - INFO - Processing task status for order_id=TDS_Inbound_86758bd4
+2026-09-11 13:18:05,595 - main - INFO - Processing task status for order_id=TDS_Inbound_86758bd4
+2026-09-11 13:18:05,901 - main - INFO - Receive completed for TDS_Inbound_86758bd4
+2026-09-11 13:18:05,905 - main - ERROR - Failed to persist task status (order_id=TDS_Inbound_86758bd4)
+Traceback (most recent call last):
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\.venv\lib\site-packages\sqlalchemy\sql\elements.py", line 1496, in __getattr__
+    return getattr(self.comparator, key)
+AttributeError: 'Comparator' object has no attribute 'not_in_'. Did you mean: 'not_in'?
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\.venv\lib\site-packages\sqlalchemy\orm\attributes.py", line 472, in __getattr__
+    return getattr(self.comparator, key)
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\.venv\lib\site-packages\sqlalchemy\util\langhelpers.py", line 1328, in __getattr__
+    return self._fallback_getattr(key)
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\.venv\lib\site-packages\sqlalchemy\orm\properties.py", line 474, in _fallback_getattr
+    return getattr(self.__clause_element__(), key)
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\.venv\lib\site-packages\sqlalchemy\sql\elements.py", line 1498, in __getattr__
+    raise AttributeError(
+AttributeError: Neither 'AnnotatedColumn' object nor 'Comparator' object has an attribute 'not_in_'. Did you mean: 'not_in'?
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\app\modules\robot\robot_celery_task.py", line 22, in persist_task_status
+    record = task_status_service.receive_task_status(db, payload)
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\app\modules\robot\robot_service.py", line 127, in receive_task_status
+    self._settle_inbound_stock(db, detail)
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\app\modules\robot\robot_service.py", line 69, in _settle_inbound_stock
+    ItemStock.status.not_in_(["virtual", "split"]),
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\.venv\lib\site-packages\sqlalchemy\orm\attributes.py", line 474, in __getattr__
+    raise AttributeError(
+AttributeError: Neither 'InstrumentedAttribute' object nor 'Comparator' object associated with ItemStock.status has an attribute 'not_in_'. Did you mean: 'not_in'?
+2026-09-11 13:18:06,128 - main - INFO - Processing task status for order_id=TDS_Inbound_86758bd4
+2026-09-11 13:18:06,408 - main - INFO - Receive completed for TDS_Inbound_86758bd4
+2026-09-11 13:18:06,411 - main - ERROR - Failed to persist task status (order_id=TDS_Inbound_86758bd4)
+Traceback (most recent call last):
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\.venv\lib\site-packages\sqlalchemy\sql\elements.py", line 1496, in __getattr__
+    return getattr(self.comparator, key)
+AttributeError: 'Comparator' object has no attribute 'not_in_'. Did you mean: 'not_in'?
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\.venv\lib\site-packages\sqlalchemy\orm\attributes.py", line 472, in __getattr__
+    return getattr(self.comparator, key)
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\.venv\lib\site-packages\sqlalchemy\util\langhelpers.py", line 1328, in __getattr__
+    return self._fallback_getattr(key)
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\.venv\lib\site-packages\sqlalchemy\orm\properties.py", line 474, in _fallback_getattr
+    return getattr(self.__clause_element__(), key)
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\.venv\lib\site-packages\sqlalchemy\sql\elements.py", line 1498, in __getattr__
+    raise AttributeError(
+AttributeError: Neither 'AnnotatedColumn' object nor 'Comparator' object has an attribute 'not_in_'. Did you mean: 'not_in'?
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\app\modules\robot\robot_celery_task.py", line 22, in persist_task_status
+    record = task_status_service.receive_task_status(db, payload)
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\app\modules\robot\robot_service.py", line 127, in receive_task_status
+    self._settle_inbound_stock(db, detail)
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\app\modules\robot\robot_service.py", line 69, in _settle_inbound_stock
+    ItemStock.status.not_in_(["virtual", "split"]),
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\.venv\lib\site-packages\sqlalchemy\orm\attributes.py", line 474, in __getattr__
+    raise AttributeError(
+AttributeError: Neither 'InstrumentedAttribute' object nor 'Comparator' object associated with ItemStock.status has an attribute 'not_in_'. Did you mean: 'not_in'?
+2026-09-11 13:18:06,440 - main - INFO - Processing task status for order_id=TDS_Inbound_86758bd4
+2026-09-11 13:18:06,698 - main - INFO - Receive completed for TDS_Inbound_86758bd4
+2026-09-11 13:18:06,701 - main - ERROR - Failed to persist task status (order_id=TDS_Inbound_86758bd4)
+Traceback (most recent call last):
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\.venv\lib\site-packages\sqlalchemy\sql\elements.py", line 1496, in __getattr__
+    return getattr(self.comparator, key)
+AttributeError: 'Comparator' object has no attribute 'not_in_'. Did you mean: 'not_in'?
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\.venv\lib\site-packages\sqlalchemy\orm\attributes.py", line 472, in __getattr__
+    return getattr(self.comparator, key)
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\.venv\lib\site-packages\sqlalchemy\util\langhelpers.py", line 1328, in __getattr__
+    return self._fallback_getattr(key)
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\.venv\lib\site-packages\sqlalchemy\orm\properties.py", line 474, in _fallback_getattr
+    return getattr(self.__clause_element__(), key)
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\.venv\lib\site-packages\sqlalchemy\sql\elements.py", line 1498, in __getattr__
+    raise AttributeError(
+AttributeError: Neither 'AnnotatedColumn' object nor 'Comparator' object has an attribute 'not_in_'. Did you mean: 'not_in'?
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\app\modules\robot\robot_celery_task.py", line 22, in persist_task_status
+    record = task_status_service.receive_task_status(db, payload)
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\app\modules\robot\robot_service.py", line 127, in receive_task_status
+    self._settle_inbound_stock(db, detail)
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\app\modules\robot\robot_service.py", line 69, in _settle_inbound_stock
+    ItemStock.status.not_in_(["virtual", "split"]),
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\.venv\lib\site-packages\sqlalchemy\orm\attributes.py", line 474, in __getattr__
+    raise AttributeError(
+AttributeError: Neither 'InstrumentedAttribute' object nor 'Comparator' object associated with ItemStock.status has an attribute 'not_in_'. Did you mean: 'not_in'?
+2026-09-11 13:18:06,720 - main - INFO - Processing task status for order_id=TDS_Inbound_86758bd4
+2026-09-11 13:18:06,942 - main - INFO - Receive completed for TDS_Inbound_86758bd4
+2026-09-11 13:18:06,946 - main - ERROR - Failed to persist task status (order_id=TDS_Inbound_86758bd4)
+Traceback (most recent call last):
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\.venv\lib\site-packages\sqlalchemy\sql\elements.py", line 1496, in __getattr__
+    return getattr(self.comparator, key)
+AttributeError: 'Comparator' object has no attribute 'not_in_'. Did you mean: 'not_in'?
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\.venv\lib\site-packages\sqlalchemy\orm\attributes.py", line 472, in __getattr__
+    return getattr(self.comparator, key)
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\.venv\lib\site-packages\sqlalchemy\util\langhelpers.py", line 1328, in __getattr__
+    return self._fallback_getattr(key)
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\.venv\lib\site-packages\sqlalchemy\orm\properties.py", line 474, in _fallback_getattr
+    return getattr(self.__clause_element__(), key)
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\.venv\lib\site-packages\sqlalchemy\sql\elements.py", line 1498, in __getattr__
+    raise AttributeError(
+AttributeError: Neither 'AnnotatedColumn' object nor 'Comparator' object has an attribute 'not_in_'. Did you mean: 'not_in'?
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\app\modules\robot\robot_celery_task.py", line 22, in persist_task_status
+    record = task_status_service.receive_task_status(db, payload)
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\app\modules\robot\robot_service.py", line 127, in receive_task_status
+    self._settle_inbound_stock(db, detail)
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\app\modules\robot\robot_service.py", line 69, in _settle_inbound_stock
+    ItemStock.status.not_in_(["virtual", "split"]),
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\.venv\lib\site-packages\sqlalchemy\orm\attributes.py", line 474, in __getattr__
+    raise AttributeError(
+AttributeError: Neither 'InstrumentedAttribute' object nor 'Comparator' object associated with ItemStock.status has an attribute 'not_in_'. Did you mean: 'not_in'?
+2026-09-11 13:18:11,548 - main - INFO - Processing task status for order_id=TDS_Inbound_86758bd4
+2026-09-11 13:18:11,763 - main - INFO - Receive completed for TDS_Inbound_86758bd4
+2026-09-11 13:18:11,765 - main - ERROR - Failed to persist task status (order_id=TDS_Inbound_86758bd4)
+Traceback (most recent call last):
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\.venv\lib\site-packages\sqlalchemy\sql\elements.py", line 1496, in __getattr__
+    return getattr(self.comparator, key)
+AttributeError: 'Comparator' object has no attribute 'not_in_'. Did you mean: 'not_in'?
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\.venv\lib\site-packages\sqlalchemy\orm\attributes.py", line 472, in __getattr__
+    return getattr(self.comparator, key)
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\.venv\lib\site-packages\sqlalchemy\util\langhelpers.py", line 1328, in __getattr__
+    return self._fallback_getattr(key)
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\.venv\lib\site-packages\sqlalchemy\orm\properties.py", line 474, in _fallback_getattr
+    return getattr(self.__clause_element__(), key)
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\.venv\lib\site-packages\sqlalchemy\sql\elements.py", line 1498, in __getattr__
+    raise AttributeError(
+AttributeError: Neither 'AnnotatedColumn' object nor 'Comparator' object has an attribute 'not_in_'. Did you mean: 'not_in'?
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\app\modules\robot\robot_celery_task.py", line 22, in persist_task_status
+    record = task_status_service.receive_task_status(db, payload)
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\app\modules\robot\robot_service.py", line 127, in receive_task_status
+    self._settle_inbound_stock(db, detail)
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\app\modules\robot\robot_service.py", line 69, in _settle_inbound_stock
+    ItemStock.status.not_in_(["virtual", "split"]),
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\.venv\lib\site-packages\sqlalchemy\orm\attributes.py", line 474, in __getattr__
+    raise AttributeError(
+AttributeError: Neither 'InstrumentedAttribute' object nor 'Comparator' object associated with ItemStock.status has an attribute 'not_in_'. Did you mean: 'not_in'?
+2026-09-11 13:18:11,785 - main - INFO - Processing task status for order_id=TDS_Inbound_86758bd4
+2026-09-11 13:18:12,027 - main - INFO - Receive completed for TDS_Inbound_86758bd4
+2026-09-11 13:18:12,046 - main - ERROR - Failed to persist task status (order_id=TDS_Inbound_86758bd4)
+Traceback (most recent call last):
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\.venv\lib\site-packages\sqlalchemy\sql\elements.py", line 1496, in __getattr__
+    return getattr(self.comparator, key)
+AttributeError: 'Comparator' object has no attribute 'not_in_'. Did you mean: 'not_in'?
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\.venv\lib\site-packages\sqlalchemy\orm\attributes.py", line 472, in __getattr__
+    return getattr(self.comparator, key)
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\.venv\lib\site-packages\sqlalchemy\util\langhelpers.py", line 1328, in __getattr__
+    return self._fallback_getattr(key)
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\.venv\lib\site-packages\sqlalchemy\orm\properties.py", line 474, in _fallback_getattr
+    return getattr(self.__clause_element__(), key)
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\.venv\lib\site-packages\sqlalchemy\sql\elements.py", line 1498, in __getattr__
+    raise AttributeError(
+AttributeError: Neither 'AnnotatedColumn' object nor 'Comparator' object has an attribute 'not_in_'. Did you mean: 'not_in'?
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\app\modules\robot\robot_celery_task.py", line 22, in persist_task_status
+    record = task_status_service.receive_task_status(db, payload)
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\app\modules\robot\robot_service.py", line 127, in receive_task_status
+    self._settle_inbound_stock(db, detail)
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\app\modules\robot\robot_service.py", line 69, in _settle_inbound_stock
+    ItemStock.status.not_in_(["virtual", "split"]),
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\.venv\lib\site-packages\sqlalchemy\orm\attributes.py", line 474, in __getattr__
+    raise AttributeError(
+AttributeError: Neither 'InstrumentedAttribute' object nor 'Comparator' object associated with ItemStock.status has an attribute 'not_in_'. Did you mean: 'not_in'?
+2026-09-11 13:18:12,110 - main - INFO - Processing task status for order_id=TDS_Inbound_86758bd4
+2026-09-11 13:18:12,419 - main - INFO - Receive completed for TDS_Inbound_86758bd4
+2026-09-11 13:18:12,420 - main - ERROR - Failed to persist task status (order_id=TDS_Inbound_86758bd4)
+Traceback (most recent call last):
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\.venv\lib\site-packages\sqlalchemy\sql\elements.py", line 1496, in __getattr__
+    return getattr(self.comparator, key)
+AttributeError: 'Comparator' object has no attribute 'not_in_'. Did you mean: 'not_in'?
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\.venv\lib\site-packages\sqlalchemy\orm\attributes.py", line 472, in __getattr__
+    return getattr(self.comparator, key)
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\.venv\lib\site-packages\sqlalchemy\util\langhelpers.py", line 1328, in __getattr__
+    return self._fallback_getattr(key)
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\.venv\lib\site-packages\sqlalchemy\orm\properties.py", line 474, in _fallback_getattr
+    return getattr(self.__clause_element__(), key)
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\.venv\lib\site-packages\sqlalchemy\sql\elements.py", line 1498, in __getattr__
+    raise AttributeError(
+AttributeError: Neither 'AnnotatedColumn' object nor 'Comparator' object has an attribute 'not_in_'. Did you mean: 'not_in'?
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\app\modules\robot\robot_celery_task.py", line 22, in persist_task_status
+    record = task_status_service.receive_task_status(db, payload)
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\app\modules\robot\robot_service.py", line 127, in receive_task_status
+    self._settle_inbound_stock(db, detail)
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\app\modules\robot\robot_service.py", line 69, in _settle_inbound_stock
+    ItemStock.status.not_in_(["virtual", "split"]),
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\.venv\lib\site-packages\sqlalchemy\orm\attributes.py", line 474, in __getattr__
+    raise AttributeError(
+AttributeError: Neither 'InstrumentedAttribute' object nor 'Comparator' object associated with ItemStock.status has an attribute 'not_in_'. Did you mean: 'not_in'?
+2026-09-11 13:18:12,449 - main - INFO - Processing task status for order_id=TDS_Inbound_86758bd4
+2026-09-11 13:18:12,785 - main - INFO - Receive completed for TDS_Inbound_86758bd4
+2026-09-11 13:18:12,786 - main - ERROR - Failed to persist task status (order_id=TDS_Inbound_86758bd4)
+Traceback (most recent call last):
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\.venv\lib\site-packages\sqlalchemy\sql\elements.py", line 1496, in __getattr__
+    return getattr(self.comparator, key)
+AttributeError: 'Comparator' object has no attribute 'not_in_'. Did you mean: 'not_in'?
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\.venv\lib\site-packages\sqlalchemy\orm\attributes.py", line 472, in __getattr__
+    return getattr(self.comparator, key)
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\.venv\lib\site-packages\sqlalchemy\util\langhelpers.py", line 1328, in __getattr__
+    return self._fallback_getattr(key)
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\.venv\lib\site-packages\sqlalchemy\orm\properties.py", line 474, in _fallback_getattr
+    return getattr(self.__clause_element__(), key)
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\.venv\lib\site-packages\sqlalchemy\sql\elements.py", line 1498, in __getattr__
+    raise AttributeError(
+AttributeError: Neither 'AnnotatedColumn' object nor 'Comparator' object has an attribute 'not_in_'. Did you mean: 'not_in'?
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\app\modules\robot\robot_celery_task.py", line 22, in persist_task_status
+    record = task_status_service.receive_task_status(db, payload)
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\app\modules\robot\robot_service.py", line 127, in receive_task_status
+    self._settle_inbound_stock(db, detail)
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\app\modules\robot\robot_service.py", line 69, in _settle_inbound_stock
+    ItemStock.status.not_in_(["virtual", "split"]),
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\.venv\lib\site-packages\sqlalchemy\orm\attributes.py", line 474, in __getattr__
+    raise AttributeError(
+AttributeError: Neither 'InstrumentedAttribute' object nor 'Comparator' object associated with ItemStock.status has an attribute 'not_in_'. Did you mean: 'not_in'?
+2026-09-11 13:18:16,837 - main - INFO - Processing task status for order_id=TDS_Inbound_86758bd4
+2026-09-11 13:18:17,016 - main - INFO - Receive completed for TDS_Inbound_86758bd4
+2026-09-11 13:18:17,018 - main - ERROR - Failed to persist task status (order_id=TDS_Inbound_86758bd4)
+Traceback (most recent call last):
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\.venv\lib\site-packages\sqlalchemy\sql\elements.py", line 1496, in __getattr__
+    return getattr(self.comparator, key)
+AttributeError: 'Comparator' object has no attribute 'not_in_'. Did you mean: 'not_in'?
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\.venv\lib\site-packages\sqlalchemy\orm\attributes.py", line 472, in __getattr__
+    return getattr(self.comparator, key)
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\.venv\lib\site-packages\sqlalchemy\util\langhelpers.py", line 1328, in __getattr__
+    return self._fallback_getattr(key)
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\.venv\lib\site-packages\sqlalchemy\orm\properties.py", line 474, in _fallback_getattr
+    return getattr(self.__clause_element__(), key)
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\.venv\lib\site-packages\sqlalchemy\sql\elements.py", line 1498, in __getattr__
+    raise AttributeError(
+AttributeError: Neither 'AnnotatedColumn' object nor 'Comparator' object has an attribute 'not_in_'. Did you mean: 'not_in'?
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\app\modules\robot\robot_celery_task.py", line 22, in persist_task_status
+    record = task_status_service.receive_task_status(db, payload)
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\app\modules\robot\robot_service.py", line 127, in receive_task_status
+    self._settle_inbound_stock(db, detail)
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\app\modules\robot\robot_service.py", line 69, in _settle_inbound_stock
+    ItemStock.status.not_in_(["virtual", "split"]),
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\.venv\lib\site-packages\sqlalchemy\orm\attributes.py", line 474, in __getattr__
+    raise AttributeError(
+AttributeError: Neither 'InstrumentedAttribute' object nor 'Comparator' object associated with ItemStock.status has an attribute 'not_in_'. Did you mean: 'not_in'?
+2026-09-11 13:18:17,037 - main - INFO - Processing task status for order_id=TDS_Inbound_86758bd4
+2026-09-11 13:18:17,284 - main - INFO - Receive completed for TDS_Inbound_86758bd4
+2026-09-11 13:18:17,285 - main - ERROR - Failed to persist task status (order_id=TDS_Inbound_86758bd4)
+Traceback (most recent call last):
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\.venv\lib\site-packages\sqlalchemy\sql\elements.py", line 1496, in __getattr__
+    return getattr(self.comparator, key)
+AttributeError: 'Comparator' object has no attribute 'not_in_'. Did you mean: 'not_in'?
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\.venv\lib\site-packages\sqlalchemy\orm\attributes.py", line 472, in __getattr__
+    return getattr(self.comparator, key)
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\.venv\lib\site-packages\sqlalchemy\util\langhelpers.py", line 1328, in __getattr__
+    return self._fallback_getattr(key)
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\.venv\lib\site-packages\sqlalchemy\orm\properties.py", line 474, in _fallback_getattr
+    return getattr(self.__clause_element__(), key)
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\.venv\lib\site-packages\sqlalchemy\sql\elements.py", line 1498, in __getattr__
+    raise AttributeError(
+AttributeError: Neither 'AnnotatedColumn' object nor 'Comparator' object has an attribute 'not_in_'. Did you mean: 'not_in'?
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\app\modules\robot\robot_celery_task.py", line 22, in persist_task_status
+    record = task_status_service.receive_task_status(db, payload)
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\app\modules\robot\robot_service.py", line 127, in receive_task_status
+    self._settle_inbound_stock(db, detail)
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\app\modules\robot\robot_service.py", line 69, in _settle_inbound_stock
+    ItemStock.status.not_in_(["virtual", "split"]),
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\.venv\lib\site-packages\sqlalchemy\orm\attributes.py", line 474, in __getattr__
+    raise AttributeError(
+AttributeError: Neither 'InstrumentedAttribute' object nor 'Comparator' object associated with ItemStock.status has an attribute 'not_in_'. Did you mean: 'not_in'?
+2026-09-11 13:18:17,313 - main - INFO - Processing task status for order_id=TDS_Inbound_86758bd4
+2026-09-11 13:18:17,565 - main - INFO - Receive completed for TDS_Inbound_86758bd4
+2026-09-11 13:18:17,568 - main - ERROR - Failed to persist task status (order_id=TDS_Inbound_86758bd4)
+Traceback (most recent call last):
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\.venv\lib\site-packages\sqlalchemy\sql\elements.py", line 1496, in __getattr__
+    return getattr(self.comparator, key)
+AttributeError: 'Comparator' object has no attribute 'not_in_'. Did you mean: 'not_in'?
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\.venv\lib\site-packages\sqlalchemy\orm\attributes.py", line 472, in __getattr__
+    return getattr(self.comparator, key)
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\.venv\lib\site-packages\sqlalchemy\util\langhelpers.py", line 1328, in __getattr__
+    return self._fallback_getattr(key)
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\.venv\lib\site-packages\sqlalchemy\orm\properties.py", line 474, in _fallback_getattr
+    return getattr(self.__clause_element__(), key)
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\.venv\lib\site-packages\sqlalchemy\sql\elements.py", line 1498, in __getattr__
+    raise AttributeError(
+AttributeError: Neither 'AnnotatedColumn' object nor 'Comparator' object has an attribute 'not_in_'. Did you mean: 'not_in'?
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\app\modules\robot\robot_celery_task.py", line 22, in persist_task_status
+    record = task_status_service.receive_task_status(db, payload)
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\app\modules\robot\robot_service.py", line 127, in receive_task_status
+    self._settle_inbound_stock(db, detail)
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\app\modules\robot\robot_service.py", line 69, in _settle_inbound_stock
+    ItemStock.status.not_in_(["virtual", "split"]),
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\.venv\lib\site-packages\sqlalchemy\orm\attributes.py", line 474, in __getattr__
+    raise AttributeError(
+AttributeError: Neither 'InstrumentedAttribute' object nor 'Comparator' object associated with ItemStock.status has an attribute 'not_in_'. Did you mean: 'not_in'?
+2026-09-11 13:18:17,601 - main - INFO - Processing task status for order_id=TDS_Inbound_86758bd4
+2026-09-11 13:18:17,783 - main - INFO - Receive completed for TDS_Inbound_86758bd4
+2026-09-11 13:18:17,785 - main - ERROR - Failed to persist task status (order_id=TDS_Inbound_86758bd4)
+Traceback (most recent call last):
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\.venv\lib\site-packages\sqlalchemy\sql\elements.py", line 1496, in __getattr__
+    return getattr(self.comparator, key)
+AttributeError: 'Comparator' object has no attribute 'not_in_'. Did you mean: 'not_in'?
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\.venv\lib\site-packages\sqlalchemy\orm\attributes.py", line 472, in __getattr__
+    return getattr(self.comparator, key)
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\.venv\lib\site-packages\sqlalchemy\util\langhelpers.py", line 1328, in __getattr__
+    return self._fallback_getattr(key)
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\.venv\lib\site-packages\sqlalchemy\orm\properties.py", line 474, in _fallback_getattr
+    return getattr(self.__clause_element__(), key)
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\.venv\lib\site-packages\sqlalchemy\sql\elements.py", line 1498, in __getattr__
+    raise AttributeError(
+AttributeError: Neither 'AnnotatedColumn' object nor 'Comparator' object has an attribute 'not_in_'. Did you mean: 'not_in'?
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\app\modules\robot\robot_celery_task.py", line 22, in persist_task_status
+    record = task_status_service.receive_task_status(db, payload)
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\app\modules\robot\robot_service.py", line 127, in receive_task_status
+    self._settle_inbound_stock(db, detail)
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\app\modules\robot\robot_service.py", line 69, in _settle_inbound_stock
+    ItemStock.status.not_in_(["virtual", "split"]),
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\.venv\lib\site-packages\sqlalchemy\orm\attributes.py", line 474, in __getattr__
+    raise AttributeError(
+AttributeError: Neither 'InstrumentedAttribute' object nor 'Comparator' object associated with ItemStock.status has an attribute 'not_in_'. Did you mean: 'not_in'?
+2026-09-11 13:18:21,836 - main - INFO - Processing task status for order_id=TDS_Inbound_86758bd4
+2026-09-11 13:18:22,110 - main - INFO - Receive completed for TDS_Inbound_86758bd4
+2026-09-11 13:18:22,113 - main - ERROR - Failed to persist task status (order_id=TDS_Inbound_86758bd4)
+Traceback (most recent call last):
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\.venv\lib\site-packages\sqlalchemy\sql\elements.py", line 1496, in __getattr__
+    return getattr(self.comparator, key)
+AttributeError: 'Comparator' object has no attribute 'not_in_'. Did you mean: 'not_in'?
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\.venv\lib\site-packages\sqlalchemy\orm\attributes.py", line 472, in __getattr__
+    return getattr(self.comparator, key)
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\.venv\lib\site-packages\sqlalchemy\util\langhelpers.py", line 1328, in __getattr__
+    return self._fallback_getattr(key)
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\.venv\lib\site-packages\sqlalchemy\orm\properties.py", line 474, in _fallback_getattr
+    return getattr(self.__clause_element__(), key)
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\.venv\lib\site-packages\sqlalchemy\sql\elements.py", line 1498, in __getattr__
+    raise AttributeError(
+AttributeError: Neither 'AnnotatedColumn' object nor 'Comparator' object has an attribute 'not_in_'. Did you mean: 'not_in'?
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\app\modules\robot\robot_celery_task.py", line 22, in persist_task_status
+    record = task_status_service.receive_task_status(db, payload)
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\app\modules\robot\robot_service.py", line 127, in receive_task_status
+    self._settle_inbound_stock(db, detail)
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\app\modules\robot\robot_service.py", line 69, in _settle_inbound_stock
+    ItemStock.status.not_in_(["virtual", "split"]),
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\.venv\lib\site-packages\sqlalchemy\orm\attributes.py", line 474, in __getattr__
+    raise AttributeError(
+AttributeError: Neither 'InstrumentedAttribute' object nor 'Comparator' object associated with ItemStock.status has an attribute 'not_in_'. Did you mean: 'not_in'?
+2026-09-11 13:18:22,147 - main - INFO - Processing task status for order_id=TDS_Inbound_86758bd4
+2026-09-11 13:18:22,395 - main - INFO - Receive completed for TDS_Inbound_86758bd4
+2026-09-11 13:18:22,397 - main - ERROR - Failed to persist task status (order_id=TDS_Inbound_86758bd4)
+Traceback (most recent call last):
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\.venv\lib\site-packages\sqlalchemy\sql\elements.py", line 1496, in __getattr__
+    return getattr(self.comparator, key)
+AttributeError: 'Comparator' object has no attribute 'not_in_'. Did you mean: 'not_in'?
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\.venv\lib\site-packages\sqlalchemy\orm\attributes.py", line 472, in __getattr__
+    return getattr(self.comparator, key)
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\.venv\lib\site-packages\sqlalchemy\util\langhelpers.py", line 1328, in __getattr__
+    return self._fallback_getattr(key)
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\.venv\lib\site-packages\sqlalchemy\orm\properties.py", line 474, in _fallback_getattr
+    return getattr(self.__clause_element__(), key)
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\.venv\lib\site-packages\sqlalchemy\sql\elements.py", line 1498, in __getattr__
+    raise AttributeError(
+AttributeError: Neither 'AnnotatedColumn' object nor 'Comparator' object has an attribute 'not_in_'. Did you mean: 'not_in'?
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\app\modules\robot\robot_celery_task.py", line 22, in persist_task_status
+    record = task_status_service.receive_task_status(db, payload)
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\app\modules\robot\robot_service.py", line 127, in receive_task_status
+    self._settle_inbound_stock(db, detail)
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\app\modules\robot\robot_service.py", line 69, in _settle_inbound_stock
+    ItemStock.status.not_in_(["virtual", "split"]),
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\.venv\lib\site-packages\sqlalchemy\orm\attributes.py", line 474, in __getattr__
+    raise AttributeError(
+AttributeError: Neither 'InstrumentedAttribute' object nor 'Comparator' object associated with ItemStock.status has an attribute 'not_in_'. Did you mean: 'not_in'?
+2026-09-11 13:18:22,433 - main - INFO - Processing task status for order_id=TDS_Inbound_86758bd4
+2026-09-11 13:18:22,674 - main - INFO - Receive completed for TDS_Inbound_86758bd4
+2026-09-11 13:18:22,676 - main - ERROR - Failed to persist task status (order_id=TDS_Inbound_86758bd4)
+Traceback (most recent call last):
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\.venv\lib\site-packages\sqlalchemy\sql\elements.py", line 1496, in __getattr__
+    return getattr(self.comparator, key)
+AttributeError: 'Comparator' object has no attribute 'not_in_'. Did you mean: 'not_in'?
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\.venv\lib\site-packages\sqlalchemy\orm\attributes.py", line 472, in __getattr__
+    return getattr(self.comparator, key)
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\.venv\lib\site-packages\sqlalchemy\util\langhelpers.py", line 1328, in __getattr__
+    return self._fallback_getattr(key)
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\.venv\lib\site-packages\sqlalchemy\orm\properties.py", line 474, in _fallback_getattr
+    return getattr(self.__clause_element__(), key)
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\.venv\lib\site-packages\sqlalchemy\sql\elements.py", line 1498, in __getattr__
+    raise AttributeError(
+AttributeError: Neither 'AnnotatedColumn' object nor 'Comparator' object has an attribute 'not_in_'. Did you mean: 'not_in'?
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\app\modules\robot\robot_celery_task.py", line 22, in persist_task_status
+    record = task_status_service.receive_task_status(db, payload)
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\app\modules\robot\robot_service.py", line 127, in receive_task_status
+    self._settle_inbound_stock(db, detail)
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\app\modules\robot\robot_service.py", line 69, in _settle_inbound_stock
+    ItemStock.status.not_in_(["virtual", "split"]),
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\.venv\lib\site-packages\sqlalchemy\orm\attributes.py", line 474, in __getattr__
+    raise AttributeError(
+AttributeError: Neither 'InstrumentedAttribute' object nor 'Comparator' object associated with ItemStock.status has an attribute 'not_in_'. Did you mean: 'not_in'?
+2026-09-11 13:18:22,697 - main - INFO - Processing task status for order_id=TDS_Inbound_86758bd4
+2026-09-11 13:18:22,930 - main - INFO - Receive completed for TDS_Inbound_86758bd4
+2026-09-11 13:18:22,932 - main - ERROR - Failed to persist task status (order_id=TDS_Inbound_86758bd4)
+Traceback (most recent call last):
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\.venv\lib\site-packages\sqlalchemy\sql\elements.py", line 1496, in __getattr__
+    return getattr(self.comparator, key)
+AttributeError: 'Comparator' object has no attribute 'not_in_'. Did you mean: 'not_in'?
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\.venv\lib\site-packages\sqlalchemy\orm\attributes.py", line 472, in __getattr__
+    return getattr(self.comparator, key)
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\.venv\lib\site-packages\sqlalchemy\util\langhelpers.py", line 1328, in __getattr__
+    return self._fallback_getattr(key)
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\.venv\lib\site-packages\sqlalchemy\orm\properties.py", line 474, in _fallback_getattr
+    return getattr(self.__clause_element__(), key)
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\.venv\lib\site-packages\sqlalchemy\sql\elements.py", line 1498, in __getattr__
+    raise AttributeError(
+AttributeError: Neither 'AnnotatedColumn' object nor 'Comparator' object has an attribute 'not_in_'. Did you mean: 'not_in'?
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\app\modules\robot\robot_celery_task.py", line 22, in persist_task_status
+    record = task_status_service.receive_task_status(db, payload)
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\app\modules\robot\robot_service.py", line 127, in receive_task_status
+    self._settle_inbound_stock(db, detail)
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\app\modules\robot\robot_service.py", line 69, in _settle_inbound_stock
+    ItemStock.status.not_in_(["virtual", "split"]),
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\.venv\lib\site-packages\sqlalchemy\orm\attributes.py", line 474, in __getattr__
+    raise AttributeError(
+AttributeError: Neither 'InstrumentedAttribute' object nor 'Comparator' object associated with ItemStock.status has an attribute 'not_in_'. Did you mean: 'not_in'?
+2026-09-11 13:18:26,984 - main - INFO - Processing task status for order_id=TDS_Inbound_86758bd4
+2026-09-11 13:18:27,209 - main - INFO - Receive completed for TDS_Inbound_86758bd4
+2026-09-11 13:18:27,211 - main - ERROR - Failed to persist task status (order_id=TDS_Inbound_86758bd4)
+Traceback (most recent call last):
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\.venv\lib\site-packages\sqlalchemy\sql\elements.py", line 1496, in __getattr__
+    return getattr(self.comparator, key)
+AttributeError: 'Comparator' object has no attribute 'not_in_'. Did you mean: 'not_in'?
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\.venv\lib\site-packages\sqlalchemy\orm\attributes.py", line 472, in __getattr__
+    return getattr(self.comparator, key)
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\.venv\lib\site-packages\sqlalchemy\util\langhelpers.py", line 1328, in __getattr__
+    return self._fallback_getattr(key)
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\.venv\lib\site-packages\sqlalchemy\orm\properties.py", line 474, in _fallback_getattr
+    return getattr(self.__clause_element__(), key)
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\.venv\lib\site-packages\sqlalchemy\sql\elements.py", line 1498, in __getattr__
+    raise AttributeError(
+AttributeError: Neither 'AnnotatedColumn' object nor 'Comparator' object has an attribute 'not_in_'. Did you mean: 'not_in'?
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\app\modules\robot\robot_celery_task.py", line 22, in persist_task_status
+    record = task_status_service.receive_task_status(db, payload)
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\app\modules\robot\robot_service.py", line 127, in receive_task_status
+    self._settle_inbound_stock(db, detail)
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\app\modules\robot\robot_service.py", line 69, in _settle_inbound_stock
+    ItemStock.status.not_in_(["virtual", "split"]),
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\.venv\lib\site-packages\sqlalchemy\orm\attributes.py", line 474, in __getattr__
+    raise AttributeError(
+AttributeError: Neither 'InstrumentedAttribute' object nor 'Comparator' object associated with ItemStock.status has an attribute 'not_in_'. Did you mean: 'not_in'?
+2026-09-11 13:18:27,235 - main - INFO - Processing task status for order_id=TDS_Inbound_86758bd4
+2026-09-11 13:18:27,456 - main - INFO - Receive completed for TDS_Inbound_86758bd4
+2026-09-11 13:18:27,459 - main - ERROR - Failed to persist task status (order_id=TDS_Inbound_86758bd4)
+Traceback (most recent call last):
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\.venv\lib\site-packages\sqlalchemy\sql\elements.py", line 1496, in __getattr__
+    return getattr(self.comparator, key)
+AttributeError: 'Comparator' object has no attribute 'not_in_'. Did you mean: 'not_in'?
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\.venv\lib\site-packages\sqlalchemy\orm\attributes.py", line 472, in __getattr__
+    return getattr(self.comparator, key)
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\.venv\lib\site-packages\sqlalchemy\util\langhelpers.py", line 1328, in __getattr__
+    return self._fallback_getattr(key)
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\.venv\lib\site-packages\sqlalchemy\orm\properties.py", line 474, in _fallback_getattr
+    return getattr(self.__clause_element__(), key)
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\.venv\lib\site-packages\sqlalchemy\sql\elements.py", line 1498, in __getattr__
+    raise AttributeError(
+AttributeError: Neither 'AnnotatedColumn' object nor 'Comparator' object has an attribute 'not_in_'. Did you mean: 'not_in'?
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\app\modules\robot\robot_celery_task.py", line 22, in persist_task_status
+    record = task_status_service.receive_task_status(db, payload)
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\app\modules\robot\robot_service.py", line 127, in receive_task_status
+    self._settle_inbound_stock(db, detail)
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\app\modules\robot\robot_service.py", line 69, in _settle_inbound_stock
+    ItemStock.status.not_in_(["virtual", "split"]),
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\.venv\lib\site-packages\sqlalchemy\orm\attributes.py", line 474, in __getattr__
+    raise AttributeError(
+AttributeError: Neither 'InstrumentedAttribute' object nor 'Comparator' object associated with ItemStock.status has an attribute 'not_in_'. Did you mean: 'not_in'?
+2026-09-11 13:18:27,487 - main - INFO - Processing task status for order_id=TDS_Inbound_86758bd4
+2026-09-11 13:18:27,727 - main - INFO - Receive completed for TDS_Inbound_86758bd4
+2026-09-11 13:18:27,730 - main - ERROR - Failed to persist task status (order_id=TDS_Inbound_86758bd4)
+Traceback (most recent call last):
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\.venv\lib\site-packages\sqlalchemy\sql\elements.py", line 1496, in __getattr__
+    return getattr(self.comparator, key)
+AttributeError: 'Comparator' object has no attribute 'not_in_'. Did you mean: 'not_in'?
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\.venv\lib\site-packages\sqlalchemy\orm\attributes.py", line 472, in __getattr__
+    return getattr(self.comparator, key)
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\.venv\lib\site-packages\sqlalchemy\util\langhelpers.py", line 1328, in __getattr__
+    return self._fallback_getattr(key)
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\.venv\lib\site-packages\sqlalchemy\orm\properties.py", line 474, in _fallback_getattr
+    return getattr(self.__clause_element__(), key)
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\.venv\lib\site-packages\sqlalchemy\sql\elements.py", line 1498, in __getattr__
+    raise AttributeError(
+AttributeError: Neither 'AnnotatedColumn' object nor 'Comparator' object has an attribute 'not_in_'. Did you mean: 'not_in'?
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\app\modules\robot\robot_celery_task.py", line 22, in persist_task_status
+    record = task_status_service.receive_task_status(db, payload)
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\app\modules\robot\robot_service.py", line 127, in receive_task_status
+    self._settle_inbound_stock(db, detail)
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\app\modules\robot\robot_service.py", line 69, in _settle_inbound_stock
+    ItemStock.status.not_in_(["virtual", "split"]),
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\.venv\lib\site-packages\sqlalchemy\orm\attributes.py", line 474, in __getattr__
+    raise AttributeError(
+AttributeError: Neither 'InstrumentedAttribute' object nor 'Comparator' object associated with ItemStock.status has an attribute 'not_in_'. Did you mean: 'not_in'?
+2026-09-11 13:18:27,756 - main - INFO - Processing task status for order_id=TDS_Inbound_86758bd4
+2026-09-11 13:18:28,029 - main - INFO - Receive completed for TDS_Inbound_86758bd4
+2026-09-11 13:18:28,031 - main - ERROR - Failed to persist task status (order_id=TDS_Inbound_86758bd4)
+Traceback (most recent call last):
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\.venv\lib\site-packages\sqlalchemy\sql\elements.py", line 1496, in __getattr__
+    return getattr(self.comparator, key)
+AttributeError: 'Comparator' object has no attribute 'not_in_'. Did you mean: 'not_in'?
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\.venv\lib\site-packages\sqlalchemy\orm\attributes.py", line 472, in __getattr__
+    return getattr(self.comparator, key)
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\.venv\lib\site-packages\sqlalchemy\util\langhelpers.py", line 1328, in __getattr__
+    return self._fallback_getattr(key)
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\.venv\lib\site-packages\sqlalchemy\orm\properties.py", line 474, in _fallback_getattr
+    return getattr(self.__clause_element__(), key)
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\.venv\lib\site-packages\sqlalchemy\sql\elements.py", line 1498, in __getattr__
+    raise AttributeError(
+AttributeError: Neither 'AnnotatedColumn' object nor 'Comparator' object has an attribute 'not_in_'. Did you mean: 'not_in'?
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\app\modules\robot\robot_celery_task.py", line 22, in persist_task_status
+    record = task_status_service.receive_task_status(db, payload)
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\app\modules\robot\robot_service.py", line 127, in receive_task_status
+    self._settle_inbound_stock(db, detail)
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\app\modules\robot\robot_service.py", line 69, in _settle_inbound_stock
+    ItemStock.status.not_in_(["virtual", "split"]),
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\.venv\lib\site-packages\sqlalchemy\orm\attributes.py", line 474, in __getattr__
+    raise AttributeError(
+AttributeError: Neither 'InstrumentedAttribute' object nor 'Comparator' object associated with ItemStock.status has an attribute 'not_in_'. Did you mean: 'not_in'?
+2026-09-11 13:18:42,156 - main - INFO - Stopping app
+2026-09-11 13:18:42,157 - main - INFO - Websocket manager stopped
+2026-09-11 13:18:51,174 - main - INFO - Starting app
+2026-09-11 13:18:51,213 - main - INFO - Redis connected: redis://10.73.231.5:6379/0 (prefix=wms)
+2026-09-11 13:18:51,214 - main - INFO - Websocket manager started
+2026-09-11 13:21:48,250 - main - INFO - Stopping app
+2026-09-11 13:21:48,251 - main - INFO - Websocket manager stopped
+2026-09-11 13:21:54,917 - main - INFO - Starting app
+2026-09-11 13:21:54,950 - main - INFO - Redis connected: redis://10.73.231.5:6379/0 (prefix=wms)
+2026-09-11 13:21:54,951 - main - INFO - Websocket manager started
+2026-09-11 13:23:51,218 - main - INFO - Stopping app
+2026-09-11 13:23:51,219 - main - INFO - Websocket manager stopped
+2026-09-11 13:23:56,773 - main - INFO - Starting app
+2026-09-11 13:23:56,809 - main - INFO - Redis connected: redis://10.73.231.5:6379/0 (prefix=wms)
+2026-09-11 13:23:56,810 - main - INFO - Websocket manager started
+2026-09-11 13:32:04,826 - main - INFO - Stopping app
+2026-09-11 13:32:04,828 - main - INFO - Websocket manager stopped
+2026-09-11 13:32:11,938 - main - INFO - Starting app
+2026-09-11 13:32:11,977 - main - INFO - Redis connected: redis://10.73.231.5:6379/0 (prefix=wms)
+2026-09-11 13:32:11,978 - main - INFO - Websocket manager started
+2026-09-11 13:32:18,330 - main - INFO - Starting app
+2026-09-11 13:32:18,351 - main - INFO - Redis connected: redis://10.73.231.5:6379/0 (prefix=wms)
+2026-09-11 13:32:18,353 - main - INFO - Websocket manager started
+2026-09-11 13:32:25,125 - main - INFO - Starting app
+2026-09-11 13:32:25,152 - main - INFO - Redis connected: redis://10.73.231.5:6379/0 (prefix=wms)
+2026-09-11 13:32:25,153 - main - INFO - Websocket manager started
+2026-09-11 13:39:29,425 - main - INFO - Getting assigned item stock for location 1796
+2026-09-11 13:49:39,417 - main - INFO - outbound.create_order order_code=OUT-20260911-134831
+2026-09-11 13:49:41,674 - main - INFO - outbound.get_order_by_id order_id=30
+2026-09-11 13:49:41,680 - main - INFO - outbound.get_order_details order_id=30
+2026-09-11 13:49:41,681 - main - INFO - outbound.get_robot_tasks order_id=30
+2026-09-11 13:49:41,791 - main - INFO - outbound.get_lacked_details order_id=30
+2026-09-11 13:51:46,904 - main - INFO - outbound.create_order order_code=OUT-20260911-135329
+2026-09-11 13:51:48,858 - main - INFO - outbound.get_order_by_id order_id=31
+2026-09-11 13:51:48,881 - main - INFO - outbound.get_lacked_details order_id=31
+2026-09-11 13:51:48,885 - main - INFO - outbound.get_order_details order_id=31
+2026-09-11 13:51:48,906 - main - INFO - outbound.get_robot_tasks order_id=31
+2026-09-11 13:54:10,917 - main - INFO - Stopping app
+2026-09-11 13:54:10,919 - main - INFO - Websocket manager stopped
+2026-09-11 13:54:18,382 - main - INFO - Starting app
+2026-09-11 13:54:18,416 - main - INFO - Redis connected: redis://10.73.231.5:6379/0 (prefix=wms)
+2026-09-11 13:54:18,417 - main - INFO - Websocket manager started
+2026-09-11 13:54:38,937 - main - INFO - Stopping app
+2026-09-11 13:54:38,939 - main - INFO - Websocket manager stopped
+2026-09-11 13:54:45,390 - main - INFO - Starting app
+2026-09-11 13:54:45,429 - main - INFO - Redis connected: redis://10.73.231.5:6379/0 (prefix=wms)
+2026-09-11 13:54:45,430 - main - INFO - Websocket manager started
+2026-09-11 13:56:42,120 - main - INFO - outbound.create_order order_code=OUT-20260911-135803
+2026-09-11 13:56:42,131 - main - INFO - Type: None
+2026-09-11 13:56:42,136 - main - INFO - Flag: False
+2026-09-11 13:56:44,272 - main - INFO - outbound.get_robot_tasks order_id=32
+2026-09-11 13:56:44,272 - main - INFO - outbound.get_order_details order_id=32
+2026-09-11 13:56:44,447 - main - INFO - outbound.get_order_by_id order_id=32
+2026-09-11 13:56:44,453 - main - INFO - outbound.get_lacked_details order_id=32
+2026-09-11 14:13:17,651 - main - INFO - outbound.get_lacked_details order_id=32
+2026-09-11 14:13:17,652 - main - INFO - outbound.get_robot_tasks order_id=32
+2026-09-11 14:13:17,657 - main - INFO - outbound.get_order_by_id order_id=32
+2026-09-11 14:13:17,659 - main - INFO - outbound.get_order_details order_id=32
+2026-09-11 14:13:58,920 - main - INFO - outbound.create_order order_code=OUT-20260911-141328
+2026-09-11 14:13:58,927 - main - INFO - Type: None
+2026-09-11 14:13:58,930 - main - INFO - Flag: False
+2026-09-11 14:16:36,649 - main - INFO - outbound.get_order_details order_id=33
+2026-09-11 14:16:36,651 - main - INFO - outbound.get_order_by_id order_id=33
+2026-09-11 14:16:36,653 - main - INFO - outbound.get_lacked_details order_id=33
+2026-09-11 14:16:36,658 - main - INFO - outbound.get_robot_tasks order_id=33
+2026-09-11 14:17:17,803 - main - INFO - outbound.create_order order_code=OUT-20260911-141643
+2026-09-11 14:17:17,809 - main - INFO - Type: Tuyển chọn
+2026-09-11 14:17:17,811 - main - INFO - Flag: True
+2026-09-11 14:18:36,932 - main - INFO - Stopping app
+2026-09-11 14:18:36,933 - main - INFO - Websocket manager stopped
+2026-09-11 14:18:43,395 - main - INFO - Starting app
+2026-09-11 14:18:43,421 - main - INFO - Redis connected: redis://10.73.231.5:6379/0 (prefix=wms)
+2026-09-11 14:18:43,422 - main - INFO - Websocket manager started
+2026-09-11 14:19:49,328 - main - INFO - Successfully logged in user admin
+2026-09-11 14:20:33,335 - main - INFO - outbound.create_order order_code=OUT-20260911-142006
+2026-09-11 14:20:33,345 - main - INFO - Type: Tuyển chọn
+2026-09-11 14:20:33,348 - main - INFO - Flag: True
+2026-09-11 14:20:33,391 - main - INFO - Fixed quantity: 3200
+2026-09-11 14:20:52,697 - main - INFO - outbound.get_lacked_details order_id=35
+2026-09-11 14:20:52,698 - main - INFO - outbound.get_order_by_id order_id=35
+2026-09-11 14:20:52,699 - main - INFO - outbound.get_order_details order_id=35
+2026-09-11 14:20:52,861 - main - INFO - outbound.get_robot_tasks order_id=35
+2026-09-11 14:24:59,854 - main - INFO - outbound.get_robot_tasks order_id=35
+2026-09-11 14:24:59,864 - main - INFO - outbound.get_order_by_id order_id=35
+2026-09-11 14:24:59,867 - main - INFO - outbound.get_lacked_details order_id=35
+2026-09-11 14:24:59,873 - main - INFO - outbound.get_order_details order_id=35
+2026-09-11 14:28:23,813 - main - INFO - outbound.get_order_by_id order_id=35
+2026-09-11 14:28:23,814 - main - INFO - outbound.get_order_details order_id=35
+2026-09-11 14:28:23,825 - main - INFO - outbound.get_robot_tasks order_id=35
+2026-09-11 14:28:23,836 - main - INFO - outbound.get_lacked_details order_id=35
+2026-09-11 14:28:24,914 - main - INFO - outbound.get_order_by_id order_id=35
+2026-09-11 14:28:24,923 - main - INFO - outbound.get_lacked_details order_id=35
+2026-09-11 14:28:24,924 - main - INFO - outbound.get_order_details order_id=35
+2026-09-11 14:28:24,931 - main - INFO - outbound.get_robot_tasks order_id=35
+2026-09-11 14:28:25,970 - main - INFO - outbound.get_order_by_id order_id=35
+2026-09-11 14:28:25,971 - main - INFO - outbound.get_order_details order_id=35
+2026-09-11 14:28:25,972 - main - INFO - outbound.get_lacked_details order_id=35
+2026-09-11 14:28:25,975 - main - INFO - outbound.get_robot_tasks order_id=35
+2026-09-11 14:28:27,016 - main - INFO - outbound.get_order_details order_id=35
+2026-09-11 14:28:27,016 - main - INFO - outbound.get_order_by_id order_id=35
+2026-09-11 14:28:27,036 - main - INFO - outbound.get_robot_tasks order_id=35
+2026-09-11 14:28:27,040 - main - INFO - outbound.get_lacked_details order_id=35
+2026-09-11 14:28:27,828 - main - INFO - outbound.get_robot_tasks order_id=35
+2026-09-11 14:28:27,829 - main - INFO - outbound.get_order_details order_id=35
+2026-09-11 14:28:27,830 - main - INFO - outbound.get_lacked_details order_id=35
+2026-09-11 14:28:27,830 - main - INFO - outbound.get_order_by_id order_id=35
+2026-09-11 14:28:46,872 - main - INFO - outbound.get_order_by_id order_id=35
+2026-09-11 14:28:46,874 - main - INFO - outbound.get_order_details order_id=35
+2026-09-11 14:28:46,875 - main - INFO - outbound.get_robot_tasks order_id=35
+2026-09-11 14:28:46,896 - main - INFO - outbound.get_lacked_details order_id=35
+2026-09-11 14:28:53,495 - main - INFO - outbound.get_lacked_details order_id=29
+2026-09-11 14:28:53,496 - main - INFO - outbound.get_robot_tasks order_id=29
+2026-09-11 14:28:53,499 - main - INFO - outbound.get_order_by_id order_id=29
+2026-09-11 14:28:53,504 - main - INFO - outbound.get_order_details order_id=29
+2026-09-11 14:29:12,919 - main - INFO - Stopping app
+2026-09-11 14:29:12,921 - main - INFO - Websocket manager stopped
+2026-09-11 14:30:07,029 - main - INFO - Starting app
+2026-09-11 14:30:07,075 - main - INFO - Redis connected: redis://10.73.231.5:6379/0 (prefix=wms)
+2026-09-11 14:30:07,076 - main - INFO - Websocket manager started
+2026-09-11 14:30:21,725 - main - INFO - outbound.get_lacked_details order_id=29
+2026-09-11 14:30:21,725 - main - INFO - outbound.get_order_details order_id=29
+2026-09-11 14:30:21,725 - main - INFO - outbound.get_robot_tasks order_id=29
+2026-09-11 14:30:21,726 - main - INFO - outbound.get_order_by_id order_id=29
+2026-09-11 15:56:34,940 - main - INFO - inbound.caller_order order_code=IN-20260911-155858
+2026-09-11 15:56:37,837 - main - INFO - ICS addTask response: {'code': 1000, 'data': 'TDS_Inbound_8bfba4db', 'desc': '请求成功'}
+2026-09-11 15:56:39,013 - main - INFO - Processing task status for order_id=TDS_Inbound_8bfba4db
+2026-09-11 15:57:32,537 - main - INFO - Processing task status for order_id=TDS_Inbound_8bfba4db
+2026-09-11 15:57:32,850 - main - INFO - Processing task status for order_id=TDS_Inbound_8bfba4db
+2026-09-11 15:57:40,381 - main - INFO - Processing task status for order_id=TDS_Inbound_8bfba4db
+2026-09-11 15:57:40,454 - main - INFO - Processing task status for order_id=TDS_Inbound_8bfba4db
+2026-09-11 15:59:05,910 - main - INFO - Processing task status for order_id=TDS_Inbound_8bfba4db
+2026-09-11 15:59:06,222 - main - INFO - Processing task status for order_id=TDS_Inbound_8bfba4db
+2026-09-11 15:59:12,995 - main - INFO - Processing task status for order_id=TDS_Inbound_8bfba4db
+2026-09-11 15:59:13,181 - main - INFO - Receive completed for TDS_Inbound_8bfba4db
+2026-09-11 16:00:20,440 - main - INFO - Successfully logged in user admin
+2026-09-11 16:01:14,520 - main - INFO - inbound.get_order_details order_code=IN-20260911-102430
+2026-09-11 16:22:23,059 - main - INFO - inbound.caller_order order_code=IN-20260911-162456
+2026-09-11 16:22:23,912 - main - INFO - ICS addTask response: {'code': 1000, 'data': 'TDS_Inbound_ab77ecfb', 'desc': '请求成功'}
+2026-09-11 16:22:25,059 - main - INFO - Processing task status for order_id=TDS_Inbound_ab77ecfb
+2026-09-11 16:23:12,853 - main - INFO - Processing task status for order_id=TDS_Inbound_ab77ecfb
+2026-09-11 16:23:13,164 - main - INFO - Processing task status for order_id=TDS_Inbound_ab77ecfb
+2026-09-11 16:23:25,541 - main - INFO - Processing task status for order_id=TDS_Inbound_ab77ecfb
+2026-09-11 16:23:25,636 - main - INFO - Processing task status for order_id=TDS_Inbound_ab77ecfb
+2026-09-11 16:25:52,691 - main - INFO - Processing task status for order_id=TDS_Inbound_ab77ecfb
+2026-09-11 16:25:52,989 - main - INFO - Processing task status for order_id=TDS_Inbound_ab77ecfb
+2026-09-11 16:25:59,690 - main - INFO - Processing task status for order_id=TDS_Inbound_ab77ecfb
+2026-09-11 16:25:59,959 - main - INFO - Receive completed for TDS_Inbound_ab77ecfb
+2026-09-12 10:09:26,168 - main - INFO - outbound.create_order order_code=OUT-20260912-101001
+2026-09-12 10:09:26,181 - main - INFO - Type: None
+2026-09-12 10:09:26,183 - main - INFO - Flag: False
+2026-09-12 10:09:35,666 - main - INFO - outbound.get_order_by_id order_id=36
+2026-09-12 10:09:35,669 - main - INFO - outbound.get_lacked_details order_id=36
+2026-09-12 10:09:35,669 - main - INFO - outbound.get_order_details order_id=36
+2026-09-12 10:09:35,680 - main - INFO - outbound.get_robot_tasks order_id=36
+2026-09-12 10:09:48,679 - main - INFO - outbound.calculate_order outbound_order_id=36
+2026-09-12 10:09:49,976 - main - INFO - Robot task created: 73
+2026-09-12 10:09:50,144 - main - INFO - Has task: None
+2026-09-12 10:09:50,149 - main - INFO - Robot task created: 74
+2026-09-12 10:09:51,797 - main - INFO - Has task: 74
+2026-09-12 10:09:52,177 - main - INFO - Has task: 74
+2026-09-12 10:09:52,691 - main - INFO - outbound.get_order_by_id order_id=36
+2026-09-12 10:09:52,705 - main - INFO - outbound.get_lacked_details order_id=36
+2026-09-12 10:09:52,730 - main - INFO - outbound.get_order_details order_id=36
+2026-09-12 10:09:52,731 - main - INFO - outbound.get_robot_tasks order_id=36
+2026-09-12 10:09:52,850 - main - INFO - outbound.get_order_by_id order_id=36
+2026-09-12 10:09:53,075 - main - INFO - outbound.get_lacked_details order_id=36
+2026-09-12 10:09:53,108 - main - INFO - outbound.get_order_details order_id=36
+2026-09-12 10:09:53,436 - main - INFO - outbound.get_robot_tasks order_id=36
+2026-09-12 10:10:58,233 - main - INFO - outbound.execute_task order_id=TDS_Outbound_01dc7782
+2026-09-12 10:11:00,030 - main - INFO - ICS addTask response: {'code': 1000, 'data': 'TDS_Outbound_01dc7782', 'desc': '请求成功'}
+2026-09-12 10:11:00,225 - main - INFO - outbound.get_robot_tasks order_id=36
+2026-09-12 10:11:00,238 - main - INFO - outbound.get_order_details order_id=36
+2026-09-12 10:11:00,240 - main - INFO - outbound.get_order_by_id order_id=36
+2026-09-12 10:11:00,242 - main - INFO - outbound.get_lacked_details order_id=36
+2026-09-12 10:11:00,342 - main - INFO - outbound.get_order_by_id order_id=36
+2026-09-12 10:11:00,642 - main - INFO - outbound.get_order_details order_id=36
+2026-09-12 10:11:00,644 - main - INFO - outbound.get_robot_tasks order_id=36
+2026-09-12 10:11:01,274 - main - INFO - Processing task status for order_id=TDS_Outbound_01dc7782
+2026-09-12 10:11:04,611 - main - INFO - outbound.execute_task order_id=TDS_Outbound_f6231de5
+2026-09-12 10:11:06,243 - main - INFO - ICS addTask response: {'code': 1000, 'data': 'TDS_Outbound_f6231de5', 'desc': '请求成功'}
+2026-09-12 10:11:06,377 - main - INFO - outbound.get_order_details order_id=36
+2026-09-12 10:11:06,378 - main - INFO - outbound.get_order_by_id order_id=36
+2026-09-12 10:11:06,394 - main - INFO - outbound.get_lacked_details order_id=36
+2026-09-12 10:11:06,397 - main - INFO - outbound.get_robot_tasks order_id=36
+2026-09-12 10:11:06,472 - main - INFO - outbound.get_order_by_id order_id=36
+2026-09-12 10:11:06,878 - main - INFO - outbound.get_robot_tasks order_id=36
+2026-09-12 10:11:06,913 - main - INFO - outbound.get_order_details order_id=36
+2026-09-12 10:11:07,357 - main - INFO - Processing task status for order_id=TDS_Outbound_f6231de5
+2026-09-12 10:11:43,498 - main - INFO - Processing task status for order_id=TDS_Outbound_01dc7782
+2026-09-12 10:11:43,838 - main - INFO - Processing task status for order_id=TDS_Outbound_01dc7782
+2026-09-12 10:11:53,751 - main - INFO - Processing task status for order_id=TDS_Outbound_01dc7782
+2026-09-12 10:11:53,838 - main - INFO - Processing task status for order_id=TDS_Outbound_01dc7782
+2026-09-12 10:12:06,183 - main - INFO - Processing task status for order_id=TDS_Outbound_f6231de5
+2026-09-12 10:12:06,532 - main - INFO - Processing task status for order_id=TDS_Outbound_f6231de5
+2026-09-12 10:12:16,262 - main - INFO - Processing task status for order_id=TDS_Outbound_f6231de5
+2026-09-12 10:12:16,387 - main - INFO - Processing task status for order_id=TDS_Outbound_f6231de5
+2026-09-12 10:13:02,018 - main - INFO - Processing task status for order_id=TDS_Outbound_01dc7782
+2026-09-12 10:13:02,308 - main - INFO - Processing task status for order_id=TDS_Outbound_01dc7782
+2026-09-12 10:13:08,980 - main - INFO - Processing task status for order_id=TDS_Outbound_01dc7782
+2026-09-12 10:13:09,359 - main - INFO - -------Stock: 43
+2026-09-12 10:13:09,360 - main - INFO - ----------To location: 1715
+2026-09-12 10:13:21,284 - main - INFO - Processing task status for order_id=TDS_Outbound_f6231de5
+2026-09-12 10:13:21,614 - main - INFO - Processing task status for order_id=TDS_Outbound_f6231de5
+2026-09-12 10:13:28,226 - main - INFO - Processing task status for order_id=TDS_Outbound_f6231de5
+2026-09-12 10:13:28,587 - main - INFO - -------Stock: 51
+2026-09-12 10:13:28,588 - main - INFO - ----------To location: 1714
+2026-09-12 10:15:10,895 - main - INFO - outbound.get_robot_tasks order_id=32
+2026-09-12 10:15:10,905 - main - INFO - outbound.get_order_by_id order_id=32
+2026-09-12 10:15:10,912 - main - INFO - outbound.get_lacked_details order_id=32
+2026-09-12 10:15:10,913 - main - INFO - outbound.get_order_details order_id=32
+2026-09-12 10:16:54,990 - main - INFO - outbound.execute_task order_id=TDS_Outbound_f6231de5
+2026-09-12 10:17:21,211 - main - INFO - outbound.get_order_by_id order_id=36
+2026-09-12 10:17:21,213 - main - INFO - outbound.get_lacked_details order_id=36
+2026-09-12 10:17:21,216 - main - INFO - outbound.get_robot_tasks order_id=36
+2026-09-12 10:17:21,226 - main - INFO - outbound.get_order_details order_id=36
+2026-09-12 10:17:28,895 - main - INFO - outbound.get_order_by_id order_id=36
+2026-09-12 10:17:28,906 - main - INFO - outbound.get_order_details order_id=36
+2026-09-12 10:17:28,906 - main - INFO - outbound.get_lacked_details order_id=36
+2026-09-12 10:17:28,908 - main - INFO - outbound.get_robot_tasks order_id=36
+2026-09-12 10:19:13,832 - main - INFO - outbound.get_robot_tasks order_id=36
+2026-09-12 10:20:20,484 - main - INFO - outbound.get_order_details order_id=36
+2026-09-12 10:20:20,492 - main - INFO - outbound.get_order_by_id order_id=36
+2026-09-12 10:20:20,496 - main - INFO - outbound.get_robot_tasks order_id=36
+2026-09-12 10:20:20,497 - main - INFO - outbound.get_lacked_details order_id=36
+2026-09-12 10:20:20,627 - main - INFO - outbound.get_order_by_id order_id=36
+2026-09-12 10:20:20,943 - main - INFO - outbound.get_robot_tasks order_id=36
+2026-09-12 10:20:21,100 - main - INFO - outbound.get_order_details order_id=36
+2026-09-12 10:21:56,931 - main - INFO - outbound.get_lacked_details order_id=36
+2026-09-12 10:21:56,932 - main - INFO - outbound.get_robot_tasks order_id=36
+2026-09-12 10:21:56,932 - main - INFO - outbound.get_order_by_id order_id=36
+2026-09-12 10:21:56,939 - main - INFO - outbound.get_order_details order_id=36
+2026-09-12 10:22:59,279 - main - INFO - outbound.get_lacked_details order_id=36
+2026-09-12 10:22:59,282 - main - INFO - outbound.get_order_by_id order_id=36
+2026-09-12 10:22:59,286 - main - INFO - outbound.get_robot_tasks order_id=36
+2026-09-12 10:22:59,302 - main - INFO - outbound.get_order_details order_id=36
+2026-09-12 10:23:52,372 - main - INFO - outbound.get_order_details order_id=11
+2026-09-12 10:23:52,374 - main - INFO - outbound.get_lacked_details order_id=11
+2026-09-12 10:23:52,375 - main - INFO - outbound.get_robot_tasks order_id=11
+2026-09-12 10:23:52,375 - main - INFO - outbound.get_order_by_id order_id=11
+2026-09-12 10:23:58,339 - main - INFO - outbound.get_lacked_details order_id=36
+2026-09-12 10:23:58,345 - main - INFO - outbound.get_robot_tasks order_id=36
+2026-09-12 10:23:58,349 - main - INFO - outbound.get_order_by_id order_id=36
+2026-09-12 10:23:58,352 - main - INFO - outbound.get_order_details order_id=36
+2026-09-12 10:24:51,850 - main - INFO - outbound.get_order_details order_id=36
+2026-09-12 10:25:37,241 - main - INFO - outbound.get_order_details order_id=36
+2026-09-12 10:25:39,158 - main - INFO - outbound.get_order_details order_id=36
+2026-09-12 10:26:02,322 - main - INFO - outbound.get_lacked_details order_id=36
+2026-09-12 10:26:02,339 - main - INFO - outbound.get_robot_tasks order_id=36
+2026-09-12 10:26:02,343 - main - INFO - outbound.get_order_by_id order_id=36
+2026-09-12 10:26:02,363 - main - INFO - outbound.get_order_details order_id=36
+2026-09-12 10:26:20,024 - main - INFO - outbound.get_order_by_id order_id=36
+2026-09-12 10:26:20,025 - main - INFO - outbound.get_lacked_details order_id=36
+2026-09-12 10:26:20,030 - main - INFO - outbound.get_order_details order_id=36
+2026-09-12 10:26:20,037 - main - INFO - outbound.get_robot_tasks order_id=36
+2026-09-12 10:26:27,058 - main - INFO - outbound.get_order_details order_id=36
+2026-09-12 10:28:38,767 - main - INFO - outbound.get_order_details order_id=36
+2026-09-12 10:28:38,782 - main - INFO - outbound.get_robot_tasks order_id=36
+2026-09-12 10:28:38,783 - main - INFO - outbound.get_order_by_id order_id=36
+2026-09-12 10:28:38,795 - main - INFO - outbound.get_lacked_details order_id=36
+2026-09-12 10:28:38,904 - main - INFO - outbound.get_order_by_id order_id=36
+2026-09-12 10:28:39,302 - main - INFO - outbound.get_order_details order_id=36
+2026-09-12 10:28:39,309 - main - INFO - outbound.get_robot_tasks order_id=36
+2026-09-12 10:31:03,964 - main - INFO - outbound.get_order_details order_id=36
+2026-09-12 10:31:03,970 - main - INFO - outbound.get_lacked_details order_id=36
+2026-09-12 10:31:03,985 - main - INFO - outbound.get_order_by_id order_id=36
+2026-09-12 10:31:03,987 - main - INFO - outbound.get_robot_tasks order_id=36
+2026-09-12 10:31:12,633 - main - INFO - outbound.get_order_details order_id=36
+2026-09-12 10:35:12,846 - main - INFO - outbound.create_order order_code=OUT-20260912-103646
+2026-09-12 10:35:12,855 - main - INFO - Type: None
+2026-09-12 10:35:12,858 - main - INFO - Flag: False
+2026-09-12 10:35:16,805 - main - INFO - outbound.get_order_by_id order_id=37
+2026-09-12 10:35:16,829 - main - INFO - outbound.get_lacked_details order_id=37
+2026-09-12 10:35:16,830 - main - INFO - outbound.get_order_details order_id=37
+2026-09-12 10:35:16,831 - main - INFO - outbound.get_robot_tasks order_id=37
+2026-09-12 10:35:24,141 - main - INFO - outbound.calculate_order outbound_order_id=37
+2026-09-12 10:35:24,658 - main - INFO - Robot task created: 75
+2026-09-12 10:35:24,953 - main - INFO - Has task: 75
+2026-09-12 10:35:25,125 - main - INFO - Has task: None
+2026-09-12 10:35:25,130 - main - INFO - Robot task created: 76
+2026-09-12 10:35:25,508 - main - INFO - Has task: 76
+2026-09-12 10:35:25,749 - main - INFO - Has task: None
+2026-09-12 10:35:25,754 - main - INFO - Robot task created: 77
+2026-09-12 10:35:26,176 - main - INFO - Has task: 77
+2026-09-12 10:35:26,607 - main - INFO - outbound.get_robot_tasks order_id=37
+2026-09-12 10:35:26,615 - main - INFO - outbound.get_order_details order_id=37
+2026-09-12 10:35:26,630 - main - INFO - outbound.get_order_by_id order_id=37
+2026-09-12 10:35:26,642 - main - INFO - outbound.get_lacked_details order_id=37
+2026-09-12 10:35:26,801 - main - INFO - outbound.get_order_by_id order_id=37
+2026-09-12 10:35:27,106 - main - INFO - outbound.get_order_details order_id=37
+2026-09-12 10:35:27,109 - main - INFO - outbound.get_lacked_details order_id=37
+2026-09-12 10:35:27,111 - main - INFO - outbound.get_robot_tasks order_id=37
+2026-09-12 10:36:01,147 - main - INFO - outbound.execute_task order_id=TDS_Outbound_666cfca4
+2026-09-12 10:36:02,673 - main - INFO - ICS addTask response: {'code': 1000, 'data': 'TDS_Outbound_666cfca4', 'desc': '请求成功'}
+2026-09-12 10:36:02,865 - main - INFO - outbound.get_order_by_id order_id=37
+2026-09-12 10:36:02,866 - main - INFO - outbound.get_order_details order_id=37
+2026-09-12 10:36:02,871 - main - INFO - outbound.get_robot_tasks order_id=37
+2026-09-12 10:36:02,875 - main - INFO - outbound.get_lacked_details order_id=37
+2026-09-12 10:36:02,948 - main - INFO - outbound.get_order_by_id order_id=37
+2026-09-12 10:36:03,435 - main - INFO - outbound.get_robot_tasks order_id=37
+2026-09-12 10:36:03,442 - main - INFO - outbound.get_order_details order_id=37
+2026-09-12 10:36:03,893 - main - INFO - Processing task status for order_id=TDS_Outbound_666cfca4
+2026-09-12 10:36:05,614 - main - INFO - outbound.execute_task order_id=TDS_Outbound_668c277c
+2026-09-12 10:36:07,064 - main - INFO - ICS addTask response: {'code': 1000, 'data': 'TDS_Outbound_668c277c', 'desc': '请求成功'}
+2026-09-12 10:36:07,267 - main - INFO - outbound.get_order_by_id order_id=37
+2026-09-12 10:36:07,292 - main - INFO - outbound.get_lacked_details order_id=37
+2026-09-12 10:36:07,293 - main - INFO - outbound.get_order_details order_id=37
+2026-09-12 10:36:07,295 - main - INFO - outbound.get_robot_tasks order_id=37
+2026-09-12 10:36:07,345 - main - INFO - outbound.get_order_by_id order_id=37
+2026-09-12 10:36:07,730 - main - INFO - outbound.get_order_details order_id=37
+2026-09-12 10:36:07,731 - main - INFO - outbound.get_robot_tasks order_id=37
+2026-09-12 10:36:07,937 - main - INFO - Processing task status for order_id=TDS_Outbound_668c277c
+2026-09-12 10:36:08,705 - main - INFO - outbound.execute_task order_id=TDS_Outbound_9389e736
+2026-09-12 10:36:09,886 - main - INFO - ICS addTask response: {'code': 1000, 'data': 'TDS_Outbound_9389e736', 'desc': '请求成功'}
+2026-09-12 10:36:10,123 - main - INFO - outbound.get_robot_tasks order_id=37
+2026-09-12 10:36:10,150 - main - INFO - outbound.get_order_by_id order_id=37
+2026-09-12 10:36:10,155 - main - INFO - outbound.get_lacked_details order_id=37
+2026-09-12 10:36:10,161 - main - INFO - outbound.get_order_details order_id=37
+2026-09-12 10:36:10,243 - main - INFO - outbound.get_order_by_id order_id=37
+2026-09-12 10:36:10,693 - main - INFO - outbound.get_robot_tasks order_id=37
+2026-09-12 10:36:10,695 - main - INFO - outbound.get_order_details order_id=37
+2026-09-12 10:36:58,209 - main - INFO - Processing task status for order_id=TDS_Outbound_668c277c
+2026-09-12 10:36:58,541 - main - INFO - Processing task status for order_id=TDS_Outbound_668c277c
+2026-09-12 10:37:08,607 - main - INFO - Processing task status for order_id=TDS_Outbound_668c277c
+2026-09-12 10:37:10,033 - main - INFO - Processing task status for order_id=TDS_Outbound_668c277c
+2026-09-12 10:37:12,832 - main - INFO - Processing task status for order_id=TDS_Outbound_666cfca4
+2026-09-12 10:37:13,170 - main - INFO - Processing task status for order_id=TDS_Outbound_666cfca4
+2026-09-12 10:37:32,178 - main - INFO - outbound.execute_task order_id=TDS_Outbound_9389e736
+2026-09-12 10:37:54,240 - main - INFO - Processing task status for order_id=TDS_Outbound_666cfca4
+2026-09-12 10:37:55,320 - main - INFO - Processing task status for order_id=TDS_Outbound_9389e736
+2026-09-12 10:38:12,172 - main - INFO - Processing task status for order_id=TDS_Outbound_9389e736
+2026-09-12 10:38:12,522 - main - INFO - Processing task status for order_id=TDS_Outbound_9389e736
+2026-09-12 10:38:25,339 - main - INFO - Processing task status for order_id=TDS_Outbound_668c277c
+2026-09-12 10:38:25,649 - main - INFO - Processing task status for order_id=TDS_Outbound_668c277c
+2026-09-12 10:38:27,508 - main - INFO - Processing task status for order_id=TDS_Outbound_9389e736
+2026-09-12 10:38:27,593 - main - INFO - Processing task status for order_id=TDS_Outbound_9389e736
+2026-09-12 10:38:32,361 - main - INFO - Processing task status for order_id=TDS_Outbound_668c277c
+2026-09-12 10:38:32,681 - main - INFO - -------Stock: 55
+2026-09-12 10:38:32,683 - main - INFO - ----------To location: 1743
+2026-09-12 10:39:00,251 - main - INFO - outbound.execute_task order_id=TDS_Outbound_9389e736
+2026-09-12 10:39:39,601 - main - INFO - outbound.execute_task order_id=TDS_Outbound_9389e736
+2026-09-12 10:39:51,306 - main - INFO - outbound.get_order_details order_id=36
+2026-09-12 10:39:51,308 - main - INFO - outbound.get_order_by_id order_id=36
+2026-09-12 10:39:51,315 - main - INFO - outbound.get_lacked_details order_id=36
+2026-09-12 10:39:51,320 - main - INFO - outbound.get_robot_tasks order_id=36
+2026-09-12 10:39:58,744 - main - INFO - outbound.get_order_details order_id=36
+2026-09-12 10:40:08,675 - main - INFO - Processing task status for order_id=TDS_Outbound_9389e736
+2026-09-12 10:40:09,005 - main - INFO - Processing task status for order_id=TDS_Outbound_9389e736
+2026-09-12 10:40:15,747 - main - INFO - Processing task status for order_id=TDS_Outbound_9389e736
+2026-09-12 10:40:15,823 - main - INFO - outbound.get_order_details order_id=36
+2026-09-12 10:40:15,826 - main - INFO - outbound.get_order_by_id order_id=36
+2026-09-12 10:40:15,827 - main - INFO - outbound.get_lacked_details order_id=36
+2026-09-12 10:40:15,827 - main - INFO - outbound.get_robot_tasks order_id=36
+2026-09-12 10:40:16,159 - main - INFO - -------Stock: 57
+2026-09-12 10:40:16,159 - main - INFO - ----------To location: 1744
+2026-09-12 10:40:36,343 - main - INFO - outbound.get_order_details order_id=36
+2026-09-12 10:40:36,345 - main - INFO - outbound.get_lacked_details order_id=36
+2026-09-12 10:40:36,347 - main - INFO - outbound.get_order_by_id order_id=36
+2026-09-12 10:40:36,351 - main - INFO - outbound.get_robot_tasks order_id=36
+2026-09-12 10:40:45,340 - main - INFO - outbound.get_order_details order_id=36
+2026-09-12 10:40:45,345 - main - INFO - outbound.get_order_by_id order_id=36
+2026-09-12 10:40:45,346 - main - INFO - outbound.get_lacked_details order_id=36
+2026-09-12 10:40:45,352 - main - INFO - outbound.get_robot_tasks order_id=36
+2026-09-12 10:40:48,713 - main - INFO - outbound.get_lacked_details order_id=36
+2026-09-12 10:40:48,715 - main - INFO - outbound.get_robot_tasks order_id=36
+2026-09-12 10:40:48,719 - main - INFO - outbound.get_order_details order_id=36
+2026-09-12 10:40:48,720 - main - INFO - outbound.get_order_by_id order_id=36
+2026-09-12 10:40:48,827 - main - INFO - outbound.get_order_by_id order_id=36
+2026-09-12 10:40:49,269 - main - INFO - outbound.get_robot_tasks order_id=36
+2026-09-12 10:40:49,270 - main - INFO - outbound.get_lacked_details order_id=36
+2026-09-12 10:40:49,272 - main - INFO - outbound.get_order_details order_id=36
+2026-09-12 10:41:33,468 - main - INFO - outbound.get_order_details order_id=37
+2026-09-12 10:41:33,475 - main - INFO - outbound.get_order_by_id order_id=37
+2026-09-12 10:41:33,477 - main - INFO - outbound.get_robot_tasks order_id=37
+2026-09-12 10:41:33,488 - main - INFO - outbound.get_lacked_details order_id=37
+2026-09-12 10:41:46,912 - main - INFO - outbound.get_order_by_id order_id=36
+2026-09-12 10:41:46,915 - main - INFO - outbound.get_lacked_details order_id=36
+2026-09-12 10:41:46,926 - main - INFO - outbound.get_robot_tasks order_id=36
+2026-09-12 10:41:46,927 - main - INFO - outbound.get_order_details order_id=36
+2026-09-12 10:42:15,142 - main - INFO - outbound.get_robot_tasks order_id=36
+2026-09-12 10:42:26,332 - main - INFO - outbound.get_lacked_details order_id=36
+2026-09-12 10:42:26,334 - main - INFO - outbound.get_order_details order_id=36
+2026-09-12 10:42:26,336 - main - INFO - outbound.get_order_by_id order_id=36
+2026-09-12 10:42:27,057 - main - INFO - outbound.get_order_by_id order_id=36
+2026-09-12 10:42:27,061 - main - INFO - outbound.get_robot_tasks order_id=36
+2026-09-12 10:42:27,074 - main - INFO - outbound.get_order_details order_id=36
+2026-09-12 10:42:27,090 - main - INFO - outbound.get_lacked_details order_id=36
+2026-09-12 10:42:27,996 - main - INFO - outbound.get_lacked_details order_id=36
+2026-09-12 10:42:27,997 - main - INFO - outbound.get_order_by_id order_id=36
+2026-09-12 10:42:27,998 - main - INFO - outbound.get_order_details order_id=36
+2026-09-12 10:42:57,629 - main - INFO - outbound.get_order_details order_id=36
+2026-09-12 10:46:43,738 - main - INFO - outbound.create_order order_code=OUT-20260912-104907
+2026-09-12 10:46:43,744 - main - INFO - Type: None
+2026-09-12 10:46:43,746 - main - INFO - Flag: False
+2026-09-12 10:46:52,031 - main - INFO - outbound.get_order_by_id order_id=38
+2026-09-12 10:46:52,031 - main - INFO - outbound.get_lacked_details order_id=38
+2026-09-12 10:46:52,039 - main - INFO - outbound.get_order_details order_id=38
+2026-09-12 10:46:52,040 - main - INFO - outbound.get_robot_tasks order_id=38
+2026-09-12 10:47:02,283 - main - INFO - outbound.calculate_order outbound_order_id=38
+2026-09-12 10:47:02,772 - main - INFO - Robot task created: 78
+2026-09-12 10:47:03,210 - main - INFO - Has task: 78
+2026-09-12 10:47:03,547 - main - INFO - Has task: 78
+2026-09-12 10:47:04,038 - main - INFO - outbound.get_order_by_id order_id=38
+2026-09-12 10:47:04,049 - main - INFO - outbound.get_order_details order_id=38
+2026-09-12 10:47:04,052 - main - INFO - outbound.get_lacked_details order_id=38
+2026-09-12 10:47:04,059 - main - INFO - outbound.get_robot_tasks order_id=38
+2026-09-12 10:47:04,150 - main - INFO - outbound.get_order_by_id order_id=38
+2026-09-12 10:47:05,753 - main - INFO - outbound.get_robot_tasks order_id=38
+2026-09-12 10:47:05,771 - main - INFO - outbound.get_lacked_details order_id=38
+2026-09-12 10:47:05,878 - main - INFO - outbound.get_order_details order_id=38
+2026-09-12 10:47:35,753 - main - INFO - outbound.execute_task order_id=TDS_Outbound_fd777cfd
+2026-09-12 10:47:37,280 - main - INFO - ICS addTask response: {'code': 1000, 'data': 'TDS_Outbound_fd777cfd', 'desc': '请求成功'}
+2026-09-12 10:47:37,398 - main - INFO - outbound.get_order_by_id order_id=38
+2026-09-12 10:47:37,416 - main - INFO - outbound.get_lacked_details order_id=38
+2026-09-12 10:47:37,416 - main - INFO - outbound.get_robot_tasks order_id=38
+2026-09-12 10:47:37,416 - main - INFO - outbound.get_order_details order_id=38
+2026-09-12 10:47:37,501 - main - INFO - outbound.get_order_by_id order_id=38
+2026-09-12 10:47:37,886 - main - INFO - outbound.get_robot_tasks order_id=38
+2026-09-12 10:47:37,887 - main - INFO - outbound.get_order_details order_id=38
+2026-09-12 10:47:38,141 - main - INFO - Processing task status for order_id=TDS_Outbound_fd777cfd
+2026-09-12 10:48:19,636 - main - INFO - Processing task status for order_id=TDS_Outbound_fd777cfd
+2026-09-12 10:48:19,978 - main - INFO - Processing task status for order_id=TDS_Outbound_fd777cfd
+2026-09-12 10:49:22,739 - main - INFO - Processing task status for order_id=TDS_Outbound_fd777cfd
+2026-09-12 11:13:06,640 - main - INFO - outbound.get_robot_tasks order_id=36
+2026-09-12 11:13:06,641 - main - INFO - outbound.get_order_by_id order_id=36
+2026-09-12 11:13:06,642 - main - INFO - outbound.get_lacked_details order_id=36
+2026-09-12 11:13:06,646 - main - INFO - outbound.get_order_details order_id=36
+2026-09-12 11:41:36,189 - main - INFO - inbound.caller_order order_code=IN-20260912-114408
+2026-09-12 11:41:37,738 - main - INFO - ICS addTask response: {'code': 1000, 'data': 'TDS_Inbound_9b6eb4ac', 'desc': '请求成功'}
+2026-09-12 11:41:38,929 - main - INFO - Processing task status for order_id=TDS_Inbound_9b6eb4ac
+2026-09-12 11:42:28,649 - main - INFO - Processing task status for order_id=TDS_Inbound_9b6eb4ac
+2026-09-12 11:42:28,947 - main - INFO - Processing task status for order_id=TDS_Inbound_9b6eb4ac
+2026-09-12 11:42:36,008 - main - INFO - Processing task status for order_id=TDS_Inbound_9b6eb4ac
+2026-09-12 11:42:36,120 - main - INFO - Processing task status for order_id=TDS_Inbound_9b6eb4ac
+2026-09-12 11:44:13,024 - main - INFO - Processing task status for order_id=TDS_Inbound_9b6eb4ac
+2026-09-12 11:44:13,320 - main - INFO - Processing task status for order_id=TDS_Inbound_9b6eb4ac
+2026-09-12 11:44:19,956 - main - INFO - Processing task status for order_id=TDS_Inbound_9b6eb4ac
+2026-09-12 11:44:20,248 - main - INFO - Receive completed for TDS_Inbound_9b6eb4ac
+2026-09-12 13:20:41,689 - main - INFO - outbound.get_order_by_id order_id=38
+2026-09-12 13:20:41,697 - main - INFO - outbound.get_order_details order_id=38
+2026-09-12 13:20:41,714 - main - INFO - outbound.get_lacked_details order_id=38
+2026-09-12 13:20:41,728 - main - INFO - outbound.get_robot_tasks order_id=38
+2026-09-12 13:22:49,914 - main - INFO - outbound.get_order_by_id order_id=38
+2026-09-12 13:22:49,929 - main - INFO - outbound.get_lacked_details order_id=38
+2026-09-12 13:22:49,958 - main - INFO - outbound.get_order_details order_id=38
+2026-09-12 13:22:49,960 - main - INFO - outbound.get_robot_tasks order_id=38
+2026-09-12 13:23:03,636 - main - INFO - outbound.get_order_by_id order_id=37
+2026-09-12 13:23:03,653 - main - INFO - outbound.get_robot_tasks order_id=37
+2026-09-12 13:23:03,653 - main - INFO - outbound.get_order_details order_id=37
+2026-09-12 13:23:03,654 - main - INFO - outbound.get_lacked_details order_id=37
+2026-09-12 13:23:13,262 - main - INFO - outbound.get_order_details order_id=37
+2026-09-12 13:23:13,264 - main - INFO - outbound.get_order_by_id order_id=37
+2026-09-12 13:23:13,285 - main - INFO - outbound.get_robot_tasks order_id=37
+2026-09-12 13:23:13,286 - main - INFO - outbound.get_lacked_details order_id=37
+2026-09-12 13:23:16,522 - main - INFO - outbound.get_lacked_details order_id=37
+2026-09-12 13:23:16,523 - main - INFO - outbound.get_order_details order_id=37
+2026-09-12 13:23:16,528 - main - INFO - outbound.get_order_by_id order_id=37
+2026-09-12 13:23:16,529 - main - INFO - outbound.get_robot_tasks order_id=37
+2026-09-12 13:23:30,534 - main - INFO - outbound.get_order_by_id order_id=38
+2026-09-12 13:23:30,566 - main - INFO - outbound.get_robot_tasks order_id=38
+2026-09-12 13:23:30,567 - main - INFO - outbound.get_lacked_details order_id=38
+2026-09-12 13:23:30,576 - main - INFO - outbound.get_order_details order_id=38
+2026-09-12 13:23:33,465 - main - INFO - outbound.get_order_details order_id=38
+2026-09-12 13:23:33,471 - main - INFO - outbound.get_order_by_id order_id=38
+2026-09-12 13:23:33,489 - main - INFO - outbound.get_lacked_details order_id=38
+2026-09-12 13:23:33,494 - main - INFO - outbound.get_robot_tasks order_id=38
+2026-09-12 13:24:08,010 - main - INFO - outbound.get_order_details order_id=11
+2026-09-12 13:24:08,019 - main - INFO - outbound.get_lacked_details order_id=11
+2026-09-12 13:24:08,024 - main - INFO - outbound.get_order_by_id order_id=11
+2026-09-12 13:24:08,036 - main - INFO - outbound.get_robot_tasks order_id=11
+2026-09-12 13:24:23,063 - main - INFO - outbound.calculate_order outbound_order_id=11
+2026-09-12 13:24:25,952 - main - INFO - outbound.calculate_order outbound_order_id=11
+2026-09-12 13:25:29,331 - main - INFO - outbound.get_order_by_id order_id=37
+2026-09-12 13:25:29,357 - main - INFO - outbound.get_order_details order_id=37
+2026-09-12 13:25:29,361 - main - INFO - outbound.get_robot_tasks order_id=37
+2026-09-12 13:25:29,362 - main - INFO - outbound.get_lacked_details order_id=37
+2026-09-12 13:25:40,107 - main - INFO - outbound.get_order_by_id order_id=37
+2026-09-12 13:25:40,177 - main - INFO - outbound.get_robot_tasks order_id=37
+2026-09-12 13:25:40,178 - main - INFO - outbound.get_order_details order_id=37
+2026-09-12 13:25:40,189 - main - INFO - outbound.get_lacked_details order_id=37
+2026-09-12 13:25:44,027 - main - INFO - outbound.get_robot_tasks order_id=37
+2026-09-12 13:25:44,028 - main - INFO - outbound.get_order_by_id order_id=37
+2026-09-12 13:25:44,030 - main - INFO - outbound.get_order_details order_id=37
+2026-09-12 13:25:44,044 - main - INFO - outbound.get_lacked_details order_id=37
+2026-09-12 13:26:12,995 - main - INFO - outbound.get_order_details order_id=37
+2026-09-12 13:26:13,003 - main - INFO - outbound.get_order_by_id order_id=37
+2026-09-12 13:26:13,010 - main - INFO - outbound.get_robot_tasks order_id=37
+2026-09-12 13:26:13,013 - main - INFO - outbound.get_lacked_details order_id=37
+2026-09-12 13:26:13,191 - main - INFO - outbound.get_order_by_id order_id=37
+2026-09-12 13:26:13,491 - main - INFO - outbound.get_robot_tasks order_id=37
+2026-09-12 13:26:13,568 - main - INFO - outbound.get_order_details order_id=37
+2026-09-12 13:26:53,464 - main - INFO - outbound.get_order_by_id order_id=37
+2026-09-12 13:26:53,495 - main - INFO - outbound.get_lacked_details order_id=37
+2026-09-12 13:26:53,507 - main - INFO - outbound.get_order_details order_id=37
+2026-09-12 13:26:53,521 - main - INFO - outbound.get_robot_tasks order_id=37
+2026-09-12 13:26:56,495 - main - INFO - outbound.get_robot_tasks order_id=37
+2026-09-12 13:26:56,507 - main - INFO - outbound.get_order_details order_id=37
+2026-09-12 13:26:56,513 - main - INFO - outbound.get_order_by_id order_id=37
+2026-09-12 13:26:56,524 - main - INFO - outbound.get_lacked_details order_id=37
+2026-09-12 13:27:15,316 - main - INFO - outbound.get_order_by_id order_id=37
+2026-09-12 13:27:15,324 - main - INFO - outbound.get_robot_tasks order_id=37
+2026-09-12 13:27:15,328 - main - INFO - outbound.get_order_details order_id=37
+2026-09-12 13:27:15,335 - main - INFO - outbound.get_lacked_details order_id=37
+2026-09-12 13:27:15,421 - main - INFO - outbound.get_order_by_id order_id=37
+2026-09-12 13:27:15,866 - main - INFO - outbound.get_order_details order_id=37
+2026-09-12 13:27:15,987 - main - INFO - outbound.get_robot_tasks order_id=37
+2026-09-12 13:27:34,956 - main - INFO - outbound.get_robot_tasks order_id=37
+2026-09-12 13:27:34,958 - main - INFO - outbound.get_lacked_details order_id=37
+2026-09-12 13:27:34,959 - main - INFO - outbound.get_order_by_id order_id=37
+2026-09-12 13:27:34,961 - main - INFO - outbound.get_order_details order_id=37
+2026-09-12 13:27:35,038 - main - INFO - outbound.get_order_by_id order_id=37
+2026-09-12 13:27:35,728 - main - INFO - outbound.get_robot_tasks order_id=37
+2026-09-12 13:27:35,732 - main - INFO - outbound.get_order_details order_id=37
+2026-09-12 13:28:00,698 - main - INFO - outbound.get_order_by_id order_id=38
+2026-09-12 13:28:00,705 - main - INFO - outbound.get_order_details order_id=38
+2026-09-12 13:28:00,706 - main - INFO - outbound.get_robot_tasks order_id=38
+2026-09-12 13:28:00,708 - main - INFO - outbound.get_lacked_details order_id=38
+2026-09-12 13:28:05,094 - main - INFO - outbound.get_order_details order_id=38
+2026-09-12 13:28:05,097 - main - INFO - outbound.get_order_by_id order_id=38
+2026-09-12 13:28:05,097 - main - INFO - outbound.get_lacked_details order_id=38
+2026-09-12 13:28:05,098 - main - INFO - outbound.get_robot_tasks order_id=38
+2026-09-12 13:28:18,691 - main - INFO - outbound.get_lacked_details order_id=38
+2026-09-12 13:28:18,694 - main - INFO - outbound.get_robot_tasks order_id=38
+2026-09-12 13:28:18,702 - main - INFO - outbound.get_order_by_id order_id=38
+2026-09-12 13:28:18,708 - main - INFO - outbound.get_order_details order_id=38
+2026-09-12 13:28:30,905 - main - INFO - outbound.get_lacked_details order_id=37
+2026-09-12 13:28:30,905 - main - INFO - outbound.get_order_by_id order_id=37
+2026-09-12 13:28:30,908 - main - INFO - outbound.get_order_details order_id=37
+2026-09-12 13:28:30,908 - main - INFO - outbound.get_robot_tasks order_id=37
+2026-09-12 13:28:35,832 - main - INFO - outbound.get_order_details order_id=37
+2026-09-12 13:29:45,644 - main - INFO - outbound.create_order order_code=OUT-20260912-133203
+2026-09-12 13:29:45,653 - main - INFO - Type: None
+2026-09-12 13:29:45,658 - main - INFO - Flag: False
+2026-09-12 13:29:48,832 - main - INFO - outbound.get_lacked_details order_id=39
+2026-09-12 13:29:48,834 - main - INFO - outbound.get_order_by_id order_id=39
+2026-09-12 13:29:48,841 - main - INFO - outbound.get_order_details order_id=39
+2026-09-12 13:29:48,847 - main - INFO - outbound.get_robot_tasks order_id=39
+2026-09-12 13:32:04,992 - main - INFO - outbound.get_order_details order_id=37
+2026-09-12 13:32:04,997 - main - INFO - outbound.get_lacked_details order_id=37
+2026-09-12 13:32:05,001 - main - INFO - outbound.get_robot_tasks order_id=37
+2026-09-12 13:32:05,010 - main - INFO - outbound.get_order_by_id order_id=37
+2026-09-12 13:32:10,131 - main - INFO - outbound.get_order_details order_id=37
+2026-09-12 13:32:20,028 - main - INFO - outbound.get_order_by_id order_id=37
+2026-09-12 13:32:20,029 - main - INFO - outbound.get_lacked_details order_id=37
+2026-09-12 13:32:20,029 - main - INFO - outbound.get_order_details order_id=37
+2026-09-12 13:32:20,033 - main - INFO - outbound.get_robot_tasks order_id=37
+2026-09-12 13:32:22,170 - main - INFO - outbound.get_robot_tasks order_id=37
+2026-09-12 13:32:26,335 - main - INFO - outbound.get_order_by_id order_id=37
+2026-09-12 13:32:26,338 - main - INFO - outbound.get_order_details order_id=37
+2026-09-12 13:32:26,342 - main - INFO - outbound.get_lacked_details order_id=37
+2026-09-12 13:33:16,992 - main - INFO - outbound.get_order_by_id order_id=38
+2026-09-12 13:33:17,007 - main - INFO - outbound.get_lacked_details order_id=38
+2026-09-12 13:33:17,008 - main - INFO - outbound.get_order_details order_id=38
+2026-09-12 13:33:17,008 - main - INFO - outbound.get_robot_tasks order_id=38
+2026-09-12 13:33:20,121 - main - INFO - outbound.get_order_details order_id=38
+2026-09-12 13:33:24,571 - main - INFO - outbound.get_order_details order_id=38
+2026-09-12 13:33:24,572 - main - INFO - outbound.get_lacked_details order_id=38
+2026-09-12 13:33:24,574 - main - INFO - outbound.get_robot_tasks order_id=38
+2026-09-12 13:33:24,576 - main - INFO - outbound.get_order_by_id order_id=38
+2026-09-12 13:33:26,454 - main - INFO - outbound.get_robot_tasks order_id=38
+2026-09-12 13:33:35,136 - main - INFO - outbound.get_order_details order_id=39
+2026-09-12 13:33:35,141 - main - INFO - outbound.get_lacked_details order_id=39
+2026-09-12 13:33:35,142 - main - INFO - outbound.get_robot_tasks order_id=39
+2026-09-12 13:33:35,160 - main - INFO - outbound.get_order_by_id order_id=39
+2026-09-12 13:33:39,295 - main - INFO - outbound.get_lacked_details order_id=38
+2026-09-12 13:33:39,297 - main - INFO - outbound.get_order_by_id order_id=38
+2026-09-12 13:33:39,307 - main - INFO - outbound.get_order_details order_id=38
+2026-09-12 13:33:39,308 - main - INFO - outbound.get_robot_tasks order_id=38
+2026-09-12 13:33:44,853 - main - INFO - outbound.get_lacked_details order_id=37
+2026-09-12 13:33:44,854 - main - INFO - outbound.get_order_by_id order_id=37
+2026-09-12 13:33:44,860 - main - INFO - outbound.get_robot_tasks order_id=37
+2026-09-12 13:33:44,863 - main - INFO - outbound.get_order_details order_id=37
+2026-09-12 14:09:02,975 - main - INFO - outbound.create_order order_code=OUT-20260912-141025
+2026-09-12 14:09:02,984 - main - INFO - Type: None
+2026-09-12 14:09:02,988 - main - INFO - Flag: False
+2026-09-12 14:09:22,641 - main - INFO - outbound.get_order_details order_id=37
+2026-09-12 14:09:22,643 - main - INFO - outbound.get_order_by_id order_id=37
+2026-09-12 14:09:22,652 - main - INFO - outbound.get_lacked_details order_id=37
+2026-09-12 14:09:22,673 - main - INFO - outbound.get_robot_tasks order_id=37
+2026-09-12 14:09:40,937 - main - INFO - outbound.get_lacked_details order_id=39
+2026-09-12 14:09:40,939 - main - INFO - outbound.get_order_details order_id=39
+2026-09-12 14:09:40,945 - main - INFO - outbound.get_order_by_id order_id=39
+2026-09-12 14:09:40,952 - main - INFO - outbound.get_robot_tasks order_id=39
+2026-09-12 14:09:55,169 - main - INFO - outbound.calculate_order outbound_order_id=39
+2026-09-12 14:09:55,594 - main - INFO - Robot task created: 80
+2026-09-12 14:09:55,914 - main - INFO - Has task: 80
+2026-09-12 14:09:56,092 - main - INFO - Has task: None
+2026-09-12 14:09:56,097 - main - INFO - Robot task created: 81
+2026-09-12 14:09:56,425 - main - INFO - Has task: 81
+2026-09-12 14:09:56,626 - main - INFO - Has task: None
+2026-09-12 14:09:56,630 - main - INFO - Robot task created: 82
+2026-09-12 14:09:56,795 - main - INFO - Has task: None
+2026-09-12 14:09:56,800 - main - INFO - Robot task created: 83
+2026-09-12 14:09:57,129 - main - INFO - Has task: 83
+2026-09-12 14:09:57,459 - main - INFO - Has task: 83
+2026-09-12 14:09:57,795 - main - INFO - Has task: 83
+2026-09-12 14:09:57,801 - main - INFO - Has task: None
+2026-09-12 14:09:58,335 - main - INFO - outbound.get_order_by_id order_id=39
+2026-09-12 14:09:58,364 - main - INFO - outbound.get_robot_tasks order_id=39
+2026-09-12 14:09:58,371 - main - INFO - outbound.get_order_details order_id=39
+2026-09-12 14:09:58,381 - main - INFO - outbound.get_lacked_details order_id=39
+2026-09-12 14:09:58,451 - main - INFO - outbound.get_order_by_id order_id=39
+2026-09-12 14:09:59,075 - main - INFO - outbound.get_order_details order_id=39
+2026-09-12 14:09:59,085 - main - INFO - outbound.get_lacked_details order_id=39
+2026-09-12 14:09:59,086 - main - INFO - outbound.get_robot_tasks order_id=39
+2026-09-12 14:10:43,787 - main - INFO - outbound.get_lacked_details order_id=40
+2026-09-12 14:10:43,788 - main - INFO - outbound.get_order_by_id order_id=40
+2026-09-12 14:10:43,789 - main - INFO - outbound.get_order_details order_id=40
+2026-09-12 14:10:43,790 - main - INFO - outbound.get_robot_tasks order_id=40
+2026-09-12 14:10:57,425 - main - INFO - outbound.calculate_order outbound_order_id=40
+2026-09-12 14:10:57,887 - main - INFO - Robot task created: 84
+2026-09-12 14:10:58,223 - main - INFO - Has task: 84
+2026-09-12 14:10:58,559 - main - INFO - Has task: 84
+2026-09-12 14:10:58,829 - main - INFO - Has task: 84
+2026-09-12 14:10:59,040 - main - INFO - Has task: None
+2026-09-12 14:10:59,045 - main - INFO - Robot task created: 85
+2026-09-12 14:10:59,397 - main - INFO - Has task: 85
+2026-09-12 14:10:59,404 - main - INFO - Has task: None
+2026-09-12 14:10:59,849 - main - INFO - outbound.get_order_by_id order_id=40
+2026-09-12 14:10:59,878 - main - INFO - outbound.get_lacked_details order_id=40
+2026-09-12 14:10:59,884 - main - INFO - outbound.get_order_details order_id=40
+2026-09-12 14:10:59,901 - main - INFO - outbound.get_robot_tasks order_id=40
+2026-09-12 14:11:00,124 - main - INFO - outbound.get_order_by_id order_id=40
+2026-09-12 14:11:00,370 - main - INFO - outbound.get_robot_tasks order_id=40
+2026-09-12 14:11:00,439 - main - INFO - outbound.get_lacked_details order_id=40
+2026-09-12 14:11:00,440 - main - INFO - outbound.get_order_details order_id=40
+2026-09-12 14:12:03,315 - main - INFO - outbound.execute_task order_id=TDS_Outbound_a172183d
+2026-09-12 14:12:05,681 - main - INFO - ICS addTask response: {'code': 1000, 'data': 'TDS_Outbound_a172183d', 'desc': '请求成功'}
+2026-09-12 14:12:05,803 - main - INFO - outbound.get_order_by_id order_id=40
+2026-09-12 14:12:05,808 - main - INFO - outbound.get_order_details order_id=40
+2026-09-12 14:12:05,823 - main - INFO - outbound.get_robot_tasks order_id=40
+2026-09-12 14:12:05,824 - main - INFO - outbound.get_lacked_details order_id=40
+2026-09-12 14:12:05,942 - main - INFO - outbound.get_order_by_id order_id=40
+2026-09-12 14:12:06,147 - main - INFO - outbound.execute_task order_id=TDS_Outbound_0be44173
+2026-09-12 14:12:06,263 - main - INFO - outbound.get_order_details order_id=40
+2026-09-12 14:12:06,421 - main - INFO - outbound.get_robot_tasks order_id=40
+2026-09-12 14:12:07,057 - main - INFO - Processing task status for order_id=TDS_Outbound_a172183d
+2026-09-12 14:12:07,554 - main - INFO - ICS addTask response: {'code': 1000, 'data': 'TDS_Outbound_0be44173', 'desc': '请求成功'}
+2026-09-12 14:12:07,745 - main - INFO - outbound.get_order_details order_id=40
+2026-09-12 14:12:07,750 - main - INFO - outbound.get_robot_tasks order_id=40
+2026-09-12 14:12:07,758 - main - INFO - outbound.get_order_by_id order_id=40
+2026-09-12 14:12:07,764 - main - INFO - outbound.get_lacked_details order_id=40
+2026-09-12 14:12:07,835 - main - INFO - outbound.get_order_by_id order_id=40
+2026-09-12 14:12:08,428 - main - INFO - outbound.get_robot_tasks order_id=40
+2026-09-12 14:12:08,431 - main - INFO - outbound.get_order_details order_id=40
+2026-09-12 14:12:08,691 - main - INFO - Processing task status for order_id=TDS_Outbound_0be44173
+2026-09-12 14:12:46,050 - main - INFO - Processing task status for order_id=TDS_Outbound_a172183d
+2026-09-12 14:12:46,426 - main - INFO - Processing task status for order_id=TDS_Outbound_a172183d
+2026-09-12 14:12:56,376 - main - INFO - Processing task status for order_id=TDS_Outbound_a172183d
+2026-09-12 14:12:56,483 - main - INFO - Processing task status for order_id=TDS_Outbound_a172183d
+2026-09-12 14:13:01,869 - main - INFO - Processing task status for order_id=TDS_Outbound_0be44173
+2026-09-12 14:13:02,164 - main - INFO - Processing task status for order_id=TDS_Outbound_0be44173
+2026-09-12 14:13:12,128 - main - INFO - Processing task status for order_id=TDS_Outbound_0be44173
+2026-09-12 14:13:12,211 - main - INFO - Processing task status for order_id=TDS_Outbound_0be44173
+2026-09-12 14:13:46,159 - main - INFO - outbound.execute_task order_id=TDS_Outbound_0be44173
+2026-09-12 14:14:01,624 - main - INFO - Processing task status for order_id=TDS_Outbound_a172183d
+2026-09-12 14:14:01,931 - main - INFO - Processing task status for order_id=TDS_Outbound_a172183d
+2026-09-12 14:14:08,564 - main - INFO - Processing task status for order_id=TDS_Outbound_a172183d
+2026-09-12 14:14:08,919 - main - INFO - -------Stock: 97
+2026-09-12 14:14:08,921 - main - INFO - ----------To location: 1716
+2026-09-12 14:15:23,587 - main - INFO - Processing task status for order_id=TDS_Outbound_0be44173
+2026-09-12 14:15:23,851 - main - INFO - Processing task status for order_id=TDS_Outbound_0be44173
+2026-09-12 14:15:30,475 - main - INFO - Processing task status for order_id=TDS_Outbound_0be44173
+2026-09-12 14:15:30,806 - main - INFO - -------Stock: 101
+2026-09-12 14:15:30,807 - main - INFO - ----------To location: 1715
+2026-09-12 14:15:37,187 - main - INFO - outbound.execute_task order_id=TDS_Outbound_0be44173
+2026-09-12 14:15:42,700 - main - INFO - outbound.get_lacked_details order_id=40
+2026-09-12 14:15:42,702 - main - INFO - outbound.get_order_by_id order_id=40
+2026-09-12 14:15:42,705 - main - INFO - outbound.get_order_details order_id=40
+2026-09-12 14:16:11,781 - main - INFO - outbound.get_order_by_id order_id=40
+2026-09-12 14:16:11,781 - main - INFO - outbound.get_robot_tasks order_id=40
+2026-09-12 14:16:11,783 - main - INFO - outbound.get_order_details order_id=40
+2026-09-12 14:16:11,784 - main - INFO - outbound.get_lacked_details order_id=40
+2026-09-12 14:17:15,809 - main - INFO - outbound.get_order_by_id order_id=40
+2026-09-12 14:17:15,819 - main - INFO - outbound.get_order_details order_id=40
+2026-09-12 14:17:15,827 - main - INFO - outbound.get_robot_tasks order_id=40
+2026-09-12 14:17:15,828 - main - INFO - outbound.get_lacked_details order_id=40
+2026-09-12 14:17:28,936 - main - INFO - outbound.calculate_order outbound_order_id=40
+2026-09-12 14:17:32,772 - main - INFO - outbound.calculate_order outbound_order_id=40
+2026-09-12 14:17:35,581 - main - INFO - outbound.calculate_order outbound_order_id=40
+2026-09-12 14:17:58,257 - main - INFO - outbound.get_robot_tasks order_id=40
+2026-09-12 14:17:58,268 - main - INFO - outbound.get_order_by_id order_id=40
+2026-09-12 14:17:58,274 - main - INFO - outbound.get_order_details order_id=40
+2026-09-12 14:17:58,276 - main - INFO - outbound.get_lacked_details order_id=40
+2026-09-12 14:17:58,380 - main - INFO - outbound.get_order_by_id order_id=40
+2026-09-12 14:17:58,840 - main - INFO - outbound.get_robot_tasks order_id=40
+2026-09-12 14:17:58,842 - main - INFO - outbound.get_order_details order_id=40
+2026-09-12 14:18:12,165 - main - INFO - outbound.get_order_details order_id=40
+2026-09-12 14:18:12,174 - main - INFO - outbound.get_order_by_id order_id=40
+2026-09-12 14:18:12,189 - main - INFO - outbound.get_robot_tasks order_id=40
+2026-09-12 14:18:12,197 - main - INFO - outbound.get_lacked_details order_id=40
+2026-09-12 14:18:12,271 - main - INFO - outbound.get_order_by_id order_id=40
+2026-09-12 14:18:12,640 - main - INFO - outbound.get_robot_tasks order_id=40
+2026-09-12 14:18:12,660 - main - INFO - outbound.get_order_details order_id=40
+2026-09-12 14:18:27,528 - main - INFO - outbound.get_order_details order_id=40
+2026-09-12 14:18:27,543 - main - INFO - outbound.get_order_by_id order_id=40
+2026-09-12 14:18:27,554 - main - INFO - outbound.get_lacked_details order_id=40
+2026-09-12 14:18:27,555 - main - INFO - outbound.get_robot_tasks order_id=40
+2026-09-12 14:18:27,614 - main - INFO - outbound.get_order_by_id order_id=40
+2026-09-12 14:18:28,214 - main - INFO - outbound.get_robot_tasks order_id=40
+2026-09-12 14:18:28,215 - main - INFO - outbound.get_order_details order_id=40
+2026-09-12 14:18:36,359 - main - INFO - outbound.get_lacked_details order_id=40
+2026-09-12 14:18:36,364 - main - INFO - outbound.get_robot_tasks order_id=40
+2026-09-12 14:18:36,366 - main - INFO - outbound.get_order_details order_id=40
+2026-09-12 14:18:36,378 - main - INFO - outbound.get_order_by_id order_id=40
+2026-09-12 14:18:36,464 - main - INFO - outbound.get_order_by_id order_id=40
+2026-09-12 14:18:37,018 - main - INFO - outbound.get_robot_tasks order_id=40
+2026-09-12 14:18:37,020 - main - INFO - outbound.get_order_details order_id=40
+2026-09-12 14:18:51,608 - main - INFO - outbound.get_robot_tasks order_id=40
+2026-09-12 14:18:51,609 - main - INFO - outbound.get_order_details order_id=40
+2026-09-12 14:18:51,609 - main - INFO - outbound.get_order_by_id order_id=40
+2026-09-12 14:18:51,616 - main - INFO - outbound.get_lacked_details order_id=40
+2026-09-12 14:18:51,726 - main - INFO - outbound.get_order_by_id order_id=40
+2026-09-12 14:18:52,267 - main - INFO - outbound.get_robot_tasks order_id=40
+2026-09-12 14:18:52,272 - main - INFO - outbound.get_order_details order_id=40
+2026-09-12 14:19:02,550 - main - INFO - outbound.get_robot_tasks order_id=40
+2026-09-12 14:19:02,551 - main - INFO - outbound.get_order_details order_id=40
+2026-09-12 14:19:02,558 - main - INFO - outbound.get_lacked_details order_id=40
+2026-09-12 14:19:02,559 - main - INFO - outbound.get_order_by_id order_id=40
+2026-09-12 14:19:04,159 - main - INFO - outbound.get_order_by_id order_id=40
+2026-09-12 14:19:04,389 - main - INFO - outbound.get_robot_tasks order_id=40
+2026-09-12 14:19:04,459 - main - INFO - outbound.get_order_details order_id=40
+2026-09-12 14:19:32,525 - main - INFO - outbound.get_lacked_details order_id=40
+2026-09-12 14:19:32,526 - main - INFO - outbound.get_order_by_id order_id=40
+2026-09-12 14:19:32,527 - main - INFO - outbound.get_order_details order_id=40
+2026-09-12 14:19:32,528 - main - INFO - outbound.get_robot_tasks order_id=40
+2026-09-12 14:22:23,255 - main - INFO - outbound.get_lacked_details order_id=38
+2026-09-12 14:22:23,261 - main - INFO - outbound.get_robot_tasks order_id=38
+2026-09-12 14:22:23,264 - main - INFO - outbound.get_order_details order_id=38
+2026-09-12 14:22:23,268 - main - INFO - outbound.get_order_by_id order_id=38
+2026-09-12 14:23:06,441 - main - INFO - outbound.get_robot_tasks order_id=11
+2026-09-12 14:23:06,448 - main - INFO - outbound.get_order_by_id order_id=11
+2026-09-12 14:23:06,449 - main - INFO - outbound.get_lacked_details order_id=11
+2026-09-12 14:23:06,459 - main - INFO - outbound.get_order_details order_id=11
+2026-09-12 14:23:28,202 - main - INFO - outbound.get_order_by_id order_id=40
+2026-09-12 14:23:28,204 - main - INFO - outbound.get_order_details order_id=40
+2026-09-12 14:23:28,213 - main - INFO - outbound.get_robot_tasks order_id=40
+2026-09-12 14:23:28,223 - main - INFO - outbound.get_lacked_details order_id=40
+2026-09-12 14:27:17,142 - main - INFO - outbound.get_lacked_details order_id=37
+2026-09-12 14:27:17,144 - main - INFO - outbound.get_order_by_id order_id=37
+2026-09-12 14:27:17,148 - main - INFO - outbound.get_order_details order_id=37
+2026-09-12 14:27:17,150 - main - INFO - outbound.get_robot_tasks order_id=37
+2026-09-12 14:27:22,376 - main - INFO - outbound.get_order_by_id order_id=39
+2026-09-12 14:27:22,378 - main - INFO - outbound.get_lacked_details order_id=39
+2026-09-12 14:27:22,383 - main - INFO - outbound.get_robot_tasks order_id=39
+2026-09-12 14:27:22,387 - main - INFO - outbound.get_order_details order_id=39
+2026-09-12 14:27:26,071 - main - INFO - outbound.get_order_details order_id=40
+2026-09-12 14:27:26,075 - main - INFO - outbound.get_lacked_details order_id=40
+2026-09-12 14:27:26,075 - main - INFO - outbound.get_order_by_id order_id=40
+2026-09-12 14:27:26,079 - main - INFO - outbound.get_robot_tasks order_id=40
+2026-09-12 14:27:30,667 - main - INFO - outbound.get_order_details order_id=40
+2026-09-12 14:28:14,032 - main - INFO - outbound.get_order_details order_id=40
+2026-09-12 14:28:19,964 - main - INFO - outbound.calculate_order outbound_order_id=40
+2026-09-12 14:29:03,970 - main - INFO - outbound.calculate_order outbound_order_id=40

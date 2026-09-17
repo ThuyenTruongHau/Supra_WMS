@@ -14,6 +14,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
+from app.core.warehouse_mode import is_manual_warehouse
 from app.modules.warehouse.lot_number_utils import format_lot_number_display
 from app.modules.warehouse.item.item_model import Item, QR_Code
 from app.modules.warehouse.item.item_schema import (
@@ -33,7 +34,11 @@ from app.modules.warehouse.item.item_schema import (
 )
 from app.modules.warehouse.unit.unit_model import Unit
 from app.modules.warehouse.warehouse_zone.warehouse_model import Warehouse, Zone
-from app.modules.warehouse.item_stock.item_stock_model import ItemStock
+from app.modules.warehouse.item_stock.item_stock_model import (
+    ItemStock,
+    countable_stock_level_criterion,
+    positive_stock_quantity_criterion,
+)
 from app.modules.warehouse.location_map.location_model import Location
 from app.modules.warehouse.item.item_celery_task import import_item_masan_task
 from app.modules.warehouse.item.item_import_utils import (
@@ -51,7 +56,7 @@ logger = get_logger("main")
 NEARLY_OUTDATED_DAYS = 30
 RECENT_QR_CODE_DAYS = 2
 MAX_QR_PRINT_QUANTITY = 50
-ALLOWED_QR_TYPES = frozenset({"item", "transit"})
+ALLOWED_QR_TYPES = frozenset({"item", "transit", "pack"})
 DEFAULT_QR_TYPE = "item"
 
 
@@ -147,6 +152,8 @@ def analyze_items(db: Session, warehouse_id: int) -> ItemAnalyzeResponse:
             Item.warehouse_id == warehouse_id,
             Item.is_active.is_(True),
             ItemStock.is_active.is_(True),
+            countable_stock_level_criterion(),
+            positive_stock_quantity_criterion(),
             Location.is_active.is_(True),
             Zone.code.in_(settings.zone_storage),
         )
@@ -166,6 +173,8 @@ def analyze_items(db: Session, warehouse_id: int) -> ItemAnalyzeResponse:
             Item.warehouse_id == warehouse_id,
             Item.is_active.is_(True),
             ItemStock.is_active.is_(True),
+            countable_stock_level_criterion(),
+            positive_stock_quantity_criterion(),
             Location.is_active.is_(True),
             Zone.code.in_(settings.zone_storage),
             ItemStock.expiry_date.isnot(None),
@@ -186,6 +195,8 @@ def analyze_items(db: Session, warehouse_id: int) -> ItemAnalyzeResponse:
         .join(Zone, Zone.id == Location.zone_id)
         .filter(
             ItemStock.is_active.is_(True),
+            countable_stock_level_criterion(),
+            positive_stock_quantity_criterion(),
             Location.warehouse_id == warehouse_id,
             Location.is_active.is_(True),
             Zone.code.in_(settings.zone_storage),
@@ -219,15 +230,23 @@ def get_item_detail(db: Session, item_id: int) -> ItemDetailResponse:
         raise ValueError("Item not found")
 
     stocks = (
-        db.query(ItemStock, Location.location_code)
+        db.query(ItemStock, Location.location_code, Location.location_name)
         .outerjoin(Location, Location.id == ItemStock.location_id)
-        .filter(ItemStock.item_id == item.id, ItemStock.is_active.is_(True))
+        .filter(
+            ItemStock.item_id == item.id,
+            ItemStock.is_active.is_(True),
+            ItemStock.status == "available",
+            countable_stock_level_criterion(),
+            positive_stock_quantity_criterion(),
+        )
         .order_by(ItemStock.id)
         .all()
     )
 
     stock_items: list[ItemStockInDetail] = []
-    for stock, location_code in stocks:
+    available_quantity = 0
+    for stock, location_code, location_name in stocks:
+        available_quantity += stock.quantity
         stock_items.append(
             ItemStockInDetail(
                 id=stock.id,
@@ -235,6 +254,7 @@ def get_item_detail(db: Session, item_id: int) -> ItemDetailResponse:
                 location_id=stock.location_id,
                 unit_id=stock.unit_id,
                 location_code=location_code,
+                location_name=location_name,
                 lot_number_from=stock.lot_number_from,
                 lot_number_to=stock.lot_number_to,
                 lot_number=format_lot_number_display(
@@ -250,6 +270,7 @@ def get_item_detail(db: Session, item_id: int) -> ItemDetailResponse:
     return ItemDetailResponse(
         item=ItemResponse.model_validate(item),
         stocks=stock_items,
+        available_quantity=available_quantity,
     )
 
 
@@ -508,7 +529,6 @@ def list_qr_codes(
 def get_qr_code_by_code(db: Session, code: Optional[str] = None) -> Optional[QR_Code]:
     if not code:
         return None
-    logger.info(f"Getting QR code by code: {code}")
     get_code = db.query(QR_Code).filter(QR_Code.code == code).first()
     if not get_code:
         return None
@@ -610,6 +630,20 @@ def _validate_qr_print_request(db: Session, item_id: int, quantity: int) -> Item
     return item
 
 
+def _standard_weight_from_item(item: Item) -> str:
+    details = item.details or {}
+    for key in ("standard_weight", "standard weight"):
+        raw = details.get(key)
+        if raw is not None and str(raw).strip():
+            return str(raw).strip()
+    for detail_key, raw in details.items():
+        if detail_key.strip().lower().replace(" ", "_") != "standard_weight":
+            continue
+        if raw is not None and str(raw).strip():
+            return str(raw).strip()
+    return ""
+
+
 def _build_qr_code_strings(item: Item, quantity: int) -> tuple[list[str], list[str]]:
     date_part = datetime.now().strftime("%Y%m%d")
     display_code = f"{item.sku}-{date_part}"
@@ -635,20 +669,30 @@ def _build_print_payload(
     return {
         "mode": mode,
         "item_id": item_id,
+        "warehouse_id": item.warehouse_id,
         "quantity": quantity,
         "part_number": item.sku,
         "part_name": item.name,
+        "standard_weight": _standard_weight_from_item(item),
         "qr_ids": codes,
         "display_codes": display_codes,
         "qr_type": qr_type,
     }
 
 
+def _qr_labels_per_page(payload: dict) -> int:
+    warehouse_id = payload.get("warehouse_id")
+    if is_manual_warehouse(warehouse_id):
+        return QR_LABEL_MANUAL_LABELS_PER_PAGE
+    return QR_LABELS_PER_PAGE
+
+
 def _render_print_response(payload: dict, quantity: int, codes: list[str]) -> dict:
+    labels_per_page = _qr_labels_per_page(payload)
     return {
         "html": render_qr_codes(payload),
         "quantity": quantity,
-        "page_count": math.ceil(quantity / 9),
+        "page_count": math.ceil(quantity / labels_per_page) if quantity else 0,
         "qr_ids": codes,
         "display_codes": payload.get("display_codes", []),
         "qr_type": payload.get("qr_type", DEFAULT_QR_TYPE),
@@ -718,19 +762,37 @@ generate_qr_codes = create_qr_codes
 BACVIET_TEMPLATE_PATH = (
     Path(__file__).resolve().parents[3] / "static" / "templates" / "template_bacviet.html"
 )
+PACKING_TEMPLATE_PATH = (
+    Path(__file__).resolve().parents[3] / "static" / "templates" / "template_packing.html"
+)
 TRANSFER_TEMPLATE_PATH = (
     Path(__file__).resolve().parents[3]
     / "static"
     / "templates"
     / "template_phieu_di_chuyen.html"
 )
+QR_LABEL_MANUAL_TEMPLATE_PATH = (
+    Path(__file__).resolve().parents[3]
+    / "static"
+    / "templates"
+    / "template_qr_label_manual.html"
+)
 # backward-compatible alias
 TEMPLATE_PATH = BACVIET_TEMPLATE_PATH
+QR_LABELS_PER_PAGE = 9
+QR_LABEL_MANUAL_LABELS_PER_PAGE = 30
 
 
 def render_qr_codes(payload: dict) -> str:
     qr_type = _normalize_qr_type(payload.get("qr_type"))
-    if qr_type == "transit":
+    warehouse_id = payload.get("warehouse_id")
+    if is_manual_warehouse(warehouse_id):
+        template_path = QR_LABEL_MANUAL_TEMPLATE_PATH
+        data_key = "__QR_LABEL_MANUAL_PRINT_DATA__"
+    elif qr_type == "pack":
+        template_path = PACKING_TEMPLATE_PATH
+        data_key = "__PACKING_PRINT_DATA__"
+    elif qr_type == "transit":
         template_path = TRANSFER_TEMPLATE_PATH
         data_key = "__TRANSFER_PRINT_DATA__"
     else:

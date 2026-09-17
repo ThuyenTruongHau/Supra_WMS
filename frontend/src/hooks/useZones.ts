@@ -107,8 +107,9 @@ export const usePrintLocationQrCodes = () => {
   return useMutation<
     LocationQrPrintResponse,
     AxiosError<ApiErrorResponse>,
-    number[]
+    { locationIds: number[]; warehouseId?: number }
   >({
-    mutationFn: printLocationQrCodesApi,
+    mutationFn: ({ locationIds, warehouseId }) =>
+      printLocationQrCodesApi(locationIds, warehouseId),
   });
 };

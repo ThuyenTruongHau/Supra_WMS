@@ -51,7 +51,7 @@ class ItemStock(Base):
         "location_id",
         Integer,
         ForeignKey("location.id"),
-        nullable=False,
+        nullable=True,
         index=True,
     )
     inbound_order_detail_id = Column(Integer, ForeignKey("inbound_order_detail.id"), nullable=True, index=True)
@@ -75,6 +75,8 @@ class ItemStock(Base):
     manufacturing_user = Column(String(50), nullable=True, index=True)
     packing_user = Column(String(50), nullable=True, index=True)
     cavity_number = Column(String(50), nullable=True, index=True)
+
+    stock_level = Column(Integer, nullable=True, index=True)
 
     item = relationship("Item", lazy="joined")
     unit = relationship("Unit", foreign_keys=[unit_id], lazy="joined")
@@ -105,6 +107,20 @@ class ItemStock(Base):
         #     name="ck_item_stock_status",
         # ),
     )
+
+
+def countable_stock_level_criterion(stock_level_col=None):
+    """Pack/sub-level stock (level > 1) is excluded from item/location inventory views."""
+    if stock_level_col is None:
+        stock_level_col = ItemStock.stock_level
+    return or_(stock_level_col.is_(None), stock_level_col <= 1)
+
+
+def positive_stock_quantity_criterion(quantity_col=None):
+    """Depleted stock rows (quantity = 0) are excluded from inventory read views."""
+    if quantity_col is None:
+        quantity_col = ItemStock.quantity
+    return quantity_col > 0
 
 
 class ItemStockRelation(Base):

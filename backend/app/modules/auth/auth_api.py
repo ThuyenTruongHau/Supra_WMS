@@ -20,6 +20,7 @@ from app.modules.auth.auth_schema import (
     StaffUsernamesResponse,
 )
 from app.modules.auth import auth_service
+from app.modules.auth.auth_access import user_to_response
 from app.core.logger import get_logger
 
 logger = get_logger(name="main")
@@ -29,8 +30,8 @@ DbSession = Annotated[Session, Depends(get_db)]
 CurrentUser = Annotated[User, Depends(get_current_user)]
 
 
-def _user_to_response(user: User) -> UserResponse:
-    return UserResponse.model_validate(user)
+def _user_to_response(user: User, db: Session) -> UserResponse:
+    return user_to_response(db, user)
 
 @router.post("/auth/login", response_model=LoginResponse)
 def login(body: LoginRequest, db: DbSession):
@@ -59,8 +60,8 @@ def signup(body: UserCreate, db: DbSession):
         raise HTTPException(status_code=400, detail=str(e))
 
 @router.get("/users/me", response_model=UserResponse)
-def get_me(current_user: CurrentUser):
-    return _user_to_response(current_user)
+def get_me(current_user: CurrentUser, db: DbSession):
+    return _user_to_response(current_user, db)
 
 
 @router.get(
@@ -94,7 +95,7 @@ def get_user_by_id(user_id: int, db: DbSession):
     user = auth_service.get_user_by_id(db, user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    return _user_to_response(user)
+    return _user_to_response(user, db)
 
 
 @router.patch(
@@ -109,7 +110,7 @@ def update_user(user_id: int, body: UserUpdate, db: DbSession):
         raise HTTPException(status_code=400, detail=str(e))
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    return _user_to_response(user)
+    return _user_to_response(user, db)
 
 
 @router.delete(

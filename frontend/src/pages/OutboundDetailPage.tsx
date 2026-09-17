@@ -9,12 +9,14 @@ import {
   EditOutlined,
   CheckCircleOutlined,
   PlayCircleOutlined,
+  EnvironmentOutlined,
 } from "@ant-design/icons";
 import {
   useGetOutboundOrderById,
   useGetOutboundOrderDetails,
   useGetOutboundLackedDetails,
   useGetOutboundRobotTasks,
+  useGetOutboundManualAllocationTasks,
   useDeleteOutboundOrder,
   useCalculateOutboundOrder,
   useExecuteOutboundRobotTask,
@@ -34,13 +36,20 @@ import dayjs from "dayjs";
 import CreateOutboundModal, {
   type OutboundItemDraft,
 } from "./components/CreateOutboundModal";
+import OutboundMapModal from "./components/OutboundMapModal";
+import { buildOutboundLocationOverrides } from "@/utils/outboundMap";
 import { detailsToEntries } from "@/utils/keyValueDetails";
 import { computeDetailProgress } from "@/utils/detailProgress";
 import { formatOutboundCalculateError } from "@/utils/outboundErrors";
+import { resolveOutboundLocationLogicTypeForOrder } from "@/utils/outboundLocationLogic";
+import {
+  resolveExecuteDetailType,
+  shouldUseManualAllocationFlow,
+} from "@/utils/outboundFlow";
 import { getApiErrorMessage } from "@/utils/apiErrorMessage";
 
 const TABLE_CLASS =
-  "[&_.ant-table-thead_th]:!bg-slate-50 [&_.ant-table-thead_th]:!text-slate-600 [&_.ant-table-thead_th]:!font-semibold [&_.ant-table-thead_th]:!text-base [&_.ant-table-tbody_td]:!text-base [&_.ant-table-thead_th]:!py-3 [&_.ant-table-tbody_td]:!py-3 [&_.ant-table-row]:hover:bg-slate-50/50";
+  "[&_.ant-table-thead_th]:!bg-slate-50 [&_.ant-table-thead_th]:!text-slate-600 [&_.ant-table-thead_th]:!font-semibold [&_.ant-table-thead_th]:!text-base [&_.ant-table-tbody_td]:!text-base [&_.ant-table-thead_th]:!py-3 [&_.ant-table-tbody_td]:!py-3 [&_.ant-table-row]:hover:bg-slate-50/50 [&_.ant-table-cell]:!text-center";
 
 const OUTBOUND_DETAIL_TABS = [
   { key: "list" as const, label: "Danh sách" },
@@ -88,10 +97,15 @@ const TASK_TYPE_LABEL: Record<OutboundRobotTask["task_type"], string> = {
   return: "TRẢ",
 };
 
-function getRobotTaskDisplayStatus(record: OutboundRobotTask): string {
+function getRobotTaskDisplayStatus(
+  record: OutboundRobotTask,
+  isManualOutbound = false,
+): string {
   const allocationStatus = record.allocations[0]?.status;
+  if (allocationStatus === "completed") return "completed";
   // Robot ICS "completed" maps allocation to pre_completed until QR confirm.
   if (allocationStatus === "pre_completed") return "pre_completed";
+  if (isManualOutbound) return allocationStatus || record.status;
   if (record.task_type !== "return") return record.status;
   if (record.status && record.status !== "initialize") return record.status;
   return allocationStatus || record.status;
@@ -185,6 +199,7 @@ export default function OutboundDetailPage() {
   const selectedWarehouseId = useAppStore((s) => s.selectedWarehouseId);
 
   const [isEditOpen, setIsEditOpen] = useState(false);
+  const [isMapOpen, setIsMapOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"list" | "allocation">("list");
   const [selectedDetailIds, setSelectedDetailIds] = useState<Set<number>>(
     () => new Set(),
@@ -207,6 +222,14 @@ export default function OutboundDetailPage() {
     isLoading: isOrderLoading,
     refetch: refetchOrder,
   } = useGetOutboundOrderById(orderId);
+  const useManualAllocationFlow = useMemo(
+    () => shouldUseManualAllocationFlow(outboundType, order?.details),
+    [outboundType, order?.details],
+  );
+  const executeDetailType = useMemo(
+    () => resolveExecuteDetailType(outboundType, order?.details),
+    [outboundType, order?.details],
+  );
   const {
     data: details = [],
     isLoading: isDetailsLoading,
@@ -218,7 +241,24 @@ export default function OutboundDetailPage() {
     data: robotTasks = [],
     isLoading: isRobotTasksLoading,
     refetch: refetchRobotTasks,
-  } = useGetOutboundRobotTasks(orderId, !!orderId);
+  } = useGetOutboundRobotTasks(orderId, !!orderId && !useManualAllocationFlow);
+  const {
+    data: manualAllocationTasks = [],
+    isLoading: isManualAllocationTasksLoading,
+    refetch: refetchManualAllocationTasks,
+  } = useGetOutboundManualAllocationTasks(
+    orderId,
+    !!orderId && useManualAllocationFlow,
+  );
+  const allocationTasks = useManualAllocationFlow
+    ? manualAllocationTasks
+    : robotTasks;
+  const isAllocationTasksLoading = useManualAllocationFlow
+    ? isManualAllocationTasksLoading
+    : isRobotTasksLoading;
+  const refetchAllocationTasks = useManualAllocationFlow
+    ? refetchManualAllocationTasks
+    : refetchRobotTasks;
   const deleteMutation = useDeleteOutboundOrder();
   const calculateMutation = useCalculateOutboundOrder();
   const executeRobotTaskMutation = useExecuteOutboundRobotTask();
@@ -226,8 +266,18 @@ export default function OutboundDetailPage() {
   const { data: users = [] } = useUser();
 
   const warehouseId = order?.warehouse_id ?? selectedWarehouseId ?? 0;
+  const fetchAllocationTab = activeTab === "allocation";
+  const locationLogicType = useMemo(
+    () =>
+      resolveOutboundLocationLogicTypeForOrder(
+        order?.details,
+        details,
+        outboundType,
+      ),
+    [order?.details, details, outboundType],
+  );
   const { data: outboundBufferLocationsData, isLoading: outboundBufferLocationsLoading } =
-    useOutboundBufferLocations(warehouseId, activeTab === "allocation");
+    useOutboundBufferLocations(warehouseId, locationLogicType, fetchAllocationTab);
 
   const outboundBufferLocationOptions = useMemo(
     () =>
@@ -285,6 +335,11 @@ export default function OutboundDetailPage() {
   );
 
   const editInitialItems = useMemo(() => toEditItems(details), [details]);
+
+  const outboundPickLocations = useMemo(
+    () => buildOutboundLocationOverrides(details),
+    [details],
+  );
 
   const selectableDetails = useMemo(
     () => details.filter((d) => d.status === "initialize"),
@@ -379,7 +434,7 @@ export default function OutboundDetailPage() {
         allocationCode,
       );
 
-      if (hasLocation) {
+      if (hasLocation || (useManualAllocationFlow && kind === "start")) {
         return displayLocationName(
           allocationName,
           allocationCode,
@@ -417,6 +472,7 @@ export default function OutboundDetailPage() {
     [
       getTaskLocationSelectOptions,
       handleTaskLocationChange,
+      useManualAllocationFlow,
       outboundBufferLabelById,
       outboundBufferLocationsLoading,
       taskLocationDraft,
@@ -435,7 +491,12 @@ export default function OutboundDetailPage() {
 
     try {
       setExecutingTaskOrderId(record.order_id);
-      message.loading({ content: "Đang gửi lệnh...", key: "execute" });
+      message.loading({
+        content: useManualAllocationFlow
+          ? "Đang xác nhận xuất..."
+          : "Đang gửi lệnh...",
+        key: "execute",
+      });
       await executeRobotTaskMutation.mutateAsync({
         orderId,
         body: {
@@ -446,13 +507,18 @@ export default function OutboundDetailPage() {
             allocation_id: allocation.id,
           })),
         },
-        detailType: outboundType,
+        detailType: executeDetailType,
       });
-      message.success({ content: "Đã thực thi task", key: "execute" });
+      message.success({
+        content: useManualAllocationFlow
+          ? "Đã xác nhận xuất"
+          : "Đã thực thi task",
+        key: "execute",
+      });
       void refetchOrder();
       void refetchDetails();
       void refetchLacked();
-      void refetchRobotTasks();
+      void refetchAllocationTasks();
     } catch (err) {
       message.error({ content: apiError(err), key: "execute" });
     } finally {
@@ -472,7 +538,7 @@ export default function OutboundDetailPage() {
       const returnQty = Number(result.return_quantity ?? 0);
       void refetchOrder();
       void refetchDetails();
-      void refetchRobotTasks();
+      void refetchAllocationTasks();
       void refetchLacked();
 
       if (returnQty > 0) {
@@ -520,10 +586,10 @@ export default function OutboundDetailPage() {
       void refetchDetails();
       void refetchLacked();
       if (tab === "allocation") {
-        void refetchRobotTasks();
+        void refetchAllocationTasks();
       }
     },
-    [refetchDetails, refetchLacked, refetchOrder, refetchRobotTasks],
+    [refetchAllocationTasks, refetchDetails, refetchLacked, refetchOrder],
   );
 
   const handleDetailRowExpand = useCallback(
@@ -535,9 +601,9 @@ export default function OutboundDetailPage() {
 
   const handleRobotTaskRowExpand = useCallback(
     (expanded: boolean) => {
-      if (expanded) void refetchRobotTasks();
+      if (expanded) void refetchAllocationTasks();
     },
-    [refetchRobotTasks],
+    [refetchAllocationTasks],
   );
 
   const toggleDetailSelection = useCallback(
@@ -618,7 +684,7 @@ export default function OutboundDetailPage() {
       void refetchOrder();
       void refetchDetails();
       void refetchLacked();
-      void refetchRobotTasks();
+      void refetchAllocationTasks();
       setActiveTab("allocation");
 
       if (result.is_fully_allocated) {
@@ -919,7 +985,10 @@ export default function OutboundDetailPage() {
       key: "status",
       width: 150,
       render: (_, record) => {
-        const displayStatus = getRobotTaskDisplayStatus(record);
+        const displayStatus = getRobotTaskDisplayStatus(
+          record,
+          useManualAllocationFlow,
+        );
         if (displayStatus === "initialize") {
           const { startId, endId, needsStartPick, needsEndPick } =
             getTaskLocationIds(record);
@@ -939,11 +1008,11 @@ export default function OutboundDetailPage() {
               }
               onClick={() => void handleExecuteRobotTask(record)}
             >
-              Execute
+              {useManualAllocationFlow ? "Xác nhận xuất" : "Execute"}
             </Button>
           );
         }
-        if (displayStatus === "pre_completed") {
+        if (!useManualAllocationFlow && displayStatus === "pre_completed") {
           return (
             <Button
               variant="primary"
@@ -1136,6 +1205,18 @@ export default function OutboundDetailPage() {
         </div>
         <Space className="shrink-0">
           <Button
+            icon={<EnvironmentOutlined />}
+            disabled={!warehouseId || outboundPickLocations.length === 0}
+            title={
+              outboundPickLocations.length === 0
+                ? "Chưa có vị trí lấy hàng — phân bổ đơn trước khi xem map"
+                : undefined
+            }
+            onClick={() => setIsMapOpen(true)}
+          >
+            Xem map
+          </Button>
+          <Button
             variant="edit"
             icon={<EditOutlined />}
             disabled={!allInitialize}
@@ -1312,18 +1393,18 @@ export default function OutboundDetailPage() {
                   onExpand: handleDetailRowExpand,
                 }}
               />
-            ) : isRobotTasksLoading ? (
+            ) : isAllocationTasksLoading ? (
               <div className="py-12 text-center text-slate-500">
                 Đang tải lệnh phân bổ...
               </div>
-            ) : robotTasks.length === 0 ? (
+            ) : allocationTasks.length === 0 ? (
               <div className="py-12 text-center text-slate-400 italic">
                 Chưa hàng nào được phân bổ
               </div>
             ) : (
               <Table
                 columns={robotTaskColumns}
-                dataSource={robotTasks}
+                dataSource={allocationTasks}
                 pagination={false}
                 rowKey="order_id"
                 size="middle"
@@ -1389,6 +1470,14 @@ export default function OutboundDetailPage() {
           void refetchOrder();
           void refetchDetails();
         }}
+      />
+
+      <OutboundMapModal
+        open={isMapOpen}
+        onClose={() => setIsMapOpen(false)}
+        warehouseId={warehouseId}
+        details={details}
+        orderLabel={order.order_code}
       />
     </div>
   );

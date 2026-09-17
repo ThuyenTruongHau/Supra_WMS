@@ -1,12 +1,13 @@
 """Location service."""
 
 from typing import Optional
-from app.core.cache import cache_scan_keys, get_redis
+from app.core.cache import cache_scan_keys, cache_set, get_redis
 
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
-from sqlalchemy import or_
+from sqlalchemy.orm import Session, joinedload
+from sqlalchemy import func, or_
 from app.core.config import settings
+from app.core.warehouse_mode import is_manual_warehouse
 from app.modules.warehouse.lot_number_utils import format_lot_number_display
 
 from app.modules.warehouse.location_map.location_model import Location, WarehouseMap
@@ -27,8 +28,16 @@ from app.modules.warehouse.location_map.location_schema import (
     MapLocationStockItem,
 )
 from app.modules.warehouse.warehouse_zone.warehouse_model import Warehouse, Zone
-from app.modules.warehouse.item_stock.item_stock_model import ItemStock
+from app.modules.warehouse.item_stock.item_stock_model import (
+    ItemStock,
+    countable_stock_level_criterion,
+)
 from app.modules.warehouse.transaction_history.history_model import Transaction
+from app.modules.warehouse.stocktake.stocktake_model import StocktakeItemStock
+from app.modules.warehouse.inbound_order.inbound_order_model import InboundOrderDetail
+from app.modules.warehouse.outbound_order.outbound_order_model import (
+    OutboundOrderAllocation,
+)
 from pathlib import Path
 from uuid import uuid4
 from fastapi import UploadFile
@@ -47,14 +56,35 @@ SHELF_NODE_NAME_PATTERN = re.compile(
     r"^R(?P<row>\d+)[_-]C(?P<column>\d+)[_-]L(?P<level>\d+)[_-]B(?P<bin>.+)$",
     re.IGNORECASE,
 )
+# A node name made only of digits is the map editor's default (it mirrors the node
+# number), so it carries no identity that survives a re-export.
+UNLABELLED_NODE_NAME_PATTERN = re.compile(r"^\d+$")
+
+NODE_NAME_MAX_LENGTH = 50
+
+# Every column in the schema that points at location.id. Used to count references
+# before retiring a location and to move them during a remap.
+LOCATION_FK_COLUMNS: tuple[tuple[type, str], ...] = (
+    (ItemStock, "location_id"),
+    (StocktakeItemStock, "location_id"),
+    (Transaction, "from_location_id"),
+    (Transaction, "to_location_id"),
+    (InboundOrderDetail, "from_location_id"),
+    (InboundOrderDetail, "to_location_id"),
+    (OutboundOrderAllocation, "from_location_id"),
+    (OutboundOrderAllocation, "to_location_id"),
+)
+
 
 @dataclass
 class ParsedShelfNode:
-    location_code: str      # node.content
-    row: str
-    column: str
-    level: str
-    location_name: str           # phần B (BKH1.10)
+    location_code: str           # node.content — map node number, unstable
+    bin_code: Optional[str]      # phần B (KH1.10) — stable identity, None nếu node chưa đặt tên
+    row: Optional[str]
+    column: Optional[str]
+    level: Optional[str]
+    location_name: str           # nhãn hiển thị
+    node_name: str               # tên node thô (R1_C13_L1_BKH1.13)
     map_x: int
     map_y: int
 
@@ -103,6 +133,7 @@ def list_locations(
         query = query.filter(
             (Location.location_code.ilike(like))
             | (Location.location_name.ilike(like))
+            | (Location.bin_code.ilike(like))
         )
     total = query.count()
     items = (
@@ -177,7 +208,12 @@ def list_locations_for_map(db: Session, warehouse_id: int) -> LocationsForMapRes
                 quantity=str(stock.quantity),
             )
             for stock in (loc.stocks or [])
-            if stock.is_active and stock.quantity is not None and stock.quantity > 0
+            if stock.is_active
+            and stock.quantity is not None
+            and stock.quantity > 0
+            and (
+                stock.stock_level is None or stock.stock_level <= 1
+            )
         ]
         for assigned in _assigned_stocks_for_location(loc.id):
             stocks.append(
@@ -198,6 +234,7 @@ def list_locations_for_map(db: Session, warehouse_id: int) -> LocationsForMapRes
                 id=loc.id,
                 location_code=loc.location_code,
                 location_name=loc.location_name,
+                bin_code=loc.bin_code,
                 row=loc.row,
                 column=loc.column,
                 level=loc.level,
@@ -230,7 +267,11 @@ def get_location_detail(db: Session, location_id: int) -> LocationDetailResponse
     for stock in location.stocks or []:
         if not stock.is_active:
             continue
+        if stock.stock_level is not None and stock.stock_level > 1:
+            continue
         qty = stock.quantity if stock.quantity is not None else Decimal("0")
+        if qty <= 0:
+            continue
         total_qty += qty
         item_stock.append(
             LocationDetailStockItem(
@@ -286,26 +327,32 @@ def get_location_detail(db: Session, location_id: int) -> LocationDetailResponse
 def upsert_location(db: Session, body: LocationCreate) -> Location:
     _ensure_warehouse_and_zone(db, body.warehouse_id, body.zone_id)
 
-    exist_location_name = (
-        db.query(Location)
-        .filter(
-            Location.warehouse_id == body.warehouse_id,
-            Location.location_name == body.location_name,
+    # bin_code is the physical identity; location_code is only the current map node.
+    existing = None
+    if body.bin_code:
+        existing = (
+            db.query(Location)
+            .filter(
+                Location.warehouse_id == body.warehouse_id,
+                Location.bin_code == body.bin_code.strip(),
+            )
+            .first()
         )
-        .first()
-    )
-    exist_location_code = (
-        db.query(Location)
-        .filter(
-            Location.warehouse_id == body.warehouse_id,
-            Location.location_code == body.location_code,
+    if existing is None:
+        existing = (
+            db.query(Location)
+            .filter(
+                Location.warehouse_id == body.warehouse_id,
+                Location.location_code == body.location_code,
+            )
+            .first()
         )
-        .first()
-    )
-    if exist_location_name or exist_location_code:
-        return update_location(db, exist_location_name.id if exist_location_name else exist_location_code.id, LocationUpdate(
+
+    if existing:
+        return update_location(db, existing.id, LocationUpdate(
             location_code=body.location_code.strip(),
             location_name=body.location_name.strip(),
+            bin_code=body.bin_code.strip() if body.bin_code else None,
             row=body.row,
             column=body.column,
             level=body.level,
@@ -318,6 +365,7 @@ def upsert_location(db: Session, body: LocationCreate) -> Location:
         location = Location(
             location_code=body.location_code.strip(),
             location_name=body.location_name.strip(),
+            bin_code=body.bin_code.strip() if body.bin_code else None,
             row=body.row,
             column=body.column,
             level=body.level,
@@ -357,18 +405,22 @@ def update_location(
         if existing:
             raise ValueError("Location code already exists in this warehouse")
         location.location_code = data["location_code"].strip()
-    if "location_name" in data:
+    # location_name is only a display label, so duplicates are allowed. bin_code is
+    # the identity and stays unique per warehouse.
+    if data.get("bin_code"):
         existing = (
             db.query(Location)
             .filter(
                 Location.warehouse_id == warehouse_id,
-                Location.location_name == data["location_name"],
+                Location.bin_code == data["bin_code"],
                 Location.id != location_id,
             )
             .first()
         )
         if existing:
-            raise ValueError("Location name already exists in this warehouse")
+            raise ValueError("Bin code already exists in this warehouse")
+        location.bin_code = data["bin_code"].strip()
+    if "location_name" in data:
         location.location_name = data["location_name"].strip()
     for field in ("row", "column", "level", "node_name", "is_active"):
         if field in data:
@@ -441,7 +493,8 @@ async def import_warehouse_map(
     warehouse_id: int,
     upload: UploadFile,
     zone_id: Optional[int] = None,
-) -> WarehouseMap:
+    remap: Optional[list[dict]] = None,
+) -> dict:
 
     content = await upload.read()
     if not content:
@@ -456,9 +509,16 @@ async def import_warehouse_map(
     try:
         source_path = await _save_uploaded_zip(content, warehouse_id)
 
-        sync_locations_from_map(
-            db, content, warehouse_id, shelves, zone_id
+        # Single transaction: match + remap + retire + map metadata.
+        # Rollback restores every location if a later step fails.
+        result = sync_locations_from_map(
+            db,
+            warehouse_id,
+            shelves,
+            zone_id=zone_id,
+            remap=remap,
         )
+        cache_moves = result.pop("_pending_cache_moves", [])
         warehouse_map = create_map_metadata(
             db,
             MapCreate(
@@ -471,14 +531,13 @@ async def import_warehouse_map(
 
         db.commit()
         db.refresh(warehouse_map)
-        return warehouse_map
 
     except IntegrityError as exc:
         db.rollback()
         if source_path and source_path.exists():
             source_path.unlink(missing_ok=True)
         raise ValueError(
-            "Mã hoặc tên location bị trùng trong kho này. Vui lòng kiểm tra lại bản đồ."
+            "Mã location bị trùng trong kho này. Vui lòng kiểm tra lại bản đồ."
         ) from exc
     except Exception:
         db.rollback()
@@ -486,80 +545,486 @@ async def import_warehouse_map(
             source_path.unlink(missing_ok=True)
         raise
 
-def _hard_delete_locations_for_warehouse(db: Session, warehouse_id: int) -> int:
-    location_ids = [
-        row[0]
-        for row in db.query(Location.id)
-        .filter(Location.warehouse_id == warehouse_id)
-        .all()
-    ]
-    if not location_ids:
-        return 0
+    # Redis lives outside the transaction, so only rewrite keys once the DB is safe.
+    moved_cache = 0
+    for from_location_id, target in cache_moves:
+        moved_cache += move_assigned_stock_cache(from_location_id, target)
 
-    db.query(ItemStock).filter(ItemStock.location_id.in_(location_ids)).delete(
-        synchronize_session=False
-    )
-    deleted = (
-        db.query(Location)
-        .filter(Location.warehouse_id == warehouse_id)
-        .delete(synchronize_session=False)
-    )
-    db.flush()
-    return deleted
+    result["warehouse_map_id"] = warehouse_map.id
+    result["source"] = warehouse_map.source
+    result["moved_cache_entries"] = moved_cache
+    return result
 
+
+async def preview_warehouse_map_import(
+    db: Session,
+    warehouse_id: int,
+    upload: UploadFile,
+    zone_id: Optional[int] = None,
+    remap: Optional[list[dict]] = None,
+) -> dict:
+    """Run the whole sync then roll back, so operators can review before committing.
+
+    Blockers are reported instead of raised, which is the point of the dry run.
+    """
+    content = await upload.read()
+    if not content:
+        raise ValueError("Uploaded file is empty")
+
+    shelves = extract_shelf_nodes_from_zip(content)
+    if not shelves:
+        raise ValueError("ZIP không có shelf node hợp lệ")
+
+    try:
+        result = sync_locations_from_map(
+            db,
+            warehouse_id,
+            shelves,
+            zone_id=zone_id,
+            remap=remap,
+            strict=False,
+        )
+        result.pop("_pending_cache_moves", None)
+        return result
+    finally:
+        db.rollback()
 
 def _dedupe_shelves(shelves: list[dict]) -> list[dict]:
-    """Keep one shelf per location_code (last wins), then drop duplicate location_name."""
+    """Keep one shelf per node number (last wins).
+
+    Duplicate bin codes are a map authoring error, not something to silently drop:
+    two nodes claiming the same bin would make the identity ambiguous forever.
+    """
     by_code: dict[str, dict] = {}
     for shelf in shelves:
         code = str(shelf["location_code"]).strip()
+        raw_bin = shelf.get("bin_code")
+        bin_code = str(raw_bin).strip() if raw_bin else ""
         by_code[code] = {
             **shelf,
             "location_code": code,
+            "bin_code": bin_code or None,
             "location_name": str(shelf["location_name"]).strip(),
         }
 
-    used_names: set[str] = set()
-    unique: list[dict] = []
+    first_node_for_bin: dict[str, str] = {}
+    duplicates: list[str] = []
     for shelf in by_code.values():
-        name = shelf["location_name"]
-        if name in used_names:
+        bin_code = shelf["bin_code"]
+        if not bin_code:
             continue
-        used_names.add(name)
-        unique.append(shelf)
-    return unique
+        if bin_code in first_node_for_bin:
+            duplicates.append(
+                f"{bin_code} (node {first_node_for_bin[bin_code]} và {shelf['location_code']})"
+            )
+        else:
+            first_node_for_bin[bin_code] = shelf["location_code"]
+
+    if duplicates:
+        raise ValueError(
+            "Map có mã bin bị trùng, mỗi bin phải là duy nhất: "
+            + "; ".join(sorted(duplicates))
+        )
+
+    return list(by_code.values())
+
+
+def _reference_counts_by_location(
+    db: Session,
+    location_ids: list[int],
+) -> dict[int, dict[str, int]]:
+    """Count rows pointing at each location, per FK column."""
+    counts: dict[int, dict[str, int]] = {}
+    if not location_ids:
+        return counts
+    for model, column in LOCATION_FK_COLUMNS:
+        col = getattr(model, column)
+        rows = (
+            db.query(col, func.count())
+            .filter(col.in_(location_ids))
+            .group_by(col)
+            .all()
+        )
+        for location_id, total in rows:
+            if location_id is None or not total:
+                continue
+            label = f"{model.__tablename__}.{column}"
+            counts.setdefault(location_id, {})[label] = total
+    return counts
+
+
+def _active_stock_totals(db: Session, location_ids: list[int]) -> dict[int, Decimal]:
+    if not location_ids:
+        return {}
+    rows = (
+        db.query(ItemStock.location_id, func.coalesce(func.sum(ItemStock.quantity), 0))
+        .filter(
+            ItemStock.location_id.in_(location_ids),
+            ItemStock.is_active.is_(True),
+            ItemStock.quantity > 0,
+        )
+        .group_by(ItemStock.location_id)
+        .all()
+    )
+    return {location_id: total for location_id, total in rows if location_id is not None}
+
+
+def _shelf_may_take_location(shelf: dict, location: Location) -> bool:
+    """Never let a coordinate or node-number coincidence steal an already named bin."""
+    shelf_bin = shelf.get("bin_code")
+    return not (location.bin_code and shelf_bin and location.bin_code != shelf_bin)
+
+
+def _match_shelf_to_location(
+    shelf: dict,
+    by_bin: dict[str, Location],
+    by_rcl: dict[tuple, Location],
+    by_code: dict[str, Location],
+    taken: set[int],
+) -> tuple[Optional[Location], Optional[str]]:
+    shelf_bin = shelf.get("bin_code")
+    if shelf_bin:
+        location = by_bin.get(shelf_bin)
+        if location is not None and location.id not in taken:
+            return location, "bin_code"
+
+    if shelf.get("row") and shelf.get("column"):
+        location = by_rcl.get((shelf["row"], shelf["column"], shelf["level"]))
+        if (
+            location is not None
+            and location.id not in taken
+            and _shelf_may_take_location(shelf, location)
+        ):
+            return location, "row_column_level"
+
+    location = by_code.get(shelf["location_code"])
+    if (
+        location is not None
+        and location.id not in taken
+        and _shelf_may_take_location(shelf, location)
+    ):
+        return location, "location_code"
+
+    return None, None
+
+
+def _apply_shelf_to_location(
+    location: Location,
+    shelf: dict,
+    zone_id: Optional[int],
+) -> None:
+    """Update a matched location in place. location_code is written separately."""
+    location.location_name = shelf["location_name"]
+    if shelf.get("bin_code"):
+        location.bin_code = shelf["bin_code"]
+    for field in ("row", "column", "level"):
+        if shelf.get(field) is not None:
+            setattr(location, field, shelf[field])
+    node_name = shelf.get("node_name")
+    if node_name:
+        location.node_name = node_name[:NODE_NAME_MAX_LENGTH]
+    # Import has no zone information unless the caller supplies one; never wipe it.
+    if zone_id is not None:
+        location.zone_id = zone_id
+    location.is_active = True
+
+
+def _assign_node_numbers(
+    db: Session,
+    assignments: list[tuple[Location, str]],
+    retiring: list[Location],
+) -> list[dict]:
+    """Write node numbers without tripping uq_location_warehouse_code.
+
+    Editors reshuffle node numbers between exports, so a target code is usually
+    still held by another row in the same warehouse. Park every code that is in the
+    way, flush, then write the final values.
+    """
+    targets = {code for _, code in assignments}
+
+    freed: list[dict] = []
+    for location in retiring:
+        if location.location_code in targets:
+            freed.append(
+                {
+                    "location_id": location.id,
+                    "bin_code": location.bin_code,
+                    "released_location_code": location.location_code,
+                }
+            )
+            location.location_code = f"__retired__{location.id}"
+
+    for location, code in assignments:
+        # New rows still carry their unique __new__ placeholder and have no id yet.
+        if location.id is not None and location.location_code != code:
+            location.location_code = f"__tmp__{location.id}"
+
+    db.flush()
+
+    for location, code in assignments:
+        location.location_code = code
+    db.flush()
+
+    return freed
+
+
+def _move_location_references(
+    db: Session,
+    from_location_id: int,
+    to_location_id: int,
+) -> dict[str, int]:
+    """Repoint every FK row from one location to another."""
+    moved: dict[str, int] = {}
+    for model, column in LOCATION_FK_COLUMNS:
+        col = getattr(model, column)
+        total = (
+            db.query(model)
+            .filter(col == from_location_id)
+            .update({col: to_location_id}, synchronize_session=False)
+        )
+        if total:
+            moved[f"{model.__tablename__}.{column}"] = total
+    return moved
+
+
+def move_assigned_stock_cache(from_location_id: int, target: dict) -> int:
+    """Rewrite inbound:assign:location:{id}:* keys after a remap.
+
+    Redis is not part of the DB transaction, so callers must only run this once the
+    transaction has been committed.
+    """
+    keys = cache_scan_keys(f"inbound:assign:location:{from_location_id}:*")
+    if not keys:
+        return 0
+    redis_client = get_redis()
+    values = redis_client.mget(keys)
+    moved = 0
+    for key, raw in zip(keys, values):
+        if not raw:
+            continue
+        cached = json.loads(raw)
+        cached["location_id"] = target["id"]
+        cached["location_name"] = target["location_name"]
+        cached["warehouse_id"] = target["warehouse_id"]
+        cache_set(
+            f"inbound:assign:location:{target['id']}:{cached['qr_code_id']}",
+            cached,
+            ttl=-1,
+        )
+        redis_client.delete(key)
+        moved += 1
+    return moved
+
+
+def _orphan_lookup(orphans: list[Location]) -> dict[str, Location]:
+    """Accept remap.from_bin as a bin code, a display name, or the old node number."""
+    lookup: dict[str, Location] = {}
+    for location in orphans:
+        for key in (location.bin_code, location.location_name, location.location_code):
+            if key:
+                lookup.setdefault(str(key), location)
+    return lookup
+
+
+def _blocked_message(blocked: list[dict]) -> str:
+    details = ", ".join(
+        f"{item['bin_code'] or item['location_name']} (SL {item['quantity']})"
+        for item in blocked
+    )
+    return (
+        "Không thể import map: các vị trí sau không còn trong map mới nhưng vẫn còn "
+        f"tồn kho: {details}. Hãy chuyển tồn sang bin khác, hoặc gửi kèm remap "
+        "[{from_bin, to_bin}] để dời tham chiếu sang bin mới."
+    )
 
 
 def sync_locations_from_map(
     db: Session,
-    content: bytes,
     warehouse_id: int,
     shelves: list[dict],
     zone_id: Optional[int] = None,
+    remap: Optional[list[dict]] = None,
+    strict: bool = True,
 ) -> dict:
+    """Upsert locations from map shelves while keeping location.id stable.
+
+    Shelves are matched on bin_code first, so a renumbered map node reuses the same
+    row and every FK stays valid. Locations missing from the new map are never
+    deleted: their references are moved to another bin when `remap` says so,
+    otherwise the row is just deactivated. Caller commits/rollbacks the session.
+
+    With strict=False, blockers are reported instead of raised (used by the preview).
+    """
     _ensure_warehouse_and_zone(db, warehouse_id, zone_id)
-    deleted = _hard_delete_locations_for_warehouse(db, warehouse_id)
     unique_shelves = _dedupe_shelves(shelves)
 
-    for shelf in unique_shelves:
-        db.add(
-            Location(
-                location_code=shelf["location_code"].strip(),
-                location_name=shelf["location_name"].strip(),
-                row=shelf["row"],
-                column=shelf["column"],
-                level=shelf["level"],
+    existing = db.query(Location).filter(Location.warehouse_id == warehouse_id).all()
+    by_bin = {loc.bin_code: loc for loc in existing if loc.bin_code}
+    by_rcl: dict[tuple, Location] = {}
+    by_code: dict[str, Location] = {}
+    for loc in existing:
+        if loc.row and loc.column:
+            by_rcl.setdefault((loc.row, loc.column, loc.level), loc)
+        by_code.setdefault(loc.location_code, loc)
+
+    taken: set[int] = set()
+    matched: list[dict] = []
+    assignments: list[tuple[Location, str]] = []
+    new_rows: list[Location] = []
+
+    for index, shelf in enumerate(unique_shelves):
+        location, matched_by = _match_shelf_to_location(
+            shelf, by_bin, by_rcl, by_code, taken
+        )
+        if location is None:
+            location = Location(
+                location_code=f"__new__{index}",
+                location_name=shelf["location_name"],
+                bin_code=shelf.get("bin_code"),
+                row=shelf.get("row"),
+                column=shelf.get("column"),
+                level=shelf.get("level"),
+                node_name=(shelf.get("node_name") or "")[:NODE_NAME_MAX_LENGTH] or None,
                 warehouse_id=warehouse_id,
                 zone_id=zone_id,
                 is_active=True,
             )
+            db.add(location)
+            new_rows.append(location)
+        else:
+            taken.add(location.id)
+            previous_code = location.location_code
+            _apply_shelf_to_location(location, shelf, zone_id)
+            matched.append(
+                {
+                    "location_id": location.id,
+                    "bin_code": location.bin_code,
+                    "location_name": location.location_name,
+                    "matched_by": matched_by,
+                    "previous_location_code": previous_code,
+                    "location_code": shelf["location_code"],
+                }
+            )
+        assignments.append((location, shelf["location_code"]))
+
+    orphans = [loc for loc in existing if loc.id not in taken]
+    # Built before parking codes, so operators can still refer to the old node number.
+    orphan_lookup = _orphan_lookup(orphans)
+
+    freed_codes = _assign_node_numbers(db, assignments, orphans)
+
+    created = [
+        {
+            "location_id": location.id,
+            "bin_code": location.bin_code,
+            "location_name": location.location_name,
+            "location_code": location.location_code,
+        }
+        for location in new_rows
+    ]
+
+    orphan_ids = [loc.id for loc in orphans]
+    references = _reference_counts_by_location(db, orphan_ids)
+    stock_totals = _active_stock_totals(db, orphan_ids)
+
+    bins_in_new_map = {loc.bin_code: loc for loc, _ in assignments if loc.bin_code}
+
+    remapped: list[dict] = []
+    remapped_ids: set[int] = set()
+    pending_cache_moves: list[tuple[int, dict]] = []
+    for entry in remap or []:
+        source_key = str(entry.get("from_bin") or "").strip()
+        target_key = str(entry.get("to_bin") or "").strip()
+        if not source_key or not target_key:
+            raise ValueError("Mỗi phần tử remap phải có cả from_bin và to_bin")
+
+        source = orphan_lookup.get(source_key)
+        if source is None:
+            raise ValueError(
+                f"remap.from_bin không phải vị trí bị loại khỏi map mới: {source_key}"
+            )
+        target = bins_in_new_map.get(target_key)
+        if target is None:
+            raise ValueError(f"remap.to_bin không có trong map mới: {target_key}")
+        if target.id == source.id:
+            raise ValueError(f"remap không thể trỏ về chính nó: {source_key}")
+
+        moved = _move_location_references(db, source.id, target.id)
+        remapped.append(
+            {
+                "from_location_id": source.id,
+                "from_bin": source.bin_code or source.location_name,
+                "to_location_id": target.id,
+                "to_bin": target.bin_code or target.location_name,
+                "moved": moved,
+            }
+        )
+        remapped_ids.add(source.id)
+        pending_cache_moves.append(
+            (
+                source.id,
+                {
+                    "id": target.id,
+                    "location_name": target.location_name,
+                    "warehouse_id": target.warehouse_id,
+                },
+            )
         )
 
+    blocked: list[dict] = []
+    retired: list[dict] = []
+    for location in orphans:
+        payload = {
+            "location_id": location.id,
+            "bin_code": location.bin_code,
+            "location_name": location.location_name,
+            "references": references.get(location.id, {}),
+        }
+        if location.id in remapped_ids:
+            # References were just moved away, so nothing is left pointing here.
+            payload["references"] = {}
+            retired.append(payload)
+            location.is_active = False
+            continue
+
+        quantity = stock_totals.get(location.id)
+        if quantity is not None:
+            payload["quantity"] = str(quantity)
+            blocked.append(payload)
+            continue
+
+        retired.append(payload)
+        location.is_active = False
+
+    if blocked and strict:
+        raise ValueError(_blocked_message(blocked))
+
     db.flush()
+
     return {
-        "deleted": deleted,
-        "created": len(unique_shelves),
-        "total": len(unique_shelves),
+        "total_shelves": len(unique_shelves),
+        "matched": matched,
+        "created": created,
+        "remapped": remapped,
+        "retired": retired,
+        "blocked": blocked,
+        "freed_codes": freed_codes,
+        "nodes_without_bin_code": [
+            {
+                "location_code": shelf["location_code"],
+                "node_name": shelf.get("node_name"),
+            }
+            for shelf in unique_shelves
+            if not shelf.get("bin_code")
+        ],
+        "counts": {
+            "matched": len(matched),
+            "created": len(created),
+            "remapped": len(remapped),
+            "retired": len(retired),
+            "blocked": len(blocked),
+        },
+        "_pending_cache_moves": pending_cache_moves,
     }
 
 def parse_shelf_node_from_map_node(node: list) -> Optional[ParsedShelfNode]:
@@ -576,17 +1041,23 @@ def parse_shelf_node_from_map_node(node: list) -> Optional[ParsedShelfNode]:
         column = g["column"]
         level = g["level"]
         location_name = g["bin"]
+        bin_code = g["bin"]
     else:
         location_name = name
         row = None
         column = None
         level = None
+        # Free-form labels (MS02, Xep_hop_1) are still stable identities; only the
+        # editor's numeric default is not.
+        bin_code = None if UNLABELLED_NODE_NAME_PATTERN.match(text) else text or None
     return ParsedShelfNode(
         location_code=str(node[3]),
+        bin_code=bin_code,
         row=row,
         column=column,
         level=level,
         location_name=location_name,
+        node_name=name,
         map_x=int(node[0]),
         map_y=int(node[1]),
     )
@@ -606,16 +1077,20 @@ def extract_shelf_nodes_from_zip(raw: bytes) -> list[dict]:
             continue
         shelves.append({
             "location_code": parsed.location_code,
+            "bin_code": parsed.bin_code,
             "location_name": parsed.location_name,
+            "node_name": parsed.node_name,
             "row": parsed.row,
             "column": parsed.column,
             "level": parsed.level,
+            "map_x": parsed.map_x,
+            "map_y": parsed.map_y,
         })
     return shelves
 
 #Get map
     
-def _resolve_map_zip_path(source: str) -> Path:
+def resolve_map_zip_path(source: str) -> Path:
     path = Path(source)
     if not path.is_absolute():
         path = BACKEND_ROOT / path
@@ -648,7 +1123,7 @@ def get_map_data(db: Session, warehouse_id: int) -> MapDataResponse:
     if warehouse_map is None:
         raise ValueError(f"No active map for warehouse_id={warehouse_id}")
 
-    zip_path = _resolve_map_zip_path(warehouse_map.source)
+    zip_path = resolve_map_zip_path(warehouse_map.source)
     data = _load_compress_json(zip_path)
 
     # Chỉ trả field FE cần (MapData contract)
@@ -675,7 +1150,7 @@ def export_warehouse_map(db: Session, warehouse_id: int) -> tuple[bytes, str]:
     if not warehouse_map:
         raise ValueError("Warehouse map not found")
     
-    zip_path = _resolve_map_zip_path(warehouse_map.source)
+    zip_path = resolve_map_zip_path(warehouse_map.source)
 
     if not zip_path.is_file():
         raise ValueError(f"Map file not found: {zip_path}")
@@ -703,6 +1178,9 @@ def get_locations_by_logic(db: Session, warehouse_id: int, type: str) -> list[Lo
     if type == "inbound_buffer":
         zone_keys = settings.zone_inbound
         return get_buffer_locations(db, warehouse_id, zone_keys)
+    elif type == "qc_buffer":
+        zone_keys = settings.zone_qc
+        return get_buffer_locations(db, warehouse_id, zone_keys)
     elif type == "outbound_buffer":
         zone_keys = settings.zone_outbound
         return get_buffer_locations(db, warehouse_id, zone_keys)
@@ -714,6 +1192,14 @@ def get_locations_by_logic(db: Session, warehouse_id: int, type: str) -> list[Lo
 LOCATION_QR_TEMPLATE_PATH = (
     Path(__file__).resolve().parents[3] / "static" / "templates" / "template_location.html"
 )
+LOCATION_MANUAL_90MM_TEMPLATE_PATH = (
+    Path(__file__).resolve().parents[3]
+    / "static"
+    / "templates"
+    / "template_location_manual_90mm.html"
+)
+LOCATION_QR_LABELS_PER_PAGE_AUTO = 2
+LOCATION_QR_LABELS_PER_PAGE_MANUAL = 6
 LOCATION_QR_LOGO_PATH = (
     Path(__file__).resolve().parents[3] / "static" / "templates" / "logo_vcc_plastic.jpg"
 )
@@ -726,14 +1212,43 @@ def _vcc_logo_data_uri() -> str:
     return f"data:image/webp;base64,{encoded}"
 
 
+def _is_storage_zone(zone: Zone | None) -> bool:
+    if zone is None:
+        return False
+    storage_keys = set(settings.zone_storage)
+    return zone.code in storage_keys or zone.name in storage_keys
+
+
+def _use_manual_storage_90mm_label(
+    warehouse_id: int | None,
+    locations: list[Location],
+) -> bool:
+    if not is_manual_warehouse(warehouse_id) or not locations:
+        return False
+    return all(_is_storage_zone(location.zone) for location in locations)
+
+
+def _location_labels_per_page(payload: dict) -> int:
+    if payload.get("use_manual_storage_90mm"):
+        return LOCATION_QR_LABELS_PER_PAGE_MANUAL
+    return LOCATION_QR_LABELS_PER_PAGE_AUTO
+
+
 def render_location_qr_codes(payload: dict) -> str:
-    template = LOCATION_QR_TEMPLATE_PATH.read_text(encoding="utf-8")
+    if payload.get("use_manual_storage_90mm"):
+        template_path = LOCATION_MANUAL_90MM_TEMPLATE_PATH
+        data_key = "__LOCATION_MANUAL_90MM_PRINT_DATA__"
+    else:
+        template_path = LOCATION_QR_TEMPLATE_PATH
+        data_key = "__LOCATION_PRINT_DATA__"
+
+    template = template_path.read_text(encoding="utf-8")
     logo_uri = _vcc_logo_data_uri()
     if logo_uri:
         template = template.replace("__VCC_LOGO_DATA_URI__", logo_uri)
     script = (
         "<script>"
-        f"window.__LOCATION_PRINT_DATA__ = {json.dumps(payload, ensure_ascii=False)};"
+        f"window.{data_key} = {json.dumps(payload, ensure_ascii=False)};"
         "</script>\n"
     )
     return template.replace(
@@ -743,12 +1258,32 @@ def render_location_qr_codes(payload: dict) -> str:
     )
 
 
-def generate_qr_location_code(db: Session, location_ids: list[int]) -> dict:
+def generate_qr_location_code(
+    db: Session,
+    location_ids: list[int],
+    *,
+    warehouse_id: int | None = None,
+) -> dict:
     if not location_ids:
         raise ValueError("location_ids must not be empty")
 
-    rows = db.query(Location).filter(Location.id.in_(location_ids)).all()
+    rows = (
+        db.query(Location)
+        .options(joinedload(Location.zone))
+        .filter(Location.id.in_(location_ids))
+        .all()
+    )
     location_by_id = {location.id: location for location in rows}
+    warehouse_ids = {location.warehouse_id for location in rows if location is not None}
+    if len(warehouse_ids) > 1:
+        raise ValueError("All locations must belong to the same warehouse")
+    resolved_warehouse_id = warehouse_id or next(iter(warehouse_ids), None)
+    if (
+        warehouse_id is not None
+        and warehouse_ids
+        and warehouse_id not in warehouse_ids
+    ):
+        raise ValueError("warehouse_id does not match selected locations")
 
     labels: list[dict] = []
     qr_ids: list[str] = []
@@ -757,23 +1292,40 @@ def generate_qr_location_code(db: Session, location_ids: list[int]) -> dict:
         if location is None:
             raise ValueError(f"Location not found: {location_id}")
 
-        qr_data = location.location_code
+        # Print the bin code, not the map node number: node numbers are rewritten on
+        # every map import, which would silently invalidate labels already on shelves.
+        qr_data = location.bin_code or location.location_code
         labels.append(
             {
                 "location_id": location.id,
                 "location_code": location.location_code,
                 "location_name": location.location_name,
+                "bin_code": location.bin_code,
                 "qr_data": qr_data,
             }
         )
         qr_ids.append(qr_data)
 
-    payload = {"labels": labels}
+    ordered_locations = [
+        location_by_id[location_id]
+        for location_id in location_ids
+        if location_id in location_by_id
+    ]
+    use_manual_storage_90mm = _use_manual_storage_90mm_label(
+        resolved_warehouse_id,
+        ordered_locations,
+    )
+    payload = {
+        "labels": labels,
+        "warehouse_id": resolved_warehouse_id,
+        "use_manual_storage_90mm": use_manual_storage_90mm,
+    }
     quantity = len(labels)
+    labels_per_page = _location_labels_per_page(payload)
     return {
         "html": render_location_qr_codes(payload),
         "quantity": quantity,
-        "page_count": math.ceil(quantity / 2) if quantity else 0,
+        "page_count": math.ceil(quantity / labels_per_page) if quantity else 0,
         "qr_ids": qr_ids,
     }
 

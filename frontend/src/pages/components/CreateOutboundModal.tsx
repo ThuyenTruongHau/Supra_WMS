@@ -8,7 +8,11 @@ import {
   Space,
   message,
 } from "antd";
-import { PlusOutlined, DeleteOutlined } from "@ant-design/icons";
+import {
+  PlusOutlined,
+  DeleteOutlined,
+  MinusCircleOutlined,
+} from "@ant-design/icons";
 import { Select, Button } from "@/components/ui";
 import { SkuSearchSelect } from "@/components/shared/SkuSearchSelect";
 import { useAppStore } from "@/store/useAppStore";
@@ -17,6 +21,7 @@ import {
   useUpdateOutboundOrder,
 } from "@/hooks/useOutbound";
 import type { OutboundOrderLineItemUpdate } from "@/types/outbound";
+import { getItemByIdApi } from "@/api/item";
 import {
   convertQuantityApi,
   getItemAvailableUnitsApi,
@@ -24,9 +29,12 @@ import {
 import { formatQuantity } from "@/utils/formatQuantity";
 import dayjs from "dayjs";
 import KeyValueDetailsEditor from "@/components/shared/KeyValueDetailsEditor";
+import { RequiredFieldLabel } from "@/components/shared/RequiredFieldLabel";
 import {
+  createEmptyKeyValueEntry,
   detailsToEntries,
   entriesToDetails,
+  nextKeyValueEntryId,
   type KeyValueEntry,
 } from "@/utils/keyValueDetails";
 import { getApiErrorMessage } from "@/utils/apiErrorMessage";
@@ -43,13 +51,15 @@ export interface OutboundItemDraft {
   base_unit_id?: number;
   converted_quantity?: number;
   converted_unit_name?: string;
+  warehouse_stock_quantity?: number | null;
+  warehouse_stock_loading?: boolean;
   detailEntries?: KeyValueEntry[];
 }
 
 interface CreateOutboundModalProps {
   open: boolean;
   onCancel: () => void;
-  onSuccess: () => void;
+  onSuccess: (created?: { id: number }) => void;
   mode?: "create" | "edit";
   editOrderId?: number;
   editOrderCode?: string;
@@ -68,6 +78,70 @@ export const createEmptyItem = (): OutboundItemDraft => ({
 
 function errorMessage(err: unknown): string {
   return getApiErrorMessage(err);
+}
+
+const OUTBOUND_ORDER_TYPE_OPTIONS = [
+  { value: "Tuyển chọn", label: "Tuyển chọn" },
+  { value: "Lấy lỗi", label: "Lấy lỗi" },
+  { value: "Lấy lẻ", label: "Lấy lẻ" },
+];
+
+const OUTBOUND_TYPES_WITH_LOT = new Set([
+  "tuyển chọn",
+  "lấy lỗi",
+  "lấy lẻ",
+]);
+
+function normalizeOutboundOrderType(value: string | undefined): string {
+  return (value ?? "").trim().toLowerCase();
+}
+
+function outboundTypeRequiresLotNumber(typeValue: string | undefined): boolean {
+  return OUTBOUND_TYPES_WITH_LOT.has(normalizeOutboundOrderType(typeValue));
+}
+
+function ensureLotNumberDetailEntry(entries: KeyValueEntry[]): KeyValueEntry[] {
+  const hasLotNumber = entries.some(
+    (entry) => entry.key.trim().toLowerCase() === "lot_number",
+  );
+  if (hasLotNumber) {
+    return entries;
+  }
+  return [
+    ...entries,
+    {
+      id: nextKeyValueEntryId("outbound-order"),
+      key: "lot_number",
+      value: "",
+    },
+  ];
+}
+
+function applyOutboundTypeDetailRules(entries: KeyValueEntry[]): KeyValueEntry[] {
+  const typeEntry = entries.find(
+    (entry) => entry.key.trim().toLowerCase() === "type",
+  );
+  if (!outboundTypeRequiresLotNumber(typeEntry?.value)) {
+    return entries;
+  }
+  return ensureLotNumberDetailEntry(entries);
+}
+
+function appendOutboundOrderDetailEntry(entries: KeyValueEntry[]): KeyValueEntry[] {
+  if (entries.length === 0) {
+    return [{ id: nextKeyValueEntryId("outbound-order"), key: "type", value: "" }];
+  }
+  if (entries.length === 1) {
+    return [
+      ...entries,
+      {
+        id: nextKeyValueEntryId("outbound-order"),
+        key: "lot_number",
+        value: "",
+      },
+    ];
+  }
+  return [...entries, createEmptyKeyValueEntry()];
 }
 
 async function resolveItemsConversion(
@@ -156,7 +230,9 @@ export default function CreateOutboundModal({
     if (isEdit) {
       setOrderCode(editOrderCode ?? "");
       setNote(initialNote ?? "");
-      setDetailEntries(detailsToEntries(initialDetails));
+      setDetailEntries(
+        applyOutboundTypeDetailRules(detailsToEntries(initialDetails)),
+      );
       setOriginalItems(
         initialItems && initialItems.length > 0
           ? initialItems.map((item) => ({ ...item }))
@@ -165,7 +241,9 @@ export default function CreateOutboundModal({
     } else {
       setOrderCode(`OUT-${dayjs().format("YYYYMMDD-HHmmss")}`);
       setNote("");
-      setDetailEntries([]);
+      setDetailEntries(
+        applyOutboundTypeDetailRules(detailsToEntries(initialDetails)),
+      );
       setOriginalItems([]);
     }
   }, [open, isEdit, editOrderCode, initialNote, initialItems, initialDetails]);
@@ -222,8 +300,27 @@ export default function CreateOutboundModal({
     return available;
   };
 
+  const loadWarehouseStock = async (itemKey: string, itemId: number) => {
+    updateItem(itemKey, {
+      warehouse_stock_loading: true,
+      warehouse_stock_quantity: undefined,
+    });
+    try {
+      const detail = await getItemByIdApi(itemId);
+      updateItem(itemKey, {
+        warehouse_stock_loading: false,
+        warehouse_stock_quantity: Number(detail.available_quantity ?? 0),
+      });
+    } catch {
+      updateItem(itemKey, {
+        warehouse_stock_loading: false,
+        warehouse_stock_quantity: null,
+      });
+    }
+  };
+
   useEffect(() => {
-    if (!open || !isEdit || !initialItems?.length) return;
+    if (!open || !initialItems?.length) return;
 
     let cancelled = false;
 
@@ -260,6 +357,7 @@ export default function CreateOutboundModal({
           }),
         );
         for (const entry of entries) {
+          void loadWarehouseStock(entry.itemKey, entry.item_id);
           if (entry.unit_id && entry.quantity > 0) {
             await refreshConvertedQuantity(
               entry.itemKey,
@@ -375,27 +473,120 @@ export default function CreateOutboundModal({
       const resolvedItems = await resolveItemsConversion(items);
       if (!validateConvertedItems(resolvedItems)) return;
 
-      await createMutation.mutateAsync({
+      const createPayload = {
+        order_code: orderCode.trim(),
+        note: note.trim() || null,
+        warehouse_id: selectedWarehouseId,
+        details: entriesToDetails(detailEntries),
+        line_items: resolvedItems.map((i) => buildLineItemPayload(i, outboundType)),
+      };
+      console.log("[CreateOutboundModal] create payload", {
         outboundType,
-        data: {
-          order_code: orderCode.trim(),
-          note: note.trim() || null,
-          warehouse_id: selectedWarehouseId,
-          details: entriesToDetails(detailEntries),
-          line_items: resolvedItems.map((i) => buildLineItemPayload(i, outboundType)),
-        },
+        data: createPayload,
+      });
+
+      const created = await createMutation.mutateAsync({
+        outboundType,
+        data: createPayload,
       });
       message.success({
         content: "Tạo đơn xuất thành công!",
         key: "submit",
       });
-      onSuccess();
+      onSuccess({ id: created.id });
     } catch (err) {
       message.error({ content: errorMessage(err), key: "submit" });
     }
   };
 
   const isSubmitting = createMutation.isPending || updateMutation.isPending;
+
+  const updateOrderDetailEntry = (id: string, patch: Partial<KeyValueEntry>) => {
+    setDetailEntries((prev) => {
+      const next = prev.map((entry) =>
+        entry.id === id ? { ...entry, ...patch } : entry,
+      );
+      const updated = next.find((entry) => entry.id === id);
+      const touchesTypeKey =
+        updated?.key.trim().toLowerCase() === "type" ||
+        patch.key?.trim().toLowerCase() === "type";
+      if (touchesTypeKey && ("value" in patch || "key" in patch)) {
+        return applyOutboundTypeDetailRules(next);
+      }
+      return next;
+    });
+  };
+
+  const removeOrderDetailEntry = (id: string) => {
+    setDetailEntries((prev) => prev.filter((entry) => entry.id !== id));
+  };
+
+  const renderOrderDetailEntries = () => (
+    <div className="mb-2">
+      <div className="mb-2 text-sm font-medium text-slate-700">
+        Thông tin bổ sung đơn
+      </div>
+      {detailEntries.length > 0 && (
+        <div className="mb-2 space-y-2">
+          {detailEntries.map((entry) => {
+            const normalizedKey = entry.key.trim().toLowerCase();
+            return (
+              <div key={entry.id} className="flex w-full items-start gap-2">
+                <Input
+                  placeholder="Tên (vd: type)"
+                  value={entry.key}
+                  onChange={(e) =>
+                    updateOrderDetailEntry(entry.id, { key: e.target.value })
+                  }
+                  className="flex-1"
+                />
+                {normalizedKey === "type" ? (
+                  <Select
+                    className="flex-1"
+                    placeholder="Chọn loại đơn"
+                    value={entry.value || undefined}
+                    options={OUTBOUND_ORDER_TYPE_OPTIONS}
+                    onChange={(val) =>
+                      updateOrderDetailEntry(entry.id, {
+                        value: typeof val === "string" ? val : "",
+                      })
+                    }
+                  />
+                ) : (
+                  <Input
+                    placeholder={
+                      normalizedKey === "lot_number"
+                        ? "Số lô (vd: 01/03/26-05/03/26)"
+                        : "Giá trị"
+                    }
+                    value={entry.value}
+                    onChange={(e) =>
+                      updateOrderDetailEntry(entry.id, { value: e.target.value })
+                    }
+                    className="flex-1"
+                  />
+                )}
+                <MinusCircleOutlined
+                  className="mt-2 shrink-0 cursor-pointer text-red-400"
+                  onClick={() => removeOrderDetailEntry(entry.id)}
+                />
+              </div>
+            );
+          })}
+        </div>
+      )}
+      <AntButton
+        type="dashed"
+        icon={<PlusOutlined />}
+        className="w-full"
+        onClick={() =>
+          setDetailEntries((prev) => appendOutboundOrderDetailEntry(prev))
+        }
+      >
+        Thêm trường đơn
+      </AntButton>
+    </div>
+  );
 
   const renderItemEditor = (item: OutboundItemDraft, itemIndex: number) => (
     <div
@@ -414,7 +605,7 @@ export default function CreateOutboundModal({
       </div>
 
       <div>
-        <p className="mb-2 text-sm font-medium text-slate-600">Mã sản phẩm</p>
+        <RequiredFieldLabel required>Mã sản phẩm</RequiredFieldLabel>
         {item.detail_id ? (
           <Input
             value={
@@ -439,6 +630,8 @@ export default function CreateOutboundModal({
                   base_unit_id: undefined,
                   converted_quantity: undefined,
                   converted_unit_name: undefined,
+                  warehouse_stock_quantity: undefined,
+                  warehouse_stock_loading: false,
                 });
               } else {
                 updateItem(item.key, { sku });
@@ -455,6 +648,8 @@ export default function CreateOutboundModal({
                   base_unit_id: undefined,
                   converted_quantity: undefined,
                   converted_unit_name: undefined,
+                  warehouse_stock_quantity: undefined,
+                  warehouse_stock_loading: false,
                 });
                 return;
               }
@@ -471,6 +666,7 @@ export default function CreateOutboundModal({
                   quantity,
                   unit_id: available.base_unit_id,
                 });
+                void loadWarehouseStock(item.key, opt.item_id);
                 await refreshConvertedQuantity(
                   item.key,
                   opt.item_id,
@@ -485,31 +681,51 @@ export default function CreateOutboundModal({
         )}
       </div>
 
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div>
+          <RequiredFieldLabel
+            required
+            className="mb-1 text-xs font-medium text-slate-500"
+          >
+            Số lượng
+          </RequiredFieldLabel>
+          <Input
+            type="number"
+            min={0}
+            value={item.quantity > 0 ? item.quantity : ""}
+            placeholder="SL"
+            onChange={(e) => {
+              const raw = e.target.value;
+              if (raw === "") {
+                updateItem(item.key, { quantity: 0 });
+                return;
+              }
+              const quantity = Number(raw);
+              if (Number.isNaN(quantity)) return;
+              updateItem(item.key, { quantity });
+              if (item.item_id && item.unit_id && quantity > 0) {
+                void refreshConvertedQuantity(
+                  item.key,
+                  item.item_id,
+                  item.unit_id,
+                  quantity,
+                );
+              }
+            }}
+          />
+        </div>
         <Input
-          type="number"
-          min={0}
-          prefix={<span className="text-xs text-slate-400">SL:</span>}
-          value={item.quantity > 0 ? item.quantity : ""}
-          placeholder="SL"
-          onChange={(e) => {
-            const raw = e.target.value;
-            if (raw === "") {
-              updateItem(item.key, { quantity: 0 });
-              return;
-            }
-            const quantity = Number(raw);
-            if (Number.isNaN(quantity)) return;
-            updateItem(item.key, { quantity });
-            if (item.item_id && item.unit_id && quantity > 0) {
-              void refreshConvertedQuantity(
-                item.key,
-                item.item_id,
-                item.unit_id,
-                quantity,
-              );
-            }
-          }}
+          disabled
+          prefix={<span className="text-xs text-slate-400">Tồn kho:</span>}
+          value={
+            !item.item_id
+              ? "—"
+              : item.warehouse_stock_loading
+                ? "..."
+                : item.warehouse_stock_quantity != null
+                  ? formatQuantity(item.warehouse_stock_quantity)
+                  : "—"
+          }
         />
         <Select
           className="w-full"
@@ -607,13 +823,15 @@ export default function CreateOutboundModal({
       <Divider titlePlacement="left" className="!text-sm text-slate-400">
         THÔNG TIN BỔ SUNG ĐƠN
       </Divider>
-      <KeyValueDetailsEditor
-        entries={detailEntries}
-        onChange={setDetailEntries}
-        label="Thông tin bổ sung đơn"
-        addButtonText="Thêm trường đơn"
-        className="mb-2"
-      />
+      {!isEdit ? renderOrderDetailEntries() : (
+        <KeyValueDetailsEditor
+          entries={detailEntries}
+          onChange={setDetailEntries}
+          label="Thông tin bổ sung đơn"
+          addButtonText="Thêm trường đơn"
+          className="mb-2"
+        />
+      )}
 
       <Divider titlePlacement="left" className="!mt-6 !text-sm text-slate-400">
         DANH SÁCH HÀNG XUẤT

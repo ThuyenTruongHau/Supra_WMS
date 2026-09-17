@@ -1,7 +1,13 @@
 from datetime import datetime
+from decimal import Decimal
 from typing import Optional
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
+
+from app.modules.warehouse.lot_number_utils import (
+    format_lot_number_display,
+    resolve_lot_number_fields,
+)
 
 
 class StocktakeCreate(BaseModel):
@@ -65,3 +71,63 @@ class StocktakeItemStockListResponse(BaseModel):
     total: int
     page: int
     page_size: int
+
+
+class StocktakeRecordCountRequest(BaseModel):
+    actual_quantity: int = Field(..., ge=0)
+    lot_number_from: Optional[str] = Field(None, max_length=50)
+    lot_number_to: Optional[str] = Field(None, max_length=50)
+    lot_number: Optional[str] = Field(None, max_length=50)
+    expiry_date: Optional[str] = Field(None, max_length=50)
+    location_id: Optional[int] = Field(None, gt=0)
+    status: Optional[str] = Field(None, max_length=20)
+
+    @model_validator(mode="after")
+    def validate_lot_fields(self) -> "StocktakeRecordCountRequest":
+        if (
+            self.lot_number_from is None
+            and self.lot_number_to is None
+            and self.lot_number is None
+        ):
+            return self
+        from_val, to_val = resolve_lot_number_fields(
+            lot_number_from=self.lot_number_from,
+            lot_number_to=self.lot_number_to,
+            lot_number=self.lot_number,
+        )
+        self.lot_number_from = from_val
+        self.lot_number_to = to_val
+        return self
+
+
+class StocktakeConfirmQuantityRequest(BaseModel):
+    note: Optional[str] = None
+
+
+class StocktakeItemStockFormData(BaseModel):
+    stocktake_item_id: int
+    stocktake_id: int
+    item_stock_id: int
+    desired_quantity: int
+    item_sku: Optional[str] = None
+    item_name: Optional[str] = None
+    location_id: int
+    location_code: Optional[str] = None
+    location_name: Optional[str] = None
+    lot_number_from: Optional[str] = None
+    lot_number_to: Optional[str] = None
+    lot_number: Optional[str] = None
+    expiry_date: Optional[str] = None
+    status: str
+    system_quantity: Decimal
+
+    model_config = ConfigDict(from_attributes=True)
+
+    @model_validator(mode="after")
+    def set_lot_display(self) -> "StocktakeItemStockFormData":
+        if self.lot_number is None:
+            self.lot_number = format_lot_number_display(
+                self.lot_number_from,
+                self.lot_number_to,
+            )
+        return self

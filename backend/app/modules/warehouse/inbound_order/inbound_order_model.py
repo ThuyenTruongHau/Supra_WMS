@@ -56,7 +56,7 @@ class InboundOrder(Base):
             (
                 _inbound_order_detail_exists(
                     id,
-                    _inbound_order_detail_tbl.c.status.notin_(("initialize", "cancelled")),
+                    _inbound_order_detail_tbl.c.status.notin_(("initialize",)),
                 ),
                 "in_progress",
             ),

@@ -117,6 +117,7 @@ class ItemStockInDetail(BaseModel):
     location_id: int
     unit_id: int
     location_code: Optional[str] = None
+    location_name: Optional[str] = None
     lot_number_from: Optional[str] = None
     lot_number_to: Optional[str] = None
     lot_number: Optional[str] = None
@@ -130,11 +131,12 @@ class ItemStockInDetail(BaseModel):
 class ItemDetailResponse(BaseModel):
     item: ItemResponse
     stocks: list[ItemStockInDetail]
+    available_quantity: Decimal = Decimal("0")
 
 
 # --- QR Code ---
 
-QrType = Literal["item", "transit"]
+QrType = Literal["item", "transit", "pack"]
 
 
 class QRCodeCreate(BaseModel):

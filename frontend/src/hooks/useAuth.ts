@@ -10,6 +10,8 @@ import {
   updateUserApi,
 } from '@/api/auth';
 import { useAuthStore } from '@/store/useAuthStore';
+import { SNAPSHOT_MODE } from '@/snapshot/snapshotConfig';
+import { getHomePathFromAccess } from '@/utils/authSession';
 import type {
   CreateUserInput,
   LoginRequest,
@@ -28,14 +30,19 @@ export const useLogin = () => {
   return useMutation<LoginResponse, Error, LoginRequest>({
     mutationFn: loginApi,
     onSuccess: (data, variables) => {
+      const roles = data.roles.length > 0
+        ? data.roles
+        : data.user.roles?.map((r) => r.name) ?? [];
       setAuth(
         data.access_token,
         data.refresh_token,
         data.role_canonical,
         data.role,
         variables.username,
+        roles,
+        data.user.access,
       );
-      navigate('/');
+      navigate(getHomePathFromAccess(data.user.access));
     },
   });
 };
@@ -45,6 +52,10 @@ export const useLogout = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   return () => {
+    if (SNAPSHOT_MODE) {
+      navigate('/report', { replace: true });
+      return;
+    }
     clearAuth();
     queryClient.clear();
     navigate('/login', { replace: true });
