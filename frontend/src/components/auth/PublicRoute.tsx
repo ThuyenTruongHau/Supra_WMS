@@ -14,7 +14,7 @@ export function PublicRoute({ children }: { children: React.ReactNode }) {
 
   if (isAuthenticated) {
     if (access) {
-      return <Navigate to={getHomePathFromAccess(access)} replace />;
+      return <Navigate to={getHomePathFromAccess(access, role_canonical)} replace />;
     }
     if (roles.length > 0 || role) {
       return <Navigate to={getHomePath(resolveRoles(roles, role))} replace />;

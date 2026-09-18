@@ -1,5 +1,6 @@
 import { MODULE_ROLE_NAMES, type UserAccessSummary } from '@/types/auth';
 import { useAuthStore } from '@/store/useAuthStore';
+import { getHomePathForRole } from '@/constants/roles';
 
 const AUTH_API_PATHS = ['/api/v1/auth/login', '/api/v1/auth/refresh', '/api/v1/auth/signup'];
 
@@ -29,12 +30,16 @@ export function isStaffRole(roles: string[]): boolean {
 export function getHomePath(roles: string[]): string {
   if (isAdminRole(roles)) return '/report';
   if (isStaffRole(roles)) return '/qrtablet/import';
+  if (roles.some((r) => r.toLowerCase() === 'operator' || r.toLowerCase() === 'o001' || r.toLowerCase() === 'o002')) {
+    return '/overview';
+  }
   return '/login';
 }
 
-export function getHomePathFromAccess(access: UserAccessSummary): string {
+export function getHomePathFromAccess(access: UserAccessSummary, roleCanonical?: string | null): string {
   if (access.is_admin) return '/report';
   if (access.modules.length > 0) return '/qrtablet/import';
+  if (roleCanonical) return getHomePathForRole(roleCanonical);
   return '/login';
 }
 

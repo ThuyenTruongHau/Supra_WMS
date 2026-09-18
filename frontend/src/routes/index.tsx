@@ -52,7 +52,7 @@ export default function AppRoutes() {
         path="/qrtablet"
         element={
           <ProtectedRoute>
-            <QrTabletLayout />
+            <MainLayout />
           </ProtectedRoute>
         }
       >
@@ -64,16 +64,15 @@ export default function AppRoutes() {
         <Route path="print-qr" element={<QrTabletPrintQrPage />} />
       </Route>
 
-      {/* ── Main app with sidebar (admin only) ── */}
+      {/* ── Main app with sidebar ── */}
       <Route
         path="/"
         element={
-          <AdminRoute>
+          <ProtectedRoute>
             <MainLayout />
-          </AdminRoute>
+          </ProtectedRoute>
         }
       >
-        <Route index element={<Navigate to="/report" replace />} />
         <Route index element={<RoleHomeRedirect />} />
         <Route
           path="overview"
@@ -95,6 +94,7 @@ export default function AppRoutes() {
         <Route path="export/:orderId" element={<OutboundDetailPage />} />
         <Route path="inventory" element={<StocktakePage />} />
         <Route path="inventory/:id" element={<StocktakeDetailPage />} />
+        <Route path="print-qr" element={<QrTabletPrintQrPage />} />
         {/* Các Route con ngoài WMS dropdown */}
         <Route path="report" element={<ReportPage />} />
         <Route path="notification" element={<div>Trang Thông báo</div>} />

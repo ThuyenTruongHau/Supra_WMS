@@ -195,10 +195,13 @@ function SidebarGroup({
   );
 }
 
+import { isAdminRole } from "@/constants/roles";
+
 export default function Sidebar() {
-  const { username, role, isAuthenticated } = useAuthStore();
+  const { username, role, role_canonical, isAuthenticated } = useAuthStore();
   const logout = useLogout();
   const [collapsed, setCollapsed] = useState(false);
+  const isAdmin = isAdminRole(role_canonical);
 
   if (!SNAPSHOT_MODE && !isAuthenticated) {
     return <Navigate to="/login" replace />;
@@ -239,60 +242,102 @@ export default function Sidebar() {
       </div>
 
       <nav className="flex flex-col gap-1 flex-1 overflow-y-auto mt-6 px-3 overflow-x-hidden">
-        <SidebarLink
-          to="/report"
-          icon={<BarChartOutlined className="text-lg" />}
-          label="Báo cáo"
-          collapsed={collapsed}
-        />
+        {isAdmin ? (
+          <>
+            <SidebarLink
+              to="/report"
+              icon={<BarChartOutlined className="text-lg" />}
+              label="Báo cáo"
+              collapsed={collapsed}
+            />
 
-        <SidebarGroup
-          label="Quản lý kho"
-          icon={<ShopOutlined className="text-lg" />}
-          items={[
-            {
-              to: "/dashboard",
-              icon: <AppstoreOutlined />,
-              label: "Tổng quan",
-            },
-            { to: "/items", icon: <BoxPlotOutlined />, label: "Sản phẩm" },
-            { to: "/zones", icon: <ClusterOutlined />, label: "Zone" },
-            { to: "/import", icon: <ImportOutlined />, label: "Nhập kho" },
-            { to: "/export", icon: <ExportOutlined />, label: "Xuất kho" },
-            { to: "/inventory", icon: <AuditOutlined />, label: "Kiểm kê" },
-          ]}
-          collapsed={collapsed}
-        />
-        <SidebarLink
-          to="/notification"
-          icon={<BellOutlined className="text-lg" />}
-          label="Thông báo"
-          collapsed={collapsed}
-        />
-        <SidebarGroup
-          label="Cài đặt"
-          icon={<SettingOutlined className="text-lg" />}
-          items={[
-            {
-              to: "/setting/users",
-              icon: <UserOutlined />,
-              label: "Người dùng",
-            },
-            { to: "/setting/warehouse", icon: <HomeOutlined />, label: "Kho" },
-            {
-              to: "/setting/units",
-              icon: <ExportOutlined />,
-              label: "Đơn vị",
-            },
-            {
-              to: "/setting/qr-codes",
-              icon: <QrcodeOutlined />,
-              label: "Quản lý QR",
-            },
-            // { to: "/setting/items", icon: <BoxPlotOutlined />, label: "Sản phẩm" },
-          ]}
-          collapsed={collapsed}
-        />
+            <SidebarGroup
+              label="Quản lý kho"
+              icon={<ShopOutlined className="text-lg" />}
+              items={[
+                {
+                  to: "/dashboard",
+                  icon: <AppstoreOutlined />,
+                  label: "Tổng quan",
+                },
+                { to: "/items", icon: <BoxPlotOutlined />, label: "Sản phẩm" },
+                { to: "/zones", icon: <ClusterOutlined />, label: "Zone" },
+                { to: "/import", icon: <ImportOutlined />, label: "Nhập kho" },
+                { to: "/export", icon: <ExportOutlined />, label: "Xuất kho" },
+                { to: "/inventory", icon: <AuditOutlined />, label: "Kiểm kê" },
+              ]}
+              collapsed={collapsed}
+            />
+            <SidebarLink
+              to="/notification"
+              icon={<BellOutlined className="text-lg" />}
+              label="Thông báo"
+              collapsed={collapsed}
+            />
+            <SidebarGroup
+              label="Cài đặt"
+              icon={<SettingOutlined className="text-lg" />}
+              items={[
+                {
+                  to: "/setting/users",
+                  icon: <UserOutlined />,
+                  label: "Người dùng",
+                },
+                { to: "/setting/warehouse", icon: <HomeOutlined />, label: "Kho" },
+                {
+                  to: "/setting/units",
+                  icon: <ExportOutlined />,
+                  label: "Đơn vị",
+                },
+                {
+                  to: "/setting/qr-codes",
+                  icon: <QrcodeOutlined />,
+                  label: "Quản lý QR",
+                },
+              ]}
+              collapsed={collapsed}
+            />
+          </>
+        ) : (
+          <>
+            <SidebarLink
+              to="/overview"
+              icon={<AppstoreOutlined className="text-lg" />}
+              label="Tổng quan"
+              collapsed={collapsed}
+            />
+            <SidebarLink
+              to="/import"
+              icon={<ImportOutlined className="text-lg" />}
+              label="Nhập kho"
+              collapsed={collapsed}
+            />
+            <SidebarLink
+              to="/export"
+              icon={<ExportOutlined className="text-lg" />}
+              label="Xuất kho"
+              collapsed={collapsed}
+            />
+            <SidebarLink
+              to="/inventory"
+              icon={<AuditOutlined className="text-lg" />}
+              label="Kiểm kê"
+              collapsed={collapsed}
+            />
+            <SidebarLink
+              to="/qrtablet"
+              icon={<QrcodeOutlined className="text-lg" />}
+              label="Giao diện PDA"
+              collapsed={collapsed}
+            />
+            <SidebarLink
+              to="/print-qr"
+              icon={<QrcodeOutlined className="text-lg" />}
+              label="In mã QR"
+              collapsed={collapsed}
+            />
+          </>
+        )}
       </nav>
 
       <div

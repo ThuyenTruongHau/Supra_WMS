@@ -43,7 +43,7 @@ export const useLogin = () => {
         roles,
         data.user.access,
       );
-      navigate(getHomePathFromAccess(data.user.access));
+      navigate(getHomePathFromAccess(data.user.access, data.role_canonical));
     },
   });
 };
