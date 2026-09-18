@@ -1,7 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { refreshAccessTokenApi } from '@/api/authRefresh';
 import { useAuthStore } from '@/store/useAuthStore';
-import { SNAPSHOT_MODE } from '@/snapshot/snapshotConfig';
 import {
   forceLogout,
   hasValidRefreshToken,
@@ -15,7 +14,7 @@ export function useAuthBootstrap() {
   const ran = useRef(false);
 
   useEffect(() => {
-    if (SNAPSHOT_MODE || ran.current) return;
+    if (ran.current) return;
     ran.current = true;
 
     const { access_token, refresh_token, isAuthenticated } = useAuthStore.getState();

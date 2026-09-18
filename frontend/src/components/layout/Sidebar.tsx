@@ -3,7 +3,6 @@ import { matchPath, Navigate, NavLink, useLocation } from "react-router-dom";
 import logo_thado from "@/assets/logo_thadorobot.png";
 import { useLogout } from "@/hooks/useAuth";
 import { useAuthStore } from "@/store/useAuthStore";
-import { SNAPSHOT_MODE } from "@/snapshot/snapshotConfig";
 import {
   LogoutOutlined,
   BarChartOutlined,
@@ -203,7 +202,7 @@ export default function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const isAdmin = isAdminRole(role_canonical);
 
-  if (!SNAPSHOT_MODE && !isAuthenticated) {
+  if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
 

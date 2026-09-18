@@ -1,7 +1,5 @@
 import axios, { InternalAxiosRequestConfig } from 'axios';
 import { useAuthStore } from '@/store/useAuthStore';
-import { SNAPSHOT_MODE } from '@/snapshot/snapshotConfig';
-import { snapshotAdapter } from '@/snapshot/snapshotAdapter';
 import { refreshAccessTokenApi } from './authRefresh';
 import {
   forceLogout,
@@ -20,8 +18,6 @@ const axiosInstance = axios.create({
     'Content-Type': 'application/json',
   },
   timeout: 10000,
-  // Bản demo offline đọc dữ liệu từ snapshot thay vì gọi mạng.
-  adapter: SNAPSHOT_MODE ? snapshotAdapter : undefined,
 });
 
 let isRefreshing = false;
@@ -66,10 +62,6 @@ axiosInstance.interceptors.response.use(
   },
   async (error) => {
     const originalRequest = error.config as CustomAxiosRequestConfig;
-
-    if (SNAPSHOT_MODE) {
-      return Promise.reject(error);
-    }
 
     if (error.response?.status === 401 && originalRequest) {
       if (isAuthApiUrl(originalRequest.url)) {

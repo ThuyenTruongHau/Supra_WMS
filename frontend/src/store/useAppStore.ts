@@ -5,7 +5,6 @@ import {
   syncWarehouseOperationTypes,
   type WarehouseOperationType,
 } from "@/config/warehouseMode";
-import { SNAPSHOT_MODE, getSnapshotConfig } from "@/snapshot/snapshotConfig";
 
 interface AppState {
   selectedWarehouseId: number;
@@ -16,9 +15,7 @@ interface AppState {
   setLang: (lang: string) => void;
 }
 
-const DEFAULT_WAREHOUSE_ID = SNAPSHOT_MODE
-  ? getSnapshotConfig().defaultWarehouseId
-  : 1;
+const DEFAULT_WAREHOUSE_ID = 1;
 syncWarehouseOperationTypes(DEFAULT_WAREHOUSE_ID);
 
 export const useAppStore = create<AppState>((set) => ({

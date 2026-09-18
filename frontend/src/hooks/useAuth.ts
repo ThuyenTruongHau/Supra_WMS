@@ -10,7 +10,6 @@ import {
   updateUserApi,
 } from '@/api/auth';
 import { useAuthStore } from '@/store/useAuthStore';
-import { SNAPSHOT_MODE } from '@/snapshot/snapshotConfig';
 import { getHomePathFromAccess } from '@/utils/authSession';
 import type {
   CreateUserInput,
@@ -53,10 +52,6 @@ export const useLogout = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   return () => {
-    if (SNAPSHOT_MODE) {
-      navigate('/report', { replace: true });
-      return;
-    }
     clearAuth();
     queryClient.clear();
     navigate('/login', { replace: true });

@@ -1,5 +1,4 @@
 import { create } from 'zustand';
-import { SNAPSHOT_MODE, getSnapshotConfig } from '@/snapshot/snapshotConfig';
 import type { UserAccessSummary } from '@/types/auth';
 
 interface AuthState {
@@ -26,18 +25,6 @@ interface AuthState {
   clearAuth: () => void;
 }
 
-type AuthSnapshot = Pick<
-  AuthState,
-  | 'access_token'
-  | 'refresh_token'
-  | 'role_canonical'
-  | 'role'
-  | 'roles'
-  | 'access'
-  | 'username'
-  | 'zone_id'
-  | 'isAuthenticated'
->;
 
 function readStoredZoneId(): number | null {
   const raw = localStorage.getItem('zone_id');
@@ -67,30 +54,7 @@ function parseStoredRoles(): string[] {
   }
 }
 
-/**
- * Bản demo offline không có endpoint đăng nhập lúc khởi động, nên auth được
- * nạp sẵn từ window.__WMS_CONFIG__ để vào thẳng app.
- */
-const initialState = (): AuthSnapshot => {
-  if (SNAPSHOT_MODE) {
-    const { auth } = getSnapshotConfig();
-    return {
-      access_token: auth.access_token,
-      refresh_token: auth.refresh_token,
-      role_canonical: auth.role_canonical,
-      role: auth.role,
-      roles: ['admin'],
-      access: {
-        is_admin: true,
-        warehouse_scope: 'all',
-        warehouses: [],
-        modules: ['inbound', 'outbound', 'stocktake'],
-      },
-      username: auth.username,
-      zone_id: null,
-      isAuthenticated: true,
-    };
-  }
+const initialState = () => {
   const legacyRole = localStorage.getItem('role');
   const storedRoles = parseStoredRoles();
   return {
