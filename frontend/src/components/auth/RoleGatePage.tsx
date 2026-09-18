@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { useAuthStore } from '@/store/useAuthStore'
-import { isAdminRole } from '@/constants/roles'
+
 import BlankPage from '@/pages/BlankPage'
 
 /**
@@ -13,7 +13,7 @@ export function RoleGatePage({
   admin: ReactNode
   operator?: ReactNode
 }) {
-  const roleCanonical = useAuthStore((s) => s.role_canonical)
-  if (isAdminRole(roleCanonical)) return <>{admin}</>
+  const user = useAuthStore((s) => s.user)
+  if (user?.access?.is_admin) return <>{admin}</>
   return <>{operator ?? <BlankPage />}</>
 }

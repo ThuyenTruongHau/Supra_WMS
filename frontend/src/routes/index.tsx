@@ -6,7 +6,6 @@ import WarehouseSettingPage from "@/pages/WarehouseSettingPage";
 import MainLayout from "@/components/layout/MainLayout";
 import { PublicRoute } from "../components/auth/PublicRoute";
 import { ProtectedRoute } from "../components/auth/ProtectedRoute";
-import { AdminRoute } from "../components/auth/AdminRoute";
 import ItemPage from "@/pages/ItemPage";
 import UserSettingPage from "@/pages/UserSettingPage";
 import ItemDetailPage from "@/pages/ItemDetailPage";
@@ -20,7 +19,7 @@ import OutboundDetailPage from "@/pages/OutboundDetailPage";
 // import ItemSettingPage from "@/pages/ItemSettingPage";
 import StocktakePage from "@/pages/StocktakePage";
 import StocktakeDetailPage from "@/pages/StocktakeDetailPage";
-import QrTabletLayout from "@/pages/qrtablet/QrTabletLayout";
+
 import QrTabletInboundPage from "@/pages/qrtablet/QrTabletInboundPage";
 import QrTabletOutboundPage from "@/pages/qrtablet/QrTabletOutboundPage";
 import QrTabletOutboundDetailPage from "@/pages/qrtablet/QrTabletOutboundDetailPage";
@@ -33,7 +32,7 @@ import OperatorOverviewPage from "@/pages/OperatorOverviewPage";
 import OperatorInboundPage from "@/pages/OperatorInboundPage";
 import OperatorOutboundPage from "@/pages/OperatorOutboundPage";
 import OperatorSortingWavePage from "@/pages/OperatorSortingWavePage";
-import BlankPage from "@/pages/BlankPage";
+
 
 
 export default function AppRoutes() {

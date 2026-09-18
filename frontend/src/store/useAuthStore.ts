@@ -1,25 +1,17 @@
 import { create } from 'zustand';
-import type { UserAccessSummary } from '@/types/auth';
+import type { User } from '@/types/auth';
 
 interface AuthState {
   access_token: string | null;
   refresh_token: string | null;
-  role_canonical: string | null;
-  role: string | null;
-  roles: string[];
-  access: UserAccessSummary | null;
-  username: string | null;
+  user: User | null;
   zone_id: number | null;
   isAuthenticated: boolean;
   setAuth: (
     access_token: string,
     refresh_token: string | null,
-    role_canonical: string,
-    role: string,
-    username: string,
-    zone_id: number | null | undefined,
-    roles: string[],
-    access: UserAccessSummary,
+    user: User,
+    zone_id?: number | null,
   ) => void;
   setToken: (access_token: string, refresh_token?: string) => void;
   clearAuth: () => void;
@@ -33,38 +25,21 @@ function readStoredZoneId(): number | null {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
 }
 
-function parseStoredAccess(): UserAccessSummary | null {
+function parseStoredUser(): User | null {
   try {
-    const raw = localStorage.getItem('access_summary');
+    const raw = localStorage.getItem('user_data');
     if (!raw) return null;
-    return JSON.parse(raw) as UserAccessSummary;
+    return JSON.parse(raw) as User;
   } catch {
     return null;
   }
 }
 
-function parseStoredRoles(): string[] {
-  try {
-    const raw = localStorage.getItem('roles');
-    if (!raw) return [];
-    const parsed = JSON.parse(raw) as unknown;
-    return Array.isArray(parsed) ? parsed.filter((r): r is string => typeof r === 'string') : [];
-  } catch {
-    return [];
-  }
-}
-
 const initialState = () => {
-  const legacyRole = localStorage.getItem('role');
-  const storedRoles = parseStoredRoles();
   return {
     access_token: localStorage.getItem('access_token'),
     refresh_token: localStorage.getItem('refresh_token'),
-    role_canonical: localStorage.getItem('role_canonical'),
-    role: legacyRole,
-    roles: storedRoles.length > 0 ? storedRoles : legacyRole ? [legacyRole] : [],
-    access: parseStoredAccess(),
-    username: localStorage.getItem('username'),
+    user: parseStoredUser(),
     zone_id: readStoredZoneId(),
     isAuthenticated: !!localStorage.getItem('access_token'),
   };
@@ -72,13 +47,16 @@ const initialState = () => {
 
 export const useAuthStore = create<AuthState>((set) => ({
   ...initialState(),
-  setAuth: (access_token, refresh_token, role_canonical, role, username, zone_id, roles, access) => {
+  setAuth: (access_token, refresh_token, user, zone_id) => {
     localStorage.setItem('access_token', access_token);
-    localStorage.setItem('role_canonical', role_canonical);
-    localStorage.setItem('role', role);
-    localStorage.setItem('username', username);
-    localStorage.setItem('roles', JSON.stringify(roles));
-    localStorage.setItem('access_summary', JSON.stringify(access));
+    localStorage.setItem('user_data', JSON.stringify(user));
+    
+    // Clean up legacy keys
+    localStorage.removeItem('role_canonical');
+    localStorage.removeItem('role');
+    localStorage.removeItem('roles');
+    localStorage.removeItem('access_summary');
+    localStorage.removeItem('username');
     
     if (zone_id != null && zone_id > 0) {
       localStorage.setItem('zone_id', String(zone_id));
@@ -95,11 +73,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({
       access_token,
       refresh_token: refresh_token ?? null,
-      role_canonical,
-      role,
-      roles,
-      access,
-      username,
+      user,
       zone_id: zone_id != null && zone_id > 0 ? zone_id : null,
       isAuthenticated: true,
     });
@@ -119,20 +93,20 @@ export const useAuthStore = create<AuthState>((set) => ({
   clearAuth: () => {
     localStorage.removeItem('access_token');
     localStorage.removeItem('refresh_token');
+    localStorage.removeItem('user_data');
+    localStorage.removeItem('zone_id');
+
+    // Clean up legacy keys just in case
     localStorage.removeItem('role_canonical');
     localStorage.removeItem('role');
     localStorage.removeItem('roles');
     localStorage.removeItem('access_summary');
     localStorage.removeItem('username');
-    localStorage.removeItem('zone_id');
+    
     set({
       access_token: null,
       refresh_token: null,
-      role_canonical: null,
-      role: null,
-      roles: [],
-      access: null,
-      username: null,
+      user: null,
       zone_id: null,
       isAuthenticated: false,
     });

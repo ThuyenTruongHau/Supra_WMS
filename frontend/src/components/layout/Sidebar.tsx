@@ -194,13 +194,12 @@ function SidebarGroup({
   );
 }
 
-import { isAdminRole } from "@/constants/roles";
-
 export default function Sidebar() {
-  const { username, role, role_canonical, isAuthenticated } = useAuthStore();
+  const { user, isAuthenticated } = useAuthStore();
+  const username = user?.username;
   const logout = useLogout();
   const [collapsed, setCollapsed] = useState(false);
-  const isAdmin = isAdminRole(role_canonical);
+  const isAdmin = !!user?.access?.is_admin;
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
@@ -359,7 +358,7 @@ export default function Sidebar() {
               {username || "User"}
             </div>
             <div className="text-[10px] text-slate-500 uppercase tracking-wider">
-              {role || "Role"}
+              {user?.roles?.[0]?.name || (isAdmin ? "Admin" : "Operator")}
             </div>
           </div>
         </div>

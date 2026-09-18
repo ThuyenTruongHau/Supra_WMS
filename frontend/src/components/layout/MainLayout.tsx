@@ -1,13 +1,12 @@
 import { useAuthStore } from '@/store/useAuthStore'
-import { isAdminRole } from '@/constants/roles'
 import AdminLayout from './AdminLayout'
 import UserLayout from './UserLayout'
 
 /** Chọn layout theo role — admin và user không chia chung shell. */
 export default function MainLayout() {
-  const roleCanonical = useAuthStore((s) => s.role_canonical)
+  const user = useAuthStore((s) => s.user)
 
-  if (isAdminRole(roleCanonical)) {
+  if (user?.access?.is_admin) {
     return <AdminLayout />
   }
 
