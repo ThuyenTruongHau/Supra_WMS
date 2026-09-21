@@ -15,6 +15,7 @@ from app.modules.warehouse.outbound_order.outbound_order_api import router as ou
 from app.modules.warehouse.stocktake.stocktake_api import router as stocktake_router
 from app.modules.robot.robot_api import router as robot_router
 from app.modules.masan.masan_api import router as masan_router
+from app.modules.warehouse.notificcation.notification_api import router as notification_router
 from app.core.logger import setup_logger
 from app.core.cache import close_redis, get_redis
 from app.socket.ws_manager import ws_manager
@@ -82,6 +83,7 @@ app.include_router(transaction_router, prefix="/api/v1")
 app.include_router(unit_router, prefix="/api/v1")
 app.include_router(robot_router, prefix="/api/v1")
 app.include_router(masan_router, prefix="/api/v1")
+app.include_router(notification_router, prefix="/api/v1")
 
 @app.get("/")
 async def root():

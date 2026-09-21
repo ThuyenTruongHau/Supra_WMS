@@ -11,6 +11,8 @@ class Warehouse(Base):
     name = Column(String(100))
     description = Column(Text)
 
+    notifications = relationship("Notification", back_populates="warehouse")
+
 class Zone(Base):
     __tablename__ = "zone"
 

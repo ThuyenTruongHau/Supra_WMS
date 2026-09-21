@@ -61,6 +61,9 @@ class Settings(BaseSettings):
     celery_broker_url: str = "redis://10.73.231.5:6379/1"
     celery_broker_result_url: str = "redis://10.73.231.5:6379/2"
 
+    # Expired configuration
+    manual_expired_days: int = 60
+    auto_expired_days: int = 30
 
     @field_validator("manual_warehouse_ids", mode="before")
     @classmethod

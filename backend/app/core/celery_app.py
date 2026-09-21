@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from celery import Celery
+from celery.schedules import crontab
 from celery.signals import worker_process_init
 
 from app.core.config import settings
@@ -25,6 +26,7 @@ celery_app = Celery(
         "app.modules.warehouse.inbound_order.inbound_celery_task",
         "app.modules.warehouse.outbound_order.outbound_celery_task",
         "app.modules.warehouse.item.item_celery_task",
+        "app.modules.warehouse.notificcation.notification_celery_task",
     ],
 )
 
@@ -59,6 +61,13 @@ celery_app.conf.update(
         "inbound.*": {"queue": QUEUE_LOGIC},
         "outbound.*": {"queue": QUEUE_LOGIC},
         "item.*": {"queue": QUEUE_LOGIC},
+        "notification.*": {"queue": QUEUE_LOGIC},
+    },
+    beat_schedule={
+        "check-long-holding-stock-daily": {
+            "task": "notification.check_long_holding_stock",
+            "schedule": crontab(hour=11, minute=59),
+        },
     },
 )
 

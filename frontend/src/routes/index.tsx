@@ -21,6 +21,7 @@ import OutboundDetailPage from "@/pages/OutboundDetailPage";
 import StocktakePage from "@/pages/StocktakePage";
 import StocktakeDetailPage from "@/pages/StocktakeDetailPage";
 import BacklogPage from "@/pages/BacklogPage";
+import NotificationPage from "@/pages/NotificationPage";
 import QrTabletLayout from "@/pages/qrtablet/QrTabletLayout";
 import QrTabletInboundPage from "@/pages/qrtablet/QrTabletInboundPage";
 import QrTabletOutboundPage from "@/pages/qrtablet/QrTabletOutboundPage";
@@ -80,7 +81,7 @@ export default function AppRoutes() {
         <Route path="backlog" element={<BacklogPage />} />
         {/* Các Route con ngoài WMS dropdown */}
         <Route path="report" element={<ReportPage />} />
-        <Route path="notification" element={<div>Trang Thông báo</div>} />
+        <Route path="notification" element={<NotificationPage />} />
         <Route path="setting" element={<div>Trang Cài Đặt</div>} />
         <Route path="setting/users" element={<UserSettingPage />} />
         <Route path="setting/warehouse" element={<WarehouseSettingPage />} />

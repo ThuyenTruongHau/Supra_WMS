@@ -58,6 +58,7 @@ from app.modules.warehouse.stocktake.stocktake_model import (  # noqa: F401
     StocktakeItemStock,
 )
 from app.modules.warehouse.transaction_history.history_model import Transaction, History  # noqa: F401
+from app.modules.warehouse.notificcation.notification_model import Notification  # noqa: F401
 from app.modules.robot.robot_model import RobotTask, TaskStatus  # noqa: F401
 
 target_metadata = Base.metadata
