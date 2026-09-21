@@ -12,6 +12,7 @@ export interface Item {
   details: Record<string, unknown>
   is_active: boolean
   quantity: number
+  total_price: number
   created_at: string
   updated_at: string
 }
@@ -81,7 +82,7 @@ export interface ItemDetails {
 export interface ItemAnalyzeResponse {
   total_items: number
   total_quantity: number
-  total_nearly_outdated: number
+  total_inventory_value: number
   total_low_stock: number
 }
 

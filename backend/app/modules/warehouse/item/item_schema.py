@@ -4,6 +4,32 @@ from typing import Any, Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from app.modules.warehouse.lot_number_utils import apply_lot_display_fields
+
+
+def _price_from_item_details(details: dict | None) -> Decimal:
+    details = details or {}
+    for key in ("price", "Price"):
+        raw = details.get(key)
+        if raw is None:
+            continue
+        normalized = str(raw).replace(",", "").strip()
+        if not normalized:
+            continue
+        try:
+            return Decimal(normalized)
+        except Exception:
+            return Decimal("0")
+    return Decimal("0")
+
+
+def _compute_item_total_price(
+    quantity: Decimal | int | float | None,
+    details: dict | None,
+) -> Decimal:
+    qty = Decimal(str(quantity or 0))
+    return qty * _price_from_item_details(details)
+
 
 def _serialize_item_for_response(data: Any) -> Any:
     from app.modules.warehouse.item.item_model import Item
@@ -23,6 +49,7 @@ def _serialize_item_for_response(data: Any) -> Any:
             "details": data.details or {},
             "is_active": data.is_active,
             "quantity": data.quantity,
+            "total_price": _compute_item_total_price(data.quantity, data.details or {}),
             "created_at": data.created_at,
             "updated_at": data.updated_at,
         }
@@ -86,6 +113,7 @@ class ItemResponse(BaseModel):
     details: dict[str, Any] = Field(default_factory=dict)
     is_active: bool
     quantity: Optional[Decimal] = None
+    total_price: Decimal = Decimal("0")
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 
@@ -107,7 +135,7 @@ class ItemListResponse(BaseModel):
 class ItemAnalyzeResponse(BaseModel):
     total_items: int
     total_quantity: Decimal
-    total_nearly_outdated: int
+    total_inventory_value: Decimal
     total_low_stock: int
 
 
@@ -126,6 +154,18 @@ class ItemStockInDetail(BaseModel):
     status: str
 
     model_config = ConfigDict(from_attributes=True)
+
+    @model_validator(mode="after")
+    def set_lot_display(self) -> "ItemStockInDetail":
+        disp_from, disp_to, disp_lot = apply_lot_display_fields(
+            lot_number_from=self.lot_number_from,
+            lot_number_to=self.lot_number_to,
+            lot_number=self.lot_number,
+        )
+        self.lot_number_from = disp_from
+        self.lot_number_to = disp_to
+        self.lot_number = disp_lot
+        return self
 
 
 class ItemDetailResponse(BaseModel):

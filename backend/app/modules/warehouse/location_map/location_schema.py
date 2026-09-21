@@ -1,6 +1,8 @@
 from datetime import datetime
 from typing import Optional, Any
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
+
+from app.modules.warehouse.lot_number_utils import apply_lot_display_fields
 
 
 class LocationCreate(BaseModel):
@@ -158,6 +160,18 @@ class MapLocationStockItem(BaseModel):
     lot_number: Optional[str] = None
     quantity: str
 
+    @model_validator(mode="after")
+    def set_lot_display(self) -> "MapLocationStockItem":
+        disp_from, disp_to, disp_lot = apply_lot_display_fields(
+            lot_number_from=self.lot_number_from,
+            lot_number_to=self.lot_number_to,
+            lot_number=self.lot_number,
+        )
+        self.lot_number_from = disp_from
+        self.lot_number_to = disp_to
+        self.lot_number = disp_lot
+        return self
+
 
 class MapLocationItem(BaseModel):
     id: int
@@ -187,6 +201,18 @@ class LocationDetailStockItem(BaseModel):
     expiry_date: Optional[str] = None
     quantity: str
     status: str
+
+    @model_validator(mode="after")
+    def set_lot_display(self) -> "LocationDetailStockItem":
+        disp_from, disp_to, disp_lot = apply_lot_display_fields(
+            lot_number_from=self.lot_number_from,
+            lot_number_to=self.lot_number_to,
+            lot_number=self.lot_number,
+        )
+        self.lot_number_from = disp_from
+        self.lot_number_to = disp_to
+        self.lot_number = disp_lot
+        return self
 
 
 class LocationDetailSummary(BaseModel):

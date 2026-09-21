@@ -676,7 +676,7 @@ export default function QrTabletInboundPage() {
       setQuantity(aggregated.quantity);
       setItemBaseQuantity(aggregated.quantity);
       setUnitId(aggregated.unit_id);
-      setLotNumber(aggregated.lot_number);
+      setLotNumber("");
       setCavityNumber(aggregated.cavity_number);
       setManufacturingMachine(aggregated.manufacturing_machine ?? undefined);
       setManufacturingUsers(
@@ -745,7 +745,7 @@ export default function QrTabletInboundPage() {
       setQuantity(defaultQty);
       setItemBaseQuantity(defaultQty);
       setUnitId(result.unit_id);
-      setLotNumber(result.lot_number ?? "");
+      setLotNumber("");
       setCavityNumber(result.cavity_number ?? result.cavity_numbers?.[0]);
       setManufacturingMachine(result.manufacturing_machine ?? undefined);
       setManufacturingUsers(

@@ -156,7 +156,16 @@ export default function ZoneSettingPage() {
       handleCloseModal();
     };
 
-    const onAssignError = (err: { response?: { data?: { detail?: string } } }) => {
+    const onAssignError = (err: {
+      code?: string;
+      response?: { data?: { detail?: string } };
+    }) => {
+      if (err.code === 'ECONNABORTED' || !err.response) {
+        message.error(
+          'Gán điểm mất quá nhiều thời gian. Vui lòng tải lại trang để kiểm tra — dữ liệu có thể đã được lưu.',
+        );
+        return;
+      }
       message.error(err.response?.data?.detail ?? 'Không thể gán điểm cho Zone');
     };
 

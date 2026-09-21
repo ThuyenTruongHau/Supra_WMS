@@ -9,6 +9,7 @@ import {
   EditOutlined,
   CheckCircleOutlined,
   PlayCircleOutlined,
+  ScanOutlined,
   EnvironmentOutlined,
   DownloadOutlined,
 } from "@ant-design/icons";
@@ -22,6 +23,7 @@ import {
   useDeleteOutboundOrder,
   useCalculateOutboundOrder,
   useExecuteOutboundRobotTask,
+  useExecuteOutboundQrManual,
   useConfirmOutboundOrderNoQr,
 } from "@/hooks/useOutbound";
 import { useAppStore } from "@/store/useAppStore";
@@ -48,7 +50,12 @@ import {
   resolveExecuteDetailType,
   shouldUseManualAllocationFlow,
 } from "@/utils/outboundFlow";
+import {
+  getManualScanTitle,
+  shouldShowOutboundQrScanButton,
+} from "@/utils/outboundManualQrScan";
 import { getApiErrorMessage } from "@/utils/apiErrorMessage";
+import { QrCameraOverlay } from "@/components/qr-scan";
 
 const TABLE_CLASS =
   "[&_.ant-table-thead_th]:!bg-slate-50 [&_.ant-table-thead_th]:!text-slate-600 [&_.ant-table-thead_th]:!font-semibold [&_.ant-table-thead_th]:!text-base [&_.ant-table-tbody_td]:!text-base [&_.ant-table-thead_th]:!py-3 [&_.ant-table-tbody_td]:!py-3 [&_.ant-table-row]:hover:bg-slate-50/50 [&_.ant-table-cell]:!text-center";
@@ -117,6 +124,7 @@ function getRobotTaskDisplayStatus(
   if (allocationStatus === "completed") return "completed";
   // Robot ICS "completed" maps allocation to pre_completed until QR confirm.
   if (allocationStatus === "pre_completed") return "pre_completed";
+  if (allocationStatus === "double_check_stock") return "double_check_stock";
   if (isManualOutbound) return allocationStatus || record.status;
   if (record.task_type !== "return") return record.status;
   if (record.status && record.status !== "initialize") return record.status;
@@ -208,6 +216,7 @@ export default function OutboundDetailPage() {
   const orderId = orderIdParam ? Number(orderIdParam) : undefined;
   const navigate = useNavigate();
   const outboundType = useAppStore((s) => s.outboundType);
+  const isManualOutbound = outboundType === "manual";
   const selectedWarehouseId = useAppStore((s) => s.selectedWarehouseId);
 
   const [isEditOpen, setIsEditOpen] = useState(false);
@@ -226,6 +235,12 @@ export default function OutboundDetailPage() {
     string | null
   >(null);
   const [confirmingTaskOrderId, setConfirmingTaskOrderId] = useState<
+    string | null
+  >(null);
+  const [manualScanTask, setManualScanTask] = useState<OutboundRobotTask | null>(
+    null,
+  );
+  const [scanningTaskOrderId, setScanningTaskOrderId] = useState<
     string | null
   >(null);
   const [exporting, setExporting] = useState(false);
@@ -275,6 +290,7 @@ export default function OutboundDetailPage() {
   const deleteMutation = useDeleteOutboundOrder();
   const calculateMutation = useCalculateOutboundOrder();
   const executeRobotTaskMutation = useExecuteOutboundRobotTask();
+  const executeQrManualMutation = useExecuteOutboundQrManual();
   const confirmNoQrMutation = useConfirmOutboundOrderNoQr();
   const { data: users = [] } = useUser();
 
@@ -591,6 +607,64 @@ export default function OutboundDetailPage() {
       setConfirmingTaskOrderId(null);
     }
   };
+
+  const handleManualRowQrScan = useCallback(
+    async (scanned: string) => {
+      const task = manualScanTask;
+      if (!task || !orderId) return;
+
+      const allocationStatus = task.allocations[0]?.status;
+      const { endId } = getTaskLocationIds(task);
+
+      if (
+        allocationStatus !== "initialize" &&
+        allocationStatus !== "pre_completed" &&
+        allocationStatus !== "double_check_stock"
+      ) {
+        message.warning("Trạng thái phân bổ không hợp lệ để quét QR");
+        return;
+      }
+
+      setManualScanTask(null);
+
+      try {
+        setScanningTaskOrderId(task.order_id);
+        await executeQrManualMutation.mutateAsync({
+          orderId,
+          body: {
+            allocation_ids: task.allocations.map((allocation) => allocation.id),
+            qr_code: scanned.trim(),
+            ...(endId ? { to_location_id: endId } : {}),
+          },
+        });
+        message.success(
+          allocationStatus === "initialize"
+            ? "Đã quét sản phẩm — quét vị trí đích để hoàn tất"
+            : allocationStatus === "pre_completed"
+              ? "Đã quét vị trí — quét lại sản phẩm để hoàn tất"
+              : "Đã xác nhận xuất",
+        );
+        void refetchOrder();
+        void refetchDetails();
+        void refetchAllocationTasks();
+        void refetchLacked();
+      } catch (err) {
+        message.error(apiError(err));
+      } finally {
+        setScanningTaskOrderId(null);
+      }
+    },
+    [
+      executeQrManualMutation,
+      getTaskLocationIds,
+      manualScanTask,
+      orderId,
+      refetchAllocationTasks,
+      refetchDetails,
+      refetchLacked,
+      refetchOrder,
+    ],
+  );
 
   const handleDetailTabChange = useCallback(
     (tab: "list" | "allocation") => {
@@ -1011,12 +1085,32 @@ export default function OutboundDetailPage() {
       title: "Trạng thái",
       dataIndex: "status",
       key: "status",
-      width: 150,
+      width: isManualOutbound ? 220 : 180,
       render: (_, record) => {
         const displayStatus = getRobotTaskDisplayStatus(
           record,
           useManualAllocationFlow,
         );
+
+        if (
+          shouldShowOutboundQrScanButton(displayStatus, {
+            isManualOutbound,
+            hasAllocations: record.allocations.length > 0,
+          })
+        ) {
+          return (
+            <Button
+              variant="primary"
+              icon={<ScanOutlined />}
+              size="small"
+              loading={scanningTaskOrderId === record.order_id}
+              onClick={() => setManualScanTask(record)}
+            >
+              Quét QR
+            </Button>
+          );
+        }
+
         if (displayStatus === "initialize") {
           const { startId, endId, needsStartPick, needsEndPick } =
             getTaskLocationIds(record);
@@ -1516,6 +1610,14 @@ export default function OutboundDetailPage() {
         details={details}
         orderLabel={order.order_code}
       />
+
+      {manualScanTask && (
+        <QrCameraOverlay
+          title={getManualScanTitle(manualScanTask)}
+          onScan={(text) => void handleManualRowQrScan(text)}
+          onClose={() => setManualScanTask(null)}
+        />
+      )}
     </div>
   );
 }

@@ -18,7 +18,9 @@ from app.modules.warehouse.location_map.location_model import Location
 from app.modules.warehouse.unit.unit_model import Unit
 from app.modules.warehouse.item.item_model import Item, QR_Code
 from app.modules.warehouse.lot_number_utils import (
+    apply_lot_display_fields,
     format_lot_number_display,
+    format_lot_value_for_display,
     resolve_lot_number_input,
 )
 from app.core.logger import get_logger
@@ -101,7 +103,9 @@ def _apply_cached_preview_fields(payload: dict, cached: dict) -> None:
     if cached.get("unit_name"):
         payload["unit_name"] = cached["unit_name"]
     if cached.get("lot_number") is not None:
-        payload["lot_number"] = cached["lot_number"] or ""
+        payload["lot_number"] = (
+            format_lot_value_for_display(cached["lot_number"]) or cached["lot_number"] or ""
+        )
     if cached.get("cavity_number"):
         payload["cavity_number"] = cached["cavity_number"]
     if cached.get("manufacturing_user"):
@@ -229,6 +233,17 @@ def _resolve_location(
 def _normalize_assigned_stock(stock: dict) -> dict:
     if stock.get("lot_number") is None and stock.get("lot_number_to"):
         stock["lot_number"] = stock["lot_number_to"]
+    disp_from, disp_to, disp_lot = apply_lot_display_fields(
+        lot_number_from=stock.get("lot_number_from") or stock.get("lot_number"),
+        lot_number_to=stock.get("lot_number_to"),
+        lot_number=stock.get("lot_number"),
+    )
+    if disp_lot:
+        stock["lot_number"] = disp_lot
+    if disp_to:
+        stock["lot_number_to"] = disp_to
+    if disp_from and stock.get("lot_number_from") is not None:
+        stock["lot_number_from"] = disp_from
     if stock.get("details") is None and stock.get("is_split"):
         stock["details"] = {"type": "Lấy lẻ"}
     elif isinstance(stock.get("details"), dict):
@@ -407,7 +422,7 @@ def assign_for_packing_user(
     if not lot_raw:
         raise ValueError("lot_number is required when assigning a QR code to a location")
     lot_from, lot_to = resolve_lot_number_input(lot_raw)
-    resolved_lot = lot_raw.strip()
+    resolved_lot = format_lot_number_display(lot_from, lot_to) or lot_raw.strip()
     item = qr_record.item
     allowed_cavities = _cavity_numbers_from_item(item)
     if allowed_cavities:
@@ -667,7 +682,7 @@ def assign_packing_to_item(
     if not lot_raw:
         raise ValueError("lot_number is required when assigning a QR code to a location")
     lot_from, lot_to = resolve_lot_number_input(lot_raw)
-    resolved_lot = lot_raw.strip()
+    resolved_lot = format_lot_number_display(lot_from, lot_to) or lot_raw.strip()
     item = qr_record.item
     allowed_cavities = _cavity_numbers_from_item(item)
     if allowed_cavities:
@@ -820,7 +835,7 @@ def assign_or_get_item_stock(
     if not lot_raw:
         raise ValueError("lot_number is required when assigning a QR code to a location")
     lot_from, lot_to = resolve_lot_number_input(lot_raw)
-    resolved_lot = lot_raw.strip()
+    resolved_lot = format_lot_number_display(lot_from, lot_to) or lot_raw.strip()
     item = qr_record.item
     allowed_cavities = _cavity_numbers_from_item(item)
     if allowed_cavities:
@@ -1104,9 +1119,11 @@ def _cache_qr_manual(
     lot_raw = (lot_number or "").strip()
     if lot_raw:
         lot_from, lot_to = resolve_lot_number_input(lot_raw)
-        resolved_lot = lot_raw.strip()
+        resolved_lot = format_lot_number_display(lot_from, lot_to) or lot_raw.strip()
     else:
-        resolved_lot = (preview.get("lot_number") or "").strip()
+        resolved_lot = format_lot_value_for_display(
+            (preview.get("lot_number") or "").strip()
+        ) or ""
 
     allowed_cavities = _cavity_numbers_from_item(item)
     if allowed_cavities:
@@ -1233,7 +1250,7 @@ def assign_stock_to_location(
         if not lot_raw:
             raise ValueError("lot_number is required when assigning a QR code to a location")
         lot_from, lot_to = resolve_lot_number_input(lot_raw)
-        resolved_lot = lot_raw.strip()
+        resolved_lot = format_lot_number_display(lot_from, lot_to) or lot_raw.strip()
 
         item = qr_record.item
         allowed_cavities = _cavity_numbers_from_item(item)

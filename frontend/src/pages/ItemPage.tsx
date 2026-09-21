@@ -254,6 +254,15 @@ function formatKpi(value?: number | string) {
   return formatQuantity(value);
 }
 
+function formatInventoryValue(value?: number | string) {
+  const amount = parseQuantity(value);
+  return new Intl.NumberFormat("vi-VN", {
+    style: "currency",
+    currency: "VND",
+    maximumFractionDigits: 0,
+  }).format(amount);
+}
+
 export default function ItemPage() {
   const { selectedWarehouseId } = useAppStore();
   const { data: zones = [] } = useZone();
@@ -350,8 +359,8 @@ export default function ItemPage() {
       color: "#0f3d46",
     },
     {
-      label: "Cảnh báo gần hết hạn",
-      value: formatKpi(analyze?.total_nearly_outdated),
+      label: "Giá trị tồn kho",
+      value: formatInventoryValue(analyze?.total_inventory_value),
       color: "#0f3460",
     },
     {
@@ -522,6 +531,17 @@ export default function ItemPage() {
           </span>
         );
       },
+    },
+    {
+      title: "Tổng giá trị",
+      dataIndex: "total_price",
+      key: "total_price",
+      sorter: (a, b) => parseQuantity(a.total_price) - parseQuantity(b.total_price),
+      render: (totalPrice: number | string) => (
+        <span className="font-semibold text-brand-dark">
+          {formatInventoryValue(totalPrice)}
+        </span>
+      ),
     },
     {
       title: "Đơn vị",

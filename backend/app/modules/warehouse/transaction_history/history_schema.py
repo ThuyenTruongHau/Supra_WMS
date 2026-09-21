@@ -6,7 +6,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-from app.modules.warehouse.lot_number_utils import format_lot_number_display
+from app.modules.warehouse.lot_number_utils import apply_lot_display_fields
 
 
 def normalize_history_details(value: Any) -> dict[str, Any]:
@@ -150,11 +150,14 @@ class ItemStockLookupResponse(BaseModel):
 
     @model_validator(mode="after")
     def set_lot_display(self) -> "ItemStockLookupResponse":
-        if self.lot_number is None:
-            self.lot_number = format_lot_number_display(
-                self.lot_number_from,
-                self.lot_number_to,
-            )
+        disp_from, disp_to, disp_lot = apply_lot_display_fields(
+            lot_number_from=self.lot_number_from,
+            lot_number_to=self.lot_number_to,
+            lot_number=self.lot_number,
+        )
+        self.lot_number_from = disp_from
+        self.lot_number_to = disp_to
+        self.lot_number = disp_lot
         return self
 
 

@@ -1,4 +1,4 @@
-const OPERATION_GUIDE_PDF_URL = "/docs/huong-dan-van-hanh-vcc.pdf";
+const OPERATION_GUIDE_PDF_URL = "/docs/huong-dan-van-hanh-vcc1.pdf";
 
 export default function QrTabletHelpButton() {
   const openGuide = () => {

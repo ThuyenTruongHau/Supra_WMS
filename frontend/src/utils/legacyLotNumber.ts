@@ -100,22 +100,60 @@ export function parseLegacyLotNumber(value: string): LegacyLotBounds {
   throw new LegacyLotNumberError();
 }
 
+/** Mirror backend format_lot_part_for_display. */
+export function formatLotPartForDisplay(
+  value: string | null | undefined,
+): string | null {
+  const s = value?.trim();
+  if (!s) {
+    return null;
+  }
+  if (s.includes("/")) {
+    return s;
+  }
+  if (/^\d{6}$/.test(s)) {
+    const day = s.slice(0, 2);
+    const month = s.slice(2, 4);
+    const year = s.slice(4, 6);
+    return `${day}/${month}/${year}`;
+  }
+  return s;
+}
+
+/** Mirror backend format_lot_value_for_display. */
+export function formatLotValueForDisplay(
+  value: string | null | undefined,
+): string | null {
+  const s = value?.trim();
+  if (!s) {
+    return null;
+  }
+  if (s.includes("-")) {
+    const [left, right] = s.split("-", 2);
+    const leftDisp = formatLotPartForDisplay(left);
+    const rightDisp = formatLotPartForDisplay(right);
+    if (leftDisp && rightDisp && leftDisp !== rightDisp) {
+      return `${leftDisp}-${rightDisp}`;
+    }
+    return leftDisp || rightDisp;
+  }
+  return formatLotPartForDisplay(s);
+}
+
 /** Mirror backend format_lot_number_display. */
 export function formatLotNumberDisplay(
   lotNumberFrom: string | null | undefined,
   lotNumberTo: string | null | undefined,
 ): string | null {
-  if (!lotNumberFrom && !lotNumberTo) {
+  const fromDisp = formatLotPartForDisplay(lotNumberFrom);
+  const toDisp = formatLotPartForDisplay(lotNumberTo);
+  if (!fromDisp && !toDisp) {
     return null;
   }
-  if (
-    lotNumberFrom &&
-    lotNumberTo &&
-    lotNumberFrom !== lotNumberTo
-  ) {
-    return `${lotNumberFrom}-${lotNumberTo}`;
+  if (fromDisp && toDisp && fromDisp !== toDisp) {
+    return `${fromDisp}-${toDisp}`;
   }
-  return lotNumberFrom || lotNumberTo || null;
+  return fromDisp || toDisp || null;
 }
 
 function parseLotDate(value: string): Date {

@@ -8,6 +8,8 @@ from app.core.database import get_db
 from app.core.dependencies import require_permission
 from app.modules.masan import masan_inbound_service, masan_outbound_service
 from app.modules.masan.masan_schema import (
+    MasanInboundCallerRequest,
+    MasanInboundCallerResponse,
     MasanInboundParseResponse,
     MasanOutboundParseResponse,
 )
@@ -111,6 +113,24 @@ def export_masan_outbound_order_so(db: DbSession, order_id: int):
             "Content-Disposition": f'attachment; filename="{filename}"',
         },
     )
+
+
+@router.post(
+    "/masan/inbound-orders/caller",
+    status_code=status.HTTP_202_ACCEPTED,
+    response_model=MasanInboundCallerResponse,
+)
+def caller_masan_inbound_order(db: DbSession, body: MasanInboundCallerRequest):
+    try:
+        return masan_inbound_service.caller_masan_inbound_order(
+            db,
+            body.location_ids,
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
 
 
 @router.get(

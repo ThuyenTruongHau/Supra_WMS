@@ -1,0 +1,519 @@
+2026-09-17 00:00:35,444 - main - INFO - Starting app
+2026-09-17 00:00:35,489 - main - INFO - Redis connected: redis://10.73.231.5:6379/0 (prefix=wms)
+2026-09-17 00:00:35,490 - main - INFO - Websocket manager started
+2026-09-17 00:05:53,260 - main - INFO - Stopping app
+2026-09-17 00:05:53,261 - main - INFO - Websocket manager stopped
+2026-09-17 00:05:58,772 - main - INFO - Starting app
+2026-09-17 00:05:58,813 - main - INFO - Redis connected: redis://10.73.231.5:6379/0 (prefix=wms)
+2026-09-17 00:05:58,814 - main - INFO - Websocket manager started
+2026-09-17 00:07:49,084 - main - INFO - Stopping app
+2026-09-17 00:07:49,085 - main - INFO - Websocket manager stopped
+2026-09-17 00:07:54,242 - main - INFO - Starting app
+2026-09-17 00:07:54,274 - main - INFO - Redis connected: redis://10.73.231.5:6379/0 (prefix=wms)
+2026-09-17 00:07:54,276 - main - INFO - Websocket manager started
+2026-09-17 00:18:55,802 - main - INFO - Stopping app
+2026-09-17 00:18:55,803 - main - INFO - Websocket manager stopped
+2026-09-17 00:19:00,776 - main - INFO - Starting app
+2026-09-17 00:19:00,826 - main - INFO - Redis connected: redis://10.73.231.5:6379/0 (prefix=wms)
+2026-09-17 00:19:00,827 - main - INFO - Websocket manager started
+2026-09-17 00:25:53,066 - main - INFO - Stopping app
+2026-09-17 00:25:53,066 - main - INFO - Websocket manager stopped
+2026-09-17 00:25:59,303 - main - INFO - Starting app
+2026-09-17 00:25:59,327 - main - INFO - Redis connected: redis://10.73.231.5:6379/0 (prefix=wms)
+2026-09-17 00:25:59,328 - main - INFO - Websocket manager started
+2026-09-17 00:26:04,250 - main - INFO - Starting app
+2026-09-17 00:26:04,275 - main - INFO - Redis connected: redis://10.73.231.5:6379/0 (prefix=wms)
+2026-09-17 00:26:04,276 - main - INFO - Websocket manager started
+2026-09-17 05:43:12,306 - main - INFO - Successfully logged in user admin
+2026-09-17 08:38:35,156 - main - INFO - Successfully logged in user admin
+2026-09-17 08:41:04,931 - main - INFO - Successfully logged in user Công 
+2026-09-17 08:41:08,875 - main - INFO - Successfully logged in user Công 
+2026-09-17 08:41:13,179 - main - INFO - Successfully logged in user Công 
+2026-09-17 08:41:32,982 - main - INFO - Successfully logged in user admin
+2026-09-17 08:41:46,183 - main - INFO - Successfully logged in user Công
+2026-09-17 08:41:56,460 - main - INFO - Successfully logged in user admin
+2026-09-17 09:26:04,457 - main - INFO - ----qr_record: <app.modules.warehouse.item.item_model.QR_Code object at 0x00000274D80B9C90>----
+2026-09-17 10:09:59,284 - main - INFO - outbound.create_order order_code=OUT-20260917-100705
+2026-09-17 10:09:59,292 - main - INFO - Type: None
+2026-09-17 10:09:59,297 - main - INFO - Flag: False
+2026-09-17 10:10:01,680 - main - INFO - outbound.get_lacked_details order_id=60
+2026-09-17 10:10:01,685 - main - INFO - outbound.get_order_details order_id=60
+2026-09-17 10:10:01,688 - main - INFO - outbound.get_order_by_id order_id=60
+2026-09-17 10:10:01,689 - main - INFO - outbound.get_robot_tasks order_id=60
+2026-09-17 10:16:11,391 - main - INFO - outbound.calculate_order outbound_order_id=60
+2026-09-17 10:16:13,279 - main - INFO - Robot task created: 117
+2026-09-17 10:16:14,569 - main - INFO - outbound.get_lacked_details order_id=60
+2026-09-17 10:16:14,573 - main - INFO - outbound.get_order_by_id order_id=60
+2026-09-17 10:16:14,576 - main - INFO - outbound.get_order_details order_id=60
+2026-09-17 10:16:14,599 - main - INFO - outbound.get_robot_tasks order_id=60
+2026-09-17 10:16:14,694 - main - INFO - outbound.get_order_by_id order_id=60
+2026-09-17 10:16:16,491 - main - INFO - outbound.get_lacked_details order_id=60
+2026-09-17 10:16:16,700 - main - INFO - outbound.get_order_details order_id=60
+2026-09-17 10:16:16,865 - main - INFO - outbound.get_robot_tasks order_id=60
+2026-09-17 10:20:40,300 - main - INFO - outbound.get_order_details order_id=58
+2026-09-17 10:20:40,302 - main - INFO - outbound.get_order_by_id order_id=58
+2026-09-17 10:20:40,303 - main - INFO - outbound.get_robot_tasks order_id=58
+2026-09-17 10:20:40,306 - main - INFO - outbound.get_lacked_details order_id=58
+2026-09-17 10:20:43,704 - main - INFO - outbound.get_order_by_id order_id=58
+2026-09-17 10:20:43,712 - main - INFO - outbound.get_robot_tasks order_id=58
+2026-09-17 10:20:43,713 - main - INFO - outbound.get_order_details order_id=58
+2026-09-17 10:20:43,716 - main - INFO - outbound.get_lacked_details order_id=58
+2026-09-17 10:44:24,065 - main - INFO - ---4603.637-20260917-58807065---
+2026-09-17 10:46:56,618 - main - INFO - ---M90CA-20260917-77148612---
+2026-09-17 11:17:51,224 - main - INFO - outbound.get_manual_allocation_tasks order_id=57
+2026-09-17 11:17:51,225 - main - INFO - outbound.get_order_details order_id=57
+2026-09-17 11:17:51,229 - main - INFO - outbound.get_lacked_details order_id=57
+2026-09-17 11:17:51,256 - main - INFO - outbound.get_order_by_id order_id=57
+2026-09-17 11:18:00,391 - main - INFO - outbound.get_order_by_id order_id=57
+2026-09-17 11:18:00,394 - main - INFO - outbound.get_manual_allocation_tasks order_id=57
+2026-09-17 11:18:00,396 - main - INFO - outbound.get_lacked_details order_id=57
+2026-09-17 11:18:00,398 - main - INFO - outbound.get_order_details order_id=57
+2026-09-17 11:43:54,860 - main - INFO - ---M90CA-20260917-77148612---
+2026-09-17 13:48:38,254 - main - INFO - Stopping app
+2026-09-17 13:48:38,257 - main - INFO - Websocket manager stopped
+2026-09-17 13:48:50,100 - main - INFO - Starting app
+2026-09-17 13:48:50,154 - main - INFO - Redis connected: redis://10.73.231.5:6379/0 (prefix=wms)
+2026-09-17 13:48:50,156 - main - INFO - Websocket manager started
+2026-09-17 13:51:45,037 - main - INFO - Stopping app
+2026-09-17 13:51:45,039 - main - INFO - Websocket manager stopped
+2026-09-17 13:51:51,709 - main - INFO - Starting app
+2026-09-17 13:51:51,755 - main - INFO - Redis connected: redis://10.73.231.5:6379/0 (prefix=wms)
+2026-09-17 13:51:51,756 - main - INFO - Websocket manager started
+2026-09-17 14:07:33,942 - main - INFO - Stopping app
+2026-09-17 14:07:33,944 - main - INFO - Websocket manager stopped
+2026-09-17 14:07:40,944 - main - INFO - Starting app
+2026-09-17 14:07:40,977 - main - INFO - Redis connected: redis://10.73.231.5:6379/0 (prefix=wms)
+2026-09-17 14:07:40,978 - main - INFO - Websocket manager started
+2026-09-17 14:08:50,021 - main - INFO - Stopping app
+2026-09-17 14:08:50,022 - main - INFO - Websocket manager stopped
+2026-09-17 14:08:56,713 - main - INFO - Starting app
+2026-09-17 14:08:56,747 - main - INFO - Redis connected: redis://10.73.231.5:6379/0 (prefix=wms)
+2026-09-17 14:08:56,747 - main - INFO - Websocket manager started
+2026-09-17 14:09:03,181 - main - INFO - Starting app
+2026-09-17 14:09:03,197 - main - INFO - Redis connected: redis://10.73.231.5:6379/0 (prefix=wms)
+2026-09-17 14:09:03,198 - main - INFO - Websocket manager started
+2026-09-17 14:09:09,589 - main - INFO - Starting app
+2026-09-17 14:09:09,607 - main - INFO - Redis connected: redis://10.73.231.5:6379/0 (prefix=wms)
+2026-09-17 14:09:09,608 - main - INFO - Websocket manager started
+2026-09-17 14:09:13,552 - main - INFO - Stopping app
+2026-09-17 14:09:13,553 - main - INFO - Websocket manager stopped
+2026-09-17 14:09:20,099 - main - INFO - Starting app
+2026-09-17 14:09:20,127 - main - INFO - Redis connected: redis://10.73.231.5:6379/0 (prefix=wms)
+2026-09-17 14:09:20,128 - main - INFO - Websocket manager started
+2026-09-17 14:09:31,819 - main - INFO - Stopping app
+2026-09-17 14:09:31,819 - main - INFO - Websocket manager stopped
+2026-09-17 14:09:39,588 - main - INFO - Starting app
+2026-09-17 14:09:39,617 - main - INFO - Redis connected: redis://10.73.231.5:6379/0 (prefix=wms)
+2026-09-17 14:09:39,618 - main - INFO - Websocket manager started
+2026-09-17 14:10:35,057 - main - INFO - Starting app
+2026-09-17 14:10:35,088 - main - INFO - Redis connected: redis://10.73.231.5:6379/0 (prefix=wms)
+2026-09-17 14:10:35,088 - main - INFO - Websocket manager started
+2026-09-17 14:18:16,161 - main - INFO - Stopping app
+2026-09-17 14:18:16,165 - main - INFO - Websocket manager stopped
+2026-09-17 14:18:22,002 - main - INFO - Starting app
+2026-09-17 14:18:22,026 - main - INFO - Redis connected: redis://10.73.231.5:6379/0 (prefix=wms)
+2026-09-17 14:18:22,026 - main - INFO - Websocket manager started
+2026-09-17 14:36:55,771 - main - INFO - qr_record: RC6-1377-000-20260917-76968100 --- <app.modules.warehouse.item.item_model.QR_Code object at 0x000001E21DAF4730>
+2026-09-17 14:41:35,586 - main - INFO - outbound.get_order_by_id order_id=60
+2026-09-17 14:41:35,587 - main - INFO - outbound.get_order_details order_id=60
+2026-09-17 14:41:35,587 - main - INFO - outbound.get_lacked_details order_id=60
+2026-09-17 14:41:35,674 - main - INFO - outbound.get_robot_tasks order_id=60
+2026-09-17 14:54:58,399 - main - INFO - Stopping app
+2026-09-17 14:54:58,399 - main - INFO - Websocket manager stopped
+2026-09-17 14:55:05,731 - main - INFO - Starting app
+2026-09-17 14:55:05,768 - main - INFO - Redis connected: redis://10.73.231.5:6379/0 (prefix=wms)
+2026-09-17 14:55:05,768 - main - INFO - Websocket manager started
+2026-09-17 14:55:49,816 - main - INFO - Stopping app
+2026-09-17 14:55:49,817 - main - INFO - Websocket manager stopped
+2026-09-17 14:55:56,583 - main - INFO - Starting app
+2026-09-17 14:55:56,610 - main - INFO - Redis connected: redis://10.73.231.5:6379/0 (prefix=wms)
+2026-09-17 14:55:56,611 - main - INFO - Websocket manager started
+2026-09-17 14:59:39,402 - main - INFO - qr_record: RC6-1377-000-20260917-26738296 --- <app.modules.warehouse.item.item_model.QR_Code object at 0x000002B61E40D4E0>
+2026-09-17 15:04:11,226 - main - INFO - Successfully logged in user admin
+2026-09-17 15:10:24,784 - main - INFO - Stopping app
+2026-09-17 15:10:24,785 - main - INFO - Websocket manager stopped
+2026-09-17 15:10:30,939 - main - INFO - Starting app
+2026-09-17 15:10:30,955 - main - INFO - Redis connected: redis://10.73.231.5:6379/0 (prefix=wms)
+2026-09-17 15:10:30,955 - main - INFO - Websocket manager started
+2026-09-17 15:10:36,190 - main - INFO - Starting app
+2026-09-17 15:10:36,207 - main - INFO - Redis connected: redis://10.73.231.5:6379/0 (prefix=wms)
+2026-09-17 15:10:36,208 - main - INFO - Websocket manager started
+2026-09-17 15:11:40,741 - main - INFO - Starting app
+2026-09-17 15:11:40,766 - main - INFO - Redis connected: redis://10.73.231.5:6379/0 (prefix=wms)
+2026-09-17 15:11:40,766 - main - INFO - Websocket manager started
+2026-09-17 15:12:25,379 - main - INFO - Successfully logged in user admin
+2026-09-17 15:14:16,491 - main - INFO - Stopping app
+2026-09-17 15:14:16,492 - main - INFO - Websocket manager stopped
+2026-09-17 15:14:22,976 - main - INFO - Starting app
+2026-09-17 15:14:23,001 - main - INFO - Redis connected: redis://10.73.231.5:6379/0 (prefix=wms)
+2026-09-17 15:14:23,002 - main - INFO - Websocket manager started
+2026-09-17 15:16:12,020 - main - INFO - outbound.get_robot_tasks order_id=25
+2026-09-17 15:16:12,021 - main - INFO - outbound.get_order_details order_id=25
+2026-09-17 15:16:12,021 - main - INFO - outbound.get_order_by_id order_id=25
+2026-09-17 15:16:12,119 - main - INFO - outbound.get_lacked_details order_id=25
+2026-09-17 15:16:20,213 - main - INFO - outbound.get_order_details order_id=25
+2026-09-17 15:16:20,221 - main - INFO - outbound.get_order_by_id order_id=25
+2026-09-17 15:16:20,239 - main - INFO - outbound.get_robot_tasks order_id=25
+2026-09-17 15:16:20,239 - main - INFO - outbound.get_lacked_details order_id=25
+2026-09-17 15:16:39,482 - main - INFO - outbound.get_order_details order_id=53
+2026-09-17 15:16:39,485 - main - INFO - outbound.get_lacked_details order_id=53
+2026-09-17 15:16:39,487 - main - INFO - outbound.get_robot_tasks order_id=53
+2026-09-17 15:16:39,501 - main - INFO - outbound.get_order_by_id order_id=53
+2026-09-17 15:17:01,439 - main - INFO - qr_record: RC6-1377-000-20260917-79660191 --- <app.modules.warehouse.item.item_model.QR_Code object at 0x0000012DDDDD2050>
+2026-09-17 15:20:55,362 - main - INFO - Stopping app
+2026-09-17 15:20:55,362 - main - INFO - Websocket manager stopped
+2026-09-17 15:21:02,810 - main - INFO - Starting app
+2026-09-17 15:21:02,839 - main - INFO - Redis connected: redis://10.73.231.5:6379/0 (prefix=wms)
+2026-09-17 15:21:02,840 - main - INFO - Websocket manager started
+2026-09-17 15:27:29,578 - main - INFO - Successfully logged in user admin
+2026-09-17 15:29:46,106 - main - INFO - Stopping app
+2026-09-17 15:29:46,107 - main - INFO - Websocket manager stopped
+2026-09-17 15:29:52,696 - main - INFO - Starting app
+2026-09-17 15:29:52,722 - main - INFO - Redis connected: redis://10.73.231.5:6379/0 (prefix=wms)
+2026-09-17 15:29:52,723 - main - INFO - Websocket manager started
+2026-09-17 15:33:55,850 - main - INFO - Stopping app
+2026-09-17 15:33:55,852 - main - INFO - Websocket manager stopped
+2026-09-17 15:34:01,112 - main - INFO - Starting app
+2026-09-17 15:34:01,154 - main - INFO - Redis connected: redis://10.73.231.5:6379/0 (prefix=wms)
+2026-09-17 15:34:01,154 - main - INFO - Websocket manager started
+2026-09-17 15:37:22,959 - main - INFO - outbound.get_order_by_id order_id=53
+2026-09-17 15:37:23,109 - main - INFO - outbound.get_order_details order_id=53
+2026-09-17 15:37:23,126 - main - INFO - outbound.get_robot_tasks order_id=53
+2026-09-17 15:37:23,248 - main - INFO - outbound.get_lacked_details order_id=53
+2026-09-17 15:48:10,454 - main - INFO - qr_record: RC6-1377-000-20260917-50129218 --- <app.modules.warehouse.item.item_model.QR_Code object at 0x000002C5F8D4BD60>
+2026-09-17 16:05:14,971 - main - INFO - qr_record: RC6-1377-000-20260917-55589756 --- <app.modules.warehouse.item.item_model.QR_Code object at 0x000002C5F77DF2E0>
+2026-09-17 16:07:02,410 - main - INFO - inbound.caller_order order_code=IN-20260917-160815
+2026-09-17 16:07:06,066 - main - INFO - ICS addTask response: {'code': 1000, 'data': 'TDS_Inbound_02586293', 'desc': '请求成功'}
+2026-09-17 16:07:07,263 - main - INFO - Processing task status for order_id=TDS_Inbound_02586293
+2026-09-17 16:07:25,134 - main - INFO - inbound.get_order_details order_code=IN-20260917-160815
+2026-09-17 16:07:29,841 - main - INFO - inbound.get_order_details order_code=IN-20260917-160815
+2026-09-17 16:07:55,087 - main - INFO - Processing task status for order_id=TDS_Inbound_02586293
+2026-09-17 16:07:55,422 - main - INFO - Processing task status for order_id=TDS_Inbound_02586293
+2026-09-17 16:08:02,561 - main - INFO - Processing task status for order_id=TDS_Inbound_02586293
+2026-09-17 16:08:02,681 - main - INFO - Processing task status for order_id=TDS_Inbound_02586293
+2026-09-17 16:09:29,404 - main - INFO - Processing task status for order_id=TDS_Inbound_02586293
+2026-09-17 16:09:29,678 - main - INFO - Processing task status for order_id=TDS_Inbound_02586293
+2026-09-17 16:09:36,480 - main - INFO - Processing task status for order_id=TDS_Inbound_02586293
+2026-09-17 16:09:36,792 - main - INFO - Receive completed for TDS_Inbound_02586293
+2026-09-17 16:09:37,087 - main - INFO - Current status: in_transit
+2026-09-17 16:09:37,088 - main - INFO - New status: available
+2026-09-17 16:09:37,089 - main - INFO - Current status: in_transit
+2026-09-17 16:09:37,090 - main - INFO - New status: available
+2026-09-17 16:09:37,091 - main - INFO - Current status: in_transit
+2026-09-17 16:09:37,092 - main - INFO - New status: available
+2026-09-17 16:09:37,093 - main - INFO - Current status: in_transit
+2026-09-17 16:09:37,094 - main - INFO - New status: available
+2026-09-17 16:09:37,096 - main - INFO - Current status: in_transit
+2026-09-17 16:09:37,096 - main - INFO - New status: available
+2026-09-17 16:39:51,882 - main - INFO - qr_record: RC6-1377-000-20260917-75335221 --- <app.modules.warehouse.item.item_model.QR_Code object at 0x000002C5FEB6BDC0>
+2026-09-17 16:42:05,139 - main - INFO - Stopping app
+2026-09-17 16:42:05,140 - main - INFO - Websocket manager stopped
+2026-09-17 16:42:15,594 - main - INFO - Starting app
+2026-09-17 16:42:15,620 - main - INFO - Redis connected: redis://10.73.231.5:6379/0 (prefix=wms)
+2026-09-17 16:42:15,620 - main - INFO - Websocket manager started
+2026-09-17 16:42:40,938 - main - INFO - Starting app
+2026-09-17 16:42:40,983 - main - INFO - Redis connected: redis://10.73.231.5:6379/0 (prefix=wms)
+2026-09-17 16:42:40,984 - main - INFO - Websocket manager started
+2026-09-17 16:46:05,364 - main - INFO - Stopping app
+2026-09-17 16:46:05,364 - main - INFO - Websocket manager stopped
+2026-09-17 16:46:10,576 - main - INFO - Starting app
+2026-09-17 16:46:10,606 - main - INFO - Redis connected: redis://10.73.231.5:6379/0 (prefix=wms)
+2026-09-17 16:46:10,607 - main - INFO - Websocket manager started
+2026-09-17 16:51:31,511 - main - INFO - Stopping app
+2026-09-17 16:51:31,513 - main - INFO - Websocket manager stopped
+2026-09-17 16:51:37,262 - main - INFO - Starting app
+2026-09-17 16:51:37,295 - main - INFO - Redis connected: redis://10.73.231.5:6379/0 (prefix=wms)
+2026-09-17 16:51:37,296 - main - INFO - Websocket manager started
+2026-09-17 16:51:42,524 - main - INFO - Starting app
+2026-09-17 16:51:42,549 - main - INFO - Redis connected: redis://10.73.231.5:6379/0 (prefix=wms)
+2026-09-17 16:51:42,549 - main - INFO - Websocket manager started
+2026-09-17 16:51:48,470 - main - INFO - Starting app
+2026-09-17 16:51:48,489 - main - INFO - Redis connected: redis://10.73.231.5:6379/0 (prefix=wms)
+2026-09-17 16:51:48,489 - main - INFO - Websocket manager started
+2026-09-17 16:52:22,672 - main - INFO - Stopping app
+2026-09-17 16:52:22,674 - main - INFO - Websocket manager stopped
+2026-09-17 16:53:06,367 - main - INFO - Starting app
+2026-09-17 16:53:06,399 - main - INFO - Redis connected: redis://10.73.231.5:6379/0 (prefix=wms)
+2026-09-17 16:53:06,400 - main - INFO - Websocket manager started
+2026-09-17 16:53:30,951 - main - ERROR - item import staging failed job_id=df77b20f-0919-453e-9787-7baee05b472d warehouse_id=4
+Traceback (most recent call last):
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\app\modules\warehouse\item\item_service.py", line 830, in _run
+    run_import_item_staging_phase(
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\app\modules\warehouse\item\item_import_utils.py", line 455, in run_import_item_staging_phase
+    staging = copy_to_staging_table(
+  File "C:\Users\Admin\Desktop\Software\Honda-VCC\H_Agency\Supra_WMS\backend\app\modules\warehouse\item\item_import_utils.py", line 305, in copy_to_staging_table
+    cur.execute(
+psycopg2.errors.UndefinedTable: relation "item_import_staging" does not exist
+LINE 1: DELETE FROM item_import_staging WHERE job_id = CAST('df77b20...
+                    ^
+
+2026-09-17 16:54:02,933 - main - INFO - Stopping app
+2026-09-17 16:54:02,933 - main - INFO - Websocket manager stopped
+2026-09-17 16:54:08,457 - main - INFO - Starting app
+2026-09-17 16:54:08,493 - main - INFO - Redis connected: redis://10.73.231.5:6379/0 (prefix=wms)
+2026-09-17 16:54:08,494 - main - INFO - Websocket manager started
+2026-09-17 16:54:11,830 - main - INFO - qr_record: RC6-1377-000-20260917-38441954 --- <app.modules.warehouse.item.item_model.QR_Code object at 0x000001DFA775FB20>
+2026-09-17 16:54:46,998 - main - INFO - Stopping app
+2026-09-17 16:54:47,000 - main - INFO - Websocket manager stopped
+2026-09-17 16:55:16,782 - main - INFO - Starting app
+2026-09-17 16:55:16,820 - main - INFO - Redis connected: redis://10.73.231.5:6379/0 (prefix=wms)
+2026-09-17 16:55:16,821 - main - INFO - Websocket manager started
+2026-09-17 16:57:33,958 - main - INFO - Stopping app
+2026-09-17 16:57:33,959 - main - INFO - Websocket manager stopped
+2026-09-17 16:57:54,529 - main - INFO - Starting app
+2026-09-17 16:57:54,563 - main - INFO - Redis connected: redis://10.73.231.5:6379/0 (prefix=wms)
+2026-09-17 16:57:54,564 - main - INFO - Websocket manager started
+2026-09-17 17:04:47,587 - main - INFO - Stopping app
+2026-09-17 17:04:47,588 - main - INFO - Websocket manager stopped
+2026-09-17 17:06:57,429 - main - INFO - Starting app
+2026-09-17 17:06:57,446 - main - INFO - Redis connected: redis://10.73.231.5:6379/0 (prefix=wms)
+2026-09-17 17:06:57,446 - main - INFO - Websocket manager started
+2026-09-17 17:07:46,577 - main - INFO - qr_record: RC6-1377-000-20260917-21387025 --- <app.modules.warehouse.item.item_model.QR_Code object at 0x000002663F5E1750>
+2026-09-17 17:08:12,557 - main - INFO - inbound.caller_order order_code=IN-20260917-171047
+2026-09-17 17:08:15,909 - main - INFO - ICS addTask response: {'code': 1000, 'data': 'TDS_Inbound_1bd94d5a', 'desc': '请求成功'}
+2026-09-17 17:08:16,904 - main - INFO - Processing task status for order_id=TDS_Inbound_1bd94d5a
+2026-09-17 17:09:03,425 - main - INFO - Processing task status for order_id=TDS_Inbound_1bd94d5a
+2026-09-17 17:09:03,744 - main - INFO - Processing task status for order_id=TDS_Inbound_1bd94d5a
+2026-09-17 17:09:11,079 - main - INFO - Processing task status for order_id=TDS_Inbound_1bd94d5a
+2026-09-17 17:09:11,193 - main - INFO - Processing task status for order_id=TDS_Inbound_1bd94d5a
+2026-09-17 17:10:37,281 - main - INFO - Processing task status for order_id=TDS_Inbound_1bd94d5a
+2026-09-17 17:10:37,620 - main - INFO - Processing task status for order_id=TDS_Inbound_1bd94d5a
+2026-09-17 17:10:44,247 - main - INFO - Processing task status for order_id=TDS_Inbound_1bd94d5a
+2026-09-17 17:10:44,549 - main - INFO - Receive completed for TDS_Inbound_1bd94d5a
+2026-09-17 17:10:44,848 - main - INFO - Current status: in_transit
+2026-09-17 17:10:44,850 - main - INFO - New status: available
+2026-09-17 17:10:44,851 - main - INFO - Current status: in_transit
+2026-09-17 17:10:44,852 - main - INFO - New status: available
+2026-09-17 17:10:44,853 - main - INFO - Current status: in_transit
+2026-09-17 17:10:44,854 - main - INFO - New status: available
+2026-09-17 17:12:31,871 - main - INFO - Stopping app
+2026-09-17 17:12:31,872 - main - INFO - Websocket manager stopped
+2026-09-17 17:12:38,788 - main - INFO - Starting app
+2026-09-17 17:12:38,816 - main - INFO - Redis connected: redis://10.73.231.5:6379/0 (prefix=wms)
+2026-09-17 17:12:38,816 - main - INFO - Websocket manager started
+2026-09-17 17:14:16,258 - main - INFO - Stopping app
+2026-09-17 17:14:16,260 - main - INFO - Websocket manager stopped
+2026-09-17 17:14:23,531 - main - INFO - Starting app
+2026-09-17 17:14:23,560 - main - INFO - Redis connected: redis://10.73.231.5:6379/0 (prefix=wms)
+2026-09-17 17:14:23,560 - main - INFO - Websocket manager started
+2026-09-17 17:16:12,498 - main - INFO - Stopping app
+2026-09-17 17:16:12,499 - main - INFO - Websocket manager stopped
+2026-09-17 17:16:19,070 - main - INFO - Starting app
+2026-09-17 17:16:19,116 - main - INFO - Redis connected: redis://10.73.231.5:6379/0 (prefix=wms)
+2026-09-17 17:16:19,117 - main - INFO - Websocket manager started
+2026-09-17 17:17:06,132 - main - INFO - Starting app
+2026-09-17 17:17:06,160 - main - INFO - Redis connected: redis://10.73.231.5:6379/0 (prefix=wms)
+2026-09-17 17:17:06,161 - main - INFO - Websocket manager started
+2026-09-17 17:21:38,824 - main - INFO - Stopping app
+2026-09-17 17:21:38,824 - main - INFO - Websocket manager stopped
+2026-09-17 17:22:21,047 - main - INFO - Starting app
+2026-09-17 17:22:21,076 - main - INFO - Redis connected: redis://10.73.231.5:6379/0 (prefix=wms)
+2026-09-17 17:22:21,077 - main - INFO - Websocket manager started
+2026-09-17 17:23:29,217 - main - INFO - ---4603.637-20260917-09876931---
+2026-09-17 17:25:22,258 - main - INFO - qr_record: 4603.637-20260917-09876931 --- <app.modules.warehouse.item.item_model.QR_Code object at 0x00000290E74E2980>
+2026-09-17 17:26:56,108 - main - INFO - qr_record: 4603.637-20260917-58807065 --- <app.modules.warehouse.item.item_model.QR_Code object at 0x00000290E5CBA590>
+2026-09-17 20:26:48,803 - main - INFO - Stopping app
+2026-09-17 20:26:48,805 - main - INFO - Websocket manager stopped
+2026-09-17 20:28:19,513 - main - INFO - Starting app
+2026-09-17 20:28:19,538 - main - INFO - Redis connected: redis://10.73.231.5:6379/0 (prefix=wms)
+2026-09-17 20:28:19,539 - main - INFO - Websocket manager started
+2026-09-17 20:31:04,082 - main - INFO - Stopping app
+2026-09-17 20:31:04,083 - main - INFO - Websocket manager stopped
+2026-09-17 20:33:24,639 - main - INFO - Starting app
+2026-09-17 20:33:24,667 - main - INFO - Redis connected: redis://10.73.231.5:6379/0 (prefix=wms)
+2026-09-17 20:33:24,669 - main - INFO - Websocket manager started
+2026-09-17 20:56:25,823 - main - INFO - Stopping app
+2026-09-17 20:56:25,825 - main - INFO - Websocket manager stopped
+2026-09-17 20:56:35,562 - main - INFO - Starting app
+2026-09-17 20:56:35,596 - main - INFO - Redis connected: redis://10.73.231.5:6379/0 (prefix=wms)
+2026-09-17 20:56:35,597 - main - INFO - Websocket manager started
+2026-09-17 20:58:29,963 - main - INFO - Assigning locations to zone: [4230, 4241, 4248, 4255, 4227, 4238, 4245, 4252, 4226, 4237, 4244, 4251, 4225, 4236, 4243, 4250, 4224, 4235, 4242, 4249, 4229, 4240, 4247, 4254, 4228, 4239, 4246, 4253]
+2026-09-17 20:59:25,860 - main - INFO - Assigning locations to zone: [4271, 4272, 4259, 4260]
+2026-09-17 20:59:41,256 - main - INFO - Assigning locations to zone: [4259, 4260, 4271, 4272]
+2026-09-17 21:01:37,525 - main - INFO - Assigning locations to zone: [4267, 4266, 4265, 4264, 4268, 4269, 4270, 4274, 4273, 4275, 4234, 4233, 4232, 4231, 4256, 4257, 4258, 4261, 4262, 4263]
+2026-09-17 21:12:24,628 - main - INFO - Assigning locations to zone: [3761, 3760, 3758, 3759, 3757, 3756, 3755, 3754, 3753, 3752, 3751, 3750, 3748, 3749, 3747, 3746, 3744, 3745, 3743, 3742, 3741, 3740, 3739, 3737, 3738, 3736, 3735, 3734, 3733, 3732, 3731, 3730, 3728, 3729, 3727, 3725, 3726, 3723, 3724, 3722, 3721, 3720, 4223, 4222, 4220, 4221, 4219, 4218, 4216, 4217, 4215, 4214, 4213, 4212, 4211, 4210, 4209, 4208, 4207, 4206, 4205, 4204, 4203, 4202, 4201, 4200, 4199, 4198, 4197, 4196, 4195, 4194, 4193, 4192, 4191, 4190, 4188, 4189, 4187, 4185, 4186, 4184, 4183, 4182, 4140, 4098, 4056, 4014, 3972, 3930, 3888, 3846, 3804, 3762, 3763, 3805, 3847, 3889, 3931, 3973, 4015, 4057, 4099, 4141, 4142, 4100, 4058, 4016, 3974, 3932, 3890, 3848, 3806, 3764, 3765, 3807, 3891, 3849, 3933, 3975, 4017, 4059, 4101, 4143, 4144, 4102, 4060, 4018, 3976, 3934, 3892, 3850, 3808, 3766, 3767, 3809, 3851, 3893, 3935, 3977, 4019, 4061, 4103, 4145, 4146, 4104, 4062, 4020, 3978, 3936, 3894, 3852, 3810, 3768, 3769, 3811, 3853, 3895, 3937, 3979, 4021, 4063, 4105, 4147, 4148, 4106, 4064, 4022, 3980, 3938, 3896, 3854, 3812, 3770, 3771, 3813, 3855, 3897, 3939, 3981, 4023, 4065, 4107, 4149, 4150, 4108, 4066, 4024, 3982, 3940, 3898, 3856, 3814, 3772, 3773, 3815, 3857, 3899, 3941, 3983, 4025, 4067, 4109, 4151, 4152, 4110, 4068, 4026, 3984, 3942, 3900, 3858, 3816, 3774, 3775, 3817, 3859, 3901, 3943, 3985, 4027, 4069, 4111, 4153, 4154, 4112, 4070, 4028, 3986, 3944, 3902, 3860, 3818, 3776, 3777, 3819, 3861, 3903, 3945, 3987, 4029, 4071, 4113, 4155, 4156, 4114, 4072, 4030, 3988, 3946, 3904, 3862, 3820, 3778, 3780, 3821, 3779, 3822, 3863, 3905, 3947, 3989, 4031, 4073, 4115, 4157, 4158, 4116, 4074, 4032, 3990, 3948, 3906, 3864, 3781, 3823, 3865, 3907, 3949, 3991, 4033, 4075, 4117, 4159, 4160, 4118, 4076, 4034, 3992, 3950, 3908, 3866, 3782, 3824, 3783, 3825, 3867, 3909, 3951, 3993, 4035, 4077, 4119, 4161, 4162, 4120, 4078, 4036, 3994, 3952, 3910, 3868, 3826, 3784, 3785, 3827, 3869, 3911, 3953, 3995, 4037, 4079, 4121, 4163, 4164, 4122, 4080, 4038, 3996, 3954, 3912, 3870, 3828, 3786, 3787, 3829, 3871, 3913, 3955, 3997, 4039, 4081, 4123, 4165, 4166, 4124, 4082, 4040, 3998, 3956, 3914, 3872, 3830, 3788, 3789, 3831, 3873, 3915, 3957, 3999, 4041, 4083, 4125, 4167, 4168, 4126, 4084, 4042, 3958, 4000, 3916, 3874, 3832, 3790, 3791, 3833, 3875, 3917, 3959, 4001, 4043, 4085, 4169, 4127, 4170, 4128, 4086, 4044, 4002, 3960, 3918, 3876, 3834, 3792, 3793, 3835, 3877, 3919, 3961, 4003, 4045, 4087, 4129, 4171, 4172, 4130, 4088, 4046, 4004, 3962, 3920, 3878, 3836, 3794, 3795, 3837, 3879, 3921, 4005, 3963, 4047, 4089, 4131, 4173, 4174, 4132, 4090, 4048, 4006, 3964, 3922, 3880, 3838, 3796, 3797, 3839, 3840, 3798, 3799, 3841, 3842, 3800, 3801, 3843, 3844, 3845, 3803, 3802, 3881, 3923, 3925, 3882, 3924, 3883, 3927, 3884, 3926, 3929, 3887, 3885, 3886, 3928, 4181, 4139, 4097, 4055, 4013, 3971, 3970, 3969, 3968, 3967, 3966, 3965, 4007, 4049, 4091, 4133, 4175, 4177, 4176, 4178, 4179, 4180, 4138, 4096, 4054, 4011, 4012, 4010, 4009, 4008, 4050, 4092, 4134, 4135, 4136, 4137, 4095, 4053, 4052, 4051, 4093, 4094]
+2026-09-17 21:28:35,578 - main - INFO - inbound.create_order order_code=IN-20260917-212835
+2026-09-17 21:28:39,728 - main - INFO - inbound.get_order_details order_code=IN-20260917-212835
+2026-09-17 21:29:35,149 - main - INFO - inbound.get_order_details order_code=IN-20260917-212835
+2026-09-17 21:32:16,667 - main - INFO - inbound.create_order order_code=IN-20260917-213216
+2026-09-17 21:32:20,104 - main - INFO - inbound.get_order_details order_code=IN-20260917-213216
+2026-09-17 21:33:12,190 - main - INFO - inbound.get_order_details order_code=IN-20260917-213216
+2026-09-17 21:37:24,933 - main - INFO - inbound.get_order_details order_code=IN-20260917-213216
+2026-09-17 21:41:18,044 - main - INFO - inbound.get_order_details order_code=IN-20260917-213216
+2026-09-17 21:41:19,861 - main - INFO - Stopping app
+2026-09-17 21:41:19,862 - main - INFO - Websocket manager stopped
+2026-09-17 21:41:24,856 - main - INFO - Starting app
+2026-09-17 21:41:24,891 - main - INFO - Redis connected: redis://10.73.231.5:6379/0 (prefix=wms)
+2026-09-17 21:41:24,892 - main - INFO - Websocket manager started
+2026-09-17 21:43:54,957 - main - INFO - inbound.create_order order_code=IN-20260917-214354
+2026-09-17 21:43:58,547 - main - INFO - inbound.get_order_details order_code=IN-20260917-214354
+2026-09-17 21:44:07,758 - main - INFO - inbound.get_order_details order_code=IN-20260917-214354
+2026-09-17 21:53:59,768 - main - INFO - Stopping app
+2026-09-17 21:53:59,769 - main - INFO - Websocket manager stopped
+2026-09-17 21:54:08,703 - main - INFO - Starting app
+2026-09-17 21:54:08,738 - main - INFO - Redis connected: redis://10.73.231.5:6379/0 (prefix=wms)
+2026-09-17 21:54:08,739 - main - INFO - Websocket manager started
+2026-09-17 21:55:51,903 - main - INFO - inbound.get_order_details order_code=IN-20260910-230434
+2026-09-17 21:56:34,480 - main - INFO - inbound.get_order_details order_code=IN-20260917-214354
+2026-09-17 22:15:44,790 - main - INFO - Stopping app
+2026-09-17 22:15:44,791 - main - INFO - Websocket manager stopped
+2026-09-17 22:15:52,409 - main - INFO - Starting app
+2026-09-17 22:15:52,445 - main - INFO - Redis connected: redis://10.73.231.5:6379/0 (prefix=wms)
+2026-09-17 22:15:52,446 - main - INFO - Websocket manager started
+2026-09-17 22:15:58,653 - main - INFO - Starting app
+2026-09-17 22:15:58,675 - main - INFO - Redis connected: redis://10.73.231.5:6379/0 (prefix=wms)
+2026-09-17 22:15:58,675 - main - INFO - Websocket manager started
+2026-09-17 22:18:34,158 - main - INFO - Starting app
+2026-09-17 22:18:34,198 - main - INFO - Redis connected: redis://10.73.231.5:6379/0 (prefix=wms)
+2026-09-17 22:18:34,199 - main - INFO - Websocket manager started
+2026-09-17 23:18:38,380 - main - INFO - outbound.create_order order_code=OUT-20260917-231838
+2026-09-17 23:18:38,390 - main - INFO - Type: None
+2026-09-17 23:18:38,395 - main - INFO - Flag: False
+2026-09-17 23:18:38,406 - main - INFO - Flag: False
+2026-09-17 23:18:38,411 - main - INFO - Flag: False
+2026-09-17 23:18:38,415 - main - INFO - Flag: False
+2026-09-17 23:18:38,420 - main - INFO - Flag: False
+2026-09-17 23:18:38,423 - main - INFO - Flag: False
+2026-09-17 23:18:38,426 - main - INFO - Flag: False
+2026-09-17 23:18:38,429 - main - INFO - Flag: False
+2026-09-17 23:18:38,431 - main - INFO - Flag: False
+2026-09-17 23:18:38,435 - main - INFO - Flag: False
+2026-09-17 23:18:38,438 - main - INFO - Flag: False
+2026-09-17 23:18:38,442 - main - INFO - Flag: False
+2026-09-17 23:18:38,448 - main - INFO - Flag: False
+2026-09-17 23:18:38,456 - main - INFO - Flag: False
+2026-09-17 23:18:38,459 - main - INFO - Flag: False
+2026-09-17 23:18:38,462 - main - INFO - Flag: False
+2026-09-17 23:18:38,464 - main - INFO - Flag: False
+2026-09-17 23:18:38,468 - main - INFO - Flag: False
+2026-09-17 23:18:38,471 - main - INFO - Flag: False
+2026-09-17 23:18:38,477 - main - INFO - Flag: False
+2026-09-17 23:18:38,479 - main - INFO - Flag: False
+2026-09-17 23:18:38,483 - main - INFO - Flag: False
+2026-09-17 23:18:38,487 - main - INFO - Flag: False
+2026-09-17 23:18:38,491 - main - INFO - Flag: False
+2026-09-17 23:18:38,496 - main - INFO - Flag: False
+2026-09-17 23:18:38,499 - main - INFO - Flag: False
+2026-09-17 23:18:38,502 - main - INFO - Flag: False
+2026-09-17 23:18:38,508 - main - INFO - Flag: False
+2026-09-17 23:18:38,512 - main - INFO - Flag: False
+2026-09-17 23:18:38,516 - main - INFO - Flag: False
+2026-09-17 23:18:38,519 - main - INFO - Flag: False
+2026-09-17 23:18:38,765 - main - INFO - outbound.get_lacked_details order_id=61
+2026-09-17 23:18:38,766 - main - INFO - outbound.get_robot_tasks order_id=61
+2026-09-17 23:18:38,958 - main - INFO - outbound.get_order_details order_id=61
+2026-09-17 23:18:38,979 - main - INFO - outbound.get_order_by_id order_id=61
+2026-09-17 23:18:46,739 - main - INFO - outbound.get_order_details order_id=61
+2026-09-17 23:20:02,877 - main - INFO - outbound.get_order_details order_id=61
+2026-09-17 23:20:02,879 - main - INFO - outbound.get_order_by_id order_id=61
+2026-09-17 23:20:02,884 - main - INFO - outbound.get_robot_tasks order_id=61
+2026-09-17 23:20:02,889 - main - INFO - outbound.get_lacked_details order_id=61
+2026-09-17 23:27:03,827 - main - INFO - Stopping app
+2026-09-17 23:27:03,828 - main - INFO - Websocket manager stopped
+2026-09-17 23:27:10,717 - main - INFO - Starting app
+2026-09-17 23:27:10,756 - main - INFO - Redis connected: redis://10.73.231.5:6379/0 (prefix=wms)
+2026-09-17 23:27:10,757 - main - INFO - Websocket manager started
+2026-09-17 23:27:12,627 - main - INFO - Stopping app
+2026-09-17 23:27:12,627 - main - INFO - Websocket manager stopped
+2026-09-17 23:27:19,301 - main - INFO - Starting app
+2026-09-17 23:27:19,332 - main - INFO - Redis connected: redis://10.73.231.5:6379/0 (prefix=wms)
+2026-09-17 23:27:19,333 - main - INFO - Websocket manager started
+2026-09-17 23:27:25,863 - main - INFO - Starting app
+2026-09-17 23:27:25,893 - main - INFO - Redis connected: redis://10.73.231.5:6379/0 (prefix=wms)
+2026-09-17 23:27:25,894 - main - INFO - Websocket manager started
+2026-09-17 23:27:43,607 - main - INFO - outbound.get_robot_tasks order_id=61
+2026-09-17 23:27:43,608 - main - INFO - outbound.get_order_details order_id=61
+2026-09-17 23:27:43,608 - main - INFO - outbound.get_order_by_id order_id=61
+2026-09-17 23:27:43,609 - main - INFO - outbound.get_lacked_details order_id=61
+2026-09-17 23:27:45,860 - main - INFO - outbound.get_order_by_id order_id=61
+2026-09-17 23:27:45,862 - main - INFO - outbound.get_order_details order_id=61
+2026-09-17 23:27:45,863 - main - INFO - outbound.get_robot_tasks order_id=61
+2026-09-17 23:27:45,871 - main - INFO - outbound.get_lacked_details order_id=61
+2026-09-17 23:27:51,392 - main - INFO - Stopping app
+2026-09-17 23:27:51,393 - main - INFO - Websocket manager stopped
+2026-09-17 23:27:58,179 - main - INFO - Starting app
+2026-09-17 23:27:58,215 - main - INFO - Redis connected: redis://10.73.231.5:6379/0 (prefix=wms)
+2026-09-17 23:27:58,216 - main - INFO - Websocket manager started
+2026-09-17 23:29:43,833 - main - INFO - Stopping app
+2026-09-17 23:29:43,834 - main - INFO - Websocket manager stopped
+2026-09-17 23:29:49,906 - main - INFO - Starting app
+2026-09-17 23:29:49,934 - main - INFO - Redis connected: redis://10.73.231.5:6379/0 (prefix=wms)
+2026-09-17 23:29:49,934 - main - INFO - Websocket manager started
+2026-09-17 23:29:55,766 - main - INFO - Starting app
+2026-09-17 23:29:55,792 - main - INFO - Redis connected: redis://10.73.231.5:6379/0 (prefix=wms)
+2026-09-17 23:29:55,793 - main - INFO - Websocket manager started
+2026-09-17 23:30:12,279 - main - INFO - Stopping app
+2026-09-17 23:30:12,280 - main - INFO - Websocket manager stopped
+2026-09-17 23:30:18,383 - main - INFO - Starting app
+2026-09-17 23:30:18,425 - main - INFO - Redis connected: redis://10.73.231.5:6379/0 (prefix=wms)
+2026-09-17 23:30:18,427 - main - INFO - Websocket manager started
+2026-09-17 23:30:30,456 - main - INFO - Stopping app
+2026-09-17 23:30:30,458 - main - INFO - Websocket manager stopped
+2026-09-17 23:30:37,086 - main - INFO - Starting app
+2026-09-17 23:30:37,125 - main - INFO - Redis connected: redis://10.73.231.5:6379/0 (prefix=wms)
+2026-09-17 23:30:37,126 - main - INFO - Websocket manager started
+2026-09-17 23:30:43,233 - main - INFO - Starting app
+2026-09-17 23:30:43,262 - main - INFO - Redis connected: redis://10.73.231.5:6379/0 (prefix=wms)
+2026-09-17 23:30:43,263 - main - INFO - Websocket manager started
+2026-09-17 23:31:15,827 - main - INFO - Stopping app
+2026-09-17 23:31:15,829 - main - INFO - Websocket manager stopped
+2026-09-17 23:32:32,164 - main - INFO - Starting app
+2026-09-17 23:32:32,176 - main - INFO - Redis connected: redis://10.73.231.5:6379/0 (prefix=wms)
+2026-09-17 23:32:32,176 - main - INFO - Websocket manager started
+2026-09-18 10:13:03,395 - main - INFO - Successfully logged in user Công
+2026-09-18 11:46:19,851 - main - INFO - Successfully logged in user admin
+2026-09-18 12:55:34,740 - main - INFO - Successfully logged in user admin
+2026-09-18 13:04:06,931 - main - INFO - Successfully logged in user admin
+2026-09-18 13:04:19,938 - main - INFO - Successfully logged in user admin
+2026-09-18 13:07:13,796 - main - INFO - qr_record: 4603.637-20260918-35228061 --- <app.modules.warehouse.item.item_model.QR_Code object at 0x0000021AF9B885E0>
+2026-09-18 13:07:13,939 - main - INFO - qr_record: 4603.637-20260918-05587425 --- <app.modules.warehouse.item.item_model.QR_Code object at 0x0000021AF9B88C40>
+2026-09-18 13:07:14,080 - main - INFO - qr_record: 4603.637-20260918-91042234 --- <app.modules.warehouse.item.item_model.QR_Code object at 0x0000021AF9B88A60>
+2026-09-18 13:17:09,414 - main - INFO - Getting assigned item stock for location 1805
+2026-09-18 13:39:09,755 - main - INFO - inbound.get_order_details order_code=IN-20260917-171047
+2026-09-18 13:39:16,045 - main - INFO - inbound.get_order_details order_code=IN-20260917-171047
+2026-09-18 13:54:18,781 - main - INFO - qr_record: RC6-1378-000-20260918-13837685 --- <app.modules.warehouse.item.item_model.QR_Code object at 0x0000021AF9366DD0>
+2026-09-18 14:16:39,222 - main - INFO - qr_record: RC6-1378-000-20260918-12234789 --- <app.modules.warehouse.item.item_model.QR_Code object at 0x0000021AF9353040>
+2026-09-18 14:38:25,215 - main - INFO - qr_record: RC6-1378-000-20260918-64725304 --- <app.modules.warehouse.item.item_model.QR_Code object at 0x0000021AFA618760>
+2026-09-18 14:59:49,037 - main - INFO - outbound.get_lacked_details order_id=53
+2026-09-18 14:59:49,038 - main - INFO - outbound.get_order_by_id order_id=53
+2026-09-18 14:59:49,041 - main - INFO - outbound.get_order_details order_id=53
+2026-09-18 14:59:49,043 - main - INFO - outbound.get_robot_tasks order_id=53
+2026-09-18 15:07:29,211 - main - INFO - Successfully logged in user Công
+2026-09-18 15:10:49,586 - main - INFO - Successfully logged in user Công
+2026-09-18 15:17:56,165 - main - INFO - ---F20-18-20260918-40122996---
+2026-09-18 15:55:56,088 - main - INFO - qr_record: RC6-1378-000-20260918-47117148 --- <app.modules.warehouse.item.item_model.QR_Code object at 0x0000021AFE8FA770>
+2026-09-18 15:59:03,770 - main - INFO - ---F20-18-20260918-40122996---
+2026-09-18 16:19:45,364 - main - INFO - Successfully logged in user admin
+2026-09-18 16:21:37,591 - main - INFO - qr_record: RC6-1378-000-20260918-77785317 --- <app.modules.warehouse.item.item_model.QR_Code object at 0x0000021AFCB1BBE0>
+2026-09-18 16:21:58,360 - main - INFO - inbound.caller_order order_code=IN-20260918-162442
+2026-09-18 16:22:00,986 - main - INFO - ICS addTask response: {'code': 1000, 'data': 'TDS_Inbound_fffe90a1', 'desc': '请求成功'}
+2026-09-18 16:22:02,397 - main - INFO - Processing task status for order_id=TDS_Inbound_fffe90a1
+2026-09-18 16:22:57,084 - main - INFO - Processing task status for order_id=TDS_Inbound_fffe90a1
+2026-09-18 16:22:57,366 - main - INFO - Processing task status for order_id=TDS_Inbound_fffe90a1
+2026-09-18 16:23:13,231 - main - INFO - Processing task status for order_id=TDS_Inbound_fffe90a1
+2026-09-18 16:23:13,333 - main - INFO - Processing task status for order_id=TDS_Inbound_fffe90a1
+2026-09-18 16:24:35,830 - main - INFO - Processing task status for order_id=TDS_Inbound_fffe90a1
+2026-09-18 16:24:36,114 - main - INFO - Processing task status for order_id=TDS_Inbound_fffe90a1
+2026-09-18 16:24:42,677 - main - INFO - Processing task status for order_id=TDS_Inbound_fffe90a1
+2026-09-18 16:24:42,912 - main - INFO - Receive completed for TDS_Inbound_fffe90a1
+2026-09-18 16:24:43,101 - main - INFO - Current status: in_transit
+2026-09-18 16:24:43,102 - main - INFO - New status: available
+2026-09-18 16:24:43,102 - main - INFO - Current status: in_transit
+2026-09-18 16:24:43,103 - main - INFO - New status: available
+2026-09-18 16:24:43,104 - main - INFO - Current status: in_transit
+2026-09-18 16:24:43,105 - main - INFO - New status: available
+2026-09-18 16:24:43,105 - main - INFO - Current status: in_transit
+2026-09-18 16:24:43,106 - main - INFO - New status: available
+2026-09-18 16:24:43,107 - main - INFO - Current status: in_transit
+2026-09-18 16:24:43,107 - main - INFO - New status: available
+2026-09-18 16:47:58,575 - main - INFO - ---F20-18-20260918-34843687---
+2026-09-18 16:49:03,124 - main - INFO - ---F20-18-20260918-17924706---
+2026-09-18 16:51:23,177 - main - INFO - ---F20-18-20260918-34843687---
+2026-09-18 16:51:23,445 - main - INFO - ---F20-18-20260918-40001210---
+2026-09-18 16:51:23,694 - main - INFO - ---F20-18-20260918-69831766---
+2026-09-18 16:51:23,857 - main - INFO - ---F20-18-20260918-17924706---
+2026-09-18 16:53:06,658 - main - INFO - ---M90CA-20260918-11805705---
+2026-09-18 16:53:38,755 - main - INFO - ---M90CA-20260918-36349774---
+2026-09-18 16:53:39,004 - main - INFO - ---M90CA-20260918-11805705---
+2026-09-18 16:54:08,553 - main - INFO - ---M90CA-TC-20260918-83314335---
+2026-09-18 16:54:35,645 - main - INFO - ---M90CA-TC-20260918-83314335---

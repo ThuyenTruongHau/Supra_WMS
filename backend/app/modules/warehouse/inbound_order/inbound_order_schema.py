@@ -6,7 +6,9 @@ from typing import Any, Optional, List, Union
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from app.modules.warehouse.lot_number_utils import (
+    apply_lot_display_fields,
     format_lot_number_display,
+    format_lot_value_for_display,
     normalize_lot_number as _normalize_lot_number,
     resolve_lot_number_fields as _resolve_lot_number_fields,
 )
@@ -51,6 +53,18 @@ class InboundSuggestAllocationItemResponse(BaseModel):
     lot_number_to: Optional[str] = None
     lot_number: Optional[str] = None
     details: dict[str, Any] = Field(default_factory=dict)
+
+    @model_validator(mode="after")
+    def set_lot_display(self) -> "InboundSuggestAllocationItemResponse":
+        disp_from, disp_to, disp_lot = apply_lot_display_fields(
+            lot_number_from=self.lot_number_from,
+            lot_number_to=self.lot_number_to,
+            lot_number=self.lot_number,
+        )
+        self.lot_number_from = disp_from
+        self.lot_number_to = disp_to
+        self.lot_number = disp_lot
+        return self
 
 
 class SuggestAdditionalResponse(BaseModel):
@@ -129,6 +143,12 @@ class QrCodePreviewResponse(BaseModel):
     packing_user: Optional[str] = None
     is_split: bool = False
     linked_packs: list["AssignedItemStockResponse"] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def set_lot_display(self) -> "QrCodePreviewResponse":
+        if self.lot_number:
+            self.lot_number = format_lot_value_for_display(self.lot_number) or self.lot_number
+        return self
 
 
 class AssignItemStockMetaResponse(BaseModel):
@@ -262,6 +282,18 @@ class AssignedItemStockResponse(BaseModel):
         ),
     )
 
+    @model_validator(mode="after")
+    def set_lot_display(self) -> "AssignedItemStockResponse":
+        disp_from, disp_to, disp_lot = apply_lot_display_fields(
+            lot_number_from=self.lot_number,
+            lot_number_to=self.lot_number_to,
+            lot_number=self.lot_number,
+        )
+        self.lot_number = disp_lot
+        self.lot_number_to = disp_to
+        return self
+
+
 class InboundOrderAllocationCreate(BaseModel):
     item_id: int = Field(..., gt=0)
     quantity: int = Field(..., gt=0)
@@ -350,6 +382,18 @@ class InboundOrderAllocationResponse(BaseModel):
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
     model_config = ConfigDict(from_attributes=True)
+
+    @model_validator(mode="after")
+    def set_lot_display(self) -> "InboundOrderAllocationResponse":
+        disp_from, disp_to, disp_lot = apply_lot_display_fields(
+            lot_number_from=self.lot_number_from,
+            lot_number_to=self.lot_number_to,
+            lot_number=self.lot_number,
+        )
+        self.lot_number_from = disp_from
+        self.lot_number_to = disp_to
+        self.lot_number = disp_lot
+        return self
 
 
 class InboundOrderDetailResponse(BaseModel):

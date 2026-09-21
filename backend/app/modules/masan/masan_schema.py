@@ -44,6 +44,16 @@ class MasanInboundParseResponse(BaseModel):
     warnings: list[str] = Field(default_factory=list)
 
 
+class MasanInboundCallerRequest(BaseModel):
+    location_ids: list[int] = Field(..., min_length=1)
+
+
+class MasanInboundCallerResponse(BaseModel):
+    queued: int
+    detail_ids: list[int]
+    job_ids: list[str]
+
+
 class MasanOutboundPreviewRow(BaseModel):
     row_no: int
     vehicle_no: Optional[str] = None

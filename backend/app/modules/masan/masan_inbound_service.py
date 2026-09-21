@@ -6,6 +6,7 @@ from typing import Any, Optional
 from openpyxl import Workbook, load_workbook
 from sqlalchemy import String, cast, or_
 from sqlalchemy.orm import Session, joinedload, selectinload
+from app.modules.warehouse.inbound_order.inbound_celery_task import accept_inbound_task_task
 
 from app.core.config import settings
 
@@ -31,7 +32,11 @@ from app.modules.warehouse.inbound_order.inbound_order_schema import (
     InboundSuggestAdditionalDetail,
     InboundSuggestAllocation,
     InboundSuggestAllocationDetail,
+)
+from app.modules.warehouse.lot_number_utils import (
+    apply_lot_display_fields,
     format_lot_number_display,
+    format_lot_value_for_display,
 )
 from app.modules.warehouse.inbound_order.inbound_order_service import (
     _build_detail_response,
@@ -349,6 +354,19 @@ def parse_masan_inbound_preview(
         detail_type=inbound_type,
         line_items=line_items,
     )
+    for detail in suggest_allocation.line_items:
+        for item in detail.items:
+            disp_from, disp_to, disp_lot = apply_lot_display_fields(
+                lot_number_from=item.lot_number_from,
+                lot_number_to=item.lot_number_to,
+                lot_number=item.lot_number,
+            )
+            item.lot_number_from = disp_from
+            item.lot_number_to = disp_to
+            item.lot_number = disp_lot
+    for row in preview_rows:
+        if row.lot:
+            row.lot = format_lot_value_for_display(row.lot) or row.lot
 
     return MasanInboundParseResponse(
         preview_rows=preview_rows,
@@ -554,3 +572,34 @@ def get_masan_inbound_order_details(
 
     details = query.order_by(InboundOrderDetail.id).all()
     return [_build_detail_response(d) for d in details]
+
+
+def caller_masan_inbound_order(db: Session, location_ids: list[int]) -> dict[str, Any]:
+    list_details: list[InboundOrderDetail] = []
+    for location_id in location_ids:
+        detail = (
+            db.query(InboundOrderDetail)
+            .filter(
+                InboundOrderDetail.from_location_id == location_id,
+                InboundOrderDetail.status == "initialize",
+            )
+            .order_by(InboundOrderDetail.id)
+            .first()
+        )
+        if detail:
+            list_details.append(detail)
+
+    detail_ids = [d.id for d in list_details]
+
+    job_ids = [
+        accept_inbound_task_task.apply_async(
+            kwargs={"detail_id": detail_id},
+        ).id
+        for detail_id in detail_ids
+    ]
+    return {
+        "queued": len(detail_ids),
+        "detail_ids": detail_ids,
+        "job_ids": job_ids,
+    }
+

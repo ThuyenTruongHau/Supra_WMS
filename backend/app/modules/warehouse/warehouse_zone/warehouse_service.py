@@ -239,9 +239,13 @@ def assign_locations_to_zone(
     if not zone:
         raise ValueError("Zone not found")
 
-    logger.info(f"Assigning locations to zone: {location_ids}")
-
     unique_ids = list(dict.fromkeys(location_ids))
+    logger.info(
+        "Assigning locations to zone %s: %s location(s)",
+        zone_id,
+        len(unique_ids),
+    )
+
     if unique_ids:
         locations = (
             db.query(Location)
@@ -256,13 +260,16 @@ def assign_locations_to_zone(
                     f"Location {location.location_code} does not belong to zone warehouse"
                 )
 
-    for location in db.query(Location).filter(Location.zone_id == zone_id).all():
-        location.zone_id = None
+    db.query(Location).filter(Location.zone_id == zone_id).update(
+        {Location.zone_id: None},
+        synchronize_session=False,
+    )
 
-    for location_id in unique_ids:
-        location = db.query(Location).filter(Location.id == location_id).first()
-        if location:
-            location.zone_id = zone_id
+    if unique_ids:
+        db.query(Location).filter(Location.id.in_(unique_ids)).update(
+            {Location.zone_id: zone_id},
+            synchronize_session=False,
+        )
 
     try:
         db.commit()

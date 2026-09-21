@@ -10,6 +10,7 @@ import {
   CheckCircleOutlined,
   PlayCircleOutlined,
   ScanOutlined,
+  EnvironmentOutlined,
 } from "@ant-design/icons";
 import {
   useGetOutboundOrderById,
@@ -37,6 +38,8 @@ import dayjs from "dayjs";
 import CreateOutboundModal, {
   type OutboundItemDraft,
 } from "@/pages/components/CreateOutboundModal";
+import OutboundMapModal from "@/pages/components/OutboundMapModal";
+import { buildOutboundLocationOverrides } from "@/utils/outboundMap";
 import { detailsToEntries } from "@/utils/keyValueDetails";
 import { computeDetailProgress } from "@/utils/detailProgress";
 import { formatOutboundCalculateError } from "@/utils/outboundErrors";
@@ -45,6 +48,10 @@ import {
   resolveExecuteDetailType,
   shouldUseManualAllocationFlow,
 } from "@/utils/outboundFlow";
+import {
+  getManualScanTitle,
+  shouldShowOutboundQrScanButton,
+} from "@/utils/outboundManualQrScan";
 import { getApiErrorMessage } from "@/utils/apiErrorMessage";
 import { QrCameraOverlay } from "@/components/qr-scan";
 
@@ -97,17 +104,6 @@ const TASK_TYPE_LABEL: Record<OutboundRobotTask["task_type"], string> = {
   return: "TRẢ",
 };
 
-function getManualScanTitle(task: OutboundRobotTask): string {
-  const status = task.allocations[0]?.status;
-  if (status === "initialize") return "Quét QR sản phẩm";
-  if (status === "pre_completed") return "Quét QR vị trí đích";
-  return "Quét QR xuất kho";
-}
-
-function canShowManualQrScan(displayStatus: string): boolean {
-  return displayStatus === "initialize" || displayStatus === "pre_completed";
-}
-
 function getRobotTaskDisplayStatus(
   record: OutboundRobotTask,
   isManualOutbound = false,
@@ -116,6 +112,7 @@ function getRobotTaskDisplayStatus(
   if (allocationStatus === "completed") return "completed";
   // Robot ICS "completed" maps allocation to pre_completed until QR confirm.
   if (allocationStatus === "pre_completed") return "pre_completed";
+  if (allocationStatus === "double_check_stock") return "double_check_stock";
   if (isManualOutbound) return allocationStatus || record.status;
   if (record.task_type !== "return") return record.status;
   if (record.status && record.status !== "initialize") return record.status;
@@ -211,6 +208,7 @@ export default function QrTabletOutboundDetailPage() {
   const selectedWarehouseId = useAppStore((s) => s.selectedWarehouseId);
 
   const [isEditOpen, setIsEditOpen] = useState(false);
+  const [isMapOpen, setIsMapOpen] = useState(false);
   const [qrScanOpen, setQrScanOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"list" | "allocation">("list");
   const [selectedDetailIds, setSelectedDetailIds] = useState<Set<number>>(
@@ -354,6 +352,11 @@ export default function QrTabletOutboundDetailPage() {
   );
 
   const editInitialItems = useMemo(() => toEditItems(details), [details]);
+
+  const outboundPickLocations = useMemo(
+    () => buildOutboundLocationOverrides(details),
+    [details],
+  );
 
   const selectableDetails = useMemo(
     () => details.filter((d) => d.status === "initialize"),
@@ -774,7 +777,8 @@ export default function QrTabletOutboundDetailPage() {
 
       if (
         allocationStatus !== "initialize" &&
-        allocationStatus !== "pre_completed"
+        allocationStatus !== "pre_completed" &&
+        allocationStatus !== "double_check_stock"
       ) {
         message.warning("Trạng thái phân bổ không hợp lệ để quét QR");
         return;
@@ -795,7 +799,9 @@ export default function QrTabletOutboundDetailPage() {
         message.success(
           allocationStatus === "initialize"
             ? "Đã quét sản phẩm — quét vị trí đích để hoàn tất"
-            : "Đã xác nhận xuất",
+            : allocationStatus === "pre_completed"
+              ? "Đã quét vị trí — quét lại sản phẩm để hoàn tất"
+              : "Đã xác nhận xuất",
         );
         void refetchOrder();
         void refetchDetails();
@@ -1088,25 +1094,26 @@ export default function QrTabletOutboundDetailPage() {
           useManualAllocationFlow,
         );
 
+        if (
+          shouldShowOutboundQrScanButton(displayStatus, {
+            isManualOutbound,
+            hasAllocations: record.allocations.length > 0,
+          })
+        ) {
+          return (
+            <Button
+              variant="primary"
+              icon={<ScanOutlined />}
+              size="small"
+              loading={scanningTaskOrderId === record.order_id}
+              onClick={() => setManualScanTask(record)}
+            >
+              Quét QR
+            </Button>
+          );
+        }
+
         if (isManualOutbound) {
-          const showQrScan =
-            canShowManualQrScan(displayStatus) &&
-            record.allocations.length > 0;
-
-          if (showQrScan) {
-            return (
-              <Button
-                variant="primary"
-                icon={<ScanOutlined />}
-                size="small"
-                loading={scanningTaskOrderId === record.order_id}
-                onClick={() => setManualScanTask(record)}
-              >
-                Quét QR
-              </Button>
-            );
-          }
-
           return <OutboundStatusTag status={displayStatus} size="sm" />;
         }
 
@@ -1330,6 +1337,19 @@ export default function QrTabletOutboundDetailPage() {
               Quét QR
             </Button>
           )}
+          <Button
+            icon={<EnvironmentOutlined />}
+            className="!h-11"
+            disabled={!warehouseId || outboundPickLocations.length === 0}
+            title={
+              outboundPickLocations.length === 0
+                ? "Chưa có vị trí lấy hàng — phân bổ đơn trước khi xem map"
+                : undefined
+            }
+            onClick={() => setIsMapOpen(true)}
+          >
+            Xem map
+          </Button>
           <Button
             variant="edit"
             icon={<EditOutlined />}
@@ -1586,6 +1606,14 @@ export default function QrTabletOutboundDetailPage() {
           void refetchOrder();
           void refetchDetails();
         }}
+      />
+
+      <OutboundMapModal
+        open={isMapOpen}
+        onClose={() => setIsMapOpen(false)}
+        warehouseId={warehouseId}
+        details={details}
+        orderLabel={order.order_code}
       />
 
       {manualScanTask && (

@@ -1,0 +1,997 @@
+2026-09-19 09:02:32,885 - main - INFO - Starting app
+2026-09-19 09:02:32,917 - main - INFO - Redis connected: redis://10.73.231.5:6379/0 (prefix=wms)
+2026-09-19 09:02:32,918 - main - INFO - Websocket manager started
+2026-09-19 09:04:16,081 - main - INFO - inbound.get_order_details order_code=IN-20260918-162442
+2026-09-19 09:07:50,056 - main - INFO - Successfully logged in user Admin
+2026-09-19 09:07:53,317 - main - INFO - Successfully logged in user Admin
+2026-09-19 09:08:00,265 - main - INFO - Successfully logged in user Admin
+2026-09-19 09:08:01,918 - main - INFO - Successfully logged in user Admin
+2026-09-19 09:08:13,700 - main - INFO - inbound.get_order_details order_code=INB-M-7C89B4D6
+2026-09-19 09:08:26,571 - main - INFO - inbound.get_order_details order_code=INB-M-F441AB2C
+2026-09-19 09:08:28,749 - main - INFO - inbound.get_order_details order_code=INB-M-F441AB2C
+2026-09-19 09:09:00,707 - main - INFO - inbound.get_order_details order_code=INB-M-41A3276F
+2026-09-19 09:09:02,536 - main - INFO - inbound.get_order_details order_code=INB-M-41A3276F
+2026-09-19 09:09:08,047 - main - INFO - inbound.get_order_details order_code=INB-M-E1B6422E
+2026-09-19 09:09:09,732 - main - INFO - inbound.get_order_details order_code=INB-M-E1B6422E
+2026-09-19 09:09:13,751 - main - INFO - inbound.get_order_details order_code=INB-M-3386C72F
+2026-09-19 09:09:16,343 - main - INFO - inbound.get_order_details order_code=INB-M-3386C72F
+2026-09-19 09:09:20,960 - main - INFO - inbound.get_order_details order_code=INB-M-7C89B4D6
+2026-09-19 09:09:22,386 - main - INFO - inbound.get_order_details order_code=INB-M-7C89B4D6
+2026-09-19 09:09:26,512 - main - INFO - inbound.get_order_details order_code=INB-M-41A3276F
+2026-09-19 09:09:28,104 - main - INFO - inbound.get_order_details order_code=INB-M-41A3276F
+2026-09-19 09:09:33,651 - main - INFO - inbound.get_order_details order_code=INB-M-F441AB2C
+2026-09-19 09:09:36,946 - main - INFO - inbound.get_order_details order_code=INB-M-F441AB2C
+2026-09-19 09:09:45,768 - main - INFO - inbound.get_order_details order_code=INB-M-55F33309
+2026-09-19 09:09:47,746 - main - INFO - inbound.get_order_details order_code=INB-M-55F33309
+2026-09-19 09:09:58,868 - main - INFO - inbound.get_order_details order_code=INB-M-7C89B4D6
+2026-09-19 09:10:00,378 - main - INFO - inbound.get_order_details order_code=INB-M-7C89B4D6
+2026-09-19 09:10:02,752 - main - INFO - inbound.get_order_details order_code=INB-M-E1B6422E
+2026-09-19 09:10:04,402 - main - INFO - inbound.get_order_details order_code=INB-M-E1B6422E
+2026-09-19 09:10:10,608 - main - INFO - inbound.get_order_details order_code=INB-M-3386C72F
+2026-09-19 09:10:12,282 - main - INFO - inbound.get_order_details order_code=INB-M-3386C72F
+2026-09-19 09:10:21,268 - main - INFO - inbound.get_order_details order_code=INB-M-41A3276F
+2026-09-19 09:13:47,575 - main - INFO - Successfully logged in user Admin
+2026-09-19 09:13:50,540 - main - INFO - Successfully logged in user Admin
+2026-09-19 09:14:00,419 - main - INFO - Successfully logged in user admin
+2026-09-19 09:15:12,026 - main - INFO - Successfully logged in user admin
+2026-09-19 09:24:18,969 - main - INFO - outbound.create_order order_code=OUT-20260919-092355
+2026-09-19 09:24:18,979 - main - INFO - Type: None
+2026-09-19 09:24:18,982 - main - INFO - Flag: False
+2026-09-19 09:25:50,812 - main - INFO - outbound.get_manual_allocation_tasks order_id=62
+2026-09-19 09:25:50,814 - main - INFO - outbound.get_lacked_details order_id=62
+2026-09-19 09:25:50,815 - main - INFO - outbound.get_order_details order_id=62
+2026-09-19 09:25:50,816 - main - INFO - outbound.get_order_by_id order_id=62
+2026-09-19 09:25:55,012 - main - INFO - outbound.get_lacked_details order_id=62
+2026-09-19 09:25:55,015 - main - INFO - outbound.get_manual_allocation_tasks order_id=62
+2026-09-19 09:25:55,019 - main - INFO - outbound.get_order_by_id order_id=62
+2026-09-19 09:25:55,034 - main - INFO - outbound.get_order_details order_id=62
+2026-09-19 09:25:56,521 - main - INFO - outbound.get_order_by_id order_id=62
+2026-09-19 09:25:56,522 - main - INFO - outbound.get_lacked_details order_id=62
+2026-09-19 09:25:56,529 - main - INFO - outbound.get_order_details order_id=62
+2026-09-19 09:25:59,007 - main - INFO - outbound.get_order_details order_id=62
+2026-09-19 09:26:05,560 - main - INFO - outbound.calculate_order outbound_order_id=62
+2026-09-19 09:26:08,249 - main - INFO - Has task: None
+2026-09-19 09:26:08,253 - main - INFO - Has task: None
+2026-09-19 09:26:09,423 - main - INFO - outbound.get_order_by_id order_id=62
+2026-09-19 09:26:09,424 - main - INFO - outbound.get_lacked_details order_id=62
+2026-09-19 09:26:09,428 - main - INFO - outbound.get_order_details order_id=62
+2026-09-19 09:26:09,434 - main - INFO - outbound.get_manual_allocation_tasks order_id=62
+2026-09-19 09:26:11,081 - main - INFO - outbound.get_order_by_id order_id=62
+2026-09-19 09:26:11,321 - main - INFO - outbound.get_lacked_details order_id=62
+2026-09-19 09:26:11,505 - main - INFO - outbound.get_manual_allocation_tasks order_id=62
+2026-09-19 09:26:11,507 - main - INFO - outbound.get_order_details order_id=62
+2026-09-19 09:26:21,016 - main - INFO - outbound.get_manual_allocation_tasks order_id=62
+2026-09-19 09:26:30,095 - main - INFO - outbound.execute_task order_id=MANUAL_outbound_237
+2026-09-19 09:26:32,185 - main - INFO - Manual allocation stock: 237 --- 3136 --- 3110
+2026-09-19 09:26:34,222 - main - INFO - outbound.get_manual_allocation_tasks order_id=62
+2026-09-19 09:26:34,226 - main - INFO - outbound.get_order_by_id order_id=62
+2026-09-19 09:26:34,226 - main - INFO - outbound.get_order_details order_id=62
+2026-09-19 09:26:34,229 - main - INFO - outbound.get_lacked_details order_id=62
+2026-09-19 09:26:34,593 - main - INFO - outbound.get_order_by_id order_id=62
+2026-09-19 09:26:35,353 - main - INFO - outbound.get_order_details order_id=62
+2026-09-19 09:26:35,366 - main - INFO - outbound.get_manual_allocation_tasks order_id=62
+2026-09-19 09:26:37,852 - main - INFO - outbound.execute_task order_id=MANUAL_outbound_238
+2026-09-19 09:26:38,617 - main - INFO - Manual allocation stock: 238 --- 3136 --- 3110
+2026-09-19 09:26:38,979 - main - INFO - outbound.get_manual_allocation_tasks order_id=62
+2026-09-19 09:26:38,979 - main - INFO - outbound.get_order_details order_id=62
+2026-09-19 09:26:38,980 - main - INFO - outbound.get_order_by_id order_id=62
+2026-09-19 09:26:38,986 - main - INFO - outbound.get_lacked_details order_id=62
+2026-09-19 09:26:39,093 - main - INFO - outbound.get_order_by_id order_id=62
+2026-09-19 09:26:39,462 - main - INFO - outbound.get_manual_allocation_tasks order_id=62
+2026-09-19 09:26:39,487 - main - INFO - outbound.get_order_details order_id=62
+2026-09-19 09:28:45,115 - main - INFO - Successfully logged in user VCC
+2026-09-19 09:28:48,235 - main - INFO - Successfully logged in user VCC
+2026-09-19 09:28:51,658 - main - INFO - Successfully logged in user VCC
+2026-09-19 09:29:10,166 - main - INFO - Successfully logged in user VCC
+2026-09-19 09:29:17,667 - main - INFO - Successfully logged in user vcc
+2026-09-19 09:29:20,939 - main - INFO - Successfully logged in user vcc
+2026-09-19 09:29:21,856 - main - INFO - Successfully logged in user vcc
+2026-09-19 09:29:24,302 - main - INFO - Successfully logged in user vcc
+2026-09-19 09:29:25,202 - main - INFO - Successfully logged in user vcc
+2026-09-19 09:29:29,784 - main - INFO - Successfully logged in user vcc
+2026-09-19 09:29:30,645 - main - INFO - Successfully logged in user vcc
+2026-09-19 09:29:44,048 - main - INFO - Successfully logged in user admin
+2026-09-19 09:32:02,882 - main - INFO - inbound.create_order order_code=IN-20260919-093345
+2026-09-19 09:32:36,642 - main - INFO - inbound.get_order_details order_code=IN-20260919-093345
+2026-09-19 09:32:39,684 - main - INFO - inbound.get_order_details order_code=IN-20260919-093345
+2026-09-19 09:32:45,270 - main - INFO - inbound.accept_task detail_id=124
+2026-09-19 09:32:48,039 - main - INFO - inbound.get_order_details order_code=IN-20260919-093345
+2026-09-19 09:32:48,332 - main - INFO - inbound.get_order_details order_code=IN-20260919-093345
+2026-09-19 09:36:14,514 - main - INFO - inbound.get_order_details order_code=IN-20260919-093345
+2026-09-19 09:36:33,368 - main - INFO - Successfully logged in user VCC
+2026-09-19 09:38:48,497 - main - INFO - Successfully logged in user admin
+2026-09-19 09:40:11,362 - main - INFO - inbound.get_order_details order_code=INB-M-7C89B4D6
+2026-09-19 09:41:30,652 - main - INFO - Successfully logged in user admin
+2026-09-19 09:45:30,996 - main - INFO - Successfully logged in user quanlykho
+2026-09-19 09:45:52,703 - main - INFO - Successfully logged in user quanlykho
+2026-09-19 09:46:06,417 - main - INFO - Successfully logged in user quanlykho
+2026-09-19 09:48:42,889 - main - INFO - ---F20-18-TC-20260919-61852592---
+2026-09-19 09:49:41,637 - main - INFO - ---F20-18-TC-20260919-32616702---
+2026-09-19 09:50:27,742 - main - INFO - ---F20-18-TC-20260919-32616702---
+2026-09-19 09:54:51,175 - main - INFO - ---F20-18-TC-20260919-38999224---
+2026-09-19 09:55:22,393 - main - INFO - ---F20-18-TC-20260919-38999224---
+2026-09-19 09:55:53,373 - main - INFO - ---F20-18-TC-20260919-37858620---
+2026-09-19 09:56:51,490 - main - INFO - ---F20-18-TC-20260919-37858620---
+2026-09-19 09:58:31,358 - main - INFO - ---F20-18-TC-20260919-37858620---
+2026-09-19 09:59:03,179 - main - INFO - ---F20-18-TC-20260919-37858620---
+2026-09-19 10:00:56,086 - main - INFO - ---F20-18-TC-20260919-37858620---
+2026-09-19 10:01:09,840 - main - INFO - ---F20-18-TC-20260919-41852384---
+2026-09-19 10:01:45,366 - main - INFO - ---F20-18-TC-20260919-41852384---
+2026-09-19 10:02:10,456 - main - INFO - ---F20-18-TC-20260919-10896661---
+2026-09-19 10:02:48,605 - main - INFO - ---F20-18-TC-20260919-10896661---
+2026-09-19 10:03:05,122 - main - INFO - ---F20-18-TC-20260919-04537966---
+2026-09-19 10:04:35,785 - main - INFO - ---F20-18-TC-20260919-04537966---
+2026-09-19 10:04:52,184 - main - INFO - ---F20-18-TC-20260919-02701504---
+2026-09-19 10:05:30,149 - main - INFO - ---F20-18-TC-20260919-02701504---
+2026-09-19 10:06:27,520 - main - INFO - ---F20-18-TC-20260919-61852592---
+2026-09-19 10:07:13,317 - main - INFO - ---F20-18-TC-20260919-61852592---
+2026-09-19 10:09:24,378 - main - INFO - ---F20-18-TC-20260919-95716978---
+2026-09-19 10:11:32,541 - main - INFO - ---F20-18-TC-20260919-95716978---
+2026-09-19 10:11:50,828 - main - INFO - ---F20-18-TC-20260919-06415200---
+2026-09-19 10:12:17,375 - main - INFO - ---F20-18-TC-20260919-06415200---
+2026-09-19 10:12:34,861 - main - INFO - ---F20-18-TC-20260919-63841684---
+2026-09-19 10:14:09,969 - main - INFO - ---F20-18-TC-20260919-63841684---
+2026-09-19 10:17:28,791 - main - INFO - inbound.get_order_details order_code=INB-M-6950BB81
+2026-09-19 10:17:31,704 - main - INFO - inbound.get_order_details order_code=INB-M-6950BB81
+2026-09-19 10:17:36,239 - main - INFO - inbound.get_order_details order_code=INB-M-E891EDDE
+2026-09-19 10:17:38,318 - main - INFO - inbound.get_order_details order_code=INB-M-E891EDDE
+2026-09-19 10:17:41,093 - main - INFO - inbound.get_order_details order_code=INB-M-76114D81
+2026-09-19 10:17:44,697 - main - INFO - inbound.get_order_details order_code=INB-M-423E8B5E
+2026-09-19 10:17:46,113 - main - INFO - inbound.get_order_details order_code=INB-M-423E8B5E
+2026-09-19 10:17:50,736 - main - INFO - inbound.get_order_details order_code=INB-M-423E8B5E
+2026-09-19 10:17:53,837 - main - INFO - inbound.get_order_details order_code=INB-M-423E8B5E
+2026-09-19 10:34:45,943 - main - INFO - outbound.create_order order_code=OUT-20260919-103344
+2026-09-19 10:34:45,955 - main - INFO - Type: None
+2026-09-19 10:34:45,959 - main - INFO - Flag: False
+2026-09-19 11:03:44,621 - main - INFO - outbound.get_lacked_details order_id=63
+2026-09-19 11:03:44,621 - main - INFO - outbound.get_order_details order_id=63
+2026-09-19 11:03:44,622 - main - INFO - outbound.get_order_by_id order_id=63
+2026-09-19 11:03:44,630 - main - INFO - outbound.get_robot_tasks order_id=63
+2026-09-19 11:04:39,454 - main - INFO - outbound.get_order_by_id order_id=63
+2026-09-19 11:04:39,468 - main - INFO - outbound.get_robot_tasks order_id=63
+2026-09-19 11:04:39,486 - main - INFO - outbound.get_lacked_details order_id=63
+2026-09-19 11:04:39,488 - main - INFO - outbound.get_order_details order_id=63
+2026-09-19 11:04:57,141 - main - INFO - outbound.calculate_order outbound_order_id=63
+2026-09-19 11:04:57,606 - main - INFO - Robot task created: 121
+2026-09-19 11:04:58,045 - main - INFO - Has task: 121
+2026-09-19 11:04:58,221 - main - INFO - Has task: None
+2026-09-19 11:04:58,225 - main - INFO - Robot task created: 122
+2026-09-19 11:04:58,632 - main - INFO - Has task: 122
+2026-09-19 11:04:59,051 - main - INFO - Has task: 122
+2026-09-19 11:04:59,380 - main - INFO - Has task: 122
+2026-09-19 11:04:59,527 - main - INFO - Has task: None
+2026-09-19 11:04:59,533 - main - INFO - Robot task created: 123
+2026-09-19 11:04:59,894 - main - INFO - Has task: 123
+2026-09-19 11:05:00,251 - main - INFO - Has task: 123
+2026-09-19 11:05:00,664 - main - INFO - Has task: 123
+2026-09-19 11:05:01,001 - main - INFO - Has task: 123
+2026-09-19 11:05:01,185 - main - INFO - Has task: None
+2026-09-19 11:05:01,189 - main - INFO - Robot task created: 124
+2026-09-19 11:05:01,413 - main - INFO - Has task: None
+2026-09-19 11:05:01,417 - main - INFO - Robot task created: 125
+2026-09-19 11:05:01,692 - main - INFO - Has task: 125
+2026-09-19 11:05:02,023 - main - INFO - Has task: 125
+2026-09-19 11:05:02,328 - main - INFO - Has task: 125
+2026-09-19 11:05:02,879 - main - INFO - outbound.get_order_by_id order_id=63
+2026-09-19 11:05:02,884 - main - INFO - outbound.get_order_details order_id=63
+2026-09-19 11:05:02,885 - main - INFO - outbound.get_robot_tasks order_id=63
+2026-09-19 11:05:02,887 - main - INFO - outbound.get_lacked_details order_id=63
+2026-09-19 11:05:03,231 - main - INFO - outbound.get_order_by_id order_id=63
+2026-09-19 11:05:03,605 - main - INFO - outbound.get_order_details order_id=63
+2026-09-19 11:05:03,607 - main - INFO - outbound.get_lacked_details order_id=63
+2026-09-19 11:05:03,608 - main - INFO - outbound.get_robot_tasks order_id=63
+2026-09-19 11:06:07,249 - main - INFO - Successfully logged in user admin
+2026-09-19 11:06:53,656 - main - INFO - outbound.execute_task order_id=TDS_Outbound_7ab60c41
+2026-09-19 11:06:55,134 - main - INFO - ICS addTask response: {'code': 1000, 'data': 'TDS_Outbound_7ab60c41', 'desc': '请求成功'}
+2026-09-19 11:06:55,333 - main - INFO - outbound.get_order_by_id order_id=63
+2026-09-19 11:06:55,354 - main - INFO - outbound.get_order_details order_id=63
+2026-09-19 11:06:55,356 - main - INFO - outbound.get_robot_tasks order_id=63
+2026-09-19 11:06:55,376 - main - INFO - outbound.get_lacked_details order_id=63
+2026-09-19 11:06:55,493 - main - INFO - outbound.get_order_by_id order_id=63
+2026-09-19 11:06:56,118 - main - INFO - Processing task status for order_id=TDS_Outbound_7ab60c41
+2026-09-19 11:06:56,431 - main - INFO - outbound.get_order_details order_id=63
+2026-09-19 11:06:56,437 - main - INFO - outbound.get_robot_tasks order_id=63
+2026-09-19 11:07:03,995 - main - INFO - outbound.execute_task order_id=TDS_Outbound_a553fa6c
+2026-09-19 11:07:06,150 - main - INFO - ICS addTask response: {'code': 1000, 'data': 'TDS_Outbound_a553fa6c', 'desc': '请求成功'}
+2026-09-19 11:07:06,303 - main - INFO - outbound.get_order_by_id order_id=63
+2026-09-19 11:07:06,307 - main - INFO - outbound.get_order_details order_id=63
+2026-09-19 11:07:06,308 - main - INFO - outbound.get_robot_tasks order_id=63
+2026-09-19 11:07:06,309 - main - INFO - outbound.get_lacked_details order_id=63
+2026-09-19 11:07:06,430 - main - INFO - outbound.get_order_by_id order_id=63
+2026-09-19 11:07:07,064 - main - INFO - Processing task status for order_id=TDS_Outbound_a553fa6c
+2026-09-19 11:07:07,336 - main - INFO - outbound.get_order_details order_id=63
+2026-09-19 11:07:07,341 - main - INFO - outbound.get_robot_tasks order_id=63
+2026-09-19 11:07:09,210 - main - INFO - Successfully logged in user Admin
+2026-09-19 11:07:14,472 - main - INFO - outbound.execute_task order_id=TDS_Outbound_5d39ab2e
+2026-09-19 11:07:17,119 - main - INFO - ICS addTask response: {'code': 1000, 'data': 'TDS_Outbound_5d39ab2e', 'desc': '请求成功'}
+2026-09-19 11:07:17,246 - main - INFO - Successfully logged in user admin
+2026-09-19 11:07:17,400 - main - INFO - outbound.get_order_details order_id=63
+2026-09-19 11:07:17,402 - main - INFO - outbound.get_order_by_id order_id=63
+2026-09-19 11:07:17,402 - main - INFO - outbound.get_robot_tasks order_id=63
+2026-09-19 11:07:17,407 - main - INFO - outbound.get_lacked_details order_id=63
+2026-09-19 11:07:17,503 - main - INFO - outbound.get_order_by_id order_id=63
+2026-09-19 11:07:18,355 - main - INFO - outbound.get_order_details order_id=63
+2026-09-19 11:07:18,368 - main - INFO - outbound.get_robot_tasks order_id=63
+2026-09-19 11:07:19,266 - main - INFO - outbound.execute_task order_id=TDS_Outbound_b5ea1905
+2026-09-19 11:07:20,430 - main - INFO - ICS addTask response: {'code': 1000, 'data': 'TDS_Outbound_b5ea1905', 'desc': '请求成功'}
+2026-09-19 11:07:20,650 - main - INFO - outbound.get_order_details order_id=63
+2026-09-19 11:07:20,650 - main - INFO - outbound.get_robot_tasks order_id=63
+2026-09-19 11:07:20,651 - main - INFO - outbound.get_lacked_details order_id=63
+2026-09-19 11:07:20,653 - main - INFO - outbound.get_order_by_id order_id=63
+2026-09-19 11:07:20,730 - main - INFO - outbound.get_order_by_id order_id=63
+2026-09-19 11:07:20,903 - main - INFO - outbound.execute_task order_id=TDS_Outbound_5d39ab2e
+2026-09-19 11:07:21,580 - main - INFO - outbound.get_robot_tasks order_id=63
+2026-09-19 11:07:21,584 - main - INFO - outbound.get_order_details order_id=63
+2026-09-19 11:07:25,434 - main - INFO - outbound.execute_task order_id=TDS_Outbound_1089c4db
+2026-09-19 11:07:27,375 - main - INFO - ICS addTask response: {'code': 1000, 'data': 'TDS_Outbound_1089c4db', 'desc': '请求成功'}
+2026-09-19 11:07:27,500 - main - INFO - outbound.get_order_by_id order_id=63
+2026-09-19 11:07:27,500 - main - INFO - outbound.get_lacked_details order_id=63
+2026-09-19 11:07:27,504 - main - INFO - outbound.get_order_details order_id=63
+2026-09-19 11:07:27,504 - main - INFO - outbound.get_robot_tasks order_id=63
+2026-09-19 11:07:27,589 - main - INFO - outbound.get_order_by_id order_id=63
+2026-09-19 11:07:28,400 - main - INFO - outbound.get_robot_tasks order_id=63
+2026-09-19 11:07:28,401 - main - INFO - outbound.get_order_details order_id=63
+2026-09-19 11:07:35,654 - main - INFO - Processing task status for order_id=TDS_Outbound_7ab60c41
+2026-09-19 11:07:36,032 - main - INFO - Processing task status for order_id=TDS_Outbound_7ab60c41
+2026-09-19 11:07:45,692 - main - INFO - Processing task status for order_id=TDS_Outbound_7ab60c41
+2026-09-19 11:07:45,812 - main - INFO - Processing task status for order_id=TDS_Outbound_7ab60c41
+2026-09-19 11:08:08,362 - main - INFO - Processing task status for order_id=TDS_Outbound_a553fa6c
+2026-09-19 11:08:08,660 - main - INFO - Processing task status for order_id=TDS_Outbound_a553fa6c
+2026-09-19 11:08:18,189 - main - INFO - Processing task status for order_id=TDS_Outbound_a553fa6c
+2026-09-19 11:08:18,254 - main - INFO - Processing task status for order_id=TDS_Outbound_a553fa6c
+2026-09-19 11:08:30,804 - main - INFO - Successfully logged in user admin
+2026-09-19 11:08:31,790 - main - INFO - Successfully logged in user admin
+2026-09-19 11:08:42,444 - main - INFO - Successfully logged in user admin
+2026-09-19 11:08:52,798 - main - INFO - Processing task status for order_id=TDS_Outbound_7ab60c41
+2026-09-19 11:08:53,063 - main - INFO - Processing task status for order_id=TDS_Outbound_7ab60c41
+2026-09-19 11:08:59,598 - main - INFO - Processing task status for order_id=TDS_Outbound_7ab60c41
+2026-09-19 11:08:59,925 - main - INFO - Processing task status for order_id=TDS_Outbound_5d39ab2e
+2026-09-19 11:09:26,103 - main - INFO - Processing task status for order_id=TDS_Outbound_a553fa6c
+2026-09-19 11:09:26,388 - main - INFO - Processing task status for order_id=TDS_Outbound_a553fa6c
+2026-09-19 11:09:33,135 - main - INFO - Processing task status for order_id=TDS_Outbound_a553fa6c
+2026-09-19 11:09:33,205 - main - INFO - Processing task status for order_id=TDS_Outbound_b5ea1905
+2026-09-19 11:10:19,260 - main - INFO - Processing task status for order_id=TDS_Outbound_b5ea1905
+2026-09-19 11:10:19,592 - main - INFO - Processing task status for order_id=TDS_Outbound_b5ea1905
+2026-09-19 11:10:29,322 - main - INFO - Processing task status for order_id=TDS_Outbound_b5ea1905
+2026-09-19 11:10:29,443 - main - INFO - Processing task status for order_id=TDS_Outbound_b5ea1905
+2026-09-19 11:10:58,128 - main - INFO - Processing task status for order_id=TDS_Outbound_5d39ab2e
+2026-09-19 11:10:58,431 - main - INFO - Processing task status for order_id=TDS_Outbound_5d39ab2e
+2026-09-19 11:11:12,651 - main - INFO - Processing task status for order_id=TDS_Outbound_5d39ab2e
+2026-09-19 11:11:12,785 - main - INFO - Processing task status for order_id=TDS_Outbound_5d39ab2e
+2026-09-19 11:11:43,599 - main - INFO - Processing task status for order_id=TDS_Outbound_b5ea1905
+2026-09-19 11:11:43,906 - main - INFO - Processing task status for order_id=TDS_Outbound_b5ea1905
+2026-09-19 11:11:50,581 - main - INFO - Processing task status for order_id=TDS_Outbound_b5ea1905
+2026-09-19 11:11:50,696 - main - INFO - Processing task status for order_id=TDS_Outbound_1089c4db
+2026-09-19 11:12:40,657 - main - INFO - Processing task status for order_id=TDS_Outbound_5d39ab2e
+2026-09-19 11:12:40,986 - main - INFO - Processing task status for order_id=TDS_Outbound_5d39ab2e
+2026-09-19 11:12:47,672 - main - INFO - Processing task status for order_id=TDS_Outbound_5d39ab2e
+2026-09-19 11:13:16,574 - main - INFO - Processing task status for order_id=TDS_Outbound_1089c4db
+2026-09-19 11:13:16,936 - main - INFO - Processing task status for order_id=TDS_Outbound_1089c4db
+2026-09-19 11:13:27,101 - main - INFO - Processing task status for order_id=TDS_Outbound_1089c4db
+2026-09-19 11:13:27,217 - main - INFO - Processing task status for order_id=TDS_Outbound_1089c4db
+2026-09-19 11:13:33,000 - main - INFO - outbound.get_lacked_details order_id=63
+2026-09-19 11:13:33,002 - main - INFO - outbound.get_order_details order_id=63
+2026-09-19 11:13:33,012 - main - INFO - outbound.get_order_by_id order_id=63
+2026-09-19 11:13:33,014 - main - INFO - outbound.get_robot_tasks order_id=63
+2026-09-19 11:13:42,670 - main - INFO - outbound.get_order_details order_id=63
+2026-09-19 11:13:45,717 - main - INFO - outbound.get_lacked_details order_id=63
+2026-09-19 11:13:45,724 - main - INFO - outbound.get_order_by_id order_id=63
+2026-09-19 11:13:45,730 - main - INFO - outbound.get_order_details order_id=63
+2026-09-19 11:13:45,736 - main - INFO - outbound.get_robot_tasks order_id=63
+2026-09-19 11:14:38,921 - main - INFO - Processing task status for order_id=TDS_Outbound_1089c4db
+2026-09-19 11:14:39,180 - main - INFO - Processing task status for order_id=TDS_Outbound_1089c4db
+2026-09-19 11:14:45,906 - main - INFO - Processing task status for order_id=TDS_Outbound_1089c4db
+2026-09-19 11:17:29,655 - main - INFO - outbound.get_lacked_details order_id=63
+2026-09-19 11:17:29,660 - main - INFO - outbound.get_order_by_id order_id=63
+2026-09-19 11:17:29,662 - main - INFO - outbound.get_robot_tasks order_id=63
+2026-09-19 11:17:29,670 - main - INFO - outbound.get_order_details order_id=63
+2026-09-19 11:17:29,748 - main - INFO - outbound.get_order_by_id order_id=63
+2026-09-19 11:17:31,819 - main - INFO - outbound.get_robot_tasks order_id=63
+2026-09-19 11:17:31,820 - main - INFO - outbound.get_order_details order_id=63
+2026-09-19 11:17:37,201 - main - INFO - outbound.get_order_details order_id=63
+2026-09-19 11:17:37,204 - main - INFO - outbound.get_order_by_id order_id=63
+2026-09-19 11:17:37,210 - main - INFO - outbound.get_lacked_details order_id=63
+2026-09-19 11:17:37,217 - main - INFO - outbound.get_robot_tasks order_id=63
+2026-09-19 11:17:37,310 - main - INFO - outbound.get_order_by_id order_id=63
+2026-09-19 11:17:37,987 - main - INFO - outbound.get_robot_tasks order_id=63
+2026-09-19 11:17:37,995 - main - INFO - outbound.get_order_details order_id=63
+2026-09-19 11:17:59,949 - main - INFO - outbound.get_robot_tasks order_id=63
+2026-09-19 11:17:59,953 - main - INFO - outbound.get_lacked_details order_id=63
+2026-09-19 11:17:59,956 - main - INFO - outbound.get_order_by_id order_id=63
+2026-09-19 11:17:59,960 - main - INFO - outbound.get_order_details order_id=63
+2026-09-19 11:18:00,056 - main - INFO - outbound.get_order_by_id order_id=63
+2026-09-19 11:18:00,825 - main - INFO - outbound.get_robot_tasks order_id=63
+2026-09-19 11:18:00,830 - main - INFO - outbound.get_order_details order_id=63
+2026-09-19 11:18:04,522 - main - INFO - outbound.get_lacked_details order_id=63
+2026-09-19 11:18:04,524 - main - INFO - outbound.get_order_details order_id=63
+2026-09-19 11:18:04,527 - main - INFO - outbound.get_robot_tasks order_id=63
+2026-09-19 11:18:04,533 - main - INFO - outbound.get_order_by_id order_id=63
+2026-09-19 11:18:04,602 - main - INFO - outbound.get_order_by_id order_id=63
+2026-09-19 11:18:05,325 - main - INFO - outbound.get_order_details order_id=63
+2026-09-19 11:18:05,326 - main - INFO - outbound.get_robot_tasks order_id=63
+2026-09-19 11:18:18,530 - main - INFO - outbound.get_order_details order_id=63
+2026-09-19 11:18:18,534 - main - INFO - outbound.get_order_by_id order_id=63
+2026-09-19 11:18:18,544 - main - INFO - outbound.get_robot_tasks order_id=63
+2026-09-19 11:18:18,549 - main - INFO - outbound.get_lacked_details order_id=63
+2026-09-19 11:18:18,650 - main - INFO - outbound.get_order_by_id order_id=63
+2026-09-19 11:18:19,225 - main - INFO - outbound.get_robot_tasks order_id=63
+2026-09-19 11:18:19,287 - main - INFO - outbound.get_order_details order_id=63
+2026-09-19 11:18:24,270 - main - INFO - outbound.get_order_by_id order_id=63
+2026-09-19 11:18:24,279 - main - INFO - outbound.get_lacked_details order_id=63
+2026-09-19 11:18:24,283 - main - INFO - outbound.get_robot_tasks order_id=63
+2026-09-19 11:18:24,286 - main - INFO - outbound.get_order_details order_id=63
+2026-09-19 11:18:24,407 - main - INFO - outbound.get_order_by_id order_id=63
+2026-09-19 11:18:25,089 - main - INFO - outbound.get_order_details order_id=63
+2026-09-19 11:18:25,090 - main - INFO - outbound.get_robot_tasks order_id=63
+2026-09-19 11:19:40,879 - main - INFO - outbound.get_order_by_id order_id=63
+2026-09-19 11:19:40,880 - main - INFO - outbound.get_order_details order_id=63
+2026-09-19 11:19:40,880 - main - INFO - outbound.get_robot_tasks order_id=63
+2026-09-19 11:19:40,889 - main - INFO - outbound.get_lacked_details order_id=63
+2026-09-19 11:19:41,013 - main - INFO - outbound.get_order_by_id order_id=63
+2026-09-19 11:19:41,662 - main - INFO - outbound.get_order_details order_id=63
+2026-09-19 11:19:41,662 - main - INFO - outbound.get_robot_tasks order_id=63
+2026-09-19 11:19:56,420 - main - INFO - outbound.get_lacked_details order_id=63
+2026-09-19 11:19:56,421 - main - INFO - outbound.get_order_details order_id=63
+2026-09-19 11:19:56,425 - main - INFO - outbound.get_order_by_id order_id=63
+2026-09-19 11:19:56,430 - main - INFO - outbound.get_robot_tasks order_id=63
+2026-09-19 11:19:56,663 - main - INFO - outbound.get_order_by_id order_id=63
+2026-09-19 11:19:58,747 - main - INFO - outbound.get_order_details order_id=63
+2026-09-19 11:19:58,748 - main - INFO - outbound.get_robot_tasks order_id=63
+2026-09-19 11:20:00,827 - main - INFO - outbound.get_order_by_id order_id=63
+2026-09-19 11:20:00,858 - main - INFO - outbound.get_lacked_details order_id=63
+2026-09-19 11:20:00,866 - main - INFO - outbound.get_robot_tasks order_id=63
+2026-09-19 11:20:00,868 - main - INFO - outbound.get_order_details order_id=63
+2026-09-19 11:20:00,901 - main - INFO - outbound.get_order_by_id order_id=63
+2026-09-19 11:20:01,737 - main - INFO - outbound.get_robot_tasks order_id=63
+2026-09-19 11:20:01,738 - main - INFO - outbound.get_order_details order_id=63
+2026-09-19 11:20:06,270 - main - INFO - outbound.get_order_by_id order_id=63
+2026-09-19 11:20:06,314 - main - INFO - outbound.get_lacked_details order_id=63
+2026-09-19 11:20:06,315 - main - INFO - outbound.get_order_details order_id=63
+2026-09-19 11:20:06,315 - main - INFO - outbound.get_robot_tasks order_id=63
+2026-09-19 11:20:06,357 - main - INFO - outbound.get_order_by_id order_id=63
+2026-09-19 11:20:07,011 - main - INFO - outbound.get_robot_tasks order_id=63
+2026-09-19 11:20:07,089 - main - INFO - outbound.get_order_details order_id=63
+2026-09-19 11:20:12,019 - main - INFO - outbound.get_order_by_id order_id=63
+2026-09-19 11:20:12,022 - main - INFO - outbound.get_order_details order_id=63
+2026-09-19 11:20:12,028 - main - INFO - outbound.get_robot_tasks order_id=63
+2026-09-19 11:20:12,030 - main - INFO - outbound.get_lacked_details order_id=63
+2026-09-19 11:20:12,111 - main - INFO - outbound.get_order_by_id order_id=63
+2026-09-19 11:20:12,812 - main - INFO - outbound.get_robot_tasks order_id=63
+2026-09-19 11:20:12,818 - main - INFO - outbound.get_order_details order_id=63
+2026-09-19 11:20:20,192 - main - INFO - outbound.get_order_by_id order_id=63
+2026-09-19 11:20:20,217 - main - INFO - outbound.get_order_details order_id=63
+2026-09-19 11:20:20,219 - main - INFO - outbound.get_robot_tasks order_id=63
+2026-09-19 11:20:20,220 - main - INFO - outbound.get_lacked_details order_id=63
+2026-09-19 11:20:20,326 - main - INFO - outbound.get_order_by_id order_id=63
+2026-09-19 11:20:21,015 - main - INFO - outbound.get_robot_tasks order_id=63
+2026-09-19 11:20:21,016 - main - INFO - outbound.get_order_details order_id=63
+2026-09-19 11:20:38,630 - main - INFO - outbound.get_robot_tasks order_id=63
+2026-09-19 11:20:38,635 - main - INFO - outbound.get_order_details order_id=63
+2026-09-19 11:20:38,636 - main - INFO - outbound.get_order_by_id order_id=63
+2026-09-19 11:20:38,644 - main - INFO - outbound.get_lacked_details order_id=63
+2026-09-19 11:20:38,742 - main - INFO - outbound.get_order_by_id order_id=63
+2026-09-19 11:20:39,632 - main - INFO - outbound.get_robot_tasks order_id=63
+2026-09-19 11:20:39,632 - main - INFO - outbound.get_order_details order_id=63
+2026-09-19 11:20:43,350 - main - INFO - outbound.get_order_by_id order_id=63
+2026-09-19 11:20:43,352 - main - INFO - outbound.get_robot_tasks order_id=63
+2026-09-19 11:20:43,354 - main - INFO - outbound.get_order_details order_id=63
+2026-09-19 11:20:43,360 - main - INFO - outbound.get_lacked_details order_id=63
+2026-09-19 11:20:43,448 - main - INFO - outbound.get_order_by_id order_id=63
+2026-09-19 11:20:44,245 - main - INFO - outbound.get_robot_tasks order_id=63
+2026-09-19 11:20:44,255 - main - INFO - outbound.get_order_details order_id=63
+2026-09-19 11:20:53,479 - main - INFO - outbound.get_order_details order_id=63
+2026-09-19 11:20:53,483 - main - INFO - outbound.get_lacked_details order_id=63
+2026-09-19 11:20:53,483 - main - INFO - outbound.get_robot_tasks order_id=63
+2026-09-19 11:20:53,484 - main - INFO - outbound.get_order_by_id order_id=63
+2026-09-19 11:20:53,607 - main - INFO - outbound.get_order_by_id order_id=63
+2026-09-19 11:20:54,482 - main - INFO - outbound.get_robot_tasks order_id=63
+2026-09-19 11:20:54,491 - main - INFO - outbound.get_order_details order_id=63
+2026-09-19 11:23:13,689 - main - INFO - qr_record: RC4-3106-000-20260919-07805717 --- <app.modules.warehouse.item.item_model.QR_Code object at 0x0000023053E7BAC0>
+2026-09-19 11:25:59,885 - main - INFO - outbound.get_robot_tasks order_id=63
+2026-09-19 11:25:59,888 - main - INFO - outbound.get_order_details order_id=63
+2026-09-19 11:25:59,888 - main - INFO - outbound.get_order_by_id order_id=63
+2026-09-19 11:25:59,890 - main - INFO - outbound.get_lacked_details order_id=63
+2026-09-19 11:26:17,329 - main - INFO - outbound.execute_task order_id=TDS_Return_9cf817f4
+2026-09-19 11:26:18,713 - main - INFO - ICS addTask response: {'code': 1000, 'data': 'TDS_Return_9cf817f4', 'desc': '请求成功'}
+2026-09-19 11:26:18,904 - main - INFO - outbound.get_order_by_id order_id=63
+2026-09-19 11:26:18,904 - main - INFO - outbound.get_robot_tasks order_id=63
+2026-09-19 11:26:18,910 - main - INFO - outbound.get_order_details order_id=63
+2026-09-19 11:26:18,919 - main - INFO - outbound.get_lacked_details order_id=63
+2026-09-19 11:26:19,007 - main - INFO - outbound.get_order_by_id order_id=63
+2026-09-19 11:26:19,502 - main - INFO - Processing task status for order_id=TDS_Return_9cf817f4
+2026-09-19 11:26:19,711 - main - INFO - outbound.get_robot_tasks order_id=63
+2026-09-19 11:26:19,712 - main - INFO - outbound.get_order_details order_id=63
+2026-09-19 11:26:43,659 - main - INFO - qr_record: RC4-3106-000-20260919-60523820 --- <app.modules.warehouse.item.item_model.QR_Code object at 0x0000023053C136D0>
+2026-09-19 11:26:47,056 - main - INFO - outbound.get_robot_tasks order_id=63
+2026-09-19 11:27:15,427 - main - INFO - Processing task status for order_id=TDS_Return_9cf817f4
+2026-09-19 11:27:15,798 - main - INFO - Processing task status for order_id=TDS_Return_9cf817f4
+2026-09-19 11:27:25,385 - main - INFO - Processing task status for order_id=TDS_Return_9cf817f4
+2026-09-19 11:27:25,459 - main - INFO - Processing task status for order_id=TDS_Return_9cf817f4
+2026-09-19 11:28:36,174 - main - INFO - Processing task status for order_id=TDS_Return_9cf817f4
+2026-09-19 11:28:36,671 - main - INFO - Processing task status for order_id=TDS_Return_9cf817f4
+2026-09-19 11:28:43,345 - main - INFO - Processing task status for order_id=TDS_Return_9cf817f4
+2026-09-19 11:37:01,726 - main - INFO - outbound.get_order_by_id order_id=63
+2026-09-19 11:37:01,730 - main - INFO - outbound.get_lacked_details order_id=63
+2026-09-19 11:37:01,734 - main - INFO - outbound.get_robot_tasks order_id=63
+2026-09-19 11:37:01,743 - main - INFO - outbound.get_order_details order_id=63
+2026-09-19 11:37:05,883 - main - INFO - outbound.get_robot_tasks order_id=63
+2026-09-19 11:37:05,884 - main - INFO - outbound.get_order_by_id order_id=63
+2026-09-19 11:37:05,888 - main - INFO - outbound.get_order_details order_id=63
+2026-09-19 11:37:05,890 - main - INFO - outbound.get_lacked_details order_id=63
+2026-09-19 11:41:14,187 - main - INFO - outbound.get_lacked_details order_id=63
+2026-09-19 11:41:14,192 - main - INFO - outbound.get_order_details order_id=63
+2026-09-19 11:41:14,194 - main - INFO - outbound.get_robot_tasks order_id=63
+2026-09-19 11:41:14,202 - main - INFO - outbound.get_order_by_id order_id=63
+2026-09-19 11:41:18,219 - main - INFO - outbound.get_order_by_id order_id=63
+2026-09-19 11:41:18,219 - main - INFO - outbound.get_order_details order_id=63
+2026-09-19 11:41:18,221 - main - INFO - outbound.get_robot_tasks order_id=63
+2026-09-19 11:41:18,224 - main - INFO - outbound.get_lacked_details order_id=63
+2026-09-19 11:52:41,424 - main - INFO - qr_record: RC4-3106-000-20260919-59052719 --- <app.modules.warehouse.item.item_model.QR_Code object at 0x0000023054C87460>
+2026-09-19 12:54:48,295 - main - INFO - outbound.get_order_details order_id=57
+2026-09-19 12:54:48,297 - main - INFO - outbound.get_lacked_details order_id=57
+2026-09-19 12:54:48,303 - main - INFO - outbound.get_order_by_id order_id=57
+2026-09-19 12:54:48,307 - main - INFO - outbound.get_manual_allocation_tasks order_id=57
+2026-09-19 12:55:28,676 - main - INFO - outbound.get_order_details order_id=62
+2026-09-19 12:55:28,678 - main - INFO - outbound.get_lacked_details order_id=62
+2026-09-19 12:55:28,680 - main - INFO - outbound.get_manual_allocation_tasks order_id=62
+2026-09-19 12:55:28,682 - main - INFO - outbound.get_order_by_id order_id=62
+2026-09-19 12:55:31,544 - main - INFO - outbound.get_order_details order_id=62
+2026-09-19 12:55:42,534 - main - INFO - outbound.get_order_details order_id=62
+2026-09-19 12:55:42,538 - main - INFO - outbound.get_manual_allocation_tasks order_id=62
+2026-09-19 12:55:42,539 - main - INFO - outbound.get_lacked_details order_id=62
+2026-09-19 12:55:42,539 - main - INFO - outbound.get_order_by_id order_id=62
+2026-09-19 12:55:44,608 - main - INFO - outbound.get_manual_allocation_tasks order_id=62
+2026-09-19 12:58:54,786 - main - INFO - inbound.caller_order order_code=IN-20260919-130119
+2026-09-19 12:58:58,528 - main - INFO - ICS addTask response: {'code': 1000, 'data': 'TDS_Inbound_7e26b513', 'desc': '请求成功'}
+2026-09-19 12:58:59,570 - main - INFO - Processing task status for order_id=TDS_Inbound_7e26b513
+2026-09-19 12:59:52,944 - main - INFO - Processing task status for order_id=TDS_Inbound_7e26b513
+2026-09-19 12:59:53,311 - main - INFO - Processing task status for order_id=TDS_Inbound_7e26b513
+2026-09-19 12:59:59,786 - main - INFO - Processing task status for order_id=TDS_Inbound_7e26b513
+2026-09-19 12:59:59,895 - main - INFO - Processing task status for order_id=TDS_Inbound_7e26b513
+2026-09-19 13:00:29,754 - main - INFO - qr_record: RC6-1378-000-20260919-01967043 --- <app.modules.warehouse.item.item_model.QR_Code object at 0x000002304F657A30>
+2026-09-19 13:01:34,935 - main - INFO - Processing task status for order_id=TDS_Inbound_7e26b513
+2026-09-19 13:01:35,214 - main - INFO - Processing task status for order_id=TDS_Inbound_7e26b513
+2026-09-19 13:01:41,922 - main - INFO - Processing task status for order_id=TDS_Inbound_7e26b513
+2026-09-19 13:01:42,282 - main - INFO - Receive completed for TDS_Inbound_7e26b513
+2026-09-19 13:01:42,364 - main - INFO - Current status: in_transit
+2026-09-19 13:01:42,365 - main - INFO - New status: available
+2026-09-19 13:01:42,366 - main - INFO - Current status: in_transit
+2026-09-19 13:01:42,366 - main - INFO - New status: available
+2026-09-19 13:01:42,367 - main - INFO - Current status: in_transit
+2026-09-19 13:01:42,367 - main - INFO - New status: available
+2026-09-19 13:13:10,228 - main - INFO - outbound.get_robot_tasks order_id=62
+2026-09-19 13:18:58,990 - main - INFO - qr_record: RC6-1378-000-20260919-66933464 --- <app.modules.warehouse.item.item_model.QR_Code object at 0x00000230537F8A60>
+2026-09-19 13:38:02,097 - main - INFO - qr_record: RC6-1378-000-20260919-40189238 --- <app.modules.warehouse.item.item_model.QR_Code object at 0x0000023053D1B7C0>
+2026-09-19 14:17:22,364 - main - INFO - qr_record: RC6-1378-000-20260919-01527505 --- <app.modules.warehouse.item.item_model.QR_Code object at 0x00000230537FA080>
+2026-09-19 14:34:20,686 - main - INFO - qr_record: RC6-1378-000-20260919-69110879 --- <app.modules.warehouse.item.item_model.QR_Code object at 0x0000023054105540>
+2026-09-19 14:34:49,959 - main - INFO - inbound.caller_order order_code=IN-20260919-143727
+2026-09-19 14:34:51,134 - main - INFO - ICS addTask response: {'code': 1000, 'data': 'TDS_Inbound_a30ea668', 'desc': '请求成功'}
+2026-09-19 14:34:52,373 - main - INFO - Processing task status for order_id=TDS_Inbound_a30ea668
+2026-09-19 14:35:46,888 - main - INFO - Processing task status for order_id=TDS_Inbound_a30ea668
+2026-09-19 14:35:47,257 - main - INFO - Processing task status for order_id=TDS_Inbound_a30ea668
+2026-09-19 14:35:54,663 - main - INFO - Processing task status for order_id=TDS_Inbound_a30ea668
+2026-09-19 14:35:54,784 - main - INFO - Processing task status for order_id=TDS_Inbound_a30ea668
+2026-09-19 14:37:25,333 - main - INFO - Processing task status for order_id=TDS_Inbound_a30ea668
+2026-09-19 14:37:25,607 - main - INFO - Processing task status for order_id=TDS_Inbound_a30ea668
+2026-09-19 14:37:32,333 - main - INFO - Processing task status for order_id=TDS_Inbound_a30ea668
+2026-09-19 14:37:32,641 - main - INFO - Receive completed for TDS_Inbound_a30ea668
+2026-09-19 14:37:32,712 - main - INFO - Current status: in_transit
+2026-09-19 14:37:32,713 - main - INFO - New status: available
+2026-09-19 14:37:32,714 - main - INFO - Current status: in_transit
+2026-09-19 14:37:32,714 - main - INFO - New status: available
+2026-09-19 14:37:32,715 - main - INFO - Current status: in_transit
+2026-09-19 14:37:32,715 - main - INFO - New status: available
+2026-09-19 14:37:32,716 - main - INFO - Current status: in_transit
+2026-09-19 14:37:32,716 - main - INFO - New status: available
+2026-09-19 14:37:32,716 - main - INFO - Current status: in_transit
+2026-09-19 14:37:32,717 - main - INFO - New status: available
+2026-09-19 14:51:51,405 - main - INFO - outbound.get_robot_tasks order_id=63
+2026-09-19 14:51:51,437 - main - INFO - outbound.get_lacked_details order_id=63
+2026-09-19 14:51:51,445 - main - INFO - outbound.get_order_details order_id=63
+2026-09-19 14:51:51,446 - main - INFO - outbound.get_order_by_id order_id=63
+2026-09-19 14:53:53,343 - main - INFO - outbound.create_order order_code=OUT-20260919-145502
+2026-09-19 14:53:53,348 - main - INFO - Type: None
+2026-09-19 14:53:53,350 - main - INFO - Flag: False
+2026-09-19 14:54:00,864 - main - INFO - outbound.get_order_by_id order_id=64
+2026-09-19 14:54:00,866 - main - INFO - outbound.get_order_details order_id=64
+2026-09-19 14:54:00,884 - main - INFO - outbound.get_robot_tasks order_id=64
+2026-09-19 14:54:00,893 - main - INFO - outbound.get_lacked_details order_id=64
+2026-09-19 14:54:09,417 - main - INFO - outbound.get_robot_tasks order_id=64
+2026-09-19 14:54:09,418 - main - INFO - outbound.get_order_details order_id=64
+2026-09-19 14:54:09,428 - main - INFO - outbound.get_lacked_details order_id=64
+2026-09-19 14:54:09,428 - main - INFO - outbound.get_order_by_id order_id=64
+2026-09-19 14:54:10,738 - main - INFO - outbound.get_order_by_id order_id=64
+2026-09-19 14:54:10,738 - main - INFO - outbound.get_order_details order_id=64
+2026-09-19 14:54:10,745 - main - INFO - outbound.get_lacked_details order_id=64
+2026-09-19 14:54:17,648 - main - INFO - outbound.calculate_order outbound_order_id=64
+2026-09-19 14:54:18,066 - main - INFO - Robot task created: 129
+2026-09-19 14:54:18,329 - main - INFO - Has task: None
+2026-09-19 14:54:18,333 - main - INFO - Robot task created: 130
+2026-09-19 14:54:18,839 - main - INFO - Has task: 130
+2026-09-19 14:54:19,226 - main - INFO - Has task: 130
+2026-09-19 14:54:19,611 - main - INFO - Has task: 130
+2026-09-19 14:54:20,025 - main - INFO - Has task: 130
+2026-09-19 14:54:20,301 - main - INFO - Has task: None
+2026-09-19 14:54:20,304 - main - INFO - Robot task created: 131
+2026-09-19 14:54:20,820 - main - INFO - Has task: 131
+2026-09-19 14:54:21,211 - main - INFO - Has task: 131
+2026-09-19 14:54:21,632 - main - INFO - Has task: 131
+2026-09-19 14:54:22,035 - main - INFO - Has task: 131
+2026-09-19 14:54:22,151 - main - INFO - Has task: None
+2026-09-19 14:54:22,691 - main - INFO - outbound.get_order_by_id order_id=64
+2026-09-19 14:54:22,719 - main - INFO - outbound.get_lacked_details order_id=64
+2026-09-19 14:54:22,719 - main - INFO - outbound.get_robot_tasks order_id=64
+2026-09-19 14:54:22,721 - main - INFO - outbound.get_order_details order_id=64
+2026-09-19 14:54:22,960 - main - INFO - outbound.get_order_by_id order_id=64
+2026-09-19 14:54:23,214 - main - INFO - outbound.get_lacked_details order_id=64
+2026-09-19 14:54:23,218 - main - INFO - outbound.get_robot_tasks order_id=64
+2026-09-19 14:54:23,231 - main - INFO - outbound.get_order_details order_id=64
+2026-09-19 15:00:48,919 - main - INFO - outbound.execute_task order_id=TDS_Outbound_caca2a77
+2026-09-19 15:00:50,105 - main - INFO - ICS addTask response: {'code': 1000, 'data': 'TDS_Outbound_caca2a77', 'desc': '请求成功'}
+2026-09-19 15:00:50,280 - main - INFO - outbound.get_order_by_id order_id=64
+2026-09-19 15:00:50,336 - main - INFO - outbound.get_lacked_details order_id=64
+2026-09-19 15:00:50,339 - main - INFO - outbound.get_order_details order_id=64
+2026-09-19 15:00:50,343 - main - INFO - outbound.get_robot_tasks order_id=64
+2026-09-19 15:00:50,393 - main - INFO - outbound.get_order_by_id order_id=64
+2026-09-19 15:00:50,968 - main - INFO - outbound.get_robot_tasks order_id=64
+2026-09-19 15:00:50,997 - main - INFO - outbound.get_order_details order_id=64
+2026-09-19 15:01:51,630 - main - INFO - outbound.execute_task order_id=TDS_Outbound_314cd5ce
+2026-09-19 15:01:54,287 - main - INFO - ICS addTask response: {'code': 1000, 'data': 'TDS_Outbound_314cd5ce', 'desc': '请求成功'}
+2026-09-19 15:01:54,514 - main - INFO - outbound.get_order_details order_id=64
+2026-09-19 15:01:54,515 - main - INFO - outbound.get_robot_tasks order_id=64
+2026-09-19 15:01:54,529 - main - INFO - outbound.get_order_by_id order_id=64
+2026-09-19 15:01:54,535 - main - INFO - outbound.get_lacked_details order_id=64
+2026-09-19 15:01:54,634 - main - INFO - outbound.get_order_by_id order_id=64
+2026-09-19 15:01:55,196 - main - INFO - outbound.get_robot_tasks order_id=64
+2026-09-19 15:01:55,205 - main - INFO - outbound.get_order_details order_id=64
+2026-09-19 15:01:56,955 - main - INFO - outbound.execute_task order_id=TDS_Outbound_90bf4bd6
+2026-09-19 15:01:59,842 - main - INFO - ICS addTask response: {'code': 1000, 'data': 'TDS_Outbound_90bf4bd6', 'desc': '请求成功'}
+2026-09-19 15:02:00,037 - main - INFO - outbound.get_lacked_details order_id=64
+2026-09-19 15:02:00,037 - main - INFO - outbound.get_robot_tasks order_id=64
+2026-09-19 15:02:00,038 - main - INFO - outbound.get_order_details order_id=64
+2026-09-19 15:02:00,040 - main - INFO - outbound.get_order_by_id order_id=64
+2026-09-19 15:02:00,119 - main - INFO - outbound.get_order_by_id order_id=64
+2026-09-19 15:02:00,811 - main - INFO - outbound.get_order_details order_id=64
+2026-09-19 15:02:00,821 - main - INFO - outbound.get_robot_tasks order_id=64
+2026-09-19 15:02:06,200 - main - INFO - outbound.get_order_by_id order_id=64
+2026-09-19 15:02:06,202 - main - INFO - outbound.get_lacked_details order_id=64
+2026-09-19 15:02:06,204 - main - INFO - outbound.get_order_details order_id=64
+2026-09-19 15:02:08,138 - main - INFO - outbound.get_order_details order_id=64
+2026-09-19 15:02:10,597 - main - INFO - outbound.get_order_details order_id=64
+2026-09-19 15:02:54,757 - main - INFO - Processing task status for order_id=TDS_Outbound_caca2a77
+2026-09-19 15:03:17,492 - main - INFO - Processing task status for order_id=TDS_Outbound_314cd5ce
+2026-09-19 15:03:57,420 - main - INFO - Processing task status for order_id=TDS_Outbound_caca2a77
+2026-09-19 15:03:57,772 - main - INFO - Processing task status for order_id=TDS_Outbound_caca2a77
+2026-09-19 15:04:00,693 - main - INFO - Processing task status for order_id=TDS_Outbound_314cd5ce
+2026-09-19 15:04:01,018 - main - INFO - Processing task status for order_id=TDS_Outbound_314cd5ce
+2026-09-19 15:04:07,435 - main - INFO - Processing task status for order_id=TDS_Outbound_caca2a77
+2026-09-19 15:04:07,560 - main - INFO - Processing task status for order_id=TDS_Outbound_caca2a77
+2026-09-19 15:04:16,887 - main - INFO - Processing task status for order_id=TDS_Outbound_314cd5ce
+2026-09-19 15:04:16,975 - main - INFO - Processing task status for order_id=TDS_Outbound_314cd5ce
+2026-09-19 15:04:28,198 - main - INFO - outbound.calculate_order outbound_order_id=64
+2026-09-19 15:04:39,487 - main - INFO - outbound.get_robot_tasks order_id=64
+2026-09-19 15:04:39,492 - main - INFO - outbound.get_lacked_details order_id=64
+2026-09-19 15:04:39,495 - main - INFO - outbound.get_order_by_id order_id=64
+2026-09-19 15:04:39,507 - main - INFO - outbound.get_order_details order_id=64
+2026-09-19 15:05:13,003 - main - INFO - Processing task status for order_id=TDS_Outbound_314cd5ce
+2026-09-19 15:05:13,280 - main - INFO - Processing task status for order_id=TDS_Outbound_314cd5ce
+2026-09-19 15:05:19,897 - main - INFO - Processing task status for order_id=TDS_Outbound_314cd5ce
+2026-09-19 15:05:19,971 - main - INFO - Processing task status for order_id=TDS_Outbound_90bf4bd6
+2026-09-19 15:05:32,313 - main - INFO - Processing task status for order_id=TDS_Outbound_caca2a77
+2026-09-19 15:05:32,535 - main - INFO - Processing task status for order_id=TDS_Outbound_caca2a77
+2026-09-19 15:05:39,174 - main - INFO - Processing task status for order_id=TDS_Outbound_caca2a77
+2026-09-19 15:05:55,960 - main - INFO - outbound.get_order_by_id order_id=64
+2026-09-19 15:05:55,998 - main - INFO - outbound.get_robot_tasks order_id=64
+2026-09-19 15:05:56,012 - main - INFO - outbound.get_lacked_details order_id=64
+2026-09-19 15:05:56,015 - main - INFO - outbound.get_order_details order_id=64
+2026-09-19 15:05:58,729 - main - INFO - outbound.get_robot_tasks order_id=64
+2026-09-19 15:05:58,734 - main - INFO - outbound.get_order_by_id order_id=64
+2026-09-19 15:05:58,735 - main - INFO - outbound.get_order_details order_id=64
+2026-09-19 15:05:58,748 - main - INFO - outbound.get_lacked_details order_id=64
+2026-09-19 15:06:01,839 - main - INFO - outbound.get_robot_tasks order_id=64
+2026-09-19 15:06:06,800 - main - INFO - Processing task status for order_id=TDS_Outbound_90bf4bd6
+2026-09-19 15:06:07,183 - main - INFO - Processing task status for order_id=TDS_Outbound_90bf4bd6
+2026-09-19 15:06:11,707 - main - INFO - outbound.get_order_by_id order_id=64
+2026-09-19 15:06:11,714 - main - INFO - outbound.get_order_details order_id=64
+2026-09-19 15:06:11,717 - main - INFO - outbound.get_lacked_details order_id=64
+2026-09-19 15:06:11,717 - main - INFO - outbound.get_robot_tasks order_id=64
+2026-09-19 15:06:11,792 - main - INFO - outbound.get_order_by_id order_id=64
+2026-09-19 15:06:12,219 - main - INFO - outbound.get_robot_tasks order_id=64
+2026-09-19 15:06:12,308 - main - INFO - outbound.get_order_details order_id=64
+2026-09-19 15:06:16,756 - main - INFO - Processing task status for order_id=TDS_Outbound_90bf4bd6
+2026-09-19 15:06:16,882 - main - INFO - Processing task status for order_id=TDS_Outbound_90bf4bd6
+2026-09-19 15:07:33,919 - main - INFO - Processing task status for order_id=TDS_Outbound_90bf4bd6
+2026-09-19 15:07:34,232 - main - INFO - Processing task status for order_id=TDS_Outbound_90bf4bd6
+2026-09-19 15:07:39,150 - main - INFO - outbound.get_robot_tasks order_id=64
+2026-09-19 15:07:40,918 - main - INFO - Processing task status for order_id=TDS_Outbound_90bf4bd6
+2026-09-19 15:08:06,802 - main - INFO - outbound.get_robot_tasks order_id=64
+2026-09-19 15:08:06,803 - main - INFO - outbound.get_order_by_id order_id=64
+2026-09-19 15:08:06,803 - main - INFO - outbound.get_order_details order_id=64
+2026-09-19 15:08:06,815 - main - INFO - outbound.get_lacked_details order_id=64
+2026-09-19 15:08:07,003 - main - INFO - outbound.get_order_by_id order_id=64
+2026-09-19 15:08:07,627 - main - INFO - outbound.get_robot_tasks order_id=64
+2026-09-19 15:08:07,627 - main - INFO - outbound.get_order_details order_id=64
+2026-09-19 15:08:12,239 - main - INFO - outbound.get_robot_tasks order_id=64
+2026-09-19 15:08:12,242 - main - INFO - outbound.get_lacked_details order_id=64
+2026-09-19 15:08:12,246 - main - INFO - outbound.get_order_by_id order_id=64
+2026-09-19 15:08:12,249 - main - INFO - outbound.get_order_details order_id=64
+2026-09-19 15:08:12,330 - main - INFO - outbound.get_order_by_id order_id=64
+2026-09-19 15:08:12,844 - main - INFO - outbound.get_order_details order_id=64
+2026-09-19 15:08:12,845 - main - INFO - outbound.get_robot_tasks order_id=64
+2026-09-19 15:08:19,106 - main - INFO - outbound.get_order_by_id order_id=64
+2026-09-19 15:08:19,111 - main - INFO - outbound.get_robot_tasks order_id=64
+2026-09-19 15:08:19,112 - main - INFO - outbound.get_lacked_details order_id=64
+2026-09-19 15:08:19,120 - main - INFO - outbound.get_order_details order_id=64
+2026-09-19 15:08:19,169 - main - INFO - outbound.get_order_by_id order_id=64
+2026-09-19 15:08:19,911 - main - INFO - outbound.get_robot_tasks order_id=64
+2026-09-19 15:08:19,913 - main - INFO - outbound.get_order_details order_id=64
+2026-09-19 15:08:34,772 - main - INFO - outbound.get_robot_tasks order_id=64
+2026-09-19 15:08:34,775 - main - INFO - outbound.get_order_by_id order_id=64
+2026-09-19 15:08:34,781 - main - INFO - outbound.get_order_details order_id=64
+2026-09-19 15:08:34,786 - main - INFO - outbound.get_lacked_details order_id=64
+2026-09-19 15:08:34,890 - main - INFO - outbound.get_order_by_id order_id=64
+2026-09-19 15:08:35,399 - main - INFO - outbound.get_order_details order_id=64
+2026-09-19 15:08:35,405 - main - INFO - outbound.get_robot_tasks order_id=64
+2026-09-19 15:08:43,076 - main - INFO - outbound.get_robot_tasks order_id=64
+2026-09-19 15:08:43,077 - main - INFO - outbound.get_order_details order_id=64
+2026-09-19 15:08:43,078 - main - INFO - outbound.get_lacked_details order_id=64
+2026-09-19 15:08:43,080 - main - INFO - outbound.get_order_by_id order_id=64
+2026-09-19 15:08:43,147 - main - INFO - outbound.get_order_by_id order_id=64
+2026-09-19 15:08:43,878 - main - INFO - outbound.get_order_details order_id=64
+2026-09-19 15:08:43,880 - main - INFO - outbound.get_robot_tasks order_id=64
+2026-09-19 15:09:11,510 - main - INFO - outbound.get_order_details order_id=64
+2026-09-19 15:09:11,512 - main - INFO - outbound.get_order_by_id order_id=64
+2026-09-19 15:09:11,520 - main - INFO - outbound.get_lacked_details order_id=64
+2026-09-19 15:09:11,521 - main - INFO - outbound.get_robot_tasks order_id=64
+2026-09-19 15:09:11,606 - main - INFO - outbound.get_order_by_id order_id=64
+2026-09-19 15:09:12,241 - main - INFO - outbound.get_order_details order_id=64
+2026-09-19 15:09:12,242 - main - INFO - outbound.get_robot_tasks order_id=64
+2026-09-19 15:09:23,529 - main - INFO - outbound.get_order_details order_id=64
+2026-09-19 15:09:23,540 - main - INFO - outbound.get_robot_tasks order_id=64
+2026-09-19 15:09:23,541 - main - INFO - outbound.get_order_by_id order_id=64
+2026-09-19 15:09:23,543 - main - INFO - outbound.get_lacked_details order_id=64
+2026-09-19 15:09:23,607 - main - INFO - outbound.get_order_by_id order_id=64
+2026-09-19 15:09:26,045 - main - INFO - outbound.get_robot_tasks order_id=64
+2026-09-19 15:09:26,047 - main - INFO - outbound.get_order_details order_id=64
+2026-09-19 15:09:32,449 - main - INFO - outbound.get_order_details order_id=64
+2026-09-19 15:09:32,450 - main - INFO - outbound.get_order_by_id order_id=64
+2026-09-19 15:09:32,457 - main - INFO - outbound.get_robot_tasks order_id=64
+2026-09-19 15:09:32,459 - main - INFO - outbound.get_lacked_details order_id=64
+2026-09-19 15:09:32,525 - main - INFO - outbound.get_order_by_id order_id=64
+2026-09-19 15:09:33,042 - main - INFO - outbound.get_robot_tasks order_id=64
+2026-09-19 15:09:33,043 - main - INFO - outbound.get_order_details order_id=64
+2026-09-19 15:09:40,186 - main - INFO - outbound.get_robot_tasks order_id=64
+2026-09-19 15:09:40,187 - main - INFO - outbound.get_order_details order_id=64
+2026-09-19 15:09:40,189 - main - INFO - outbound.get_lacked_details order_id=64
+2026-09-19 15:09:40,189 - main - INFO - outbound.get_order_by_id order_id=64
+2026-09-19 15:09:40,267 - main - INFO - outbound.get_order_by_id order_id=64
+2026-09-19 15:09:40,818 - main - INFO - outbound.get_robot_tasks order_id=64
+2026-09-19 15:09:40,870 - main - INFO - outbound.get_order_details order_id=64
+2026-09-19 15:09:46,257 - main - INFO - outbound.get_order_by_id order_id=64
+2026-09-19 15:09:46,257 - main - INFO - outbound.get_lacked_details order_id=64
+2026-09-19 15:09:46,259 - main - INFO - outbound.get_robot_tasks order_id=64
+2026-09-19 15:09:46,264 - main - INFO - outbound.get_order_details order_id=64
+2026-09-19 15:09:46,340 - main - INFO - outbound.get_order_by_id order_id=64
+2026-09-19 15:09:47,028 - main - INFO - outbound.get_robot_tasks order_id=64
+2026-09-19 15:09:47,035 - main - INFO - outbound.get_order_details order_id=64
+2026-09-19 15:11:11,347 - main - INFO - outbound.execute_task order_id=TDS_Return_bea3ddb8
+2026-09-19 15:11:12,730 - main - INFO - ICS addTask response: {'code': 1000, 'data': 'TDS_Return_bea3ddb8', 'desc': '请求成功'}
+2026-09-19 15:11:12,895 - main - INFO - outbound.get_order_details order_id=64
+2026-09-19 15:11:12,896 - main - INFO - outbound.get_order_by_id order_id=64
+2026-09-19 15:11:12,904 - main - INFO - outbound.get_robot_tasks order_id=64
+2026-09-19 15:11:12,906 - main - INFO - outbound.get_lacked_details order_id=64
+2026-09-19 15:11:12,982 - main - INFO - outbound.get_order_by_id order_id=64
+2026-09-19 15:11:13,469 - main - INFO - outbound.get_robot_tasks order_id=64
+2026-09-19 15:11:13,539 - main - INFO - outbound.get_order_details order_id=64
+2026-09-19 15:11:13,862 - main - INFO - Processing task status for order_id=TDS_Return_bea3ddb8
+2026-09-19 15:12:08,893 - main - INFO - Processing task status for order_id=TDS_Return_bea3ddb8
+2026-09-19 15:12:09,260 - main - INFO - Processing task status for order_id=TDS_Return_bea3ddb8
+2026-09-19 15:12:23,559 - main - INFO - Processing task status for order_id=TDS_Return_bea3ddb8
+2026-09-19 15:12:23,699 - main - INFO - Processing task status for order_id=TDS_Return_bea3ddb8
+2026-09-19 15:13:55,715 - main - INFO - Processing task status for order_id=TDS_Return_bea3ddb8
+2026-09-19 15:13:56,016 - main - INFO - Processing task status for order_id=TDS_Return_bea3ddb8
+2026-09-19 15:14:02,773 - main - INFO - Processing task status for order_id=TDS_Return_bea3ddb8
+2026-09-19 15:14:37,529 - main - INFO - outbound.get_robot_tasks order_id=64
+2026-09-19 15:14:37,565 - main - INFO - outbound.get_order_details order_id=64
+2026-09-19 15:14:37,566 - main - INFO - outbound.get_order_by_id order_id=64
+2026-09-19 15:14:37,566 - main - INFO - outbound.get_lacked_details order_id=64
+2026-09-19 15:14:41,434 - main - INFO - outbound.get_order_details order_id=64
+2026-09-19 15:14:52,707 - main - INFO - outbound.calculate_order outbound_order_id=64
+2026-09-19 15:15:18,837 - main - INFO - outbound.get_order_by_id order_id=64
+2026-09-19 15:15:18,841 - main - INFO - outbound.get_order_details order_id=64
+2026-09-19 15:15:18,843 - main - INFO - outbound.get_robot_tasks order_id=64
+2026-09-19 15:15:18,852 - main - INFO - outbound.get_lacked_details order_id=64
+2026-09-19 15:15:21,729 - main - INFO - outbound.get_robot_tasks order_id=64
+2026-09-19 15:15:25,348 - main - INFO - outbound.get_order_by_id order_id=64
+2026-09-19 15:15:25,350 - main - INFO - outbound.get_lacked_details order_id=64
+2026-09-19 15:15:25,355 - main - INFO - outbound.get_order_details order_id=64
+2026-09-19 15:15:36,465 - main - INFO - outbound.get_order_by_id order_id=64
+2026-09-19 15:15:36,523 - main - INFO - outbound.get_lacked_details order_id=64
+2026-09-19 15:15:36,524 - main - INFO - outbound.get_order_details order_id=64
+2026-09-19 15:15:36,525 - main - INFO - outbound.get_robot_tasks order_id=64
+2026-09-19 15:15:55,348 - main - INFO - outbound.get_order_details order_id=64
+2026-09-19 15:16:49,668 - main - INFO - outbound.get_order_details order_id=64
+2026-09-19 15:16:49,686 - main - INFO - outbound.get_order_by_id order_id=64
+2026-09-19 15:16:49,695 - main - INFO - outbound.get_lacked_details order_id=64
+2026-09-19 15:16:49,696 - main - INFO - outbound.get_robot_tasks order_id=64
+2026-09-19 15:19:33,549 - main - INFO - Successfully logged in user admin
+2026-09-19 15:20:40,824 - main - INFO - outbound.get_order_by_id order_id=64
+2026-09-19 15:20:40,825 - main - INFO - outbound.get_order_details order_id=64
+2026-09-19 15:20:40,827 - main - INFO - outbound.get_robot_tasks order_id=64
+2026-09-19 15:20:40,827 - main - INFO - outbound.get_lacked_details order_id=64
+2026-09-19 15:21:29,669 - main - INFO - outbound.get_order_details order_id=64
+2026-09-19 15:21:29,670 - main - INFO - outbound.get_robot_tasks order_id=64
+2026-09-19 15:21:29,672 - main - INFO - outbound.get_lacked_details order_id=64
+2026-09-19 15:21:29,673 - main - INFO - outbound.get_order_by_id order_id=64
+2026-09-19 15:21:35,076 - main - INFO - outbound.get_order_details order_id=64
+2026-09-19 15:21:59,228 - main - INFO - outbound.get_order_by_id order_id=60
+2026-09-19 15:21:59,233 - main - INFO - outbound.get_order_details order_id=60
+2026-09-19 15:21:59,242 - main - INFO - outbound.get_lacked_details order_id=60
+2026-09-19 15:21:59,246 - main - INFO - outbound.get_robot_tasks order_id=60
+2026-09-19 15:22:05,218 - main - INFO - outbound.get_robot_tasks order_id=64
+2026-09-19 15:22:05,218 - main - INFO - outbound.get_lacked_details order_id=64
+2026-09-19 15:22:05,223 - main - INFO - outbound.get_order_details order_id=64
+2026-09-19 15:22:05,223 - main - INFO - outbound.get_order_by_id order_id=64
+2026-09-19 15:22:06,200 - main - INFO - outbound.get_order_details order_id=60
+2026-09-19 15:22:15,436 - main - INFO - outbound.get_order_details order_id=64
+2026-09-19 15:22:29,411 - main - INFO - outbound.calculate_order outbound_order_id=64
+2026-09-19 15:22:33,341 - main - INFO - outbound.calculate_order outbound_order_id=64
+2026-09-19 15:23:13,802 - main - INFO - outbound.get_order_details order_id=60
+2026-09-19 15:23:13,804 - main - INFO - outbound.get_order_by_id order_id=60
+2026-09-19 15:23:13,807 - main - INFO - outbound.get_lacked_details order_id=60
+2026-09-19 15:23:13,814 - main - INFO - outbound.get_robot_tasks order_id=60
+2026-09-19 15:23:19,029 - main - INFO - outbound.execute_task order_id=TDS_Outbound_35f254b9
+2026-09-19 15:23:20,192 - main - INFO - ICS addTask response: {'code': 1000, 'data': 'TDS_Outbound_35f254b9', 'desc': '请求成功'}
+2026-09-19 15:23:20,272 - main - INFO - outbound.get_order_details order_id=60
+2026-09-19 15:23:20,273 - main - INFO - outbound.get_robot_tasks order_id=60
+2026-09-19 15:23:20,275 - main - INFO - outbound.get_order_by_id order_id=60
+2026-09-19 15:23:20,283 - main - INFO - outbound.get_lacked_details order_id=60
+2026-09-19 15:23:20,378 - main - INFO - outbound.get_order_by_id order_id=60
+2026-09-19 15:23:20,801 - main - INFO - outbound.get_order_details order_id=60
+2026-09-19 15:23:20,826 - main - INFO - outbound.get_robot_tasks order_id=60
+2026-09-19 15:23:21,150 - main - INFO - Processing task status for order_id=TDS_Outbound_35f254b9
+2026-09-19 15:23:21,429 - main - INFO - outbound.get_robot_tasks order_id=60
+2026-09-19 15:23:32,144 - main - INFO - outbound.get_order_details order_id=60
+2026-09-19 15:23:32,145 - main - INFO - outbound.get_lacked_details order_id=60
+2026-09-19 15:23:32,146 - main - INFO - outbound.get_order_by_id order_id=60
+2026-09-19 15:24:05,143 - main - INFO - Processing task status for order_id=TDS_Outbound_35f254b9
+2026-09-19 15:24:05,522 - main - INFO - Processing task status for order_id=TDS_Outbound_35f254b9
+2026-09-19 15:24:15,363 - main - INFO - Processing task status for order_id=TDS_Outbound_35f254b9
+2026-09-19 15:24:15,477 - main - INFO - Processing task status for order_id=TDS_Outbound_35f254b9
+2026-09-19 15:24:17,531 - main - INFO - outbound.get_order_by_id order_id=64
+2026-09-19 15:24:17,532 - main - INFO - outbound.get_order_details order_id=64
+2026-09-19 15:24:17,542 - main - INFO - outbound.get_lacked_details order_id=64
+2026-09-19 15:24:17,544 - main - INFO - outbound.get_robot_tasks order_id=64
+2026-09-19 15:24:29,964 - main - INFO - outbound.get_order_details order_id=64
+2026-09-19 15:24:35,216 - main - INFO - outbound.get_order_by_id order_id=64
+2026-09-19 15:24:35,234 - main - INFO - outbound.get_order_details order_id=64
+2026-09-19 15:24:35,234 - main - INFO - outbound.get_robot_tasks order_id=64
+2026-09-19 15:24:35,236 - main - INFO - outbound.get_lacked_details order_id=64
+2026-09-19 15:24:46,002 - main - INFO - outbound.get_robot_tasks order_id=64
+2026-09-19 15:24:54,342 - main - INFO - outbound.get_order_details order_id=60
+2026-09-19 15:24:54,346 - main - INFO - outbound.get_order_by_id order_id=60
+2026-09-19 15:24:54,347 - main - INFO - outbound.get_lacked_details order_id=60
+2026-09-19 15:24:54,354 - main - INFO - outbound.get_robot_tasks order_id=60
+2026-09-19 15:24:57,344 - main - INFO - outbound.get_order_details order_id=60
+2026-09-19 15:25:01,275 - main - INFO - outbound.get_order_by_id order_id=60
+2026-09-19 15:25:01,280 - main - INFO - outbound.get_order_details order_id=60
+2026-09-19 15:25:01,280 - main - INFO - outbound.get_lacked_details order_id=60
+2026-09-19 15:25:01,294 - main - INFO - outbound.get_robot_tasks order_id=60
+2026-09-19 15:25:40,469 - main - INFO - Processing task status for order_id=TDS_Outbound_35f254b9
+2026-09-19 15:25:40,790 - main - INFO - Processing task status for order_id=TDS_Outbound_35f254b9
+2026-09-19 15:25:47,440 - main - INFO - Processing task status for order_id=TDS_Outbound_35f254b9
+2026-09-19 15:26:13,115 - main - INFO - outbound.calculate_order outbound_order_id=64
+2026-09-19 15:27:17,235 - main - INFO - Successfully logged in user quanlykho
+2026-09-19 15:27:22,535 - main - INFO - Successfully logged in user quanlykho
+2026-09-19 15:27:30,354 - main - INFO - Successfully logged in user quanlykho
+2026-09-19 15:28:17,784 - main - INFO - outbound.get_order_by_id order_id=60
+2026-09-19 15:28:17,787 - main - INFO - outbound.get_order_details order_id=60
+2026-09-19 15:28:17,802 - main - INFO - outbound.get_lacked_details order_id=60
+2026-09-19 15:28:17,803 - main - INFO - outbound.get_robot_tasks order_id=60
+2026-09-19 15:28:52,128 - main - INFO - outbound.get_order_details order_id=60
+2026-09-19 15:29:20,230 - main - INFO - outbound.get_order_by_id order_id=60
+2026-09-19 15:29:20,234 - main - INFO - outbound.get_order_details order_id=60
+2026-09-19 15:29:20,234 - main - INFO - outbound.get_robot_tasks order_id=60
+2026-09-19 15:29:20,235 - main - INFO - outbound.get_lacked_details order_id=60
+2026-09-19 15:29:26,662 - main - INFO - outbound.get_robot_tasks order_id=60
+2026-09-19 15:29:27,959 - main - INFO - outbound.get_robot_tasks order_id=60
+2026-09-19 15:32:41,328 - main - INFO - outbound.get_order_by_id order_id=64
+2026-09-19 15:32:41,334 - main - INFO - outbound.get_robot_tasks order_id=64
+2026-09-19 15:32:41,341 - main - INFO - outbound.get_lacked_details order_id=64
+2026-09-19 15:32:41,351 - main - INFO - outbound.get_order_details order_id=64
+2026-09-19 15:33:47,912 - main - INFO - outbound.get_robot_tasks order_id=64
+2026-09-19 15:33:47,913 - main - INFO - outbound.get_lacked_details order_id=64
+2026-09-19 15:33:47,916 - main - INFO - outbound.get_order_details order_id=64
+2026-09-19 15:33:47,926 - main - INFO - outbound.get_order_by_id order_id=64
+2026-09-19 15:34:09,097 - main - INFO - outbound.get_order_by_id order_id=64
+2026-09-19 15:34:09,099 - main - INFO - outbound.get_order_details order_id=64
+2026-09-19 15:34:09,111 - main - INFO - outbound.get_lacked_details order_id=64
+2026-09-19 15:34:09,117 - main - INFO - outbound.get_robot_tasks order_id=64
+2026-09-19 15:36:08,878 - main - INFO - outbound.get_order_by_id order_id=60
+2026-09-19 15:36:08,881 - main - INFO - outbound.get_lacked_details order_id=60
+2026-09-19 15:36:08,881 - main - INFO - outbound.get_order_details order_id=60
+2026-09-19 15:36:08,900 - main - INFO - outbound.get_robot_tasks order_id=60
+2026-09-19 15:36:19,016 - main - INFO - Successfully logged in user admin
+2026-09-19 15:36:23,299 - main - INFO - Successfully logged in user admin
+2026-09-19 15:48:25,104 - main - INFO - outbound.get_robot_tasks order_id=60
+2026-09-19 15:48:31,243 - main - INFO - outbound.get_order_by_id order_id=60
+2026-09-19 15:48:31,255 - main - INFO - outbound.get_lacked_details order_id=60
+2026-09-19 15:48:31,274 - main - INFO - outbound.get_robot_tasks order_id=60
+2026-09-19 15:48:31,288 - main - INFO - outbound.get_order_details order_id=60
+2026-09-19 15:48:34,525 - main - INFO - outbound.get_order_details order_id=60
+2026-09-19 15:50:44,135 - main - INFO - outbound.get_lacked_details order_id=60
+2026-09-19 15:50:44,136 - main - INFO - outbound.get_order_by_id order_id=60
+2026-09-19 15:50:44,136 - main - INFO - outbound.get_order_details order_id=60
+2026-09-19 15:50:44,139 - main - INFO - outbound.get_robot_tasks order_id=60
+2026-09-19 15:50:50,884 - main - INFO - outbound.get_order_details order_id=60
+2026-09-19 15:50:55,518 - main - INFO - outbound.get_order_by_id order_id=60
+2026-09-19 15:50:55,519 - main - INFO - outbound.get_lacked_details order_id=60
+2026-09-19 15:50:55,520 - main - INFO - outbound.get_robot_tasks order_id=60
+2026-09-19 15:50:55,522 - main - INFO - outbound.get_order_details order_id=60
+2026-09-19 15:50:56,688 - main - INFO - outbound.get_robot_tasks order_id=60
+2026-09-19 15:50:59,591 - main - INFO - outbound.get_order_by_id order_id=60
+2026-09-19 15:50:59,592 - main - INFO - outbound.get_order_details order_id=60
+2026-09-19 15:50:59,592 - main - INFO - outbound.get_lacked_details order_id=60
+2026-09-19 15:50:59,593 - main - INFO - outbound.get_robot_tasks order_id=60
+2026-09-19 15:50:59,664 - main - INFO - outbound.get_order_by_id order_id=60
+2026-09-19 15:51:00,250 - main - INFO - outbound.get_order_details order_id=60
+2026-09-19 15:51:00,251 - main - INFO - outbound.get_lacked_details order_id=60
+2026-09-19 15:51:00,254 - main - INFO - outbound.get_robot_tasks order_id=60
+2026-09-19 15:51:07,373 - main - INFO - outbound.get_order_by_id order_id=60
+2026-09-19 15:51:07,379 - main - INFO - outbound.get_lacked_details order_id=60
+2026-09-19 15:51:07,383 - main - INFO - outbound.get_robot_tasks order_id=60
+2026-09-19 15:51:07,389 - main - INFO - outbound.get_order_details order_id=60
+2026-09-19 15:51:09,586 - main - INFO - outbound.get_order_details order_id=60
+2026-09-19 15:51:12,880 - main - INFO - outbound.get_robot_tasks order_id=60
+2026-09-19 15:51:12,882 - main - INFO - outbound.get_order_by_id order_id=60
+2026-09-19 15:51:12,888 - main - INFO - outbound.get_lacked_details order_id=60
+2026-09-19 15:51:12,888 - main - INFO - outbound.get_order_details order_id=60
+2026-09-19 15:51:13,812 - main - INFO - outbound.get_robot_tasks order_id=60
+2026-09-19 15:51:29,533 - main - INFO - outbound.get_order_details order_id=64
+2026-09-19 15:51:29,538 - main - INFO - outbound.get_lacked_details order_id=64
+2026-09-19 15:51:29,539 - main - INFO - outbound.get_robot_tasks order_id=64
+2026-09-19 15:51:29,542 - main - INFO - outbound.get_order_by_id order_id=64
+2026-09-19 15:51:34,846 - main - INFO - outbound.get_order_details order_id=64
+2026-09-19 15:51:34,849 - main - INFO - outbound.get_lacked_details order_id=64
+2026-09-19 15:51:34,851 - main - INFO - outbound.get_order_by_id order_id=64
+2026-09-19 15:51:34,851 - main - INFO - outbound.get_robot_tasks order_id=64
+2026-09-19 15:51:36,445 - main - INFO - outbound.get_robot_tasks order_id=64
+2026-09-19 15:51:41,119 - main - INFO - outbound.get_lacked_details order_id=64
+2026-09-19 15:51:41,120 - main - INFO - outbound.get_order_by_id order_id=64
+2026-09-19 15:51:41,121 - main - INFO - outbound.get_order_details order_id=64
+2026-09-19 15:51:44,824 - main - INFO - outbound.get_order_details order_id=64
+2026-09-19 15:52:28,967 - main - INFO - outbound.get_order_by_id order_id=64
+2026-09-19 15:52:28,974 - main - INFO - outbound.get_order_details order_id=64
+2026-09-19 15:52:28,986 - main - INFO - outbound.get_lacked_details order_id=64
+2026-09-19 15:52:28,989 - main - INFO - outbound.get_robot_tasks order_id=64
+2026-09-19 15:52:36,424 - main - INFO - outbound.get_lacked_details order_id=64
+2026-09-19 15:52:36,431 - main - INFO - outbound.get_order_by_id order_id=64
+2026-09-19 15:52:36,432 - main - INFO - outbound.get_order_details order_id=64
+2026-09-19 15:52:45,359 - main - INFO - outbound.calculate_order outbound_order_id=64
+2026-09-19 15:54:08,118 - main - INFO - outbound.get_order_details order_id=60
+2026-09-19 15:54:08,118 - main - INFO - outbound.get_order_by_id order_id=60
+2026-09-19 15:54:08,119 - main - INFO - outbound.get_robot_tasks order_id=60
+2026-09-19 15:54:08,121 - main - INFO - outbound.get_lacked_details order_id=60
+2026-09-19 15:54:11,374 - main - INFO - outbound.get_order_details order_id=60
+2026-09-19 15:54:11,581 - main - INFO - qr_record: QC5-4675-000-20260919-91412431 --- <app.modules.warehouse.item.item_model.QR_Code object at 0x0000023054F8F6A0>
+2026-09-19 15:56:26,915 - main - INFO - outbound.get_order_details order_id=60
+2026-09-19 15:56:26,917 - main - INFO - outbound.get_order_by_id order_id=60
+2026-09-19 15:56:26,925 - main - INFO - outbound.get_robot_tasks order_id=60
+2026-09-19 15:56:26,926 - main - INFO - outbound.get_lacked_details order_id=60
+2026-09-19 15:56:30,252 - main - INFO - outbound.get_order_details order_id=60
+2026-09-19 15:56:34,874 - main - INFO - outbound.get_order_by_id order_id=60
+2026-09-19 15:56:34,882 - main - INFO - outbound.get_order_details order_id=60
+2026-09-19 15:56:34,886 - main - INFO - outbound.get_lacked_details order_id=60
+2026-09-19 15:56:34,890 - main - INFO - outbound.get_robot_tasks order_id=60
+2026-09-19 15:56:39,122 - main - INFO - outbound.get_robot_tasks order_id=60
+2026-09-19 16:04:50,824 - main - INFO - qr_record: QC5-4675-000-20260919-81967683 --- <app.modules.warehouse.item.item_model.QR_Code object at 0x00000230594B4160>
+2026-09-19 16:17:05,335 - main - INFO - qr_record: QC5-4675-000-20260919-66245415 --- <app.modules.warehouse.item.item_model.QR_Code object at 0x000002305751AF50>
+2026-09-19 16:17:22,086 - main - INFO - inbound.caller_order order_code=IN-20260919-162010
+2026-09-19 16:17:23,141 - main - INFO - ICS addTask response: {'code': 1000, 'data': 'TDS_Inbound_e6aba5ac', 'desc': '请求成功'}
+2026-09-19 16:17:24,396 - main - INFO - Processing task status for order_id=TDS_Inbound_e6aba5ac
+2026-09-19 16:18:14,825 - main - INFO - Processing task status for order_id=TDS_Inbound_e6aba5ac
+2026-09-19 16:18:15,174 - main - INFO - Processing task status for order_id=TDS_Inbound_e6aba5ac
+2026-09-19 16:18:22,008 - main - INFO - Processing task status for order_id=TDS_Inbound_e6aba5ac
+2026-09-19 16:18:22,145 - main - INFO - Processing task status for order_id=TDS_Inbound_e6aba5ac
+2026-09-19 16:19:21,476 - main - INFO - Successfully logged in user quanlykho
+2026-09-19 16:19:28,899 - main - INFO - Successfully logged in user quanlykho
+2026-09-19 16:19:54,927 - main - INFO - Processing task status for order_id=TDS_Inbound_e6aba5ac
+2026-09-19 16:19:55,216 - main - INFO - Processing task status for order_id=TDS_Inbound_e6aba5ac
+2026-09-19 16:20:01,896 - main - INFO - Processing task status for order_id=TDS_Inbound_e6aba5ac
+2026-09-19 16:20:02,245 - main - INFO - Receive completed for TDS_Inbound_e6aba5ac
+2026-09-19 16:20:02,319 - main - INFO - Current status: in_transit
+2026-09-19 16:20:02,321 - main - INFO - New status: available
+2026-09-19 16:20:02,322 - main - INFO - Current status: in_transit
+2026-09-19 16:20:02,323 - main - INFO - New status: available
+2026-09-19 16:20:02,325 - main - INFO - Current status: in_transit
+2026-09-19 16:20:02,326 - main - INFO - New status: available
+2026-09-19 16:20:55,564 - main - INFO - outbound.create_order order_code=OUT-20260919-162327
+2026-09-19 16:20:55,568 - main - INFO - Type: None
+2026-09-19 16:20:55,570 - main - INFO - Flag: False
+2026-09-19 16:21:15,030 - main - INFO - outbound.get_order_details order_id=65
+2026-09-19 16:21:15,031 - main - INFO - outbound.get_order_by_id order_id=65
+2026-09-19 16:21:15,078 - main - INFO - outbound.get_lacked_details order_id=65
+2026-09-19 16:21:15,086 - main - INFO - outbound.get_robot_tasks order_id=65
+2026-09-19 16:21:25,396 - main - INFO - outbound.calculate_order outbound_order_id=65
+2026-09-19 16:21:25,880 - main - INFO - Robot task created: 135
+2026-09-19 16:21:26,138 - main - INFO - Has task: None
+2026-09-19 16:21:26,141 - main - INFO - Robot task created: 136
+2026-09-19 16:21:26,603 - main - INFO - Has task: 136
+2026-09-19 16:21:27,094 - main - INFO - Has task: 136
+2026-09-19 16:21:27,208 - main - INFO - Has task: None
+2026-09-19 16:21:27,734 - main - INFO - outbound.get_order_by_id order_id=65
+2026-09-19 16:21:27,771 - main - INFO - outbound.get_lacked_details order_id=65
+2026-09-19 16:21:27,782 - main - INFO - outbound.get_order_details order_id=65
+2026-09-19 16:21:27,799 - main - INFO - outbound.get_robot_tasks order_id=65
+2026-09-19 16:21:27,893 - main - INFO - outbound.get_order_by_id order_id=65
+2026-09-19 16:21:28,349 - main - INFO - outbound.get_robot_tasks order_id=65
+2026-09-19 16:21:28,497 - main - INFO - outbound.get_lacked_details order_id=65
+2026-09-19 16:21:28,498 - main - INFO - outbound.get_order_details order_id=65
+2026-09-19 16:21:55,724 - main - INFO - outbound.execute_task order_id=TDS_Outbound_00ff336a
+2026-09-19 16:21:56,789 - main - INFO - ICS addTask response: {'code': 1000, 'data': 'TDS_Outbound_00ff336a', 'desc': '请求成功'}
+2026-09-19 16:21:56,918 - main - INFO - outbound.get_order_by_id order_id=65
+2026-09-19 16:21:56,934 - main - INFO - outbound.get_robot_tasks order_id=65
+2026-09-19 16:21:56,937 - main - INFO - outbound.get_lacked_details order_id=65
+2026-09-19 16:21:56,944 - main - INFO - outbound.get_order_details order_id=65
+2026-09-19 16:21:57,017 - main - INFO - outbound.get_order_by_id order_id=65
+2026-09-19 16:21:57,601 - main - INFO - outbound.get_order_details order_id=65
+2026-09-19 16:21:57,602 - main - INFO - outbound.get_robot_tasks order_id=65
+2026-09-19 16:21:57,876 - main - INFO - Processing task status for order_id=TDS_Outbound_00ff336a
+2026-09-19 16:22:04,352 - main - INFO - outbound.execute_task order_id=TDS_Outbound_bba897cf
+2026-09-19 16:22:06,357 - main - INFO - ICS addTask response: {'code': 1000, 'data': 'TDS_Outbound_bba897cf', 'desc': '请求成功'}
+2026-09-19 16:22:06,569 - main - INFO - outbound.get_order_details order_id=65
+2026-09-19 16:22:06,572 - main - INFO - outbound.get_order_by_id order_id=65
+2026-09-19 16:22:06,573 - main - INFO - outbound.get_robot_tasks order_id=65
+2026-09-19 16:22:06,576 - main - INFO - outbound.get_lacked_details order_id=65
+2026-09-19 16:22:06,648 - main - INFO - outbound.get_order_by_id order_id=65
+2026-09-19 16:22:07,146 - main - INFO - outbound.get_order_details order_id=65
+2026-09-19 16:22:07,147 - main - INFO - outbound.get_robot_tasks order_id=65
+2026-09-19 16:22:07,582 - main - INFO - Processing task status for order_id=TDS_Outbound_bba897cf
+2026-09-19 16:22:14,535 - main - INFO - outbound.execute_task order_id=TDS_Outbound_bba897cf
+2026-09-19 16:22:38,507 - main - INFO - Processing task status for order_id=TDS_Outbound_00ff336a
+2026-09-19 16:22:38,848 - main - INFO - Processing task status for order_id=TDS_Outbound_00ff336a
+2026-09-19 16:22:54,124 - main - INFO - Processing task status for order_id=TDS_Outbound_00ff336a
+2026-09-19 16:22:54,218 - main - INFO - Processing task status for order_id=TDS_Outbound_00ff336a
+2026-09-19 16:22:56,282 - main - INFO - Processing task status for order_id=TDS_Outbound_bba897cf
+2026-09-19 16:22:56,622 - main - INFO - Processing task status for order_id=TDS_Outbound_bba897cf
+2026-09-19 16:23:06,366 - main - INFO - Processing task status for order_id=TDS_Outbound_bba897cf
+2026-09-19 16:23:06,462 - main - INFO - Processing task status for order_id=TDS_Outbound_bba897cf
+2026-09-19 16:24:07,101 - main - INFO - Processing task status for order_id=TDS_Outbound_00ff336a
+2026-09-19 16:24:07,380 - main - INFO - Processing task status for order_id=TDS_Outbound_00ff336a
+2026-09-19 16:24:13,996 - main - INFO - Processing task status for order_id=TDS_Outbound_00ff336a
+2026-09-19 16:25:25,884 - main - INFO - outbound.get_robot_tasks order_id=65
+2026-09-19 16:25:34,910 - main - INFO - outbound.get_order_by_id order_id=65
+2026-09-19 16:25:34,911 - main - INFO - outbound.get_order_details order_id=65
+2026-09-19 16:25:34,914 - main - INFO - outbound.get_lacked_details order_id=65
+2026-09-19 16:25:34,915 - main - INFO - outbound.get_robot_tasks order_id=65
+2026-09-19 16:25:34,970 - main - INFO - outbound.get_order_by_id order_id=65
+2026-09-19 16:25:35,736 - main - INFO - outbound.get_robot_tasks order_id=65
+2026-09-19 16:25:35,737 - main - INFO - outbound.get_order_details order_id=65
+2026-09-19 16:25:48,112 - main - INFO - Processing task status for order_id=TDS_Outbound_bba897cf
+2026-09-19 16:25:48,423 - main - INFO - Processing task status for order_id=TDS_Outbound_bba897cf
+2026-09-19 16:25:55,193 - main - INFO - Processing task status for order_id=TDS_Outbound_bba897cf
+2026-09-19 16:26:26,830 - main - INFO - outbound.get_order_by_id order_id=65
+2026-09-19 16:26:26,831 - main - INFO - outbound.get_order_details order_id=65
+2026-09-19 16:26:26,842 - main - INFO - outbound.get_robot_tasks order_id=65
+2026-09-19 16:26:26,844 - main - INFO - outbound.get_lacked_details order_id=65
+2026-09-19 16:26:38,695 - main - INFO - outbound.get_order_details order_id=65
+2026-09-19 16:26:38,697 - main - INFO - outbound.get_order_by_id order_id=65
+2026-09-19 16:26:38,716 - main - INFO - outbound.get_lacked_details order_id=65
+2026-09-19 16:26:38,716 - main - INFO - outbound.get_robot_tasks order_id=65
+2026-09-19 16:26:38,806 - main - INFO - outbound.get_order_by_id order_id=65
+2026-09-19 16:26:39,258 - main - INFO - outbound.get_order_details order_id=65
+2026-09-19 16:26:39,265 - main - INFO - outbound.get_robot_tasks order_id=65
+2026-09-19 16:26:44,406 - main - INFO - outbound.get_order_by_id order_id=65
+2026-09-19 16:26:44,409 - main - INFO - outbound.get_lacked_details order_id=65
+2026-09-19 16:26:44,410 - main - INFO - outbound.get_order_details order_id=65
+2026-09-19 16:26:44,414 - main - INFO - outbound.get_robot_tasks order_id=65
+2026-09-19 16:26:44,492 - main - INFO - outbound.get_order_by_id order_id=65
+2026-09-19 16:26:45,132 - main - INFO - outbound.get_robot_tasks order_id=65
+2026-09-19 16:26:45,133 - main - INFO - outbound.get_order_details order_id=65
+2026-09-19 16:26:52,499 - main - INFO - outbound.get_order_by_id order_id=65
+2026-09-19 16:26:52,500 - main - INFO - outbound.get_order_details order_id=65
+2026-09-19 16:26:52,507 - main - INFO - outbound.get_robot_tasks order_id=65
+2026-09-19 16:26:52,512 - main - INFO - outbound.get_lacked_details order_id=65
+2026-09-19 16:26:52,571 - main - INFO - outbound.get_order_by_id order_id=65
+2026-09-19 16:26:53,209 - main - INFO - outbound.get_order_details order_id=65
+2026-09-19 16:26:53,211 - main - INFO - outbound.get_robot_tasks order_id=65

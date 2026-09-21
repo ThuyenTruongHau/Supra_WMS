@@ -10,7 +10,7 @@ import uuid
 from pathlib import Path
 
 from fastapi import UploadFile
-from sqlalchemy import Date, case, cast, func
+from sqlalchemy import Date, Numeric, case, cast, func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -58,7 +58,6 @@ from app.core.logger import get_logger
 
 logger = get_logger("main")
 
-NEARLY_OUTDATED_DAYS = 30
 RECENT_QR_CODE_DAYS = 2
 MAX_QR_PRINT_QUANTITY = 50
 ALLOWED_QR_TYPES = frozenset({"item", "transit", "pack"})
@@ -167,10 +166,19 @@ def analyze_items(db: Session, warehouse_id: int) -> ItemAnalyzeResponse:
     if total_quantity is None:
         total_quantity = Decimal("0")
 
-    today = date.today()
-    nearly_end = today + timedelta(days=NEARLY_OUTDATED_DAYS)
-    total_nearly_outdated = (
-        db.query(func.count(func.distinct(ItemStock.item_id)))
+    # details->>'price' returns plain text (not JSON-quoted like operator ->)
+    price_text = func.nullif(Item.details.op("->>")("price"), "")
+    price_expr = cast(
+        func.nullif(func.replace(price_text, ",", ""), ""),
+        Numeric(18, 2),
+    )
+    total_inventory_value = (
+        db.query(
+            func.coalesce(
+                func.sum(ItemStock.quantity * func.coalesce(price_expr, 0)),
+                0,
+            )
+        )
         .join(Item, Item.id == ItemStock.item_id)
         .join(Location, Location.id == ItemStock.location_id)
         .join(Zone, Zone.id == Location.zone_id)
@@ -182,13 +190,11 @@ def analyze_items(db: Session, warehouse_id: int) -> ItemAnalyzeResponse:
             positive_stock_quantity_criterion(),
             Location.is_active.is_(True),
             Zone.code.in_(settings.zone_storage),
-            ItemStock.expiry_date.isnot(None),
-            cast(ItemStock.expiry_date, Date) >= today,
-            cast(ItemStock.expiry_date, Date) <= nearly_end,
         )
         .scalar()
-        or 0
     )
+    if total_inventory_value is None:
+        total_inventory_value = Decimal("0")
 
     # Low stock: active items whose storage-zone stock qty < threshold
     stock_sum = (
@@ -224,7 +230,7 @@ def analyze_items(db: Session, warehouse_id: int) -> ItemAnalyzeResponse:
     return ItemAnalyzeResponse(
         total_items=int(total_items),
         total_quantity=Decimal(str(total_quantity)),
-        total_nearly_outdated=int(total_nearly_outdated),
+        total_inventory_value=Decimal(str(total_inventory_value)),
         total_low_stock=int(total_low_stock),
     )
 
@@ -240,7 +246,7 @@ def get_item_detail(db: Session, item_id: int) -> ItemDetailResponse:
         .filter(
             ItemStock.item_id == item.id,
             ItemStock.is_active.is_(True),
-            ItemStock.status == "available",
+            ItemStock.status.in_(["available", "split"]),
             countable_stock_level_criterion(),
             positive_stock_quantity_criterion(),
         )
@@ -251,7 +257,8 @@ def get_item_detail(db: Session, item_id: int) -> ItemDetailResponse:
     stock_items: list[ItemStockInDetail] = []
     available_quantity = 0
     for stock, location_code, location_name in stocks:
-        available_quantity += stock.quantity
+        if stock.status == "available":       
+            available_quantity += stock.quantity
         stock_items.append(
             ItemStockInDetail(
                 id=stock.id,
