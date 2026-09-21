@@ -103,6 +103,8 @@ class Location(Base):
     column = Column("column", String(10))  # 'column' is SQL keyword, use mapped name
     level = Column(String(10))
     node_name = Column(String(50))  # Additional node identifier
+    map_x = Column(Integer, nullable=True)
+    map_y = Column(Integer, nullable=True)
     warehouse_id = Column(
         Integer,
         ForeignKey("warehouse.id"),

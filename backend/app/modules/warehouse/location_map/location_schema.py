@@ -11,6 +11,8 @@ class LocationCreate(BaseModel):
     column: Optional[str] = Field(None, max_length=10)
     level: Optional[str] = Field(None, max_length=10)
     node_name: Optional[str] = Field(None, max_length=50)
+    map_x: Optional[int] = None
+    map_y: Optional[int] = None
     warehouse_id: int
     zone_id: Optional[int] = None
 
@@ -23,6 +25,8 @@ class LocationUpdate(BaseModel):
     column: Optional[str] = Field(None, max_length=10)
     level: Optional[str] = Field(None, max_length=10)
     node_name: Optional[str] = Field(None, max_length=50)
+    map_x: Optional[int] = None
+    map_y: Optional[int] = None
     warehouse_id: Optional[int] = None
     zone_id: Optional[int] = None
     is_active: Optional[bool] = None
@@ -37,6 +41,8 @@ class LocationResponse(BaseModel):
     column: Optional[str] = None
     level: Optional[str] = None
     node_name: Optional[str] = None
+    map_x: Optional[int] = None
+    map_y: Optional[int] = None
     warehouse_id: int
     zone_id: Optional[int] = None
     is_active: bool
@@ -151,6 +157,25 @@ class MapDataResponse(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
 
+class ZoneMapLayoutNode(BaseModel):
+    id: int
+    location_code: str
+    location_name: Optional[str] = None
+    bin_code: Optional[str] = None
+    row: Optional[str] = None
+    column: Optional[str] = None
+    level: Optional[str] = None
+    map_x: Optional[int] = None
+    map_y: Optional[int] = None
+
+
+class ZoneMapLayoutResponse(BaseModel):
+    zone_id: int
+    warehouse_id: int
+    nodes: list[ZoneMapLayoutNode]
+
+
+
 class MapLocationStockItem(BaseModel):
     sku: str
     lot_number_from: Optional[str] = None
@@ -167,6 +192,8 @@ class MapLocationItem(BaseModel):
     row: Optional[str] = None
     column: Optional[str] = None
     level: Optional[str] = None
+    map_x: Optional[int] = None
+    map_y: Optional[int] = None
     status: str
     item_stock: list[MapLocationStockItem] = []
 

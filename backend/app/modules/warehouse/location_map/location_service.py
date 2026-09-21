@@ -26,6 +26,8 @@ from app.modules.warehouse.location_map.location_schema import (
     MapDataResponse,
     MapLocationItem,
     MapLocationStockItem,
+    ZoneMapLayoutNode,
+    ZoneMapLayoutResponse,
 )
 from app.modules.warehouse.warehouse_zone.warehouse_model import Warehouse, Zone
 from app.modules.warehouse.item_stock.item_stock_model import (
@@ -238,6 +240,8 @@ def list_locations_for_map(db: Session, warehouse_id: int) -> LocationsForMapRes
                 row=loc.row,
                 column=loc.column,
                 level=loc.level,
+                map_x=loc.map_x,
+                map_y=loc.map_y,
                 status=status,
                 item_stock=stocks,
             )
@@ -245,6 +249,78 @@ def list_locations_for_map(db: Session, warehouse_id: int) -> LocationsForMapRes
 
     return LocationsForMapResponse(
         warehouse_id=warehouse_id,
+        location_codes=location_codes,
+        locations=items,
+    )
+
+def list_locations_for_zone_map(db: Session, zone_id: int) -> LocationsForMapResponse:
+    zone = db.query(Zone).filter(Zone.id == zone_id).first()
+    if not zone:
+        raise ValueError(f"Zone id not found: {zone_id}")
+
+    locations = (
+        _location_query(db, include_inactive=False)
+        .filter(Location.zone_id == zone_id)
+        .order_by(Location.id)
+        .all()
+    )
+
+    items: list[MapLocationItem] = []
+    location_codes: list[str] = []
+    assigned_ids = location_ids_with_assigned_qr() 
+
+    for loc in locations:
+        stocks = [
+            MapLocationStockItem(
+                sku=stock.item.sku if stock.item else "",
+                lot_number_from=stock.lot_number_from,
+                lot_number_to=stock.lot_number_to,
+                lot_number=format_lot_number_display(
+                    stock.lot_number_from,
+                    stock.lot_number_to,
+                ),
+                quantity=str(stock.quantity),
+            )
+            for stock in (loc.stocks or [])
+            if stock.is_active
+            and stock.quantity is not None
+            and stock.quantity > 0
+            and (
+                stock.stock_level is None or stock.stock_level <= 1
+            )
+        ]
+        for assigned in _assigned_stocks_for_location(loc.id):
+            stocks.append(
+                MapLocationStockItem(
+                    sku=assigned.get("item_sku") or "",
+                    lot_number=assigned.get("lot_number"),
+                    lot_number_from=assigned.get("lot_number"),
+                    lot_number_to=assigned.get("lot_number"),
+                    quantity=str(assigned.get("quantity") or 0),
+                )
+            )
+        status = loc.status or ("has_stock" if stocks else "empty")
+        status = overlay_status_with_assign_cache(status, loc.id, assigned_ids)
+        if stocks or loc.id in assigned_ids:
+            location_codes.append(loc.location_code)
+        items.append(
+            MapLocationItem(
+                id=loc.id,
+                location_code=loc.location_code,
+                location_name=loc.location_name,
+                bin_code=loc.bin_code,
+                row=loc.row,
+                column=loc.column,
+                level=loc.level,
+                map_x=loc.map_x,
+                map_y=loc.map_y,
+                status=status,
+                item_stock=stocks,
+            )
+        )
+
+    return LocationsForMapResponse(
+        warehouse_id=zone.warehouse_id,
         location_codes=location_codes,
         locations=items,
     )
@@ -422,7 +498,7 @@ def update_location(
         location.bin_code = data["bin_code"].strip()
     if "location_name" in data:
         location.location_name = data["location_name"].strip()
-    for field in ("row", "column", "level", "node_name", "is_active"):
+    for field in ("row", "column", "level", "node_name", "is_active", "map_x", "map_y"):
         if field in data:
             setattr(location, field, data[field])
     db.flush()
@@ -723,6 +799,12 @@ def _apply_shelf_to_location(
     node_name = shelf.get("node_name")
     if node_name:
         location.node_name = node_name[:NODE_NAME_MAX_LENGTH]
+    
+    if shelf.get("map_x") is not None:
+        location.map_x = shelf["map_x"]
+    if shelf.get("map_y") is not None:
+        location.map_y = shelf["map_y"]
+
     # Import has no zone information unless the caller supplies one; never wipe it.
     if zone_id is not None:
         location.zone_id = zone_id
@@ -885,6 +967,8 @@ def sync_locations_from_map(
                 column=shelf.get("column"),
                 level=shelf.get("level"),
                 node_name=(shelf.get("node_name") or "")[:NODE_NAME_MAX_LENGTH] or None,
+                map_x=shelf.get("map_x"),
+                map_y=shelf.get("map_y"),
                 warehouse_id=warehouse_id,
                 zone_id=zone_id,
                 is_active=True,
@@ -1141,6 +1225,39 @@ def get_map_data(db: Session, warehouse_id: int) -> MapDataResponse:
         )
     except KeyError as e:
         raise ValueError(f"Invalid compress.json: missing field {e.args[0]}") from e
+
+def get_zone_map_layout(db: Session, zone_id: int) -> ZoneMapLayoutResponse:
+    zone = db.query(Zone).filter(Zone.id == zone_id).first()
+    if not zone:
+        raise ValueError(f"Zone id not found: {zone_id}")
+        
+    locations = (
+        _location_query(db, include_inactive=False)
+        .filter(Location.zone_id == zone_id)
+        .order_by(Location.id)
+        .all()
+    )
+    
+    nodes = [
+        ZoneMapLayoutNode(
+            id=loc.id,
+            location_code=loc.location_code,
+            location_name=loc.location_name,
+            bin_code=loc.bin_code,
+            row=loc.row,
+            column=loc.column,
+            level=loc.level,
+            map_x=loc.map_x,
+            map_y=loc.map_y,
+        )
+        for loc in locations
+    ]
+    
+    return ZoneMapLayoutResponse(
+        zone_id=zone_id,
+        warehouse_id=zone.warehouse_id,
+        nodes=nodes,
+    )
 
 def export_warehouse_map(db: Session, warehouse_id: int) -> tuple[bytes, str]:
     warehouse_map = db.query(WarehouseMap).filter(

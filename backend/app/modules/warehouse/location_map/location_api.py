@@ -23,6 +23,7 @@ from app.modules.warehouse.location_map.location_schema import (
     MapDataResponse,
     MapRemapEntry,
     MapSyncResult,
+    ZoneMapLayoutResponse,
 )
 
 router = APIRouter(tags=["Location_Map"])
@@ -64,6 +65,20 @@ def list_locations_for_map(
 ):
     try:
         return location_service.list_locations_for_map(db, warehouse_id)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e)) from e
+
+@router.get(
+    "/locations/zones/{zone_id}/for-map",
+    response_model=LocationsForMapResponse,
+    dependencies=[Depends(require_permission("location:read"))],
+)
+def list_locations_for_zone_map(
+    db: DbSession,
+    zone_id: int,
+):
+    try:
+        return location_service.list_locations_for_zone_map(db, zone_id)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e)) from e
 
@@ -233,6 +248,21 @@ async def import_warehouse_map(
 def get_map_data(warehouse_id: int, db: DbSession):
     try:
         return location_service.get_map_data(db, warehouse_id)
+    except ValueError as e:
+        msg = str(e)
+        status_code = (
+            404 if "No active map" in msg or "not found" in msg.lower() else 400
+        )
+        raise HTTPException(status_code=status_code, detail=msg) from e
+
+@router.get(
+    "/warehouse-maps/zones/{zone_id}/map-data",
+    response_model=ZoneMapLayoutResponse,
+    dependencies=[Depends(require_permission("map:read"))],
+)
+def get_zone_map_data(zone_id: int, db: DbSession):
+    try:
+        return location_service.get_zone_map_layout(db, zone_id)
     except ValueError as e:
         msg = str(e)
         status_code = (
