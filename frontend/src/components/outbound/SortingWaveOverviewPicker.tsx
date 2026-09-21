@@ -1,14 +1,25 @@
 /**
  * Màn chọn vị trí chia chọn — 2 map song song, double-click để vào chi tiết.
  */
-import { PartitionOutlined } from "@ant-design/icons";
-import { cn } from "@/components/ui";
-import { operatorDesktopClass } from "@/constants/operatorDesktopSizes";
+import { useRef, useState, useMemo, type ChangeEvent } from "react";
+import { PartitionOutlined, UploadOutlined } from "@ant-design/icons";
+import type { ColumnsType } from "antd/es/table";
+import { Button, Modal, Table, Space, message, cn } from "@/components/ui";
+import {
+  OPERATOR_DESKTOP,
+  operatorDesktopClass,
+  OPERATOR_WAVE_MAP_TUNING,
+  operatorDesktopTableWidths,
+} from "@/constants/operatorDesktopSizes";
 import type { SortingWave } from "@/types/sortingWave";
 import OutboundSortingMapCanvas from "@/components/outbound/OutboundSortingMapCanvas";
-import { OPERATOR_WAVE_MAP_TUNING } from "@/constants/operatorDesktopSizes";
 import { WAVE_STATION_LOCATION_TYPES } from "@/api/warehouseMap";
 import { useSortingWaveMapContext } from "@/hooks/useSortingWaveMapContext";
+import { parseMasanOutboundPreviewApi } from "@/api/masan";
+import type { MasanOutboundPreviewRow } from "@/types/masan";
+import { useCreateOutboundOrder } from "@/hooks/useOutbound";
+import type { OutboundOrderLineItemCreate } from "@/types/outbound";
+import { toDisplayInteger } from "@/utils/number";
 
 type SortingWaveOverviewCellProps = {
   zoneId: number;
@@ -23,10 +34,6 @@ function SortingWaveOverviewCell({
 }: SortingWaveOverviewCellProps) {
   const { waveStationIds, stationOverlayLabels, feSimulation } =
     useSortingWaveMapContext(zoneId, wave);
-
-  const stationCount =
-    (wave.sorting_stations?.length ?? 0) +
-    (wave.outbound_stations?.length ?? 0);
 
   return (
     <button
@@ -98,6 +105,131 @@ export default function SortingWaveOverviewPicker({
   onSelectWave,
   className,
 }: SortingWaveOverviewPickerProps) {
+  const createOutboundOrderMutation = useCreateOutboundOrder();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [isParsingExcel, setIsParsingExcel] = useState(false);
+  const [isImportPreviewOpen, setIsImportPreviewOpen] = useState(false);
+  const [importLineItems, setImportLineItems] = useState<unknown[]>([]);
+  const [importPreviewRows, setImportPreviewRows] = useState<
+    MasanOutboundPreviewRow[]
+  >([]);
+  const [importWarnings, setImportWarnings] = useState<{ message: string }[]>(
+    [],
+  );
+
+  const resetImportState = () => {
+    setImportLineItems([]);
+    setImportPreviewRows([]);
+    setImportWarnings([]);
+  };
+
+  const closeImportPreview = () => {
+    setIsImportPreviewOpen(false);
+    resetImportState();
+  };
+
+  const handleImportClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleImportFileChange = async (
+    event: ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+
+    if (zoneId <= 0) {
+      message.error("Vui lòng chọn kho trước khi import");
+      return;
+    }
+
+    setIsParsingExcel(true);
+    resetImportState();
+
+    try {
+      const result = await parseMasanOutboundPreviewApi(file, zoneId, "auto");
+      
+      setImportLineItems(result.line_items);
+      setImportPreviewRows(result.preview_rows);
+      setImportWarnings(result.warnings.map(w => ({ message: w })));
+      setIsImportPreviewOpen(true);
+    } catch {
+      message.error("Không thể đọc file Excel (Lỗi API Masan)");
+    } finally {
+      setIsParsingExcel(false);
+    }
+  };
+
+  const handleConfirmImport = async () => {
+    if (importLineItems.length === 0) {
+      message.error("Không có dữ liệu để import");
+      return;
+    }
+
+    try {
+      await createOutboundOrderMutation.mutateAsync({
+        outboundType: "auto",
+        data: {
+          warehouse_id: zoneId,
+          order_code: `AUTO-${Date.now()}`,
+          line_items: importLineItems as OutboundOrderLineItemCreate[],
+        },
+      });
+      message.success("Import đơn xuất thành công!");
+      closeImportPreview();
+    } catch {
+      message.error("Không thể tạo đơn xuất từ file Excel");
+    }
+  };
+
+  const importTw = operatorDesktopTableWidths.outboundImportPreview;
+  const importPreviewColumns: ColumnsType<MasanOutboundPreviewRow> = useMemo(
+    () => [
+      {
+        title: "Dòng",
+        dataIndex: "row_no",
+        width: importTw.excelRow,
+      },
+      {
+        title: "Xe",
+        dataIndex: "vehicle_no",
+        width: importTw.vehicle,
+      },
+      {
+        title: "SKU",
+        dataIndex: "sku",
+        width: importTw.sku,
+      },
+      {
+        title: "LOT",
+        dataIndex: "lot_number",
+        width: importTw.lot,
+        render: (v: string) => v || "—",
+      },
+      {
+        title: "SL",
+        dataIndex: "quantity",
+        width: importTw.qty,
+        align: "right",
+        render: (v: number) => toDisplayInteger(v),
+      },
+      {
+        title: "Pallet",
+        dataIndex: "pallet_count",
+        width: importTw.pallet,
+        align: "right",
+        render: (v: string | null) => (v != null ? v : "—"),
+      },
+      {
+        title: "Lỗi",
+        dataIndex: "error",
+        render: (v: string | null) => (v ? <span className="text-red-500">{v}</span> : "—"),
+      },
+    ],
+    [importTw],
+  );
   if (loading) {
     return (
       <div
@@ -137,13 +269,32 @@ export default function SortingWaveOverviewPicker({
         className,
       )}
     >
-      <div className="shrink-0 border-b border-stripe-hairline px-4 py-2.5">
-        <h3 className="text-4xl font-black text-brand-dark">
-          Chọn vị trí chia chọn
-        </h3>
-        <p className="mt-1 text-base text-stripe-ink-mute">
-          Nhấp đúp vào khu vực để mở bản đồ chi tiết và danh sách xe
-        </p>
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".xlsx,.xls"
+        className="hidden"
+        onChange={handleImportFileChange}
+      />
+      <div className="shrink-0 flex items-center justify-between border-b border-stripe-hairline px-4 py-2.5">
+        <div>
+          <h3 className="text-4xl font-black text-brand-dark">
+            Chọn vị trí chia chọn
+          </h3>
+          <p className="mt-1 text-base text-stripe-ink-mute">
+            Nhấp đúp vào khu vực để mở bản đồ chi tiết và danh sách xe
+          </p>
+        </div>
+        <Button
+          variant="primary"
+          icon={<UploadOutlined />}
+          onClick={handleImportClick}
+          loading={isParsingExcel}
+          disabled={zoneId <= 0}
+          className="!h-10 !px-4 !text-base"
+        >
+          Nhập BM.04 (Masan)
+        </Button>
       </div>
       <div className="grid min-h-0 flex-1 grid-cols-1 gap-2 p-2 lg:grid-cols-2 lg:gap-3 lg:p-3">
         {displayWaves.map((wave) => (
@@ -155,6 +306,45 @@ export default function SortingWaveOverviewPicker({
           />
         ))}
       </div>
+      <Modal
+        open={isImportPreviewOpen}
+        onCancel={closeImportPreview}
+        width={OPERATOR_DESKTOP.modal.xl}
+        title="Xem trước import Excel"
+        footer={
+          <Space>
+            <Button variant="secondary" onClick={closeImportPreview}>
+              Hủy
+            </Button>
+            <Button
+              variant="primary"
+              loading={createOutboundOrderMutation.isPending}
+              onClick={() => void handleConfirmImport()}
+            >
+              Tạo đơn xuất ({importLineItems.length} nhóm)
+            </Button>
+          </Space>
+        }
+      >
+        {importWarnings.length > 0 && (
+          <div className="mb-4 rounded border border-warning-200 bg-warning-50 p-3 text-sm text-warning-800">
+            <h4 className="font-bold">Cảnh báo:</h4>
+            <ul className="mt-1 list-disc pl-5">
+              {importWarnings.map((w, i) => (
+                <li key={i}>{w.message}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+        <Table
+          dataSource={importPreviewRows}
+          columns={importPreviewColumns}
+          rowKey={(r) => `${r.row_no}-${r.sku}`}
+          pagination={false}
+          scroll={{ y: 420 }}
+          size="small"
+        />
+      </Modal>
     </div>
   );
 }

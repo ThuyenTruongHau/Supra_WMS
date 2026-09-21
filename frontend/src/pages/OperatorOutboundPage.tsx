@@ -4,7 +4,6 @@ import {
   ExportOutlined,
   FileExcelOutlined,
   RobotOutlined,
-  UploadOutlined,
 } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import { Button, Modal, Space, Table, message } from "@/components/ui";
@@ -21,23 +20,18 @@ import { useProduct } from "@/hooks/useProduct";
 import { useSortingWaves } from "@/hooks/useSortingWave";
 import type { SortingWave } from "@/types/sortingWave";
 import {
-  useCreateOutbound,
   useIncompleteVehicles,
   useOutboundList,
+  useCreateOutboundOrder,
 } from "@/hooks/useOutbound";
-import type { DetailGroupInput } from "@/types/outbound";
-import { getOutboundDailyReportApi } from "@/api/outbound";
+import { getApiErrorDetail } from "@/types/apiError";
+import { exportOutboundOrderSOApi } from "@/api/masan";
 import { syncWaveAssignmentApi } from "@/api/outboundTask";
 import {
   useOutboundTasksByWave,
   useSendOutboundTaskCommands,
   outboundTasksByWaveQueryKey,
 } from "@/hooks/useOutboundTask";
-import { getApiErrorDetail } from "@/types/apiError";
-import {
-  parseOutboundExcelFile,
-  type OutboundImportPreviewRow,
-} from "@/utils/outboundExcelImport";
 import SortingWaveStationBoard from "@/components/outbound/SortingWaveStationBoard";
 import SortingWaveOverviewPicker from "@/components/outbound/SortingWaveOverviewPicker";
 import OperatorOutboundOrderBrowser from "@/components/outbound/OperatorOutboundOrderBrowser";
@@ -102,134 +96,23 @@ export default function OperatorOutboundPage() {
   const queryClient = useQueryClient();
 
   const { data: products = [] } = useProduct(zoneId);
-  const createOutboundMutation = useCreateOutbound();
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const createOutboundOrderMutation = useCreateOutboundOrder();
 
-  const [isParsingExcel, setIsParsingExcel] = useState(false);
   const [quickPalletExporting, setQuickPalletExporting] = useState<
     1 | 2 | null
   >(null);
-  const [isExportingDailyExcel, setIsExportingDailyExcel] = useState(false);
-  const [isImportPreviewOpen, setIsImportPreviewOpen] = useState(false);
-  const [importDetailGroups, setImportDetailGroups] = useState<
-    DetailGroupInput[]
-  >([]);
-  const [importPreviewRows, setImportPreviewRows] = useState<
-    OutboundImportPreviewRow[]
-  >([]);
-  const [importWarnings, setImportWarnings] = useState<{ message: string }[]>(
-    [],
-  );
+  const [isExportingSO, setIsExportingSO] = useState(false);
 
-  const resetImportState = () => {
-    setImportDetailGroups([]);
-    setImportPreviewRows([]);
-    setImportWarnings([]);
-  };
-
-  const closeImportPreview = () => {
-    setIsImportPreviewOpen(false);
-    resetImportState();
-  };
-
-  const handleImportClick = () => {
-    fileInputRef.current?.click();
-  };
-
-  const handleExportDailyExcel = async () => {
-    if (zoneId <= 0) {
-      message.warning("Vui lòng chọn kho trước khi xuất");
-      return;
-    }
-
-    setIsExportingDailyExcel(true);
+  const handleExportMasanSO = async () => {
+    if (!selectedOrderId) return;
+    setIsExportingSO(true);
     try {
-      const report = await getOutboundDailyReportApi(zoneId);
-      if (report.lines.length === 0) {
-        message.warning("Không có dòng xuất nào được gửi lệnh hôm nay để xuất");
-        return;
-      }
-      const { downloadOutboundDailyReportExcel } =
-        await import("@/utils/outboundDailyExport");
-      downloadOutboundDailyReportExcel(report);
-      message.success(
-        `Đã xuất báo cáo xuất theo ngày (${report.lines.length} dòng)`,
-      );
+      await exportOutboundOrderSOApi(selectedOrderId);
+      message.success("Đã xuất SO thành công");
     } catch (err: unknown) {
-      message.error(getApiErrorDetail(err, "Không thể xuất báo cáo Excel"));
+      message.error(getApiErrorDetail(err, "Không thể xuất SO"));
     } finally {
-      setIsExportingDailyExcel(false);
-    }
-  };
-
-  const handleImportFileChange = async (
-    event: ChangeEvent<HTMLInputElement>,
-  ) => {
-    const file = event.target.files?.[0];
-    event.target.value = "";
-    if (!file) return;
-
-    if (zoneId <= 0) {
-      message.error("Vui lòng chọn kho trước khi import");
-      return;
-    }
-
-    setIsParsingExcel(true);
-    resetImportState();
-
-    try {
-      const result = await parseOutboundExcelFile(file, products);
-
-      if (result.errors.length > 0) {
-        Modal.error({
-          title: "Không thể import file Excel",
-          width: OPERATOR_DESKTOP.modal.sm,
-          content: (
-            <ul
-              className={`mt-2 ${operatorDesktopClass.listMax64} list-disc space-y-1 overflow-y-auto pl-5 text-sm`}
-            >
-              {result.errors.map((err, index) => (
-                <li key={`${err.excelRowNumber ?? "global"}-${index}`}>
-                  {err.excelRowNumber
-                    ? `Dòng ${err.excelRowNumber}: ${err.message}`
-                    : err.message}
-                </li>
-              ))}
-            </ul>
-          ),
-        });
-        return;
-      }
-
-      setImportDetailGroups(result.detail_groups);
-      setImportPreviewRows(result.previewRows);
-      setImportWarnings(result.warnings);
-      setIsImportPreviewOpen(true);
-    } catch {
-      message.error("Không thể đọc file Excel");
-    } finally {
-      setIsParsingExcel(false);
-    }
-  };
-
-  const handleConfirmImport = async () => {
-    if (importDetailGroups.length === 0) {
-      message.error("Không có dữ liệu để import");
-      return;
-    }
-
-    try {
-      await createOutboundMutation.mutateAsync({
-        zone_id: zoneId,
-        detail_groups: importDetailGroups,
-        auto_assign_sorting: true,
-      });
-      message.success("Import đơn xuất thành công!");
-      closeImportPreview();
-    } catch (err: unknown) {
-      message.error(
-        getApiErrorDetail(err, "Không thể tạo đơn xuất từ file Excel"),
-      );
+      setIsExportingSO(false);
     }
   };
 
@@ -250,10 +133,14 @@ export default function OperatorOutboundPage() {
         product.id,
         palletCount,
       );
-      await createOutboundMutation.mutateAsync({
-        zone_id: zoneId,
-        detail_groups,
-        auto_assign_sorting: true,
+      await createOutboundOrderMutation.mutateAsync({
+        outboundType: "auto",
+        data: {
+          warehouse_id: zoneId,
+          order_code: `DEMO-${Date.now()}`,
+          line_items: [],
+          details: { detail_groups },
+        }
       });
       const plate = detail_groups[0]?.vehicle_number ?? "";
       let syncHint = "";
@@ -281,48 +168,6 @@ export default function OperatorOutboundPage() {
       setQuickPalletExporting(null);
     }
   };
-
-  const importTw = operatorDesktopTableWidths.outboundImportPreview;
-  const importPreviewColumns: ColumnsType<OutboundImportPreviewRow> = useMemo(
-    () => [
-      {
-        title: "Dòng",
-        dataIndex: "excelRowNumber",
-        width: importTw.excelRow,
-      },
-      {
-        title: "Xe",
-        dataIndex: "vehicleNumber",
-        width: importTw.vehicle,
-      },
-      {
-        title: "SKU",
-        dataIndex: "sku",
-        width: importTw.sku,
-      },
-      {
-        title: "LOT",
-        dataIndex: "lotNumber",
-        width: importTw.lot,
-        render: (v: string) => v || "—",
-      },
-      {
-        title: "SL",
-        dataIndex: "totalQuantity",
-        width: importTw.qty,
-        align: "right",
-        render: (v: number) => toDisplayInteger(v),
-      },
-      {
-        title: "Pallet",
-        dataIndex: "palletCount",
-        width: importTw.pallet,
-        align: "right",
-        render: (v: number | null) => (v != null ? toDisplayInteger(v) : "—"),
-      },
-    ],
-    [importTw],
-  );
 
   const {
     data: incompleteVehiclesData,
@@ -455,14 +300,6 @@ export default function OperatorOutboundPage() {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-hidden">
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept=".xlsx,.xls"
-        className="hidden"
-        onChange={handleImportFileChange}
-      />
-
       <OperatorPageHeader
         title="Đơn xuất và chia chọn"
         warehouseName={warehouseName}
@@ -501,16 +338,6 @@ export default function OperatorOutboundPage() {
               <div className="flex w-full flex-wrap justify-between items-center gap-4">
                 <div className="flex flex-wrap gap-2">
                   <Button
-                    variant="primary"
-                    icon={<UploadOutlined />}
-                    onClick={handleImportClick}
-                    loading={isParsingExcel}
-                    disabled={zoneId <= 0 || quickPalletExporting != null}
-                    className="!h-10 !px-4 !text-base"
-                  >
-                    Nhập dữ liệu đơn
-                  </Button>
-                  <Button
                     variant="secondary"
                     icon={<ExportOutlined />}
                     onClick={() => void handleQuickPalletExport(1)}
@@ -518,8 +345,7 @@ export default function OperatorOutboundPage() {
                     disabled={
                       zoneId <= 0 ||
                       products.length === 0 ||
-                      quickPalletExporting != null ||
-                      isParsingExcel
+                      quickPalletExporting != null
                     }
                     className="!h-10 !px-4 !text-base"
                   >
@@ -533,8 +359,7 @@ export default function OperatorOutboundPage() {
                     disabled={
                       zoneId <= 0 ||
                       products.length === 0 ||
-                      quickPalletExporting != null ||
-                      isParsingExcel
+                      quickPalletExporting != null
                     }
                     className="!h-10 !px-4 !text-base"
                   >
@@ -544,12 +369,12 @@ export default function OperatorOutboundPage() {
                 <Button
                   variant="secondary"
                   icon={<FileExcelOutlined />}
-                  onClick={() => void handleExportDailyExcel()}
-                  loading={isExportingDailyExcel}
-                  disabled={zoneId <= 0}
+                  onClick={() => void handleExportMasanSO()}
+                  loading={isExportingSO}
+                  disabled={!selectedOrderId}
                   className="!h-10 !px-4 !text-base"
                 >
-                  Excel bypass
+                  Xuất SO
                 </Button>
               </div>
             </>
@@ -638,45 +463,6 @@ export default function OperatorOutboundPage() {
         />
       )}
 
-      <Modal
-        open={isImportPreviewOpen}
-        onCancel={closeImportPreview}
-        width={OPERATOR_DESKTOP.modal.md}
-        title="Xem trước import Excel"
-        footer={
-          <Space>
-            <Button variant="secondary" onClick={closeImportPreview}>
-              Hủy
-            </Button>
-            <Button
-              variant="primary"
-              loading={createOutboundMutation.isPending}
-              onClick={() => void handleConfirmImport()}
-            >
-              Tạo đơn xuất ({importDetailGroups.length} nhóm)
-            </Button>
-          </Space>
-        }
-      >
-        {importWarnings.length > 0 && (
-          <div className="mb-4 rounded border border-warning-200 bg-warning-50 p-3 text-sm text-warning-800">
-            <p className="font-semibold">Cảnh báo:</p>
-            <ul className="mt-1 list-disc pl-5">
-              {importWarnings.map((w, i) => (
-                <li key={i}>{w.message}</li>
-              ))}
-            </ul>
-          </div>
-        )}
-        <Table<OutboundImportPreviewRow>
-          columns={importPreviewColumns}
-          dataSource={importPreviewRows}
-          rowKey={(row) => `${row.excelRowNumber}-${row.sku}`}
-          pagination={{ pageSize: 10 }}
-          size="small"
-          scroll={{ x: 640 }}
-        />
-      </Modal>
     </div>
   );
 }

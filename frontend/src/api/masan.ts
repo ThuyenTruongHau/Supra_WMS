@@ -35,3 +35,37 @@ export const exportInboundOrderMasanApi = async (
     `inbound-${orderId}_BaoCaoNhap.xlsx`,
   );
 };
+
+export const parseMasanOutboundPreviewApi = async (
+  file: File,
+  warehouseId: number,
+  outboundType: "manual" | "auto" = "auto",
+): Promise<import("@/types/masan").MasanOutboundParseResponse> => {
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("warehouse_id", String(warehouseId));
+  formData.append("outbound_type", outboundType);
+
+  const { data } = await axiosInstance.post<import("@/types/masan").MasanOutboundParseResponse>(
+    "/api/v1/masan/outbound-orders/parse-preview",
+    formData,
+    {
+      headers: { "Content-Type": "multipart/form-data" },
+    },
+  );
+  return data;
+};
+
+export const exportOutboundOrderSOApi = async (
+  orderId: number,
+): Promise<void> => {
+  const response = await axiosInstance.get(
+    `/api/v1/masan/outbound-orders/${orderId}/export-so`,
+    { responseType: "blob" },
+  );
+  downloadBlobFromResponse(
+    response.data as Blob,
+    response.headers["content-disposition"] as string | undefined,
+    `outbound-${orderId}_SO.xlsx`,
+  );
+};
