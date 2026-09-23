@@ -29,7 +29,7 @@ import {
   getInboundBufferPointsApi,
   type MapLocationType,
 } from "@/api/warehouseMap";
-import InboundBufferMapCanvas from "@/components/inbound/InboundBufferMapCanvas";
+import OperatorMapCanvas from "@/components/warehouse/OperatorMapCanvas";
 import type { SortingWave } from "@/types/sortingWave";
 
 const PAGE_SIZE = 20;
@@ -569,11 +569,11 @@ export default function SortingWaveManagementPanel({
             </span>
           </div>
           {mapMeta && zoneId > 0 && (
-            <InboundBufferMapCanvas
+            <OperatorMapCanvas
               zoneId={zoneId}
-              locationType={mapMeta.locationType}
+              showInboundSeparator={true}
               className="!min-h-full h-full"
-              selectedLocationCodes={mapSelectedCodes}
+              selectedCodes={mapSelectedCodes}
               onBufferCellClick={({ locationCode }) =>
                 toggleMapStation(locationCode)
               }

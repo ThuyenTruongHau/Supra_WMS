@@ -313,7 +313,7 @@ export default function OperatorOutboundPage() {
 
       {!inDetailView ? (
         <SortingWaveOverviewPicker
-          zoneId={zoneId}
+          zoneId={12}
           waves={sortingWaves}
           loading={wavesLoading}
           onSelectWave={handleEnterWaveDetail}

@@ -14,7 +14,7 @@ import {
   OPERATOR_DESKTOP,
   OPERATOR_DIRECT_OUTBOUND_MAP_TUNING,
 } from "@/constants/operatorDesktopSizes";
-import InboundBufferMapCanvas from "@/components/inbound/InboundBufferMapCanvas";
+import OperatorMapCanvas from "@/components/warehouse/OperatorMapCanvas";
 import { WAVE_STATION_LOCATION_TYPES } from "@/api/warehouseMap";
 import {
   useDirectOutboundFromInbound,
@@ -86,7 +86,7 @@ function isBpOrCxBin(loc: {
 }
 
 export default function DirectOutboundFromInboundBoard({
-  zoneId,
+  zoneId = 1,
   onImportClick,
   importLoading,
   importDisabled,
@@ -300,7 +300,7 @@ export default function DirectOutboundFromInboundBoard({
       message.warning("Không có đơn nhập đang xử lý trong kho này");
       return;
     }
-    
+
     // Tự động gán detail đầu tiên chưa gán
     const pendingDetail = assignedDetails.find((d) => d.status === "pending");
     if (pendingDetail) {
@@ -325,7 +325,7 @@ export default function DirectOutboundFromInboundBoard({
     if (owningWave != null) setWaveId(owningWave);
     setOutboundLocationId(locationId);
     setSelectedProduct(null);
-    
+
     if (owningWave == null) {
       message.warning("Điểm xuất không thuộc vị trí sorting nào");
       return;
@@ -560,10 +560,11 @@ export default function DirectOutboundFromInboundBoard({
           </div>
           <div className="relative min-h-0 flex-1 overflow-hidden bg-industrial-pattern p-2">
             {zoneId > 0 ? (
-              <InboundBufferMapCanvas
-                zoneId={zoneId}
+              <OperatorMapCanvas
+                zoneId={10}
+                showInboundSeparator={true}
                 tuning={OPERATOR_DIRECT_OUTBOUND_MAP_TUNING}
-                selectedLocationCode={inboundLocationCode}
+                selectedCodes={inboundLocationCode ? [inboundLocationCode] : undefined}
                 interactiveCodes={inboundInteractiveCodes}
                 onBufferCellClick={handleInboundMapClick}
                 className="!h-full"
@@ -584,15 +585,11 @@ export default function DirectOutboundFromInboundBoard({
           </div>
           <div className="relative min-h-0 flex-1 overflow-hidden bg-industrial-pattern p-2">
             {zoneId > 0 ? (
-              <InboundBufferMapCanvas
+              <OperatorMapCanvas
                 key={`wave-all-${allWaveStationIds.join(",") || "zone"}`}
-                zoneId={zoneId}
-                locationType={WAVE_STATION_LOCATION_TYPES}
-                locationIds={
-                  allWaveStationIds.length > 0 ? allWaveStationIds : undefined
-                }
+                zoneId={11}
                 tuning={OPERATOR_DIRECT_OUTBOUND_MAP_TUNING}
-                selectedLocationCode={outboundLocationCode}
+                selectedCodes={outboundLocationCode ? [outboundLocationCode] : undefined}
                 interactiveCodes={waveInteractiveCodes}
                 onBufferCellClick={handleWaveMapClick}
                 className="!h-full"

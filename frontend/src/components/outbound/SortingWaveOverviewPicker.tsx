@@ -12,8 +12,7 @@ import {
   operatorDesktopTableWidths,
 } from "@/constants/operatorDesktopSizes";
 import type { SortingWave } from "@/types/sortingWave";
-import OutboundSortingMapCanvas from "@/components/outbound/OutboundSortingMapCanvas";
-import { WAVE_STATION_LOCATION_TYPES } from "@/api/warehouseMap";
+import OperatorMapCanvas from "@/components/warehouse/OperatorMapCanvas";
 import { useSortingWaveMapContext } from "@/hooks/useSortingWaveMapContext";
 import { parseMasanOutboundPreviewApi } from "@/api/masan";
 import type { MasanOutboundPreviewRow } from "@/types/masan";
@@ -69,10 +68,9 @@ function SortingWaveOverviewCell({
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(14,165,233,0.06),transparent_55%)]" />
         <div className="relative h-full min-h-0 overflow-hidden rounded-lg bg-panel">
           {zoneId > 0 ? (
-            <OutboundSortingMapCanvas
+            <OperatorMapCanvas
               key={`overview-${wave.id}-${waveStationIds.join(",")}`}
               zoneId={zoneId}
-              locationType={WAVE_STATION_LOCATION_TYPES}
               locationIds={waveStationIds}
               tuning={OPERATOR_WAVE_MAP_TUNING}
               overlayLabelByCode={stationOverlayLabels}
@@ -81,7 +79,7 @@ function SortingWaveOverviewCell({
             />
           ) : (
             <div className="flex h-full items-center justify-center text-sm text-slate-500">
-              Chọn kho để xem bản đồ
+              DEBUG: zoneId={zoneId} type={typeof zoneId} | wave.zone_id={wave.zone_id}
             </div>
           )}
         </div>
@@ -150,7 +148,7 @@ export default function SortingWaveOverviewPicker({
 
     try {
       const result = await parseMasanOutboundPreviewApi(file, zoneId, "auto");
-      
+
       setImportLineItems(result.line_items);
       setImportPreviewRows(result.preview_rows);
       setImportWarnings(result.warnings.map(w => ({ message: w })));

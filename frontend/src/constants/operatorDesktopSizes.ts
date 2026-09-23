@@ -48,62 +48,45 @@ export const OPERATOR_DESKTOP = {
 
 /** Class Tailwind literal — khớp số trong OPERATOR_DESKTOP, an toàn với JIT. */
 /**
- * Tuning map operator **Đơn nhập** — ô buffer xếp lưới ảo đồng kích thước trong khung board.
+ * Tuning map operator **Đơn nhập** — fit quanh các điểm buffer trong khung board.
  */
 export const OPERATOR_MAP_TUNING = {
-  fitToFocusPoints: true,
-  spacingFromFocusOnly: true,
-  uniformGridFit: true,
-  hideNonFocusShelves: true,
   fitPaddingRatio: 0.02,
   fitScaleFactor: 1,
-  /** Tỷ lệ ô trong ô lưới ảo (cao hơn → ô to hơn; khe vẫn theo cellGapPx). */
-  shelfFillRatio: 0.98,
-  /** Khoảng cách giữa các ô — giữ nguyên. */
-  cellGapPx: 8,
-  /** Header thu gọn làm map cao hơn → zoom cả cụm ô theo vùng mới. */
-  responsiveZoomOnGrow: true,
-  /** Zoom nhẹ theo căn bậc hai diện tích viewport, tránh crop cạnh map. */
-  responsiveZoomMax: 1.00,
-  responsiveZoomStrength: 0.48,
   shelfSizeFactor: 1,
-  baseNodeSize: 800,
-  /** Phóng chữ trong ô map operator (chỉ trang user). */
+  baseNodeSize: 400,
+  /** Phóng chữ label trong ô map operator (chỉ trang user). */
   labelTextScale: 1.55,
-} as const
+} as const;
+
+export const OPERATOR_MAP_CANVAS_DEFAULTS = {
+  fitScaleFactor: 0.75,
+  fitPaddingRatio: 0.08,
+  baseNodeSize: 800,
+  shelfSizeFactor: 0.7,
+  labelTextScale: 1,
+} as const;
 
 /**
  * Tuning map operator **Đơn xuất / chia chọn** — giữ tọa độ thật từ map fetch
  * (không uniformGridFit), fit quanh station của wave, size theo khoảng cách focus.
  */
 export const OPERATOR_WAVE_MAP_TUNING = {
-  fitToFocusPoints: true,
-  spacingFromFocusOnly: true,
-  uniformGridFit: false,
-  hideNonFocusShelves: true,
   fitPaddingRatio: 0.06,
   fitScaleFactor: 1,
-  shelfFillRatio: 0.42,
   shelfSizeFactor: 0.58,
   baseNodeSize: 800,
   labelTextScale: 1.65,
 } as const
 
 /**
- * Tuning dual-map **Xuất trực tiếp** — lưới ảo đồng kích thước cho cả 2 cột
- * (tránh ô to/bé lệch giữa map nhập và map wave).
+ * Tuning dual-map **Xuất trực tiếp** — fit quanh các điểm buffer của cả 2 cột.
  */
 export const OPERATOR_DIRECT_OUTBOUND_MAP_TUNING = {
-  fitToFocusPoints: true,
-  spacingFromFocusOnly: true,
-  uniformGridFit: true,
-  hideNonFocusShelves: true,
   fitPaddingRatio: 0.04,
   fitScaleFactor: 1,
-  shelfFillRatio: 0.92,
-  cellGapPx: 8,
   shelfSizeFactor: 1,
-  baseNodeSize: 800,
+  baseNodeSize: 400,
   labelTextScale: 1.55,
 } as const
 

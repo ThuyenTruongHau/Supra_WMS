@@ -10,6 +10,24 @@ export interface MapData {
   yAttrMin?: number;
 }
 
+export interface ZoneMapLayoutNode {
+  id: number;
+  location_code: string;
+  location_name: string | null;
+  bin_code: string | null;
+  row: string | null;
+  column: string | null;
+  level: string | null;
+  map_x: number | null;
+  map_y: number | null;
+}
+
+export interface ZoneMapLayoutResponse {
+  zone_id: number;
+  warehouse_id: number;
+  nodes: ZoneMapLayoutNode[];
+}
+
 export interface LocationSyncSummary {
   created: number;
   updated: number;
@@ -115,6 +133,8 @@ export interface FullLocationDetail {
   row: string | null;
   column: string | null;
   level: string | null;
+  map_x: number | null;
+  map_y: number | null;
   status: string;
   item_stock: MapLocationItemStock[];
 }

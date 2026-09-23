@@ -8,6 +8,7 @@ import type {
   InboundBufferMapView,
   InboundBufferPointsResponse,
   WarehouseMapMetadata,
+  ZoneMapLayoutResponse,
 } from '@/types/warehouseMap';
 import type { WarehouseLocationDetail } from '@/types/warehouseLocation';
 import { logMapDebug, summarizeMapDataForLog } from '@/utils/warehouseMapRender';
@@ -28,6 +29,28 @@ export const getFullLocationsApi = async (
     '/api/v1/locations/for-map',
     { params: { warehouse_id: warehouseId } },
   );
+  return response.data;
+};
+
+export const getZoneMapLayoutApi = async (
+  zoneId: number,
+): Promise<ZoneMapLayoutResponse> => {
+  console.log(`[API CALL] GET /api/v1/warehouse-maps/zones/${zoneId}/map-data`);
+  const response = await axiosInstance.get<ZoneMapLayoutResponse>(
+    `/api/v1/warehouse-maps/zones/${zoneId}/map-data`,
+  );
+  console.log(`[API RESPONSE] getZoneMapLayoutApi for zone ${zoneId}:`, response.data);
+  return response.data;
+};
+
+export const getZoneMapStatusApi = async (
+  zoneId: number,
+): Promise<FullLocationsResponse> => {
+  console.log(`[API CALL] GET /api/v1/locations/zones/${zoneId}/for-map`);
+  const response = await axiosInstance.get<FullLocationsResponse>(
+    `/api/v1/locations/zones/${zoneId}/for-map`,
+  );
+  console.log(`[API RESPONSE] getZoneMapStatusApi for zone ${zoneId}:`, response.data);
   return response.data;
 };
 

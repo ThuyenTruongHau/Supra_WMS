@@ -28,14 +28,14 @@ import {
 } from "@/constants/operatorDesktopSizes";
 import AssignInboundBufferModal from "@/components/inbound/AssignInboundBufferModal";
 import UnassignInboundBufferModal from "@/components/inbound/UnassignInboundBufferModal";
-import InboundBufferMapCanvas, {
+import OperatorMapCanvas, {
   type BufferCellClickPayload,
-} from "@/components/inbound/InboundBufferMapCanvas";
+} from "@/components/warehouse/OperatorMapCanvas";
 import OperatorInboundOrderBrowser from "@/components/inbound/OperatorInboundOrderBrowser";
 import DirectOutboundFromInboundBoard from "@/components/inbound/DirectOutboundFromInboundBoard";
 import InboundLocationInfoModal from "@/components/inbound/InboundLocationInfoModal";
 import QrAssignInboundModal from "@/components/inbound/QrAssignInboundModal";
-import OperatorPageHeader from "@/components/layout/OperatorPageHeader";
+
 import { useAppStore } from "@/store/useAppStore";
 import { useZone } from "@/hooks/useZone";
 import { useProduct } from "@/hooks/useProduct";
@@ -110,14 +110,11 @@ const SOURCE_TAB_META: Record<
 };
 
 export default function OperatorInboundPage() {
-  const zoneId = useAppStore((s) => s.selectedWarehouseId);
+  const zoneId = 10; // Hardcoded for testing. Original: useAppStore((s) => s.selectedWarehouseId);
   const { data: zones } = useZone();
-  const warehouseName =
-    zones?.find((z) => z.id === zoneId)?.name ?? "Kho được gán";
 
   const { data, isLoading, isError, error } =
     useOldestIncompleteInbound(zoneId);
-  const isNotFound = error?.response?.status === 404;
   const orderId = data?.order?.id ?? 0;
   const { data: assignedPayload, isLoading: assignedLoading } =
     useInboundAssignedDetails(orderId, orderId > 0);
@@ -204,7 +201,7 @@ export default function OperatorInboundPage() {
       formData.append('inbound_type', 'auto');
 
       const parseResult = await parseMasanInboundExcelApi(formData);
-      
+
       const errors = parseResult.preview_rows.filter((r: any) => r.error !== null);
       if (errors.length > 0) {
         Modal.error({
@@ -764,22 +761,20 @@ export default function OperatorInboundPage() {
                 </div>
               </div>
               <div
-                className={`relative flex ${operatorDesktopClass.boardFill} flex-col bg-industrial-pattern p-3 sm:p-4`}
+                className={`relative flex ${operatorDesktopClass.boardFill} flex-col bg-industrial-pattern`}
               >
                 <div className="relative min-h-0 flex-1 overflow-hidden rounded-lg bg-panel">
-                  <InboundBufferMapCanvas
+                  <OperatorMapCanvas
                     zoneId={zoneId}
+                    showInboundSeparator={true}
                     className="!h-full"
                     tuning={OPERATOR_MAP_TUNING}
-                    selectedLocationCode={
-                      mode === "manual" ? selectedBufferCode : null
-                    }
-                    selectedLocationCodes={
-                      mode === "auto" ? selectedAutoColumnCodes : undefined
+                    selectedCodes={
+                      mode === "manual" && selectedBufferCode ? [selectedBufferCode] :
+                        mode === "auto" ? selectedAutoColumnCodes : undefined
                     }
                     onBufferCellClick={handleBufferCellClick}
                     onBufferCellDoubleClick={handleBufferCellDoubleClick}
-                    onCanvasBackgroundClick={handleMapBackgroundClick}
                   />
                 </div>
               </div>

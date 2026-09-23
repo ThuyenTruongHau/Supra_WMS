@@ -5,11 +5,11 @@ import {
   getAllItemStockByZoneApi,
   getAllLocationsByZoneApi,
   getLocationDetailApi,
-  getLocationStockLabelsApi,
   listStorageLocationsApi,
   listStorageRelocateCommandsApi,
   relocateStorageStockApi,
 } from '@/api/warehouseLocation';
+import { useZoneMapStatus } from '@/hooks/useWarehouseMap';
 import type {
   LocationStockLabel,
   StorageLocation,
@@ -46,18 +46,33 @@ export const useLocationsByZone = (zoneId: number) => {
 };
 
 export const useLocationByCodeMap = (zoneId: number) => {
-  const query = useLocationsByZone(zoneId);
+  const query = useZoneMapStatus(zoneId);
 
   const locationByCode = useMemo(() => {
     const map: Record<string, WarehouseLocation> = {};
-    for (const location of query.data ?? []) {
-      map[location.location_code] = location;
+    for (const loc of query.data?.locations ?? []) {
+      map[loc.location_code] = {
+        id: loc.id,
+        location_code: loc.location_code,
+        node_name: null,
+        zone_id: zoneId,
+        row: loc.row ?? null,
+        column: loc.column ?? null,
+        level: loc.level ?? null,
+        status: loc.status ?? null,
+        is_active: true,
+        bin: (loc as any).bin_code ?? null,
+        capacity: null,
+        created_at: '',
+        updated_at: '',
+      };
     }
     return map;
-  }, [query.data]);
+  }, [query.data, zoneId]);
 
   return { ...query, locationByCode };
 };
+
 
 export const useItemStockByZone = (zoneId: number) => {
   return useQuery({
@@ -70,23 +85,32 @@ export const useItemStockByZone = (zoneId: number) => {
 };
 
 export const useLocationStockLabels = (zoneId: number) => {
-  const query = useQuery({
-    queryKey: locationStockLabelsQueryKey(zoneId),
-    queryFn: () => getLocationStockLabelsApi(zoneId),
-    enabled: zoneId > 0,
-    staleTime: 30 * 1000,
-    refetchOnMount: 'always',
-  });
+  const query = useZoneMapStatus(zoneId);
 
   const labelByCode = useMemo(() => {
     const map = new Map<string, LocationStockLabel>();
-    for (const cell of query.data?.cells ?? []) {
-      map.set(cell.location_code, cell);
+    for (const cell of query.data?.locations ?? []) {
+      let qty = 0;
+      for (const item of cell.item_stock ?? []) {
+        qty += Number(item.quantity) || 0;
+      }
+      map.set(cell.location_code, {
+        location_id: cell.id,
+        location_code: cell.location_code,
+        is_empty: (cell.item_stock ?? []).length === 0,
+        display_status: cell.status,
+        product_sku: cell.item_stock?.[0]?.sku ?? null,
+        product_name: cell.item_stock?.[0]?.sku ?? null,
+        bin: cell.bin_code ?? null,
+        location_type: null,
+        quantity: qty,
+        line_count: (cell.item_stock ?? []).length,
+      });
     }
     return map;
   }, [query.data]);
 
-  return { ...query, labelByCode };
+  return { ...query, data: Array.from(labelByCode.values()), labelByCode };
 };
 
 export const useStockedLocationIds = (zoneId: number) => {

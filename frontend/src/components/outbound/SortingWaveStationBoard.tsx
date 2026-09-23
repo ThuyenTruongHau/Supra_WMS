@@ -19,8 +19,8 @@ import AssignOutboundStationModal from "@/components/outbound/AssignOutboundStat
 import SortingStationPickConfirmModal from "@/components/outbound/SortingStationPickConfirmModal";
 import UnassignSortingStationModal from "@/components/outbound/UnassignSortingStationModal";
 import { useLocationByCodeMap } from "@/hooks/useWarehouseLocation";
-import OutboundSortingMapCanvas from "@/components/outbound/OutboundSortingMapCanvas";
-import { type BufferMapCanvasTuning } from "@/components/inbound/InboundBufferMapCanvas";
+import OperatorMapCanvas from "@/components/warehouse/OperatorMapCanvas";
+import type { BufferMapCanvasTuning } from "@/components/warehouse/OperatorMapCanvas";
 import { OPERATOR_WAVE_MAP_TUNING } from "@/constants/operatorDesktopSizes";
 import { WAVE_STATION_LOCATION_TYPES } from "@/api/warehouseMap";
 import {
@@ -426,16 +426,13 @@ export default function SortingWaveStationBoard({
           !fullscreen && "rounded-lg",
         )}
       >
-        {zoneId > 0 ? (
-          <OutboundSortingMapCanvas
+        {zoneId > 0 && waveStationIds.length > 0 ? (
+          <OperatorMapCanvas
             key={`wave-${fullscreen ? "fs" : "n"}-${selectedWaveId ?? "none"}-${waveStationIds.join(",")}`}
             zoneId={zoneId}
-            locationType={WAVE_STATION_LOCATION_TYPES}
-            locationIds={waveStationIds}
             tuning={mapTuning}
-            selectedLocationCode={selectedStationCode}
+            selectedCodes={selectedStationCode ? [selectedStationCode] : undefined}
             overlayLabelByCode={stationOverlayLabels}
-            statusOverrideByCode={feSimulation?.statusOverrideByCode}
             onBufferCellClick={handleStationCellClick}
             className={cn(
               "!h-full",

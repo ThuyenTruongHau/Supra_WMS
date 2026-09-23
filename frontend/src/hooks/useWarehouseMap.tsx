@@ -24,6 +24,8 @@ import {
   previewWarehouseMapImportApi,
   downloadActiveMapApi,
   getLocationDetailByIdApi,
+  getZoneMapLayoutApi,
+  getZoneMapStatusApi,
 } from '@/api/warehouseMap';
 import type {
   MapData,
@@ -31,6 +33,7 @@ import type {
   FullLocationsResponse,
   WarehouseMapImportResult,
   WarehouseLocationItemStockDetail,
+  ZoneMapLayoutResponse,
 } from '@/types/warehouseMap';
 import { LIVE_QUERY_OPTIONS } from '@/utils/liveQueryOptions';
 import type { OutboundLocationLogicType } from '@/utils/outboundLocationLogic';
@@ -249,6 +252,29 @@ export const useInboundBufferMapView = (
       if (error.response?.status === 404 || error.response?.status === 422) return false;
       return failureCount < 2;
     },
+  });
+};
+
+export const useZoneMapLayout = (zoneId: number) => {
+  return useQuery<ZoneMapLayoutResponse, AxiosError<ApiErrorResponse>>({
+    queryKey: ['zone_map_layout', zoneId],
+    queryFn: () => getZoneMapLayoutApi(zoneId),
+    enabled: zoneId > 0,
+    staleTime: 5 * 60 * 1000,
+    retry: (failureCount, error) => {
+      if (error.response?.status === 404) return false;
+      return failureCount < 2;
+    },
+  });
+};
+
+export const useZoneMapStatus = (zoneId: number) => {
+  return useQuery<FullLocationsResponse, AxiosError<ApiErrorResponse>>({
+    queryKey: ['zone_map_status', zoneId],
+    queryFn: () => getZoneMapStatusApi(zoneId),
+    enabled: zoneId > 0,
+    refetchInterval: 5000, // Poll every 5 seconds for status
+    staleTime: 1000,
   });
 };
 

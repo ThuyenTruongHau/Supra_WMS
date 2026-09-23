@@ -345,7 +345,7 @@ export function drawStationOverlayLabel(
 
   const partsCount = (sku ? 1 : 0) + (qty ? 1 : 0) + (vehicle ? 1 : 0)
   const numDividers = Math.max(0, partsCount - 1)
-  
+
   const blockHeight = skuStep + qtyStep + metaStep + numDividers * lineGap
   let cursorY = y - blockHeight / 2
 
@@ -354,7 +354,7 @@ export function drawStationOverlayLabel(
     ctx.font = `700 ${skuSize}px ${mono}`
     ctx.fillStyle = highlighted ? '#FFFFFF' : SHELF_TECH.labelPrimary
     ctx.fillText(fitLabelText(ctx, sku, maxW), x, cursorY)
-    
+
     if (qty || vehicle) {
       let dividerY = cursorY + skuStep / 2 + lineGap / 2
       drawDivider(dividerY)
@@ -438,7 +438,7 @@ export function drawShelfStockLabel(
           ? OUTBOUND_STATION_TECH.emptyLabel
           : SHELF_TECH.labelEmpty
     // Vẽ tên ô ra BÊN NGOÀI, PHÍA TRÊN ô (cách viền trên 1 chút)
-    const margin = binLabelSize * 0.8
+    const margin = binLabelSize * 0.6
     ctx.fillText(fitLabelText(ctx, emptyLabel, maxW), x, y - half - margin)
     ctx.restore()
     return
