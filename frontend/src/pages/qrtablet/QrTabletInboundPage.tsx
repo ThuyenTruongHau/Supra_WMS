@@ -21,6 +21,7 @@ import {
   useManualInboundScan,
   usePreviewQrCode,
   useAssignPackingToItem,
+  usePurgePackingCache,
 } from "@/hooks/useInboundOrder";
 import { getStaffUsernamesApi } from "@/api/auth";
 import { useInboundBufferLocations } from "@/hooks/useWarehouseMap";
@@ -29,7 +30,6 @@ import { formatQuantity } from "@/utils/formatQuantity";
 import {
   formatUnitSelectOptions,
   isCaiUnitName,
-  shouldEnableSplitProduct,
   suggestQuantityForUnitOption,
   type UnitSelectOption,
 } from "@/utils/itemUnitDisplay";
@@ -69,6 +69,7 @@ import {
   formatPackerBatchSendProgress,
   formatPackerPendingItemMismatch,
   formatPendingCached,
+  formatPurgePackingCacheSuccess,
   tQrTabletInbound,
 } from "@/i18n/qrTabletInbound.vi";
 import { executeFeBatchSubmit } from "@/pages/qrtablet/feBatchScan/executeFeBatchSubmit";
@@ -93,6 +94,7 @@ import {
   validatePackerBatchForAnchor,
 } from "@/pages/qrtablet/packer/packerBatchUtils";
 import {
+  shouldAutoCheckSplitProduct,
   shouldRunSplitStockGate,
   shouldShowSplitProductToggle,
   splitProductSubmitFlag,
@@ -202,6 +204,7 @@ export default function QrTabletInboundPage() {
   const packingMutation = useCacheForPackingUser();
   const packingStocksMutation = useGetPackingUserStocks();
   const assignPackingToItemMutation = useAssignPackingToItem();
+  const purgePackingCacheMutation = usePurgePackingCache();
   const showPackingAssignScan = isAutoWarehouse && !isPackerMode;
   const {
     collectMode,
@@ -392,6 +395,25 @@ export default function QrTabletInboundPage() {
     [cancelLocationImport],
   );
 
+  const handlePurgePackingCache = useCallback(() => {
+    Modal.confirm({
+      title: tQrTabletInbound("purgePackingCacheConfirmTitle"),
+      content: tQrTabletInbound("purgePackingCacheConfirmContent"),
+      okText: tQrTabletInbound("purgePackingCacheButton"),
+      cancelText: tQrTabletInbound("packerCloseButton"),
+      okButtonProps: { danger: true },
+      onOk: async () => {
+        try {
+          const result = await purgePackingCacheMutation.mutateAsync();
+          message.success(formatPurgePackingCacheSuccess(result.deleted));
+        } catch (err) {
+          message.error(getApiErrorMessage(err));
+          throw err;
+        }
+      },
+    });
+  }, [purgePackingCacheMutation]);
+
   const scanPending =
     assignMutation.isPending ||
     manualScanMutation.isPending ||
@@ -399,6 +421,7 @@ export default function QrTabletInboundPage() {
     packingMutation.isPending ||
     packingStocksMutation.isPending ||
     assignPackingToItemMutation.isPending ||
+    purgePackingCacheMutation.isPending ||
     isBatchSending ||
     isFeBatchSending;
   const isPackerItemPicker =
@@ -676,7 +699,7 @@ export default function QrTabletInboundPage() {
       setQuantity(aggregated.quantity);
       setItemBaseQuantity(aggregated.quantity);
       setUnitId(aggregated.unit_id);
-      setLotNumber("");
+      setLotNumber((aggregated.lot_number ?? "").trim());
       setCavityNumber(aggregated.cavity_number);
       setManufacturingMachine(aggregated.manufacturing_machine ?? undefined);
       setManufacturingUsers(
@@ -745,7 +768,7 @@ export default function QrTabletInboundPage() {
       setQuantity(defaultQty);
       setItemBaseQuantity(defaultQty);
       setUnitId(result.unit_id);
-      setLotNumber("");
+      setLotNumber((result.lot_number ?? "").trim());
       setCavityNumber(result.cavity_number ?? result.cavity_numbers?.[0]);
       setManufacturingMachine(result.manufacturing_machine ?? undefined);
       setManufacturingUsers(
@@ -770,7 +793,11 @@ export default function QrTabletInboundPage() {
       ];
       setUnitOptions(initialUnitOptions);
       setIsSplitProduct(
-        shouldEnableSplitProduct(result.unit_id, initialUnitOptions),
+        shouldAutoCheckSplitProduct(
+          result.qr_type,
+          result.unit_id,
+          initialUnitOptions,
+        ),
       );
       try {
         const available = await getItemAvailableUnitsApi(result.item_id);
@@ -781,7 +808,11 @@ export default function QrTabletInboundPage() {
         );
         setUnitOptions(nextUnitOptions);
         setIsSplitProduct(
-          shouldEnableSplitProduct(result.unit_id, nextUnitOptions),
+          shouldAutoCheckSplitProduct(
+            result.qr_type,
+            result.unit_id,
+            nextUnitOptions,
+          ),
         );
       } catch {
         // keep base unit option
@@ -1062,6 +1093,7 @@ export default function QrTabletInboundPage() {
       is_split: splitProductSubmitFlag(
         splitProductToggleContext,
         isSplitProduct,
+        "pack",
       ),
     }),
     [
@@ -2408,6 +2440,18 @@ export default function QrTabletInboundPage() {
             onChange={handleScanFlowChange}
           />
         ) : null}
+        {isAutoWarehouse && isPackerMode ? (
+          <Button
+            type="default"
+            danger
+            size="small"
+            loading={purgePackingCacheMutation.isPending}
+            disabled={scanPending && !purgePackingCacheMutation.isPending}
+            onClick={handlePurgePackingCache}
+          >
+            {tQrTabletInbound("purgePackingCacheButton")}
+          </Button>
+        ) : null}
       </div>
       {isFeBatchSending && feBatchSendProgress ? (
         <div className="rounded-xl border border-stripe-hairline bg-white px-4 py-3 shadow-sm">
@@ -2626,7 +2670,13 @@ export default function QrTabletInboundPage() {
                       options={unitOptions}
                       onChange={(val, option) => {
                         setUnitId(val);
-                        setIsSplitProduct(shouldEnableSplitProduct(val, unitOptions));
+                        setIsSplitProduct(
+                          shouldAutoCheckSplitProduct(
+                            preview?.qr_type,
+                            val,
+                            unitOptions,
+                          ),
+                        );
                         const suggested = suggestQuantityForUnitOption(
                           val,
                           unitOptions,

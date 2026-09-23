@@ -47,6 +47,17 @@ export function hasModuleAccess(
   return access.modules.includes(module);
 }
 
+/** Admin (or legacy admin role) may pick any warehouse from the list API. */
+export function usesAllWarehouseScope(
+  access: UserAccessSummary | null | undefined,
+  roles: string[],
+): boolean {
+  if (access) {
+    return access.is_admin || access.warehouse_scope === 'all';
+  }
+  return isAdminRole(roles);
+}
+
 export function decodeJwtExp(token: string): number | null {
   try {
     const parts = token.split('.');

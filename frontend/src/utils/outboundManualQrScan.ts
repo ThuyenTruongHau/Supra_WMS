@@ -1,7 +1,11 @@
 import type { OutboundRobotTask } from "@/types/outbound";
 
 export function getManualScanTitle(task: OutboundRobotTask): string {
-  const status = task.allocations[0]?.status;
+  const status =
+    task.allocations.find((a) => a.status === "pre_completed")?.status ??
+    task.allocations.find((a) => a.status === "double_check_stock")?.status ??
+    task.allocations.find((a) => a.status === "initialize")?.status ??
+    task.allocations[0]?.status;
   if (status === "initialize") return "Quét QR sản phẩm";
   if (status === "pre_completed") return "Quét QR vị trí đích";
   if (status === "double_check_stock") return "Quét lại QR sản phẩm";
@@ -28,3 +32,4 @@ export function shouldShowOutboundQrScanButton(
   }
   return false;
 }
+

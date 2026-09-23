@@ -52,6 +52,10 @@ import {
   getManualScanTitle,
   shouldShowOutboundQrScanButton,
 } from "@/utils/outboundManualQrScan";
+import {
+  allocationIdsForManualQrScan,
+  getRobotTaskDisplayStatus,
+} from "@/utils/outboundRobotTaskDisplay";
 import { getApiErrorMessage } from "@/utils/apiErrorMessage";
 import { QrCameraOverlay } from "@/components/qr-scan";
 
@@ -103,21 +107,6 @@ const TASK_TYPE_LABEL: Record<OutboundRobotTask["task_type"], string> = {
   outbound: "XUẤT",
   return: "TRẢ",
 };
-
-function getRobotTaskDisplayStatus(
-  record: OutboundRobotTask,
-  isManualOutbound = false,
-): string {
-  const allocationStatus = record.allocations[0]?.status;
-  if (allocationStatus === "completed") return "completed";
-  // Robot ICS "completed" maps allocation to pre_completed until QR confirm.
-  if (allocationStatus === "pre_completed") return "pre_completed";
-  if (allocationStatus === "double_check_stock") return "double_check_stock";
-  if (isManualOutbound) return allocationStatus || record.status;
-  if (record.task_type !== "return") return record.status;
-  if (record.status && record.status !== "initialize") return record.status;
-  return allocationStatus || record.status;
-}
 
 function displayValue(value: unknown): string {
   if (value === null || value === undefined || value === "") return "—";
@@ -772,7 +761,16 @@ export default function QrTabletOutboundDetailPage() {
       const task = manualScanTask;
       if (!task || !orderId) return;
 
-      const allocationStatus = task.allocations[0]?.status;
+      const allocationIds = allocationIdsForManualQrScan(task);
+      if (allocationIds.length === 0) {
+        message.warning("Không có allocation hợp lệ để quét QR");
+        return;
+      }
+
+      const allocationStatus = getRobotTaskDisplayStatus(
+        task,
+        useManualAllocationFlow,
+      );
       const { endId } = getTaskLocationIds(task);
 
       if (
@@ -791,7 +789,7 @@ export default function QrTabletOutboundDetailPage() {
         await executeQrManualMutation.mutateAsync({
           orderId,
           body: {
-            allocation_ids: task.allocations.map((allocation) => allocation.id),
+            allocation_ids: allocationIds,
             qr_code: scanned.trim(),
             ...(endId ? { to_location_id: endId } : {}),
           },
@@ -822,6 +820,7 @@ export default function QrTabletOutboundDetailPage() {
       refetchDetails,
       refetchLacked,
       refetchOrder,
+      useManualAllocationFlow,
     ],
   );
 

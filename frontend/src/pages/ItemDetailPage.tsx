@@ -50,9 +50,9 @@ function ItemDetailsView({ details }: { details?: Record<string, unknown> }) {
   return (
     <dl className="space-y-2">
       {entries.map(([key, value]) => (
-        <div key={key} className="flex flex-wrap gap-x-2 gap-y-1">
-          <dt className="text-gray-500">{key}:</dt>
-          <dd className="font-medium text-brand-dark">
+        <div key={key} className="min-w-0">
+          <dt className="text-sm text-gray-500">{key}</dt>
+          <dd className="mt-0.5 text-sm font-medium text-brand-dark break-words">
             {formatDetailEntryValue(value) || "—"}
           </dd>
         </div>
@@ -60,6 +60,9 @@ function ItemDetailsView({ details }: { details?: Record<string, unknown> }) {
     </dl>
   );
 }
+
+/** Primary product metadata (quantities, unit, description) — left column. */
+export const ITEM_DETAIL_PRIMARY_FIELD_COUNT = 6;
 
 export const itemDetailFields: DetailFieldSchema<Item>[] = [
   {
@@ -354,7 +357,16 @@ export default function ItemDetailPage() {
           </Space>
         </div>
 
-        <DetailView data={item} fields={itemDetailFields} className="px-5" />
+        <div className="grid grid-cols-1 gap-x-8 gap-y-4 border-b border-gray-100 px-5 py-2 lg:grid-cols-2">
+          <DetailView
+            data={item}
+            fields={itemDetailFields.slice(0, ITEM_DETAIL_PRIMARY_FIELD_COUNT)}
+          />
+          <DetailView
+            data={item}
+            fields={itemDetailFields.slice(ITEM_DETAIL_PRIMARY_FIELD_COUNT)}
+          />
+        </div>
 
         <div className="border-b border-gray-100 px-5 py-4">
           <h3 className="text-base font-semibold text-brand-dark">

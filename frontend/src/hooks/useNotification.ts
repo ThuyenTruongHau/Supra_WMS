@@ -6,6 +6,25 @@ import {
 import type { GetNotificationsParams } from "@/types/notification";
 import { LIVE_QUERY_OPTIONS } from "@/utils/liveQueryOptions";
 
+export const NOTIFICATION_POLL_INTERVAL_MS = 2 * 60 * 1000;
+
+export const useNotificationUnsolvedCount = (warehouseId: number) => {
+  return useQuery({
+    queryKey: ["notifications", "count", warehouseId],
+    queryFn: () =>
+      listNotificationsApi({
+        warehouse_id: warehouseId,
+        page: 1,
+        page_size: 1,
+      }),
+    enabled: warehouseId > 0,
+    select: (data) => data.total,
+    refetchInterval: NOTIFICATION_POLL_INTERVAL_MS,
+    refetchIntervalInBackground: true,
+    ...LIVE_QUERY_OPTIONS,
+  });
+};
+
 export const useNotifications = (params: GetNotificationsParams) => {
   return useQuery({
     queryKey: ["notifications", params],

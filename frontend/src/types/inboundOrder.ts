@@ -124,6 +124,12 @@ export interface InboundReleaseLocationsResponse {
   deleted: number;
 }
 
+export interface PurgePackingCacheResponse {
+  deleted: number;
+  scope: "pending";
+  message: string;
+}
+
 /** --- Create --- */
 export interface InboundOrderAllocationCreate {
   item_id: number;

@@ -1,6 +1,5 @@
 import json
 from typing import Optional, Literal
-from zoneinfo import ZoneInfo
 
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
@@ -253,14 +252,8 @@ def _normalize_assigned_stock(stock: dict) -> dict:
     return stock
 
 
-def _default_lot_number(qr_record) -> str:
-    VN = ZoneInfo("Asia/Ho_Chi_Minh")
-    created = qr_record.created_at
-    if created is None:
-        return ""
-    if created.tzinfo is None:
-        return created.strftime("%d/%m/%y")
-    return created.astimezone(VN).strftime("%d/%m/%y")
+def _default_lot_number(_qr_record) -> str:
+    return ""
 
 def _reject_if_linked_pack_recache(qr_record, qr_type: str) -> None:
     if (qr_type or "item").strip().lower() != "pack":
@@ -623,6 +616,10 @@ def _pack_qr_preview_payload_for_item_assign(qr_record) -> dict:
     cached = _get_cached_item_assign_for_qr(qr_record.id)
     if cached:
         _apply_cached_preview_fields(payload, cached)
+    else:
+        cached_pending = _get_cached_pending_for_qr(qr_record.id)
+        if cached_pending:
+            _apply_cached_preview_fields(payload, cached_pending)
     return payload
 
 def _pack_preview_result_for_item_assign(qr_record) -> dict:
@@ -1426,83 +1423,10 @@ def _create_inbound_order_qr_manual(
     }
 
 
-# def outbound_stock_taking_manual(
-#     db: Session,
-#     *,
-#     user_id: int,
-#     raw: Optional[str] = None,
-#     warehouse_id: Optional[int] = None,
-#     qr_code: Optional[str] = None,
-#     quantity: Optional[int] = None,
-# ) -> dict:
-#     if not qr_code:
-#         raise ValueError("qr_code is required")
-#     qr_record = db.query(QR_Code).filter(QR_Code.code == qr_code).first()
-#     location = _resolve_location(db, raw, warehouse_id)
-#     if qr_record is None:
-#         raise ValueError("QR code not found")
-#     if location is None:
-#         #preview_data_qr_code
-    
-#     item_stock = qr_record.item_stock
-#     if item_stock is None:
-#         raise ValueError("Item stock not found")
-#     if item_stock.location_id != location.id:
-#         raise ValueError("Item stock is not in the location")
-#     if item_stock.quantity < quantity:
-#         raise ValueError("Item stock quantity is less than the quantity to take")
-#     if item_stock.status != "available":
-#         raise ValueError("Item stock is not available")
-
-#     outbound_order = _create_outbound_order_qr_manual(
-#         db,
-#         item_stock,
-#         user_id=user_id,
-#         quantity=quantity,
-#         location=location,
-#     )
-
-#     try:
-#         db.commit()
-#     except Exception as e:
-#         db.rollback()
-#         raise e
-
-# def _create_outbound_order_qr_manual(
-#     db: Session,
-#     item_stock: ItemStock,
-#     *,
-#     user_id: int,
-#     quantity: int,
-#     location: Location,
-# ) -> OutboundOrder:
-#     outbound_order = OutboundOrder(
-#         warehouse_id=location.warehouse_id,
-#         order_code=order_code or f"OUT-M-{uuid4().hex[:8].upper()}",
-#         note="",
-#         created_by_id=user_id,
-#         details={},
-#     )
-#     db.add(outbound_order)
-#     db.flush()
-
-#     detail_status = "completed"
-#     detail = OutboundOrderDetail(
-#         outbound_order_id=outbound_order.id,
-#         from_location_id=item_stock.location_id,
-#         to_location_id=location.id,
-#         detail_type="manual",
-#         status=detail_status,
-#         details={},
-#     )
-
-#     db.add(detail)
-
-#     allocation = OutboundOrderAllocation(
-#         outbound_order_detail_id=detail.id,
-#         item_stock_id=item_stock.id,
-#         unit_id=item_stock.unit_id,
-#         quantity=quantity,
-#     )
-#     db.add(allocation)
-#     db.flush()
+def delete_packing_cache() -> int:
+    deleted = cache_delete_pattern("inbound:pending:*")
+    if deleted:
+        logger.info("%s inbound pending cache keys deleted", deleted)
+    else:
+        logger.info("no inbound pending cache keys to delete")
+    return deleted

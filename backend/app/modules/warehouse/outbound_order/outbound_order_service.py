@@ -12,6 +12,7 @@ from sqlalchemy import case, func, exists, select, and_, or_
 from app.core.config import settings
 from app.modules.warehouse.item.item_model import Item
 from app.modules.warehouse.unit.unit_model import Unit
+from app.modules.warehouse.notificcation.notification_service import check_and_create_notifications_under_over_min_max
 from app.modules.warehouse.outbound_order.outbound_order_model import (
     OutboundOrder,
     OutboundOrderDetail,
@@ -210,6 +211,15 @@ def create_outbound_order(db: Session, body: OutboundOrderCreate, user_id: int):
     except Exception as e:
         db.rollback()
         raise e
+
+
+def count_outbound_orders(db: Session, warehouse_id: int) -> int:
+    return (
+        db.query(func.count(OutboundOrder.id))
+        .filter(OutboundOrder.warehouse_id == warehouse_id)
+        .scalar()
+        or 0
+    )
 
 
 def _build_outbound_list_summary(query) -> OutboundOrderListSummary:
@@ -628,6 +638,8 @@ def _full_stock_in_location(db: Session, location_id: int) -> bool:
         .filter(ItemStock.status.in_(["available", "split"]))
         .all()
     )
+    stock_ids = [stock.id for stock in stocks]
+    logger.info(f"---stock_ids: {stock_ids}---")
     return int(sum(stock.quantity for stock in stocks))
 
 def greedy_allocate_stocks_to_lines(
@@ -1331,6 +1343,9 @@ def _settle_outbound_stock(
     details = {
         "allocations": allocation_rows,
     }
+
+    db.flush()
+    check_and_create_notifications_under_over_min_max(db, allocations[0].outbound_order_detail.item, "over")
 
     db.add(History(
         outbound_order_id = allocations[0].outbound_order_detail.outbound_order_id,

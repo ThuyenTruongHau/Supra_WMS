@@ -137,6 +137,38 @@ def get_item_by_id(
     )
 
 
+def compute_total_inventory_value(db: Session, warehouse_id: int) -> Decimal:
+    price_text = func.nullif(Item.details.op("->>")("price"), "")
+    price_expr = cast(
+        func.nullif(func.replace(price_text, ",", ""), ""),
+        Numeric(18, 2),
+    )
+    total_inventory_value = (
+        db.query(
+            func.coalesce(
+                func.sum(ItemStock.quantity * func.coalesce(price_expr, 0)),
+                0,
+            )
+        )
+        .join(Item, Item.id == ItemStock.item_id)
+        .join(Location, Location.id == ItemStock.location_id)
+        .join(Zone, Zone.id == Location.zone_id)
+        .filter(
+            Item.warehouse_id == warehouse_id,
+            Item.is_active.is_(True),
+            ItemStock.is_active.is_(True),
+            countable_stock_level_criterion(),
+            positive_stock_quantity_criterion(),
+            Location.is_active.is_(True),
+            Zone.code.in_(settings.zone_storage),
+        )
+        .scalar()
+    )
+    if total_inventory_value is None:
+        return Decimal("0")
+    return Decimal(str(total_inventory_value))
+
+
 def analyze_items(db: Session, warehouse_id: int) -> ItemAnalyzeResponse:
     _ensure_warehouse_exists(db, warehouse_id)
 
@@ -166,35 +198,7 @@ def analyze_items(db: Session, warehouse_id: int) -> ItemAnalyzeResponse:
     if total_quantity is None:
         total_quantity = Decimal("0")
 
-    # details->>'price' returns plain text (not JSON-quoted like operator ->)
-    price_text = func.nullif(Item.details.op("->>")("price"), "")
-    price_expr = cast(
-        func.nullif(func.replace(price_text, ",", ""), ""),
-        Numeric(18, 2),
-    )
-    total_inventory_value = (
-        db.query(
-            func.coalesce(
-                func.sum(ItemStock.quantity * func.coalesce(price_expr, 0)),
-                0,
-            )
-        )
-        .join(Item, Item.id == ItemStock.item_id)
-        .join(Location, Location.id == ItemStock.location_id)
-        .join(Zone, Zone.id == Location.zone_id)
-        .filter(
-            Item.warehouse_id == warehouse_id,
-            Item.is_active.is_(True),
-            ItemStock.is_active.is_(True),
-            countable_stock_level_criterion(),
-            positive_stock_quantity_criterion(),
-            Location.is_active.is_(True),
-            Zone.code.in_(settings.zone_storage),
-        )
-        .scalar()
-    )
-    if total_inventory_value is None:
-        total_inventory_value = Decimal("0")
+    total_inventory_value = compute_total_inventory_value(db, warehouse_id)
 
     # Low stock: active items whose storage-zone stock qty < threshold
     stock_sum = (

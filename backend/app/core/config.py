@@ -48,6 +48,7 @@ class Settings(BaseSettings):
     zone_outbound: list[str] = ["Zone_7"]
     zone_storage: list[str] = ["Zone_3"]
     zone_qc: list[str] = ["Zone_2.1"]
+    zone_split: list[str] = ["Zone_split"]
 
     # Warehouses using manual (full-form) print templates — JSON array or comma list, e.g. [2]
     manual_warehouse_ids: list[int] = []

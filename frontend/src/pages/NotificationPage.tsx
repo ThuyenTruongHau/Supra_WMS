@@ -1,13 +1,37 @@
 import { useEffect, useState } from "react";
-import { Button, Card, Table } from "@/components/ui";
+import { Tag } from "antd";
+import { Card, Table } from "@/components/ui";
 import type { ColumnsType } from "antd/es/table";
 import { useAppStore } from "@/store/useAppStore";
-import {
-  useNotifications,
-  useResolveNotification,
-} from "@/hooks/useNotification";
-import type { Notification } from "@/types/notification";
+import { useNotifications } from "@/hooks/useNotification";
+import type { Notification, NotificationType } from "@/types/notification";
 import dayjs from "dayjs";
+
+function renderSeverityTag(type: NotificationType | string) {
+  if (type === "alert") {
+    return (
+      <Tag color="gold" className="!m-0">
+        Cảnh báo
+      </Tag>
+    );
+  }
+  if (type === "significant") {
+    return (
+      <Tag color="red" className="!m-0">
+        Nghiêm trọng
+      </Tag>
+    );
+  }
+  return (
+    <Tag className="!m-0">{type === "info" ? "Thông tin" : String(type)}</Tag>
+  );
+}
+
+function rowClassName(record: Notification) {
+  if (record.notification_type === "alert") return "bg-amber-50/50";
+  if (record.notification_type === "significant") return "bg-red-50/50";
+  return "";
+}
 
 const PAGE_SIZE = 20;
 
@@ -23,29 +47,16 @@ export default function NotificationPage() {
   const selectedWarehouseId = useAppStore((state) => state.selectedWarehouseId);
   const warehouseId = selectedWarehouseId || 0;
   const [page, setPage] = useState(1);
-  const [resolvingId, setResolvingId] = useState<number | null>(null);
 
   useEffect(() => {
     setPage(1);
   }, [warehouseId]);
 
-  const { data, isLoading, refetch } = useNotifications({
+  const { data, isLoading } = useNotifications({
     warehouse_id: warehouseId,
     page,
     page_size: PAGE_SIZE,
   });
-
-  const resolveMutation = useResolveNotification();
-
-  const handleResolve = async (notificationId: number) => {
-    setResolvingId(notificationId);
-    try {
-      await resolveMutation.mutateAsync(notificationId);
-      await refetch();
-    } finally {
-      setResolvingId(null);
-    }
-  };
 
   const columns: ColumnsType<Notification> = [
     {
@@ -79,24 +90,10 @@ export default function NotificationPage() {
       render: (value: string | null | undefined) => formatDate(value),
     },
     {
-      title: "Xử lý",
-      key: "resolve",
-      width: 140,
-      render: (_value, record) => {
-        if (record.notification_type !== "alert") {
-          return "—";
-        }
-        return (
-          <Button
-            type="primary"
-            size="small"
-            loading={resolvingId === record.id}
-            onClick={() => handleResolve(record.id)}
-          >
-            Đã xử lý
-          </Button>
-        );
-      },
+      title: "Mức độ",
+      key: "severity",
+      width: 130,
+      render: (_value, record) => renderSeverityTag(record.notification_type),
     },
   ];
 
@@ -121,6 +118,7 @@ export default function NotificationPage() {
             columns={columns}
             dataSource={data?.items ?? []}
             loading={isLoading}
+            onRow={(record) => ({ className: rowClassName(record) })}
             pagination={{
               current: page,
               pageSize: PAGE_SIZE,

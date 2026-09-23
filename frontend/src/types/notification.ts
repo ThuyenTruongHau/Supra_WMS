@@ -1,5 +1,5 @@
 export type NotificationStatus = "unsolved" | "resolved";
-export type NotificationType = "alert" | "info";
+export type NotificationType = "alert" | "significant" | "info";
 
 export interface Notification {
   id: number;

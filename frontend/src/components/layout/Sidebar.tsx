@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { matchPath, Navigate, NavLink, useLocation } from "react-router-dom";
 import logo_thado from "@/assets/logo_thadorobot.png";
 import { useLogout } from "@/hooks/useAuth";
+import { useNotificationUnsolvedCount } from "@/hooks/useNotification";
+import { useAppStore } from "@/store/useAppStore";
 import { useAuthStore } from "@/store/useAuthStore";
 import { SNAPSHOT_MODE } from "@/snapshot/snapshotConfig";
 import {
@@ -28,6 +30,11 @@ interface SidebarLinkProps {
   icon: React.ReactNode;
   label: string;
   collapsed: boolean;
+  badge?: number;
+}
+
+function formatBadgeCount(count: number) {
+  return count > 99 ? "99+" : String(count);
 }
 
 interface SubLinkProps {
@@ -57,7 +64,9 @@ function isGroupActive(items: SidebarGroupItem[], pathname: string) {
   );
 }
 
-function SidebarLink({ to, icon, label, collapsed }: SidebarLinkProps) {
+function SidebarLink({ to, icon, label, collapsed, badge }: SidebarLinkProps) {
+  const showBadge = badge != null && badge > 0;
+
   return (
     <NavLink
       to={to}
@@ -73,13 +82,21 @@ function SidebarLink({ to, icon, label, collapsed }: SidebarLinkProps) {
           }`}
         >
           <div
-            className={`w-9 h-9 flex items-center justify-center rounded-lg transition-all shrink-0 ${
+            className={`relative w-9 h-9 flex items-center justify-center rounded-lg transition-all shrink-0 ${
               isActive
                 ? "bg-brand-primary text-white shadow-lg shadow-brand-primary/20"
                 : "bg-slate-800 text-slate-400 group-hover:bg-slate-700 group-hover:text-white"
             }`}
           >
             {icon}
+            {showBadge && (
+              <span
+                className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 flex items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-bold leading-none border-2 border-slate-900"
+                aria-label={`${badge} thông báo chưa xử lý`}
+              >
+                {formatBadgeCount(badge)}
+              </span>
+            )}
           </div>
           <span
             className={`text-sm tracking-wide transition-all duration-300 overflow-hidden whitespace-nowrap ${collapsed ? "opacity-0 max-w-0" : "opacity-100 max-w-[150px]"}`}
@@ -198,6 +215,9 @@ function SidebarGroup({
 
 export default function Sidebar() {
   const { username, role, isAuthenticated } = useAuthStore();
+  const selectedWarehouseId = useAppStore((state) => state.selectedWarehouseId);
+  const warehouseId = selectedWarehouseId || 0;
+  const { data: unsolvedCount = 0 } = useNotificationUnsolvedCount(warehouseId);
   const logout = useLogout();
   const [collapsed, setCollapsed] = useState(false);
 
@@ -274,6 +294,7 @@ export default function Sidebar() {
           icon={<BellOutlined className="text-lg" />}
           label="Thông báo"
           collapsed={collapsed}
+          badge={unsolvedCount}
         />
         <SidebarGroup
           label="Cài đặt"

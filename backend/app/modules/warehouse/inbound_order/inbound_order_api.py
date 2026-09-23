@@ -14,6 +14,7 @@ from app.modules.warehouse.inbound_order.inbound_order_schema import (
     InboundSuggestAllocationResponse,
     InboundReleaseLocationsRequest,
     InboundReleaseLocationsResponse,
+    PurgePackingCacheResponse,
     InboundOrderCreate,
     InboundOrderResponse,
     InboundCallerResponse,
@@ -76,6 +77,16 @@ def suggest_inbound_allocation(body: InboundSuggestAllocation, db: DbSession):
 def release_inbound_locations(body: InboundReleaseLocationsRequest):
     deleted = inbound_order_service.delete_allocated_locations(body.location_ids)
     return InboundReleaseLocationsResponse(deleted=deleted)
+
+
+@router.post(
+    "/inbound-orders/purge-packing-cache",
+    response_model=PurgePackingCacheResponse,
+    dependencies=[Depends(_INBOUND_CREATE)],
+)
+def purge_packing_cache():
+    deleted = qr_code_module.delete_packing_cache()
+    return PurgePackingCacheResponse(deleted=deleted)
 
 
 @router.post(

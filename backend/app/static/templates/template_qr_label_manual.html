@@ -133,17 +133,20 @@
     }
 
     .qr-part-number {
-      flex-shrink: 0;
-      width: 100%;
+      position: absolute;
+      z-index: 2;
+      top: 2.8mm;
+      left: 1mm;
+      right: 1mm;
       padding: 0 0.5mm;
-      margin-bottom: 0.5mm;
-      font-size: 6px;
+      font-size: 17px;
       font-weight: 700;
-      line-height: 1.1;
+      line-height: 1.12;
       text-align: center;
       word-break: break-all;
       overflow: hidden;
-      max-height: 7mm;
+      max-height: 12mm;
+      pointer-events: none;
     }
 
     .qr-label-image {
@@ -164,8 +167,20 @@
       display: block;
     }
 
+    /* Phiếu thành phẩm: chữ nổi trên, QR giữ nguyên kích thước & căn giữa nhãn */
+    .qr-label.has-part-number .qr-label-image {
+      position: absolute;
+      inset: 1mm;
+      flex: none;
+      min-height: auto;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
     .qr-label.has-part-number .qr-label-image img {
-      max-height: 36mm;
+      max-width: 26mm;
+      max-height: 44mm;
     }
 
     @media print {

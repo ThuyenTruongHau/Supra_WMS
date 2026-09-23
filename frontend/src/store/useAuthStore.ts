@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { SNAPSHOT_MODE, getSnapshotConfig } from '@/snapshot/snapshotConfig';
 import type { UserAccessSummary } from '@/types/auth';
+import { syncWarehouseToUserAccess } from '@/utils/warehouseSession';
 
 interface AuthState {
   access_token: string | null;
@@ -118,6 +119,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       username,
       isAuthenticated: true,
     });
+    syncWarehouseToUserAccess(access, roles);
   },
   setToken: (access_token, refresh_token) => {
     localStorage.setItem('access_token', access_token);
@@ -149,5 +151,6 @@ export const useAuthStore = create<AuthState>((set) => ({
       username: null,
       isAuthenticated: false,
     });
+    syncWarehouseToUserAccess(null);
   },
 }));

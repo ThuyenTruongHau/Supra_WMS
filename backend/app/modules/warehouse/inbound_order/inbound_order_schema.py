@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Optional, List, Union
+from typing import Any, Literal, Optional, List, Union
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
@@ -84,6 +84,13 @@ class InboundReleaseLocationsRequest(BaseModel):
 
 class InboundReleaseLocationsResponse(BaseModel):
     deleted: int
+
+
+class PurgePackingCacheResponse(BaseModel):
+    deleted: int
+    scope: Literal["pending"] = "pending"
+    message: str = "Inbound pending packing cache purged"
+
 
 class AssignOrGetItemStockRequest(BaseModel):
     qr_code: Optional[str] = Field(None, min_length=1, max_length=50)

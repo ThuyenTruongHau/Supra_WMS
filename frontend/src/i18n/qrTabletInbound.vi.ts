@@ -90,6 +90,11 @@ export const QR_TABLET_INBOUND_VI = {
   inboundComplete: "Hoàn tất đơn nhập",
   flowPackerModeLabel: "Người đóng gói",
   flowToggleAria: "Bật tắt chế độ người đóng gói",
+  purgePackingCacheButton: "Xóa cache đóng gói",
+  purgePackingCacheConfirmTitle: "Xóa cache pending đóng gói?",
+  purgePackingCacheConfirmContent:
+    "Toàn bộ QR/item đã lưu tạm (pending) trên kho sẽ bị xóa. Thao tác không hoàn tác.",
+  purgePackingCacheSuccess: "Đã xóa {count} khóa cache pending",
   packerLocationImportTitle: "Nhập kho từ vị trí",
   packerLocationImportHint:
     "Chọn người đóng gói để lấy các item đã lưu tạm và tạo đơn nhập.",
@@ -203,6 +208,13 @@ export function formatManualCreatedContent(orderCode: string): string {
 
 export function formatAssignAggregatedHint(count: number): string {
   return QR_TABLET_INBOUND_VI.assignAggregatedHint.replace(
+    "{count}",
+    String(count),
+  );
+}
+
+export function formatPurgePackingCacheSuccess(count: number): string {
+  return QR_TABLET_INBOUND_VI.purgePackingCacheSuccess.replace(
     "{count}",
     String(count),
   );

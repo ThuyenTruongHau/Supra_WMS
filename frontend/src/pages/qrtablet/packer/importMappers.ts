@@ -54,6 +54,10 @@ export type LocationImportContext = {
 };
 
 export function isSplitAssignedStock(stock: AssignedItemStock): boolean {
+  const qrType = (stock.qr_type ?? "item").trim().toLowerCase();
+  if (qrType === "pack") {
+    return false;
+  }
   const type = stock.details?.type;
   if (type === "Lấy lẻ" || type === "lấy lẻ") {
     return true;
@@ -61,19 +65,34 @@ export function isSplitAssignedStock(stock: AssignedItemStock): boolean {
   return Boolean(stock.is_split);
 }
 
-/** Lấy số lượng lẻ từ stock được đánh dấu is_split để ghi detail.split. */
+/** Gom mọi SL lẻ trên nhóm → detail.split (chuỗi "1,2,5" cho BE). */
 function splitQuantityDetailEntries(
   stocks: AssignedItemStock[],
 ): KeyValueEntry[] {
-  const splitStock = stocks.find(isSplitAssignedStock);
-  if (!splitStock?.quantity) {
+  const seen = new Set<number>();
+  const ordered: number[] = [];
+
+  for (const stock of stocks) {
+    if (!isSplitAssignedStock(stock)) {
+      continue;
+    }
+    const qty = stock.quantity;
+    if (qty == null || qty <= 0 || seen.has(qty)) {
+      continue;
+    }
+    seen.add(qty);
+    ordered.push(qty);
+  }
+
+  if (ordered.length === 0) {
     return [];
   }
+
   return [
     {
       id: nextKeyValueEntryId("split"),
       key: "split",
-      value: String(splitStock.quantity),
+      value: ordered.join(STAFF_LIST_SEPARATOR),
     },
   ];
 }

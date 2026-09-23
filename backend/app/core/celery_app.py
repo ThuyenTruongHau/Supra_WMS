@@ -27,6 +27,7 @@ celery_app = Celery(
         "app.modules.warehouse.outbound_order.outbound_celery_task",
         "app.modules.warehouse.item.item_celery_task",
         "app.modules.warehouse.notificcation.notification_celery_task",
+        "app.modules.warehouse.dashboard.dashboard_celery_task",
     ],
 )
 
@@ -62,10 +63,15 @@ celery_app.conf.update(
         "outbound.*": {"queue": QUEUE_LOGIC},
         "item.*": {"queue": QUEUE_LOGIC},
         "notification.*": {"queue": QUEUE_LOGIC},
+        "dashboard.*": {"queue": QUEUE_LOGIC},
     },
     beat_schedule={
         "check-long-holding-stock-daily": {
             "task": "notification.check_long_holding_stock",
+            "schedule": crontab(hour=11, minute=59),
+        },
+        "snapshot-inventory-daily": {
+            "task": "dashboard.snapshot_inventory_daily",
             "schedule": crontab(hour=11, minute=59),
         },
     },

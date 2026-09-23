@@ -56,6 +56,7 @@ export const useLogout = () => {
     }
     clearAuth();
     queryClient.clear();
+    queryClient.removeQueries({ queryKey: ['warehouse'] });
     navigate('/login', { replace: true });
   };
 };

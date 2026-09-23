@@ -9,6 +9,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload
 
 from app.core.config import settings
+from app.modules.warehouse.item.item_model import Item
 from app.modules.warehouse.item_stock.item_stock_model import (
     ItemStock,
     countable_stock_level_criterion,
@@ -21,6 +22,18 @@ from app.modules.warehouse.notificcation.notification_schema import (
     NotificationResponse,
     NotificationUpdate,
 )
+
+
+def count_unsolved_notifications(db: Session, warehouse_id: int) -> int:
+    return (
+        db.query(func.count(Notification.id))
+        .filter(
+            Notification.warehouse_id == warehouse_id,
+            Notification.status == "unsolved",
+        )
+        .scalar()
+        or 0
+    )
 
 
 def list_notifications(
@@ -166,41 +179,65 @@ def check_long_holding_stock(db: Session) -> list[Notification]:
     )
 
     notifications: list[Notification] = []
-    fresh_cutoff = datetime.now(timezone.utc) - timedelta(days=30)
+    overdue_stock_ids: set[int] = set()
 
     for stock in stocks:
         if not stock.location:
             continue
 
+        overdue_stock_ids.add(stock.id)
         title = f"Hàng {stock.id} đang quá hạn lưu trữ."
-        existing = (
-            db.query(Notification.id)
-            .filter(
-                Notification.title == title,
-                Notification.updated_at >= fresh_cutoff,
-            )
-            .first()
-        )
-        if existing:
-            continue
-
         effective_date = _resolve_holding_date(stock)
         overdue_days = (cutoff_date - effective_date).days
         sku = stock.item.sku if stock.item else "N/A"
         location_name = stock.location.location_name or stock.location.location_code
+        message = (
+            f"{stock.id} với loại hàng {sku} đang nằm ở vị trí {location_name} "
+            f"đã quá hạn {overdue_days} ngày."
+        )
+
+        existing = (
+            db.query(Notification)
+            .filter(
+                Notification.title == title,
+                Notification.notification_type == "significant",
+                Notification.status == "unsolved",
+            )
+            .first()
+        )
+        if existing:
+            existing.message = message
+            existing.action = "Cần xử lý"
+            notifications.append(existing)
+            continue
+
         notification = Notification(
             warehouse_id=stock.location.warehouse_id,
             title=title,
-            message=(
-                f"{stock.id} với loại hàng {sku} đang nằm ở vị trí {location_name} "
-                f"đã quá hạn {overdue_days} ngày."
-            ),
+            message=message,
             action="Cần xử lý",
-            notification_type="alert",
+            notification_type="significant",
             status="unsolved",
         )
         db.add(notification)
+
         notifications.append(notification)
+
+    long_holding_title = re.compile(r"^Hàng (\d+) đang quá hạn lưu trữ\.$")
+    stale_significant = (
+        db.query(Notification)
+        .filter(
+            Notification.notification_type == "significant",
+            Notification.status == "unsolved",
+            Notification.title.like("Hàng % đang quá hạn lưu trữ."),
+        )
+        .all()
+    )
+    for notification in stale_significant:
+        match = long_holding_title.match(notification.title)
+        if match and int(match.group(1)) not in overdue_stock_ids:
+            notification.status = "resolved"
+            notifications.append(notification)
     try:
         db.commit()
         for n in notifications:
@@ -217,8 +254,8 @@ def resolve_notification(
     notification = get_notification_by_id(db, notification_id)
     if not notification:
         return None
-    if notification.notification_type != "alert":
-        raise ValueError("Only alert notifications can be resolved")
+    if notification.notification_type != "significant":
+        raise ValueError("Only significant notifications can be resolved")
     if notification.status != "unsolved":
         raise ValueError("Notification is already resolved")
     notification.status = "resolved"
@@ -229,3 +266,57 @@ def resolve_notification(
         db.rollback()
         raise ValueError(f"Database conflict: {e.orig}") from e
     return notification
+
+def _resolve_existing_notification(db: Session, title: str) -> list[Notification]:
+    existing = db.query(Notification).filter(Notification.title == title, Notification.status == "unsolved").first()
+    if existing:
+        existing.status = "resolved"
+        db.commit()
+        db.refresh(existing)
+        return [existing]
+    return []
+
+def check_and_create_notifications_under_over_min_max(db: Session, item: Item, type: str) -> list[Notification]:
+    if type == "under":
+        title = f"Hàng {item.sku} đang dưới mức tối thiểu."
+        if item.quantity >= item.min_quantity:
+            return _resolve_existing_notification(db, title)
+    elif type == "over":
+        title = f"Hàng {item.sku} đang trên mức tối đa."
+        if item.quantity <= item.max_quantity:
+            return _resolve_existing_notification(db, title)
+    else:
+        raise ValueError(f"Invalid type: {type}")
+
+    if item.quantity < item.min_quantity:
+        title = f"Hàng {item.sku} đang dưới mức tối thiểu."
+        count = item.min_quantity - item.quantity + int((item.max_quantity - item.min_quantity) * 0.2)
+        message = f"Cần nhập thêm {count} hàng {item.sku}."
+    elif item.quantity > item.max_quantity:
+        title = f"Hàng {item.sku} đang trên mức tối đa."
+        count = item.quantity - item.max_quantity + int((item.max_quantity - item.min_quantity) * 0.2)
+        message = f"Cần xuất ra {count} hàng {item.sku}."
+    
+    existing = db.query(Notification.id).filter(Notification.title == title, Notification.status == "unsolved").first()
+    if existing:
+        return [existing]
+
+    notification = Notification(
+        warehouse_id=item.warehouse_id,
+        title=title,
+        message=message,
+        action="Cần xử lý",
+        notification_type="alert",
+        status="unsolved",
+    )
+    db.add(notification)
+
+    try:
+        db.commit()
+        db.refresh(notification)
+        return [notification]
+    except IntegrityError as e:
+        db.rollback()
+        raise ValueError(f"Database conflict: {e.orig}") from e
+    
+    
