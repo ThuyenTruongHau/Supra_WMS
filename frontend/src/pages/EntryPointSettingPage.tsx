@@ -9,6 +9,7 @@ import { EntryPoint } from '@/types/entryPoint';
 import { Switch, Popconfirm, Tooltip } from 'antd';
 import WarehouseMapCanvas from '@/components/shared/WarehouseMapCanvas';
 import type { NodeInfo } from '@/types/warehouseMap';
+import { getApiErrorMessage } from '@/utils/apiErrorMessage';
 export default function EntryPointSettingPage() {
   const { data: zones, isLoading: isZonesLoading } = useZone();
   const [activeZoneId, setActiveZoneId] = useState<number | undefined>(undefined);
@@ -113,7 +114,7 @@ export default function EntryPointSettingPage() {
               if (activeZoneId) {
                 deleteMutation.mutate({ id: record.id, zone_id: activeZoneId }, {
                   onSuccess: () => message.success('Xóa điểm nhập thành công!'),
-                  onError: (err) => message.error(err.response?.data?.detail || err.message || 'Có lỗi xảy ra')
+                  onError: (err) => message.error(getApiErrorMessage(err, 'Có lỗi xảy ra'))
                 });
               }
             }}

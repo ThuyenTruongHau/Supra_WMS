@@ -16,7 +16,6 @@ import type {
   GetStocktakesParams,
   RecordStocktakeItemCountParams,
   Stocktake,
-  StocktakeItemFormData,
   StocktakeItemStock,
 } from "@/types/stocktake";
 import { LIVE_QUERY_OPTIONS } from "@/utils/liveQueryOptions";

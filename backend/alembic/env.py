@@ -42,6 +42,7 @@ from app.modules.warehouse.location_map.location_model import Location, Warehous
 from app.modules.warehouse.item.item_model import Item  # noqa: F401
 from app.modules.warehouse.unit.unit_model import Unit, ItemUnit
 from app.modules.warehouse.item_stock.item_stock_model import ItemStock  # noqa: F401
+from app.modules.warehouse.notificcation.notification_model import Notification  # noqa: F401
 
 from app.modules.warehouse.inbound_order.inbound_order_model import (  # noqa: F401
     InboundOrder,

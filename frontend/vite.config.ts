@@ -12,11 +12,10 @@ export default defineConfig({
     },
   },
   server: {
-    https: true,
     host: true,
     proxy: {
       '/api': {
-        target: 'http://10.73.231.5:8001',
+        target: 'http://192.168.50.200:8001',
         changeOrigin: true,
         secure: false,
       },

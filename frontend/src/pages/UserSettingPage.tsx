@@ -13,6 +13,7 @@ import {
 } from "@/components/ui";
 import { Checkbox, Steps } from "antd";
 import { PlusOutlined, EditOutlined, DeleteOutlined } from "@ant-design/icons";
+import { getApiErrorMessage } from "@/utils/apiErrorMessage";
 import {
   useUser,
   useCreateUser,
@@ -137,7 +138,7 @@ export default function UserSettingPage() {
             },
             onError: (err) => {
               message.error(
-                err.response?.data?.detail || "Không thể xóa người dùng",
+                getApiErrorMessage(err, "Không thể xóa người dùng"),
               );
               resolve(null);
             },
@@ -207,7 +208,7 @@ export default function UserSettingPage() {
           },
           onError: (err) => {
             message.error(
-              err.response?.data?.detail || "Không thể cập nhật người dùng",
+              getApiErrorMessage(err, "Không thể cập nhật người dùng"),
             );
           },
         },
@@ -233,7 +234,7 @@ export default function UserSettingPage() {
       },
       onError: (err) => {
         message.error(
-          err.response?.data?.detail || "Không thể thêm người dùng mới",
+          getApiErrorMessage(err, "Không thể thêm người dùng mới"),
         );
       },
     });

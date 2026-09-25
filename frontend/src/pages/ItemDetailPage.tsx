@@ -27,6 +27,7 @@ import {
 } from "@/hooks/useItem";
 import type { ItemStock } from "@/types/item";
 import { useAppStore } from "@/store/useAppStore";
+import { getApiErrorMessage } from "@/utils/apiErrorMessage";
 import { useZone } from "@/hooks/useZone";
 import { useUnits } from "@/hooks/useUnit";
 import { DetailView } from "@/components/ui/DetailView";
@@ -257,9 +258,7 @@ export default function ItemDetailPage() {
           handleCloseEdit();
         },
         onError: (err) => {
-          message.error(
-            err.response?.data?.detail ?? "Không thể cập nhật sản phẩm",
-          );
+          message.error(getApiErrorMessage(err, "Không thể cập nhật sản phẩm"));
         },
       },
     );
@@ -279,9 +278,7 @@ export default function ItemDetailPage() {
               resolve();
             },
             onError: (err) => {
-              message.error(
-                err.response?.data?.detail ?? "Không thể xóa sản phẩm",
-              );
+              message.error(getApiErrorMessage(err, "Không thể xóa sản phẩm"));
               reject();
             },
           });

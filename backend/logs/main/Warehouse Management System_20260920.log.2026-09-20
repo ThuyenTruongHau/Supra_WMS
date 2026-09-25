@@ -1,5 +1,5 @@
 2026-09-20 11:06:28,168 - main - INFO - Starting app
-2026-09-20 11:06:28,196 - main - INFO - Redis connected: redis://10.73.231.5:6379/0 (prefix=wms)
+2026-09-20 11:06:28,196 - main - INFO - Redis connected: redis://192.168.50.200:6379/0 (prefix=wms)
 2026-09-20 11:06:28,197 - main - INFO - Websocket manager started
 2026-09-20 11:06:58,201 - main - INFO - outbound.get_robot_tasks order_id=57
 2026-09-20 11:07:39,655 - main - INFO - outbound.get_robot_tasks order_id=64
@@ -66,18 +66,18 @@
 2026-09-20 11:18:23,948 - main - INFO - Stopping app
 2026-09-20 11:18:23,949 - main - INFO - Websocket manager stopped
 2026-09-20 11:18:33,320 - main - INFO - Starting app
-2026-09-20 11:18:33,352 - main - INFO - Redis connected: redis://10.73.231.5:6379/0 (prefix=wms)
+2026-09-20 11:18:33,352 - main - INFO - Redis connected: redis://192.168.50.200:6379/0 (prefix=wms)
 2026-09-20 11:18:33,353 - main - INFO - Websocket manager started
 2026-09-20 11:18:47,510 - main - INFO - Stopping app
 2026-09-20 11:18:47,511 - main - INFO - Websocket manager stopped
 2026-09-20 11:18:54,534 - main - INFO - Starting app
-2026-09-20 11:18:54,563 - main - INFO - Redis connected: redis://10.73.231.5:6379/0 (prefix=wms)
+2026-09-20 11:18:54,563 - main - INFO - Redis connected: redis://192.168.50.200:6379/0 (prefix=wms)
 2026-09-20 11:18:54,564 - main - INFO - Websocket manager started
 2026-09-20 11:19:02,541 - main - INFO - Starting app
-2026-09-20 11:19:02,564 - main - INFO - Redis connected: redis://10.73.231.5:6379/0 (prefix=wms)
+2026-09-20 11:19:02,564 - main - INFO - Redis connected: redis://192.168.50.200:6379/0 (prefix=wms)
 2026-09-20 11:19:02,564 - main - INFO - Websocket manager started
 2026-09-20 11:20:56,848 - main - INFO - Starting app
-2026-09-20 11:20:56,866 - main - INFO - Redis connected: redis://10.73.231.5:6379/0 (prefix=wms)
+2026-09-20 11:20:56,866 - main - INFO - Redis connected: redis://192.168.50.200:6379/0 (prefix=wms)
 2026-09-20 11:20:56,867 - main - INFO - Websocket manager started
 2026-09-20 11:23:10,765 - main - INFO - outbound.get_order_details order_id=60
 2026-09-20 11:23:10,766 - main - INFO - outbound.get_lacked_details order_id=60

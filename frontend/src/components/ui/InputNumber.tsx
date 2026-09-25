@@ -1,9 +1,10 @@
-import { forwardRef } from "react";
+import { forwardRef, type ComponentRef } from "react";
 import {
   InputNumber as AntInputNumber,
   type InputNumberProps as AntInputNumberProps,
-  type InputNumberRef,
 } from "antd";
+
+type InputNumberRef = ComponentRef<typeof AntInputNumber>;
 import { cn } from "./utils/cn";
 
 const inputNumberClassName =

@@ -32,7 +32,7 @@
 `backend/.env` hiện tại:
 
 ```
-DATABASE_URL=postgresql://postgres:postgres123@10.73.231.5:5432/vcc_wms
+DATABASE_URL=postgresql://postgres:postgres123@192.168.50.200:5432/vcc_wms
 ```
 
 Nhưng `docker-compose.yml` tạo Postgres với `postgres/thado123` và DB `WMS_db`. Nghĩa là **service `db` trong compose đang chạy mà không ai dùng** — backend đi ra Postgres ngoài. Đây là lỗi có sẵn, không phải do Celery, nhưng thêm worker sẽ nhân đôi vấn đề vì worker dùng chung `.env`.
@@ -47,7 +47,7 @@ Chọn một:
 Quyết định giá trị `CELERY_BROKER_URL`:
 
 - Trong docker network → `redis://redis:6379/0`
-- Trên host (như `uvicorn` đang chạy tay hiện tại) → `redis://10.73.231.5:6379/0`
+- Trên host (như `uvicorn` đang chạy tay hiện tại) → `redis://192.168.50.200:6379/0`
 
 ### C. Bảo mật Redis
 
@@ -501,7 +501,7 @@ CELERY_BROKER_URL=redis://redis:6379/0
 CELERY_RESULT_BACKEND=redis://redis:6379/1
 ```
 
-Nếu worker chạy trên host thay vì trong docker, đổi `redis` thành `10.73.231.5`.
+Nếu worker chạy trên host thay vì trong docker, đổi `redis` thành `192.168.50.200`.
 
 Và **chốt lại `DATABASE_URL`** theo quyết định ở mục A phía trên.
 

@@ -37,7 +37,7 @@ services:
     container_name: postgres-exporter
     restart: unless-stopped
     environment:
-      DATA_SOURCE_NAME: "postgresql://postgres:thado123@10.73.231.5:5432/WMS_db?sslmode=disable"
+      DATA_SOURCE_NAME: "postgresql://postgres:thado123@192.168.50.200:5432/WMS_db?sslmode=disable"
     ports:
       - "9187:9187"
 
@@ -47,7 +47,7 @@ services:
     container_name: redis-exporter
     restart: unless-stopped
     environment:
-      REDIS_ADDR: "redis://10.73.231.5:6379"
+      REDIS_ADDR: "redis://192.168.50.200:6379"
     ports:
       - "9121:9121"
 

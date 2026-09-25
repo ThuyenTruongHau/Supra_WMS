@@ -1,10 +1,10 @@
 2026-09-11 11:53:06,826 - main - INFO - Starting app
-2026-09-11 11:53:06,839 - main - INFO - Redis connected: redis://10.73.231.5:6379/0 (prefix=wms)
+2026-09-11 11:53:06,839 - main - INFO - Redis connected: redis://192.168.50.200:6379/0 (prefix=wms)
 2026-09-11 11:53:06,840 - main - INFO - Websocket manager started
 2026-09-11 13:00:13,218 - main - INFO - Stopping app
 2026-09-11 13:00:13,219 - main - INFO - Websocket manager stopped
 2026-09-11 13:00:20,937 - main - INFO - Starting app
-2026-09-11 13:00:20,975 - main - INFO - Redis connected: redis://10.73.231.5:6379/0 (prefix=wms)
+2026-09-11 13:00:20,975 - main - INFO - Redis connected: redis://192.168.50.200:6379/0 (prefix=wms)
 2026-09-11 13:00:20,975 - main - INFO - Websocket manager started
 2026-09-11 13:02:16,545 - main - INFO - Successfully logged in user admin
 2026-09-11 13:14:48,382 - main - INFO - outbound.get_robot_tasks order_id=28
@@ -683,28 +683,28 @@ AttributeError: Neither 'InstrumentedAttribute' object nor 'Comparator' object a
 2026-09-11 13:18:42,156 - main - INFO - Stopping app
 2026-09-11 13:18:42,157 - main - INFO - Websocket manager stopped
 2026-09-11 13:18:51,174 - main - INFO - Starting app
-2026-09-11 13:18:51,213 - main - INFO - Redis connected: redis://10.73.231.5:6379/0 (prefix=wms)
+2026-09-11 13:18:51,213 - main - INFO - Redis connected: redis://192.168.50.200:6379/0 (prefix=wms)
 2026-09-11 13:18:51,214 - main - INFO - Websocket manager started
 2026-09-11 13:21:48,250 - main - INFO - Stopping app
 2026-09-11 13:21:48,251 - main - INFO - Websocket manager stopped
 2026-09-11 13:21:54,917 - main - INFO - Starting app
-2026-09-11 13:21:54,950 - main - INFO - Redis connected: redis://10.73.231.5:6379/0 (prefix=wms)
+2026-09-11 13:21:54,950 - main - INFO - Redis connected: redis://192.168.50.200:6379/0 (prefix=wms)
 2026-09-11 13:21:54,951 - main - INFO - Websocket manager started
 2026-09-11 13:23:51,218 - main - INFO - Stopping app
 2026-09-11 13:23:51,219 - main - INFO - Websocket manager stopped
 2026-09-11 13:23:56,773 - main - INFO - Starting app
-2026-09-11 13:23:56,809 - main - INFO - Redis connected: redis://10.73.231.5:6379/0 (prefix=wms)
+2026-09-11 13:23:56,809 - main - INFO - Redis connected: redis://192.168.50.200:6379/0 (prefix=wms)
 2026-09-11 13:23:56,810 - main - INFO - Websocket manager started
 2026-09-11 13:32:04,826 - main - INFO - Stopping app
 2026-09-11 13:32:04,828 - main - INFO - Websocket manager stopped
 2026-09-11 13:32:11,938 - main - INFO - Starting app
-2026-09-11 13:32:11,977 - main - INFO - Redis connected: redis://10.73.231.5:6379/0 (prefix=wms)
+2026-09-11 13:32:11,977 - main - INFO - Redis connected: redis://192.168.50.200:6379/0 (prefix=wms)
 2026-09-11 13:32:11,978 - main - INFO - Websocket manager started
 2026-09-11 13:32:18,330 - main - INFO - Starting app
-2026-09-11 13:32:18,351 - main - INFO - Redis connected: redis://10.73.231.5:6379/0 (prefix=wms)
+2026-09-11 13:32:18,351 - main - INFO - Redis connected: redis://192.168.50.200:6379/0 (prefix=wms)
 2026-09-11 13:32:18,353 - main - INFO - Websocket manager started
 2026-09-11 13:32:25,125 - main - INFO - Starting app
-2026-09-11 13:32:25,152 - main - INFO - Redis connected: redis://10.73.231.5:6379/0 (prefix=wms)
+2026-09-11 13:32:25,152 - main - INFO - Redis connected: redis://192.168.50.200:6379/0 (prefix=wms)
 2026-09-11 13:32:25,153 - main - INFO - Websocket manager started
 2026-09-11 13:39:29,425 - main - INFO - Getting assigned item stock for location 1796
 2026-09-11 13:49:39,417 - main - INFO - outbound.create_order order_code=OUT-20260911-134831
@@ -720,12 +720,12 @@ AttributeError: Neither 'InstrumentedAttribute' object nor 'Comparator' object a
 2026-09-11 13:54:10,917 - main - INFO - Stopping app
 2026-09-11 13:54:10,919 - main - INFO - Websocket manager stopped
 2026-09-11 13:54:18,382 - main - INFO - Starting app
-2026-09-11 13:54:18,416 - main - INFO - Redis connected: redis://10.73.231.5:6379/0 (prefix=wms)
+2026-09-11 13:54:18,416 - main - INFO - Redis connected: redis://192.168.50.200:6379/0 (prefix=wms)
 2026-09-11 13:54:18,417 - main - INFO - Websocket manager started
 2026-09-11 13:54:38,937 - main - INFO - Stopping app
 2026-09-11 13:54:38,939 - main - INFO - Websocket manager stopped
 2026-09-11 13:54:45,390 - main - INFO - Starting app
-2026-09-11 13:54:45,429 - main - INFO - Redis connected: redis://10.73.231.5:6379/0 (prefix=wms)
+2026-09-11 13:54:45,429 - main - INFO - Redis connected: redis://192.168.50.200:6379/0 (prefix=wms)
 2026-09-11 13:54:45,430 - main - INFO - Websocket manager started
 2026-09-11 13:56:42,120 - main - INFO - outbound.create_order order_code=OUT-20260911-135803
 2026-09-11 13:56:42,131 - main - INFO - Type: None
@@ -751,7 +751,7 @@ AttributeError: Neither 'InstrumentedAttribute' object nor 'Comparator' object a
 2026-09-11 14:18:36,932 - main - INFO - Stopping app
 2026-09-11 14:18:36,933 - main - INFO - Websocket manager stopped
 2026-09-11 14:18:43,395 - main - INFO - Starting app
-2026-09-11 14:18:43,421 - main - INFO - Redis connected: redis://10.73.231.5:6379/0 (prefix=wms)
+2026-09-11 14:18:43,421 - main - INFO - Redis connected: redis://192.168.50.200:6379/0 (prefix=wms)
 2026-09-11 14:18:43,422 - main - INFO - Websocket manager started
 2026-09-11 14:19:49,328 - main - INFO - Successfully logged in user admin
 2026-09-11 14:20:33,335 - main - INFO - outbound.create_order order_code=OUT-20260911-142006
@@ -797,7 +797,7 @@ AttributeError: Neither 'InstrumentedAttribute' object nor 'Comparator' object a
 2026-09-11 14:29:12,919 - main - INFO - Stopping app
 2026-09-11 14:29:12,921 - main - INFO - Websocket manager stopped
 2026-09-11 14:30:07,029 - main - INFO - Starting app
-2026-09-11 14:30:07,075 - main - INFO - Redis connected: redis://10.73.231.5:6379/0 (prefix=wms)
+2026-09-11 14:30:07,075 - main - INFO - Redis connected: redis://192.168.50.200:6379/0 (prefix=wms)
 2026-09-11 14:30:07,076 - main - INFO - Websocket manager started
 2026-09-11 14:30:21,725 - main - INFO - outbound.get_lacked_details order_id=29
 2026-09-11 14:30:21,725 - main - INFO - outbound.get_order_details order_id=29

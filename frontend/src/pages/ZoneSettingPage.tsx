@@ -21,6 +21,8 @@ import {
 } from '@ant-design/icons';
 import { Popconfirm, Tag, Tooltip } from 'antd';
 import Hero from '@/components/shared/Hero';
+import { isAxiosError } from 'axios';
+import { getApiErrorMessage } from '@/utils/apiErrorMessage';
 import WarehouseMapCanvas from '@/components/shared/WarehouseMapCanvas';
 import type { NodeInfo } from '@/types/warehouseMap';
 import type { Zone } from '@/types/zone';
@@ -156,17 +158,14 @@ export default function ZoneSettingPage() {
       handleCloseModal();
     };
 
-    const onAssignError = (err: {
-      code?: string;
-      response?: { data?: { detail?: string } };
-    }) => {
-      if (err.code === 'ECONNABORTED' || !err.response) {
+    const onAssignError = (err: unknown) => {
+      if (isAxiosError(err) && (err.code === 'ECONNABORTED' || !err.response)) {
         message.error(
           'Gán điểm mất quá nhiều thời gian. Vui lòng tải lại trang để kiểm tra — dữ liệu có thể đã được lưu.',
         );
         return;
       }
-      message.error(err.response?.data?.detail ?? 'Không thể gán điểm cho Zone');
+      message.error(getApiErrorMessage(err, 'Không thể gán điểm cho Zone'));
     };
 
     if (editingZone) {
@@ -187,7 +186,7 @@ export default function ZoneSettingPage() {
             );
           },
           onError: (err) => {
-            message.error(err.response?.data?.detail ?? 'Không thể cập nhật Zone');
+            message.error(getApiErrorMessage(err, 'Không thể cập nhật Zone'));
           },
         },
       );
@@ -209,7 +208,7 @@ export default function ZoneSettingPage() {
           );
         },
         onError: (err) => {
-          message.error(err.response?.data?.detail ?? 'Không thể thêm Zone');
+          message.error(getApiErrorMessage(err, 'Không thể thêm Zone'));
         },
       },
     );
@@ -345,7 +344,7 @@ export default function ZoneSettingPage() {
               deleteMutation.mutate(record.id, {
                 onSuccess: () => message.success('Xóa Zone thành công!'),
                 onError: (err) =>
-                  message.error(err.response?.data?.detail ?? 'Không thể xóa Zone'),
+                  message.error(getApiErrorMessage(err, 'Không thể xóa Zone')),
               });
             }}
             okText="Xóa"

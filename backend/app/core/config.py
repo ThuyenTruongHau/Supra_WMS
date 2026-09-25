@@ -30,7 +30,7 @@ class Settings(BaseSettings):
     debug: bool = False
 
     #Database
-    database_url: str = "postgresql://postgres:thado123@localhost:5432/WMS_db"
+    database_url: str = "postgresql://postgres:thado123@localhost:5432/masan_wms"
 
     #JWT
     secret_key: str = "no_secret_key"
@@ -54,13 +54,13 @@ class Settings(BaseSettings):
     manual_warehouse_ids: list[int] = []
 
     # Redis (cache)
-    redis_url: str = "redis://10.73.231.5:6379/0"
+    redis_url: str = "redis://192.168.50.200:6379/0"
     redis_cache_ttl: int = 300
     redis_key_prefix: str = "wms"
 
     # Redis Celery
-    celery_broker_url: str = "redis://10.73.231.5:6379/1"
-    celery_broker_result_url: str = "redis://10.73.231.5:6379/2"
+    celery_broker_url: str = "redis://192.168.50.200:6379/1"
+    celery_broker_result_url: str = "redis://192.168.50.200:6379/2"
 
     # Expired configuration
     manual_expired_days: int = 60

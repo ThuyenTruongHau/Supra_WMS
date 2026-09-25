@@ -37,6 +37,7 @@ import { useActiveWarehouseMap, useFullLocations, useDownloadWarehouseMap } from
 import { message } from '@/components/ui';
 import type { MapData, NodeInfo, FullLocationDetail } from '@/types/warehouseMap';
 import { formatQuantity } from '@/utils/formatQuantity';
+import { getApiErrorMessage } from '@/utils/apiErrorMessage';
 import {
   ZOOM_MAX,
   ZOOM_FACTOR,
@@ -723,7 +724,7 @@ const WarehouseMapCanvas: React.FC<WarehouseMapCanvasProps> = ({
   const nodesCount = mapApiData?.nodeArr?.length ?? 0;
   const linesCount = mapApiData?.lineArr?.length;
   const errorMessage = isError
-    ? (error?.response?.data?.detail ?? error?.message ?? 'Không thể tải bản đồ')
+    ? getApiErrorMessage(error, 'Không thể tải bản đồ')
     : null;
 
   // ─── Render ──────────────────────────────────────────────────────────────────

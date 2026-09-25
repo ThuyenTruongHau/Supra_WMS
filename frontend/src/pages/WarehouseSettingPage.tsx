@@ -9,6 +9,7 @@ import {
 } from '@/hooks/useWarehouse';
 import type { Warehouse } from '@/types/warehouse';
 import Hero from '@/components/shared/Hero';
+import { getApiErrorMessage } from '@/utils/apiErrorMessage';
 
 export default function WarehouseSettingPage() {
   const { data: warehouses, isLoading, error } = useWarehouses();
@@ -51,9 +52,7 @@ export default function WarehouseSettingPage() {
               resolve(null);
             },
             onError: (error) => {
-              message.error(
-                error.response?.data?.detail || 'Không thể xóa kho hàng',
-              );
+              message.error(getApiErrorMessage(error, 'Không thể xóa kho hàng'));
               resolve(null);
             },
           });
@@ -77,9 +76,7 @@ export default function WarehouseSettingPage() {
             form.resetFields();
           },
           onError: (error) => {
-            message.error(
-              error.response?.data?.detail || 'Không thể cập nhật kho hàng',
-            );
+            message.error(getApiErrorMessage(error, 'Không thể cập nhật kho hàng'));
           },
         },
       );
@@ -91,9 +88,7 @@ export default function WarehouseSettingPage() {
           form.resetFields();
         },
         onError: (error) => {
-          message.error(
-            error.response?.data?.detail || 'Không thể thêm kho hàng mới',
-          );
+          message.error(getApiErrorMessage(error, 'Không thể thêm kho hàng mới'));
         },
       });
     }

@@ -115,7 +115,8 @@ export function SkuSearchSelect({
           q: debouncedSearch,
         };
         if (
-          prev?.q === next.q &&
+          prev &&
+          prev.q === next.q &&
           prev.page === next.page &&
           prev.page_size === next.page_size
         ) {

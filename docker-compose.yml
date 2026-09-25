@@ -103,7 +103,7 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        VITE_API_URL: http://10.73.231.5:8001
+        VITE_API_URL: http://192.168.50.200:8001
     container_name: wms-frontend
     ports:
       - "5173:80"

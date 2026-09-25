@@ -91,7 +91,7 @@ app.include_router(dashboard_router, prefix="/api/v1")
 async def root():
     """Health check endpoint."""
     return {
-        "message": "VCC Warehouse Management System API",
+        "message": "Thado Warehouse Management System API",
         "status": "running"
     }
 

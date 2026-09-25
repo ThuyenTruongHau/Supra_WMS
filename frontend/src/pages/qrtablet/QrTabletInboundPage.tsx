@@ -235,9 +235,7 @@ export default function QrTabletInboundPage() {
   );
   const [scanMode, setScanMode] = useState<ScanMode>("idle");
   const [packingAssignScanKey, setPackingAssignScanKey] = useState(0);
-  const [pendingLocation, setPendingLocation] = useState<PendingLocation | null>(
-    null,
-  );
+  const [, setPendingLocation] = useState<PendingLocation | null>(null);
   const [preview, setPreview] = useState<QrCodePreviewResponse | null>(null);
   const [quantity, setQuantity] = useState<number>(1);
   const [unitId, setUnitId] = useState<number | undefined>();
@@ -2442,7 +2440,7 @@ export default function QrTabletInboundPage() {
         ) : null}
         {isAutoWarehouse && isPackerMode ? (
           <Button
-            type="default"
+            variant="secondary"
             danger
             size="small"
             loading={purgePackingCacheMutation.isPending}

@@ -9,6 +9,7 @@ import Hero from '@/components/shared/Hero';
 import { Item, CreateItemInput, UpdateItemInput } from '@/types/item';
 import { Switch, Tooltip } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
+import { getApiErrorMessage } from '@/utils/apiErrorMessage';
 
 export default function ItemSettingPage() {
   const { data: zones, isLoading: isZonesLoading } = useZone();
@@ -114,7 +115,7 @@ export default function ItemSettingPage() {
             handleCloseCreate();
           },
           onError: (err) => {
-            message.error(err?.response?.data?.detail || err?.message || 'Có lỗi xảy ra khi cập nhật Item');
+            message.error(getApiErrorMessage(err, 'Có lỗi xảy ra khi cập nhật Item'));
           },
         },
       );
