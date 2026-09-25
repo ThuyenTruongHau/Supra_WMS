@@ -6,12 +6,12 @@ import type {
 } from '@/types/sortingWave';
 
 export const listSortingWavesApi = async (
-  zoneId: number,
+  warehouseId: number,
   options?: { search?: string; skip?: number; limit?: number },
 ): Promise<SortingWave[]> => {
   const response = await axiosInstance.get<SortingWave[]>('/api/v1/sorting-waves/', {
     params: {
-      zone_id: zoneId,
+      zone_id: warehouseId,
       search: options?.search || undefined,
       skip: options?.skip ?? 0,
       limit: options?.limit ?? 200,

@@ -2,7 +2,7 @@ import axiosInstance from './axiosInstance'
 import type { SortingOrderDetail, SortingOrderSummary } from '@/types/sortingOrder'
 
 export const listSortingOrdersApi = async (
-  zoneId: number,
+  warehouseId: number,
   params?: {
     sorting_wave_id?: number
     status?: string | null
@@ -11,7 +11,7 @@ export const listSortingOrdersApi = async (
   },
 ): Promise<SortingOrderDetail[]> => {
   const response = await axiosInstance.get<SortingOrderDetail[]>('/api/v1/sorting-order-details/', {
-    params: { zone_id: zoneId, ...params, status: params?.status ?? undefined },
+    params: { zone_id: warehouseId, ...params, status: params?.status ?? undefined },
   })
   return response.data
 }
@@ -33,11 +33,11 @@ export const getSortingOrderApi = async (id: number): Promise<SortingOrderDetail
 }
 
 export const getSortingOrderSummaryApi = async (
-  zoneId: number,
+  warehouseId: number,
 ): Promise<SortingOrderSummary> => {
   const response = await axiosInstance.get<SortingOrderSummary>(
     '/api/v1/sorting-order-details/summary',
-    { params: { zone_id: zoneId } },
+    { params: { zone_id: warehouseId } },
   )
   return response.data
 }

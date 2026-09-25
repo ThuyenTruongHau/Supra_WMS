@@ -4,17 +4,17 @@
  */
 import { PartitionOutlined } from "@ant-design/icons";
 import { useAppStore } from "@/store/useAppStore";
-import { useZone } from "@/hooks/useZone";
+import { useWarehouses } from "@/hooks/useWarehouse";
 import { useSortingWaves } from "@/hooks/useSortingWave";
 import { Card, cn } from "@/components/ui";
 import SortingWaveManagementPanel from "@/components/warehouse/SortingWaveManagementPanel";
 
 export default function SortingWavePage() {
   const { selectedWarehouseId } = useAppStore();
-  const { data: zones = [] } = useZone();
+  const { data: warehouses = [] } = useWarehouses();
   const zoneId = selectedWarehouseId ?? 0;
   const selectedWarehouseName =
-    zones.find((zone) => zone.id === selectedWarehouseId)?.name ??
+    warehouses.find((warehouse) => warehouse.id === selectedWarehouseId)?.name ??
     "Chưa chọn kho";
 
   const { data: waves = [] } = useSortingWaves(zoneId);

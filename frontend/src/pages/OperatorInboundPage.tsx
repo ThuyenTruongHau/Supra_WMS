@@ -37,13 +37,13 @@ import InboundLocationInfoModal from "@/components/inbound/InboundLocationInfoMo
 import QrAssignInboundModal from "@/components/inbound/QrAssignInboundModal";
 
 import { useAppStore } from "@/store/useAppStore";
-import { useZone } from "@/hooks/useZone";
+
 import { useProduct } from "@/hooks/useProduct";
 import {
   getInboundBufferAssignmentApi,
   getInboundDailyReportApi,
   getInboundDetailReportApi,
-} from "@/api/inbound";
+} from "@/api/inboundOperator";
 import {
   formatEmptyLocationLabel,
   getAllLocationsByZoneApi,
@@ -69,7 +69,7 @@ import {
   parseMasanInboundExcelApi,
   suggestMasanAllocationApi,
   createMasanInboundOrderApi,
-} from "@/api/inbound";
+} from "@/api/inboundOperator";
 import type { EmptyLocation } from "@/types/warehouseLocation";
 import { SOURCE_TABS, type SourceTabKey } from "@/data/mockOperatorInbound";
 import { toDisplayInteger } from "@/utils/number";
@@ -110,11 +110,10 @@ const SOURCE_TAB_META: Record<
 };
 
 export default function OperatorInboundPage() {
-  const zoneId = 10; // Hardcoded for testing. Original: useAppStore((s) => s.selectedWarehouseId);
-  const { data: zones } = useZone();
+  const warehouseId = useAppStore((s) => s.selectedWarehouseId);
 
   const { data, isLoading, isError, error } =
-    useOldestIncompleteInbound(zoneId);
+    useOldestIncompleteInbound(warehouseId);
   const orderId = data?.order?.id ?? 0;
   const { data: assignedPayload, isLoading: assignedLoading } =
     useInboundAssignedDetails(orderId, orderId > 0);
@@ -127,9 +126,9 @@ export default function OperatorInboundPage() {
     data: inboundOrders = [],
     isLoading: inboundOrdersLoading,
     isError: inboundOrdersError,
-  } = useInboundList(zoneId);
-  const { locationByCode } = useLocationByCodeMap(zoneId);
-  const { data: products = [] } = useProduct(zoneId);
+  } = useInboundList(warehouseId);
+  const { locationByCode } = useLocationByCodeMap(warehouseId);
+  const { data: products = [] } = useProduct(warehouseId);
   const createMutation = useCreateInbound();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const mapSingleClickTimerRef = useRef<number | null>(null);
@@ -186,7 +185,7 @@ export default function OperatorInboundPage() {
     event.target.value = "";
     if (!file) return;
 
-    if (zoneId <= 0) {
+    if (warehouseId <= 0) {
       message.error("Vui lòng chọn kho trước khi import");
       return;
     }
@@ -197,7 +196,8 @@ export default function OperatorInboundPage() {
     try {
       const formData = new FormData();
       formData.append('file', file);
-      formData.append('warehouse_id', zoneId.toString());
+      formData.append('warehouse_id', warehouseId.toString());
+      console.log("cont test", warehouseId)
       formData.append('inbound_type', 'auto');
 
       const parseResult = await parseMasanInboundExcelApi(formData);
@@ -232,7 +232,7 @@ export default function OperatorInboundPage() {
       const createPayload: MasanCreatePayload = {
         order_code: orderCode,
         note: "Import Masan",
-        warehouse_id: zoneId,
+        warehouse_id: warehouseId,
         details: {
           source: "masan_import",
           total_rows: parseResult.total_rows,
@@ -283,14 +283,14 @@ export default function OperatorInboundPage() {
   };
 
   const handleExportDailyExcel = async () => {
-    if (zoneId <= 0) {
+    if (warehouseId <= 0) {
       message.warning("Vui lòng chọn kho trước khi xuất");
       return;
     }
 
     setIsExportingDailyExcel(true);
     try {
-      const report = await getInboundDailyReportApi(zoneId);
+      const report = await getInboundDailyReportApi(warehouseId);
       if (report.lines.length === 0) {
         message.warning("Không có đơn nhập nào được tạo hôm nay để xuất");
         return;
@@ -715,10 +715,10 @@ export default function OperatorInboundPage() {
         {sourceTab === "direct" ? (
           <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
             <DirectOutboundFromInboundBoard
-              zoneId={zoneId}
+              zoneId={warehouseId}
               onImportClick={handleImportClick}
               importLoading={isMasanImporting}
-              importDisabled={zoneId <= 0}
+              importDisabled={warehouseId <= 0}
             />
           </div>
         ) : (
@@ -733,7 +733,7 @@ export default function OperatorInboundPage() {
                     variant="primary"
                     icon={<ScanOutlined />}
                     onClick={() => setQrModalOpen(true)}
-                    disabled={zoneId <= 0 || !orderId}
+                    disabled={warehouseId <= 0 || !orderId}
                     className="!h-10 !px-4 !text-base !bg-cyan-600 hover:!bg-cyan-700 !border-cyan-600 hover:!border-cyan-700"
                   >
                     Quét QR gán ô
@@ -743,7 +743,7 @@ export default function OperatorInboundPage() {
                     icon={<UploadOutlined />}
                     onClick={handleImportClick}
                     loading={isMasanImporting}
-                    disabled={zoneId <= 0}
+                    disabled={warehouseId <= 0}
                     className="!h-10 !px-4 !text-base"
                   >
                     Nhập dữ liệu đơn
@@ -753,7 +753,7 @@ export default function OperatorInboundPage() {
                     icon={<FileExcelOutlined />}
                     onClick={() => void handleExportDailyExcel()}
                     loading={isExportingDailyExcel}
-                    disabled={zoneId <= 0}
+                    disabled={warehouseId <= 0}
                     className="!h-10 !px-4 !text-base"
                   >
                     Xuất Excel nhập hàng
@@ -765,7 +765,7 @@ export default function OperatorInboundPage() {
               >
                 <div className="relative min-h-0 flex-1 overflow-hidden rounded-lg bg-panel">
                   <OperatorMapCanvas
-                    zoneId={zoneId}
+                    zoneId={10}
                     showInboundSeparator={true}
                     className="!h-full"
                     tuning={OPERATOR_MAP_TUNING}
@@ -829,7 +829,7 @@ export default function OperatorInboundPage() {
               <div className="min-h-0 flex-1 overflow-hidden bg-panel">
                 {sideListTab === "orders" ? (
                   <OperatorInboundOrderBrowser
-                    key={zoneId}
+                    key={warehouseId}
                     orders={inboundOrders}
                     loading={inboundOrdersLoading}
                     error={inboundOrdersError}
@@ -888,7 +888,7 @@ export default function OperatorInboundPage() {
 
       <InboundLocationInfoModal
         open={locationInfoOpen}
-        zoneId={zoneId}
+        zoneId={warehouseId}
         locationId={infoLocationId}
         onClose={() => {
           setLocationInfoOpen(false);

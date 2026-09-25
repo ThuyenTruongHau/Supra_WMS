@@ -19,11 +19,14 @@ type VehicleNode = {
   details: InboundOrderDetail[];
 };
 
-const ORDER_STATUS_LABEL: Record<InboundOrderStatus, string> = {
+const ORDER_STATUS_LABEL: Record<string, string> = {
   pending: "Khởi tạo",
+  initialize: "Khởi tạo",
   receiving: "Đang nhập",
+  in_progress: "Đang nhập",
   completed: "Hoàn thành",
   cancelled: "Đã hủy",
+  canceled: "Đã hủy",
 };
 
 const DETAIL_STATUS_LABEL: Record<string, string> = {
@@ -33,7 +36,7 @@ const DETAIL_STATUS_LABEL: Record<string, string> = {
 };
 
 const ORDER_TONE: Record<
-  InboundOrderStatus,
+  string,
   { shell: string; rail: string; badge: string }
 > = {
   pending: {
@@ -42,7 +45,19 @@ const ORDER_TONE: Record<
     rail: "bg-warning-400",
     badge: "bg-warning-100 text-warning-700",
   },
+  initialize: {
+    shell:
+      "border-stripe-hairline bg-panel hover:border-brand-primary/30 hover:shadow-sm",
+    rail: "bg-warning-400",
+    badge: "bg-warning-100 text-warning-700",
+  },
   receiving: {
+    shell:
+      "border-brand-primary/20 bg-brand-primary/5 hover:border-brand-primary/40 hover:shadow-sm",
+    rail: "bg-info-500",
+    badge: "bg-info-100 text-info-700",
+  },
+  in_progress: {
     shell:
       "border-brand-primary/20 bg-brand-primary/5 hover:border-brand-primary/40 hover:shadow-sm",
     rail: "bg-info-500",
@@ -60,13 +75,21 @@ const ORDER_TONE: Record<
     rail: "bg-error-400",
     badge: "bg-error-100 text-error-700",
   },
+  canceled: {
+    shell:
+      "border-stripe-hairline bg-panel hover:border-brand-primary/30 hover:shadow-sm",
+    rail: "bg-error-400",
+    badge: "bg-error-100 text-error-700",
+  },
 };
 
 function groupDetailsByVehicle(details: InboundOrderDetail[]): VehicleNode[] {
   const groups = new Map<string, InboundOrderDetail[]>();
-  for (const detail of details) {
-    const vehicleNumber = detail.vehicle_number?.trim() || "Không biển số";
-    groups.set(vehicleNumber, [...(groups.get(vehicleNumber) ?? []), detail]);
+  if (Array.isArray(details)) {
+    for (const detail of details) {
+      const vehicleNumber = detail.vehicle_number?.trim() || "Không biển số";
+      groups.set(vehicleNumber, [...(groups.get(vehicleNumber) ?? []), detail]);
+    }
   }
   return [...groups.entries()]
     .map(([vehicleNumber, vehicleDetails]) => ({
@@ -77,14 +100,16 @@ function groupDetailsByVehicle(details: InboundOrderDetail[]): VehicleNode[] {
     .sort((a, b) => a.vehicleNumber.localeCompare(b.vehicleNumber));
 }
 
-function sumQuantity(details: InboundOrderDetail[]): number {
+function sumQuantity(details: InboundOrderDetail[] | any): number {
+  if (!Array.isArray(details)) return 0;
   return details.reduce(
     (sum, detail) => sum + (Number(detail.expected_quantity) || 0),
     0,
   );
 }
 
-function countProducts(details: InboundOrderDetail[]): number {
+function countProducts(details: InboundOrderDetail[] | any): number {
+  if (!Array.isArray(details)) return 0;
   return new Set(details.map((detail) => detail.product_id)).size;
 }
 
@@ -133,8 +158,9 @@ export default function OperatorInboundOrderBrowser({
     null,
   );
 
+  const safeOrders = Array.isArray(orders) ? orders : [];
   const selectedOrder =
-    orders.find((order) => order.id === selectedOrderId) ?? null;
+    safeOrders.find((order) => order.id === selectedOrderId) ?? null;
   const vehicles = selectedOrder
     ? groupDetailsByVehicle(selectedOrder.details)
     : [];
@@ -328,7 +354,7 @@ export default function OperatorInboundOrderBrowser({
         </div>
       ) : (
         orders.map((order) => {
-          const tone = ORDER_TONE[order.status];
+          const tone = ORDER_TONE[order.status] || ORDER_TONE.pending;
           const vehicleCount = groupDetailsByVehicle(order.details).length;
           return (
             <button

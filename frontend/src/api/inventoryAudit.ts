@@ -7,22 +7,22 @@ import type {
 } from '@/types/inventoryAudit'
 
 export const listInventoryAuditsApi = async (
-  zoneId: number,
+  warehouseId: number,
   params?: { status?: string; search?: string; skip?: number; limit?: number },
 ): Promise<InventoryAuditOrder[]> => {
   const response = await axiosInstance.get<InventoryAuditOrder[]>(
     '/api/v1/inventory-audits/',
-    { params: { zone_id: zoneId, ...params } },
+    { params: { zone_id: warehouseId, ...params } },
   )
   return response.data
 }
 
 export const getInventoryAuditSummaryApi = async (
-  zoneId: number,
+  warehouseId: number,
 ): Promise<InventoryAuditSummary> => {
   const response = await axiosInstance.get<InventoryAuditSummary>(
     '/api/v1/inventory-audits/summary',
-    { params: { zone_id: zoneId } },
+    { params: { zone_id: warehouseId } },
   )
   return response.data
 }

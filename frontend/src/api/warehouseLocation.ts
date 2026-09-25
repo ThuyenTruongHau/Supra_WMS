@@ -19,22 +19,22 @@ import { formatDisplayBin } from '@/utils/locationBin';
 const PAGE_SIZE = 200;
 
 export async function getLocationsByZoneApi(
-  zoneId: number,
+  warehouseId: number,
   skip = 0,
   limit = PAGE_SIZE,
 ): Promise<WarehouseLocation[]> {
   const response = await axiosInstance.get<WarehouseLocation[]>('/api/v1/warehouse-locations/', {
-    params: { zone_id: zoneId, is_active: true, skip, limit },
+    params: { zone_id: warehouseId, is_active: true, skip, limit },
   });
   return response.data;
 }
 
-export async function getAllLocationsByZoneApi(zoneId: number): Promise<WarehouseLocation[]> {
+export async function getAllLocationsByZoneApi(warehouseId: number): Promise<WarehouseLocation[]> {
   const all: WarehouseLocation[] = [];
   let skip = 0;
 
   while (true) {
-    const page = await getLocationsByZoneApi(zoneId, skip, PAGE_SIZE);
+    const page = await getLocationsByZoneApi(warehouseId, skip, PAGE_SIZE);
     all.push(...page);
     if (page.length < PAGE_SIZE) break;
     skip += PAGE_SIZE;
@@ -44,22 +44,22 @@ export async function getAllLocationsByZoneApi(zoneId: number): Promise<Warehous
 }
 
 export async function getItemStockByZoneApi(
-  zoneId: number,
+  warehouseId: number,
   skip = 0,
   limit = PAGE_SIZE,
 ): Promise<ItemStockRow[]> {
   const response = await axiosInstance.get<ItemStockRow[]>('/api/v1/item-stock', {
-    params: { zone_id: zoneId, skip, limit },
+    params: { zone_id: warehouseId, skip, limit },
   });
   return response.data;
 }
 
-export async function getAllItemStockByZoneApi(zoneId: number): Promise<ItemStockRow[]> {
+export async function getAllItemStockByZoneApi(warehouseId: number): Promise<ItemStockRow[]> {
   const all: ItemStockRow[] = [];
   let skip = 0;
 
   while (true) {
-    const page = await getItemStockByZoneApi(zoneId, skip, PAGE_SIZE);
+    const page = await getItemStockByZoneApi(warehouseId, skip, PAGE_SIZE);
     all.push(...page);
     if (page.length < PAGE_SIZE) break;
     skip += PAGE_SIZE;
@@ -86,7 +86,7 @@ export async function suggestEmptyLocationsApi(
 }
 
 export async function listEmptyLocationsApi(params: {
-  zoneId: number;
+  warehouseId: number;
   excludeLocationIds?: number[];
   limit?: number;
 }): Promise<EmptyLocationsListResponse> {
@@ -94,7 +94,7 @@ export async function listEmptyLocationsApi(params: {
     '/api/v1/warehouse-locations/empty',
     {
       params: {
-        zone_id: params.zoneId,
+        zone_id: params.warehouseId,
         exclude_location_ids: params.excludeLocationIds ?? [],
         limit: params.limit ?? 200,
       },
@@ -104,7 +104,7 @@ export async function listEmptyLocationsApi(params: {
 }
 
 export async function listStorageLocationsApi(params: {
-  zoneId: number;
+  warehouseId: number;
   stockStatus: StorageStockStatus;
   excludeLocationIds?: number[];
   limit?: number;
@@ -114,7 +114,7 @@ export async function listStorageLocationsApi(params: {
     '/api/v1/warehouse-locations/storage',
     {
       params: {
-        zone_id: params.zoneId,
+        zone_id: params.warehouseId,
         stock_status: params.stockStatus,
         exclude_location_ids: params.excludeLocationIds ?? [],
         limit: params.limit ?? 200,
@@ -136,7 +136,7 @@ export async function relocateStorageStockApi(
 }
 
 export async function listStorageRelocateCommandsApi(params: {
-  zoneId: number;
+  warehouseId: number;
   skip?: number;
   limit?: number;
 }): Promise<StorageRelocateCommandListResponse> {
@@ -144,7 +144,7 @@ export async function listStorageRelocateCommandsApi(params: {
     '/api/v1/warehouse-locations/storage/relocate-commands',
     {
       params: {
-        zone_id: params.zoneId,
+        zone_id: params.warehouseId,
         skip: params.skip ?? 0,
         limit: params.limit ?? 50,
       },
@@ -154,11 +154,11 @@ export async function listStorageRelocateCommandsApi(params: {
 }
 
 export async function getLocationStockLabelsApi(
-  zoneId: number,
+  warehouseId: number,
 ): Promise<LocationStockLabelsResponse> {
   const response = await axiosInstance.get<LocationStockLabelsResponse>(
     '/api/v1/warehouse-locations/stock-labels',
-    { params: { zone_id: zoneId } },
+    { params: { zone_id: warehouseId } },
   );
   return response.data;
 }

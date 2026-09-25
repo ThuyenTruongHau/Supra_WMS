@@ -9,31 +9,31 @@ import type { SortingOrderDetail, SortingOrderSummary } from '@/types/sortingOrd
 import { ApiErrorResponse } from '@/types/apiError'
 
 export const sortingOrdersQueryKey = (
-  zoneId: number,
+  warehouseId: number,
   waveId?: number,
   status?: string | null,
-) => ['sorting_orders', zoneId, waveId ?? '', status ?? 'all'] as const
+) => ['sorting_orders', warehouseId, waveId ?? '', status ?? 'all'] as const
 
-export const sortingOrderSummaryQueryKey = (zoneId: number) =>
-  ['sorting_order_summary', zoneId] as const
+export const sortingOrderSummaryQueryKey = (warehouseId: number) =>
+  ['sorting_order_summary', warehouseId] as const
 
 export const useSortingOrders = (
-  zoneId: number,
+  warehouseId: number,
   options?: { sortingWaveId?: number; status?: string | null },
 ) => {
   return useQuery<SortingOrderDetail[], AxiosError<ApiErrorResponse>>({
     queryKey: sortingOrdersQueryKey(
-      zoneId,
+      warehouseId,
       options?.sortingWaveId,
       options?.status,
     ),
     queryFn: () =>
-      listSortingOrdersApi(zoneId, {
+      listSortingOrdersApi(warehouseId, {
         sorting_wave_id: options?.sortingWaveId,
         status: options?.status,
         limit: 200,
       }),
-    enabled: zoneId > 0,
+    enabled: warehouseId > 0,
     staleTime: 30 * 1000,
     refetchOnMount: 'always',
   })
@@ -52,11 +52,11 @@ export const useSortingOrdersByWave = (
   })
 }
 
-export const useSortingOrderSummary = (zoneId: number) => {
+export const useSortingOrderSummary = (warehouseId: number) => {
   return useQuery<SortingOrderSummary, AxiosError<ApiErrorResponse>>({
-    queryKey: sortingOrderSummaryQueryKey(zoneId),
-    queryFn: () => getSortingOrderSummaryApi(zoneId),
-    enabled: zoneId > 0,
+    queryKey: sortingOrderSummaryQueryKey(warehouseId),
+    queryFn: () => getSortingOrderSummaryApi(warehouseId),
+    enabled: warehouseId > 0,
     staleTime: 30 * 1000,
     refetchOnMount: 'always',
   })

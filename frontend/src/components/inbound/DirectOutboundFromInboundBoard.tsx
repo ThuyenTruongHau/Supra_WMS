@@ -30,7 +30,7 @@ import {
   useLocationsByZone,
 } from "@/hooks/useWarehouseLocation";
 import { useProduct } from "@/hooks/useProduct";
-import { getInboundBufferAssignmentApi } from "@/api/inbound";
+import { getInboundBufferAssignmentApi } from "@/api/inboundOperator";
 import type { InboundBufferAssignment } from "@/types/inbound";
 import type { StationProductLine } from "@/types/outboundTask";
 import type { WarehouseLocation } from "@/types/warehouseLocation";

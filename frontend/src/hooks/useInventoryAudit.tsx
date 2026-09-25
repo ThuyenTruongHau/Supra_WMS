@@ -20,30 +20,30 @@ import type {
 import { ApiErrorResponse } from '@/types/apiError'
 
 export const inventoryAuditListQueryKey = (
-  zoneId: number,
+  warehouseId: number,
   status?: string,
   search?: string,
-) => ['inventory_audits', zoneId, status ?? '', search ?? ''] as const
+) => ['inventory_audits', warehouseId, status ?? '', search ?? ''] as const
 
-export const inventoryAuditSummaryQueryKey = (zoneId: number) =>
-  ['inventory_audit_summary', zoneId] as const
+export const inventoryAuditSummaryQueryKey = (warehouseId: number) =>
+  ['inventory_audit_summary', warehouseId] as const
 
 export const inventoryAuditDetailQueryKey = (id: number) =>
   ['inventory_audit', id] as const
 
 const invalidateInventoryAuditQueries = (
   queryClient: ReturnType<typeof useQueryClient>,
-  zoneId?: number,
+  warehouseId?: number,
   orderId?: number,
 ) => {
   if (orderId) {
     queryClient.invalidateQueries({ queryKey: inventoryAuditDetailQueryKey(orderId) })
   }
-  if (zoneId) {
-    queryClient.invalidateQueries({ queryKey: ['inventory_audits', zoneId] })
-    queryClient.invalidateQueries({ queryKey: inventoryAuditSummaryQueryKey(zoneId) })
-    queryClient.invalidateQueries({ queryKey: ['item_stock_by_zone', zoneId] })
-    queryClient.invalidateQueries({ queryKey: ['product_by_zone', zoneId] })
+  if (warehouseId) {
+    queryClient.invalidateQueries({ queryKey: ['inventory_audits', warehouseId] })
+    queryClient.invalidateQueries({ queryKey: inventoryAuditSummaryQueryKey(warehouseId) })
+    queryClient.invalidateQueries({ queryKey: ['item_stock_by_zone', warehouseId] })
+    queryClient.invalidateQueries({ queryKey: ['product_by_zone', warehouseId] })
   } else {
     queryClient.invalidateQueries({ queryKey: ['inventory_audits'] })
     queryClient.invalidateQueries({ queryKey: ['inventory_audit_summary'] })
@@ -51,28 +51,28 @@ const invalidateInventoryAuditQueries = (
 }
 
 export const useInventoryAuditList = (
-  zoneId: number,
+  warehouseId: number,
   options?: { status?: string; search?: string },
 ) => {
   return useQuery<InventoryAuditOrder[], AxiosError<ApiErrorResponse>>({
-    queryKey: inventoryAuditListQueryKey(zoneId, options?.status, options?.search),
+    queryKey: inventoryAuditListQueryKey(warehouseId, options?.status, options?.search),
     queryFn: () =>
-      listInventoryAuditsApi(zoneId, {
+      listInventoryAuditsApi(warehouseId, {
         status: options?.status,
         search: options?.search,
         limit: 200,
       }),
-    enabled: zoneId > 0,
+    enabled: warehouseId > 0,
     staleTime: 30 * 1000,
     refetchOnMount: 'always',
   })
 }
 
-export const useInventoryAuditSummary = (zoneId: number) => {
+export const useInventoryAuditSummary = (warehouseId: number) => {
   return useQuery<InventoryAuditSummary, AxiosError<ApiErrorResponse>>({
-    queryKey: inventoryAuditSummaryQueryKey(zoneId),
-    queryFn: () => getInventoryAuditSummaryApi(zoneId),
-    enabled: zoneId > 0,
+    queryKey: inventoryAuditSummaryQueryKey(warehouseId),
+    queryFn: () => getInventoryAuditSummaryApi(warehouseId),
+    enabled: warehouseId > 0,
     staleTime: 30 * 1000,
     refetchOnMount: 'always',
   })
@@ -145,10 +145,10 @@ export const useCancelInventoryAudit = () => {
 
 export const useDeleteInventoryAudit = () => {
   const queryClient = useQueryClient()
-  return useMutation<void, AxiosError<ApiErrorResponse>, { id: number; zoneId: number }>({
+  return useMutation<void, AxiosError<ApiErrorResponse>, { id: number; warehouseId: number }>({
     mutationFn: ({ id }) => deleteInventoryAuditApi(id),
     onSuccess: (_data, variables) => {
-      invalidateInventoryAuditQueries(queryClient, variables.zoneId, variables.id)
+      invalidateInventoryAuditQueries(queryClient, variables.warehouseId, variables.id)
     },
   })
 }

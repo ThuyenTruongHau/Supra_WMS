@@ -29,21 +29,22 @@ import type {
 } from '@/types/inbound'
 
 export const listInboundOrdersApi = async (
-  zoneId: number,
+  warehouseId: number,
   params?: { status?: string; search?: string; skip?: number; limit?: number },
 ): Promise<InboundOrder[]> => {
-  const response = await axiosInstance.get<InboundOrder[]>('/api/v1/inbound-orders/', {
-    params: { zone_id: zoneId, ...params },
+  const response = await axiosInstance.get<any>('/api/v1/inbound-orders/', {
+    params: { warehouse_id: warehouseId, ...params },
   })
-  return response.data
+  // Backend trả về InboundOrderListResponse có object { items: [] } nên cần .items
+  return response.data?.items || []
 }
 
 export const getInboundSummaryApi = async (
-  zoneId: number,
+  warehouseId: number,
 ): Promise<InboundOrderSummary> => {
   const response = await axiosInstance.get<InboundOrderSummary>(
     '/api/v1/inbound-orders/summary',
-    { params: { zone_id: zoneId } },
+    { params: { zone_id: warehouseId } },
   )
   return response.data
 }
@@ -54,11 +55,11 @@ export const getInboundOrderApi = async (id: number): Promise<InboundOrder> => {
 }
 
 export const getOldestIncompleteInboundApi = async (
-  zoneId: number,
+  warehouseId: number,
 ): Promise<InboundOldestIncomplete> => {
   const response = await axiosInstance.get<InboundOldestIncomplete>(
     '/api/v1/inbound-orders/oldest-incomplete',
-    { params: { zone_id: zoneId } },
+    { params: { zone_id: warehouseId } },
   )
   return response.data
 }
@@ -73,14 +74,14 @@ export const getInboundDetailReportApi = async (
 }
 
 export const getInboundDailyReportApi = async (
-  zoneId: number,
+  warehouseId: number,
   reportDate?: string,
 ): Promise<InboundDailyReport> => {
   const response = await axiosInstance.get<InboundDailyReport>(
     '/api/v1/inbound-orders/daily-report',
     {
       params: {
-        zone_id: zoneId,
+        zone_id: warehouseId,
         ...(reportDate ? { report_date: reportDate } : {}),
       },
     },

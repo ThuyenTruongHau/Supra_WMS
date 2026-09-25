@@ -33,17 +33,17 @@ import { ApiErrorResponse } from '@/types/apiError'
 export const outboundTasksByWaveQueryKey = (waveId: number) =>
   ['outbound_tasks_by_wave', waveId] as const
 
-export const currentOrdersQueryKey = (zoneId: number, waveId: number) =>
-  ['current_orders', zoneId, waveId] as const
+export const currentOrdersQueryKey = (warehouseId: number, waveId: number) =>
+  ['current_orders', warehouseId, waveId] as const
 
 export const waveCustomersQueryKey = (waveId: number) =>
   ['wave_customers', waveId] as const
 
 export const stationProductAggregateQueryKey = (
-  zoneId: number,
+  warehouseId: number,
   waveId: number,
   locationId?: number | null,
-) => ['station_product_aggregate', zoneId, waveId, locationId ?? 0] as const
+) => ['station_product_aggregate', warehouseId, waveId, locationId ?? 0] as const
 
 export const useOutboundTasksByWave = (waveId: number) => {
   return useQuery<OutboundTask[], AxiosError<ApiErrorResponse>>({
@@ -55,12 +55,12 @@ export const useOutboundTasksByWave = (waveId: number) => {
   })
 }
 
-export const useCurrentOrders = (zoneId: number, waveId: number) => {
+export const useCurrentOrders = (warehouseId: number, waveId: number) => {
   return useQuery<CurrentOrdersResponse, AxiosError<ApiErrorResponse>>({
-    queryKey: currentOrdersQueryKey(zoneId, waveId),
+    queryKey: currentOrdersQueryKey(warehouseId, waveId),
     queryFn: () =>
-      getCurrentOrdersApi({ zoneId, sortingWaveId: waveId }),
-    enabled: zoneId > 0 && waveId > 0,
+      getCurrentOrdersApi({ warehouseId, sortingWaveId: waveId }),
+    enabled: warehouseId > 0 && waveId > 0,
     staleTime: 15 * 1000,
     refetchOnMount: 'always',
   })
@@ -77,24 +77,24 @@ export const useWaveCustomers = (waveId: number) => {
 }
 
 export const useStationProductAggregate = (
-  zoneId: number,
+  warehouseId: number,
   sortingWaveId: number,
   outboundLocationId?: number | null,
   options?: { enabled?: boolean },
 ) => {
   return useQuery<StationProductAggregate, AxiosError<ApiErrorResponse>>({
     queryKey: stationProductAggregateQueryKey(
-      zoneId,
+      warehouseId,
       sortingWaveId,
       outboundLocationId,
     ),
     queryFn: () =>
       getStationProductAggregateApi({
-        zoneId,
+        warehouseId,
         sortingWaveId,
         outboundLocationId,
       }),
-    enabled: (options?.enabled ?? true) && zoneId > 0 && sortingWaveId > 0,
+    enabled: (options?.enabled ?? true) && warehouseId > 0 && sortingWaveId > 0,
     staleTime: 10 * 1000,
     refetchOnMount: 'always',
   })
@@ -110,7 +110,7 @@ export const usePreviewStationStock = () => {
   })
 }
 
-export const useConfirmStationStock = (waveId: number, zoneId?: number) => {
+export const useConfirmStationStock = (waveId: number, warehouseId?: number) => {
   const queryClient = useQueryClient()
   return useMutation<
     StationStockConfirmResult,
@@ -132,15 +132,15 @@ export const useConfirmStationStock = (waveId: number, zoneId?: number) => {
       queryClient.invalidateQueries({
         queryKey: ['outbound_incomplete_vehicles'],
       })
-      if (zoneId) {
+      if (warehouseId) {
         queryClient.invalidateQueries({
-          queryKey: ['item_stock_by_zone', zoneId],
+          queryKey: ['item_stock_by_zone', warehouseId],
         })
         queryClient.invalidateQueries({
-          queryKey: ['warehouse_locations', zoneId],
+          queryKey: ['warehouse_locations', warehouseId],
         })
         queryClient.invalidateQueries({
-          queryKey: ['inbound_buffer_map_view', zoneId],
+          queryKey: ['inbound_buffer_map_view', warehouseId],
         })
       }
     },
@@ -193,7 +193,7 @@ export const useUpdateOutboundTask = (waveId: number) => {
   })
 }
 
-export const useSendOutboundTaskCommand = (waveId: number, zoneId?: number) => {
+export const useSendOutboundTaskCommand = (waveId: number, warehouseId?: number) => {
   const queryClient = useQueryClient()
   return useMutation<
     OutboundTask,
@@ -210,37 +210,37 @@ export const useSendOutboundTaskCommand = (waveId: number, zoneId?: number) => {
       queryClient.invalidateQueries({
         queryKey: ['outbound_order', task.outbound_order_id],
       })
-      if (zoneId) {
+      if (warehouseId) {
         queryClient.invalidateQueries({
-          queryKey: currentOrdersQueryKey(zoneId, waveId),
+          queryKey: currentOrdersQueryKey(warehouseId, waveId),
         })
         queryClient.invalidateQueries({
-          queryKey: ['outbound_sorting_station_fills', zoneId],
+          queryKey: ['outbound_sorting_station_fills', warehouseId],
         })
         queryClient.invalidateQueries({
-          queryKey: ['outbound_sorting_station_assignment', zoneId],
+          queryKey: ['outbound_sorting_station_assignment', warehouseId],
         })
         queryClient.invalidateQueries({
-          queryKey: ['item_stock_by_zone', zoneId],
+          queryKey: ['item_stock_by_zone', warehouseId],
         })
         queryClient.invalidateQueries({
-          queryKey: ['product_by_zone', zoneId],
+          queryKey: ['product_by_zone', warehouseId],
         })
         queryClient.invalidateQueries({
-          queryKey: ['warehouse_locations', zoneId],
+          queryKey: ['warehouse_locations', warehouseId],
         })
         queryClient.invalidateQueries({
-          queryKey: ['location_stock_labels', zoneId],
+          queryKey: ['location_stock_labels', warehouseId],
         })
         queryClient.invalidateQueries({
-          queryKey: ['inbound_buffer_map_view', zoneId],
+          queryKey: ['inbound_buffer_map_view', warehouseId],
         })
       }
     },
   })
 }
 
-export const useSendOutboundTaskCommands = (waveId: number, zoneId?: number) => {
+export const useSendOutboundTaskCommands = (waveId: number, warehouseId?: number) => {
   const queryClient = useQueryClient()
   return useMutation<
     SendOutboundTaskCommandsResult,
@@ -262,30 +262,30 @@ export const useSendOutboundTaskCommands = (waveId: number, zoneId?: number) => 
           queryKey: ['outbound_order', orderId],
         })
       }
-      if (zoneId) {
+      if (warehouseId) {
         queryClient.invalidateQueries({
-          queryKey: currentOrdersQueryKey(zoneId, waveId),
+          queryKey: currentOrdersQueryKey(warehouseId, waveId),
         })
         queryClient.invalidateQueries({
-          queryKey: ['outbound_sorting_station_fills', zoneId],
+          queryKey: ['outbound_sorting_station_fills', warehouseId],
         })
         queryClient.invalidateQueries({
-          queryKey: ['outbound_sorting_station_assignment', zoneId],
+          queryKey: ['outbound_sorting_station_assignment', warehouseId],
         })
         queryClient.invalidateQueries({
-          queryKey: ['item_stock_by_zone', zoneId],
+          queryKey: ['item_stock_by_zone', warehouseId],
         })
         queryClient.invalidateQueries({
-          queryKey: ['product_by_zone', zoneId],
+          queryKey: ['product_by_zone', warehouseId],
         })
         queryClient.invalidateQueries({
-          queryKey: ['warehouse_locations', zoneId],
+          queryKey: ['warehouse_locations', warehouseId],
         })
         queryClient.invalidateQueries({
-          queryKey: ['location_stock_labels', zoneId],
+          queryKey: ['location_stock_labels', warehouseId],
         })
         queryClient.invalidateQueries({
-          queryKey: ['inbound_buffer_map_view', zoneId],
+          queryKey: ['inbound_buffer_map_view', warehouseId],
         })
       }
     },

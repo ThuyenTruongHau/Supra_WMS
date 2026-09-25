@@ -39,10 +39,10 @@ export const deleteProductApi = async (id: number): Promise<void> => {
 
 export const importProductsApi = async (
   file: File,
-  zoneId: number,
+  warehouseId: number,
 ): Promise<ProductImportJobAccepted> => {
   const formData = new FormData();
-  formData.append('zone_id', String(zoneId));
+  formData.append('zone_id', String(warehouseId));
   formData.append('file', file);
   const { data } = await axiosInstance.post<ProductImportJobAccepted>(
     `${BASE}/import`,

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Card, Table, Button, Modal, Form, Input, InputNumber, Space, message, Select } from '@/components/ui';
 import { PlusOutlined, SearchOutlined, MinusCircleOutlined, EditOutlined } from '@ant-design/icons';
 import { getApiErrorMessage } from '@/utils/apiErrorMessage';
-import { useZone } from '@/hooks/useZone';
+import { useWarehouses } from '@/hooks/useWarehouse';
 import { useGetItems, useCreateItem, useUpdateItem } from '@/hooks/useItem';
 import { useUnits } from '@/hooks/useUnit';
 import { useDebounce } from '@/hooks/useDebounce';
@@ -12,20 +12,20 @@ import { Switch, Tooltip } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 
 export default function ItemSettingPage() {
-  const { data: zones, isLoading: isZonesLoading } = useZone();
-  const [activeZoneId, setActiveZoneId] = useState<number | undefined>(undefined);
+  const { data: warehouses, isLoading: isWarehousesLoading } = useWarehouses();
+  const [activeWarehouseId, setActiveWarehouseId] = useState<number | undefined>(undefined);
   const [search, setSearch] = useState('');
 
   useEffect(() => {
-    if (zones && zones.length > 0 && !activeZoneId) {
-      setActiveZoneId(zones[0].id);
+    if (warehouses && warehouses.length > 0 && !activeWarehouseId) {
+      setActiveWarehouseId(warehouses[0].id);
     }
-  }, [zones, activeZoneId]);
+  }, [warehouses, activeWarehouseId]);
 
   const debouncedSearch = useDebounce(search, 500);
 
   const { data: getItemsResponse, isLoading: isItemsLoading } = useGetItems({
-    warehouse_id: activeZoneId || 0,
+    warehouse_id: activeWarehouseId || 0,
     q: debouncedSearch.trim() || undefined,
   });
 
@@ -71,7 +71,7 @@ export default function ItemSettingPage() {
   };
 
   const handleFinish = (values: any) => {
-    if (!activeZoneId) {
+    if (!activeWarehouseId) {
       message.error('Vui lòng chọn Zone trước khi thêm.');
       return;
     }
@@ -93,7 +93,7 @@ export default function ItemSettingPage() {
       base_quantity: Number(values.base_quantity ?? 1),
       max_quantity: Number(values.max_quantity),
       min_quantity: Number(values.min_quantity),
-      warehouse_id: activeZoneId,
+      warehouse_id: activeWarehouseId,
       details,
     };
 
@@ -208,12 +208,12 @@ export default function ItemSettingPage() {
         extra={
           <div className="flex items-center gap-4">
             <Select
-              loading={isZonesLoading}
-              value={activeZoneId}
-              onChange={setActiveZoneId}
+              loading={isWarehousesLoading}
+              value={activeWarehouseId}
+              onChange={setActiveWarehouseId}
               placeholder="Chọn khu vực..."
               className="w-56"
-              options={zones?.map(z => ({ label: z.name, value: z.id })) || []}
+              options={warehouses?.map(z => ({ label: z.name, value: z.id })) || []}
             />
             <Button
               onClick={handleOpenCreate}

@@ -5,14 +5,14 @@
 import OperatorPageHeader from "@/components/layout/OperatorPageHeader";
 import { operatorDesktopClass } from "@/constants/operatorDesktopSizes";
 import { useAppStore } from "@/store/useAppStore";
-import { useZone } from "@/hooks/useZone";
+import { useWarehouses } from "@/hooks/useWarehouse";
 import SortingWaveStationBoard from "@/components/outbound/SortingWaveStationBoard";
 
 export default function OperatorSortingWavePage() {
   const { selectedWarehouseId } = useAppStore();
-  const { data: zones = [] } = useZone();
+  const { data: warehouses = [] } = useWarehouses();
   const selectedWarehouseName =
-    zones.find((zone) => zone.id === selectedWarehouseId)?.name ??
+    warehouses.find((warehouse) => warehouse.id === selectedWarehouseId)?.name ??
     "Chưa chọn kho";
   const zoneId = selectedWarehouseId ?? 0;
 
@@ -20,8 +20,6 @@ export default function OperatorSortingWavePage() {
     <div
       className={`flex ${operatorDesktopClass.sortingPageMinHeight} flex-col gap-3`}
     >
-
-
       <SortingWaveStationBoard
         zoneId={zoneId}
         fillHeight

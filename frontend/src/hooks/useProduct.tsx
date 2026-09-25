@@ -20,14 +20,14 @@ import { AxiosError } from "axios";
 import { ApiErrorResponse } from "@/types/apiError";
 
 // 1. Hook lấy danh sách (Read)
-export const useProduct = (zoneId: number) => {
+export const useProduct = (warehouseId: number) => {
   return useQuery<Product[], Error>({
-    queryKey: ["product_by_zone", zoneId],
+    queryKey: ["product_by_zone", warehouseId],
     queryFn: async () => {
-      const res = await getProductsByZoneIdApi(zoneId);
+      const res = await getProductsByZoneIdApi(warehouseId);
       return res.products;
     },
-    enabled: zoneId > 0,
+    enabled: warehouseId > 0,
     staleTime: 30 * 1000,
     refetchOnMount: "always",
   });
@@ -86,10 +86,10 @@ const IMPORT_POLL_MS = 1500;
 
 async function runImportWithPolling(
   file: File,
-  zoneId: number,
+  warehouseId: number,
   onProgress?: (job: ProductImportJobStatus) => void,
 ): Promise<ProductImportJobStatus> {
-  const accepted: ProductImportJobAccepted = await importProductsApi(file, zoneId);
+  const accepted: ProductImportJobAccepted = await importProductsApi(file, warehouseId);
   let job = await getProductImportJobApi(accepted.job_id);
 
   while (job.status === "pending" || job.status === "running") {
@@ -109,12 +109,12 @@ export const useImportProducts = () => {
     AxiosError<ApiErrorResponse>,
     {
       file: File;
-      zoneId: number;
+      warehouseId: number;
       onProgress?: (job: ProductImportJobStatus) => void;
     }
   >({
-    mutationFn: ({ file, zoneId, onProgress }) =>
-      runImportWithPolling(file, zoneId, onProgress),
+    mutationFn: ({ file, warehouseId, onProgress }) =>
+      runImportWithPolling(file, warehouseId, onProgress),
     onSuccess: (job) => {
       if (job.status === "completed") {
         queryClient.invalidateQueries({ queryKey: ["product_by_zone"] });

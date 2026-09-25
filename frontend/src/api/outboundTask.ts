@@ -25,14 +25,14 @@ export const listOutboundTasksByWaveApi = async (
 }
 
 export const getCurrentOrdersApi = async (params: {
-  zoneId: number
+  warehouseId: number
   sortingWaveId: number
 }): Promise<CurrentOrdersResponse> => {
   const response = await axiosInstance.get<CurrentOrdersResponse>(
     '/api/v1/outbound-tasks/current-orders',
     {
       params: {
-        zone_id: params.zoneId,
+        zone_id: params.warehouseId,
         sorting_wave_id: params.sortingWaveId,
       },
     },
@@ -107,18 +107,18 @@ export type SyncWaveAssignmentResult = {
 }
 
 export const syncWaveAssignmentApi = async (
-  zoneId: number,
+  warehouseId: number,
 ): Promise<SyncWaveAssignmentResult> => {
   const response = await axiosInstance.post<SyncWaveAssignmentResult>(
     '/api/v1/outbound-tasks/sync-wave-assignment',
     null,
-    { params: { zone_id: zoneId } },
+    { params: { zone_id: warehouseId } },
   )
   return response.data
 }
 
 export const getStationProductAggregateApi = async (params: {
-  zoneId: number
+  warehouseId: number
   sortingWaveId: number
   outboundLocationId?: number | null
 }): Promise<StationProductAggregate> => {
@@ -126,7 +126,7 @@ export const getStationProductAggregateApi = async (params: {
     '/api/v1/outbound-tasks/station-product-aggregate',
     {
       params: {
-        zone_id: params.zoneId,
+        zone_id: params.warehouseId,
         sorting_wave_id: params.sortingWaveId,
         ...(params.outboundLocationId
           ? { outbound_location_id: params.outboundLocationId }

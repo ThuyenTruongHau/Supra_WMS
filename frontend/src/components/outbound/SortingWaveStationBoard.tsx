@@ -426,7 +426,7 @@ export default function SortingWaveStationBoard({
           !fullscreen && "rounded-lg",
         )}
       >
-        {zoneId > 0 && waveStationIds.length > 0 ? (
+        {zoneId > 0 ? (
           <OperatorMapCanvas
             key={`wave-${fullscreen ? "fs" : "n"}-${selectedWaveId ?? "none"}-${waveStationIds.join(",")}`}
             zoneId={zoneId}
@@ -573,13 +573,22 @@ export default function SortingWaveStationBoard({
       {hideWaveTabs ? null : waveTabs}
 
       {!wavesLoading && sortingWaves.length === 0 ? (
-        <div className="p-8 text-center">
-          {emptyHint ?? (
-            <p className="text-sm text-slate-500">
-              Không có board chia chọn để hiển thị. Thêm wave để cấu hình
-              stations.
-            </p>
-          )}
+        <div className={cn(
+            sideSlot
+              ? "grid min-h-0 flex-1 grid-cols-1 items-stretch xl:grid-cols-5"
+              : "flex min-h-0 flex-1 flex-col",
+            fillHeight && "min-h-0 flex-1",
+          )}>
+          {mapPanel}
+          <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 flex items-center justify-center pointer-events-none">
+            <div className="rounded-xl bg-white/95 px-6 py-4 text-center shadow-lg backdrop-blur pointer-events-auto border border-slate-200">
+              {emptyHint ?? (
+                <p className="text-sm text-slate-500">
+                  Không có board chia chọn để hiển thị. Thêm wave để cấu hình stations.
+                </p>
+              )}
+            </div>
+          </div>
         </div>
       ) : (
         <div

@@ -1,7 +1,4 @@
-/**
- * Màn chọn vị trí chia chọn — 2 map song song, double-click để vào chi tiết.
- */
-import { useRef, useState, useMemo, type ChangeEvent } from "react";
+import React, { useRef, useState, useMemo, type ChangeEvent, useEffect } from "react";
 import { PartitionOutlined, UploadOutlined } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import { Button, Modal, Table, Space, message, cn } from "@/components/ui";
@@ -11,9 +8,7 @@ import {
   OPERATOR_WAVE_MAP_TUNING,
   operatorDesktopTableWidths,
 } from "@/constants/operatorDesktopSizes";
-import type { SortingWave } from "@/types/sortingWave";
 import OperatorMapCanvas from "@/components/warehouse/OperatorMapCanvas";
-import { useSortingWaveMapContext } from "@/hooks/useSortingWaveMapContext";
 import { parseMasanOutboundPreviewApi } from "@/api/masan";
 import type { MasanOutboundPreviewRow } from "@/types/masan";
 import { useCreateOutboundOrder } from "@/hooks/useOutbound";
@@ -22,23 +17,20 @@ import { toDisplayInteger } from "@/utils/number";
 
 type SortingWaveOverviewCellProps = {
   zoneId: number;
-  wave: SortingWave;
+  title: string;
   onActivate: () => void;
 };
 
 function SortingWaveOverviewCell({
   zoneId,
-  wave,
+  title,
   onActivate,
 }: SortingWaveOverviewCellProps) {
-  const { waveStationIds, stationOverlayLabels, feSimulation } =
-    useSortingWaveMapContext(zoneId, wave);
-
   return (
     <button
       type="button"
-      title={`Nhấp đúp để mở ${wave.name}`}
-      aria-label={`Nhấp đúp để mở vị trí chia chọn ${wave.name}`}
+      title={`Nhấp đúp để mở ${title}`}
+      aria-label={`Nhấp đúp để mở vị trí chia chọn ${title}`}
       onDoubleClick={onActivate}
       onKeyDown={(event) => {
         if (event.key === "Enter") onActivate();
@@ -50,9 +42,8 @@ function SortingWaveOverviewCell({
           <PartitionOutlined className="shrink-0 text-base text-brand-primary" />
           <div className="min-w-0">
             <p className="truncate text-3xl font-extrabold text-brand-dark">
-              {wave.name}
+              {title}
             </p>
-
           </div>
         </div>
         <span className="shrink-0 rounded-full border border-cyan-300/30 bg-cyan-50 px-3 py-1 text-xs font-bold uppercase tracking-wider text-cyan-700 opacity-0 transition group-hover:opacity-100">
@@ -67,21 +58,11 @@ function SortingWaveOverviewCell({
       >
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(14,165,233,0.06),transparent_55%)]" />
         <div className="relative h-full min-h-0 overflow-hidden rounded-lg bg-panel">
-          {zoneId > 0 ? (
-            <OperatorMapCanvas
-              key={`overview-${wave.id}-${waveStationIds.join(",")}`}
-              zoneId={zoneId}
-              locationIds={waveStationIds}
-              tuning={OPERATOR_WAVE_MAP_TUNING}
-              overlayLabelByCode={stationOverlayLabels}
-              statusOverrideByCode={feSimulation?.statusOverrideByCode}
-              className="pointer-events-none !h-full !min-h-0"
-            />
-          ) : (
-            <div className="flex h-full items-center justify-center text-sm text-slate-500">
-              DEBUG: zoneId={zoneId} type={typeof zoneId} | wave.zone_id={wave.zone_id}
-            </div>
-          )}
+          <OperatorMapCanvas
+            zoneId={zoneId}
+            tuning={OPERATOR_WAVE_MAP_TUNING}
+            className="pointer-events-none !h-full !min-h-0"
+          />
         </div>
       </div>
     </button>
@@ -89,18 +70,17 @@ function SortingWaveOverviewCell({
 }
 
 type SortingWaveOverviewPickerProps = {
-  zoneId: number;
-  waves: SortingWave[];
-  loading?: boolean;
-  onSelectWave: (waveId: number) => void;
+  onSelectZone: (zoneId: number) => void;
   className?: string;
 };
 
-export default function SortingWaveOverviewPicker({
-  zoneId,
-  waves,
-  loading = false,
-  onSelectWave,
+const DISPLAY_ZONES = [
+  { id: 12, name: "Khu vực chia chọn (Zone 12)" },
+  { id: 13, name: "Khu vực xuất hàng (Zone 13)" }
+];
+
+export default React.memo(function SortingWaveOverviewPicker({
+  onSelectZone,
   className,
 }: SortingWaveOverviewPickerProps) {
   const createOutboundOrderMutation = useCreateOutboundOrder();
@@ -115,6 +95,20 @@ export default function SortingWaveOverviewPicker({
   const [importWarnings, setImportWarnings] = useState<{ message: string }[]>(
     [],
   );
+
+  // If we don't have enough zones, fallback to the first available zone id or 0
+  const defaultImportZoneId = DISPLAY_ZONES[0]?.id ?? 0;
+
+  // Set initial selected import zone to the first available zone if not set or invalid
+  const [selectedImportZoneId, setSelectedImportZoneId] = useState<number>(defaultImportZoneId);
+
+  // Update selected zone if zones change
+  useEffect(() => {
+    if (DISPLAY_ZONES.length > 0 && !DISPLAY_ZONES.find(z => z.id === selectedImportZoneId)) {
+      setSelectedImportZoneId(DISPLAY_ZONES[0].id);
+    }
+  }, [selectedImportZoneId]);
+
 
   const resetImportState = () => {
     setImportLineItems([]);
@@ -138,16 +132,11 @@ export default function SortingWaveOverviewPicker({
     event.target.value = "";
     if (!file) return;
 
-    if (zoneId <= 0) {
-      message.error("Vui lòng chọn kho trước khi import");
-      return;
-    }
-
     setIsParsingExcel(true);
     resetImportState();
 
     try {
-      const result = await parseMasanOutboundPreviewApi(file, zoneId, "auto");
+      const result = await parseMasanOutboundPreviewApi(file, selectedImportZoneId, "auto");
 
       setImportLineItems(result.line_items);
       setImportPreviewRows(result.preview_rows);
@@ -170,8 +159,8 @@ export default function SortingWaveOverviewPicker({
       await createOutboundOrderMutation.mutateAsync({
         outboundType: "auto",
         data: {
-          warehouse_id: zoneId,
-          order_code: `AUTO-${Date.now()}`,
+          warehouse_id: selectedImportZoneId,
+          order_code: `OUT-${Date.now()}`,
           line_items: importLineItems as OutboundOrderLineItemCreate[],
         },
       });
@@ -228,37 +217,6 @@ export default function SortingWaveOverviewPicker({
     ],
     [importTw],
   );
-  if (loading) {
-    return (
-      <div
-        className={cn(
-          "flex min-h-0 flex-1 items-center justify-center rounded-xl border border-stripe-hairline bg-panel text-sm text-slate-500 shadow-stripe-1",
-          className,
-        )}
-      >
-        Đang tải vị trí chia chọn...
-      </div>
-    );
-  }
-
-  if (waves.length === 0) {
-    return (
-      <div
-        className={cn(
-          "flex min-h-0 flex-1 items-center justify-center rounded-xl border border-stripe-hairline bg-panel p-8 text-center shadow-stripe-1",
-          className,
-        )}
-      >
-        <p className="text-sm text-slate-500">
-          Chưa có vị trí chia chọn trong kho này. Liên hệ admin cấu hình tại{" "}
-          <span className="font-semibold text-brand-dark">Quản lý chia chọn</span>
-          .
-        </p>
-      </div>
-    );
-  }
-
-  const displayWaves = waves.slice(0, 2);
 
   return (
     <div
@@ -283,32 +241,49 @@ export default function SortingWaveOverviewPicker({
             Nhấp đúp vào khu vực để mở bản đồ chi tiết và danh sách xe
           </p>
         </div>
-        <Button
-          variant="primary"
-          icon={<UploadOutlined />}
-          onClick={handleImportClick}
-          loading={isParsingExcel}
-          disabled={zoneId <= 0}
-          className="!h-10 !px-4 !text-base"
-        >
-          Nhập BM.04 (Masan)
-        </Button>
+        <div className="flex gap-2 items-center">
+          <select
+            className="h-10 px-3 rounded-lg border border-stripe-hairline bg-panel focus:outline-none focus:ring-2 focus:ring-brand-primary/40"
+            value={selectedImportZoneId}
+            onChange={(e) => setSelectedImportZoneId(Number(e.target.value))}
+          >
+            {DISPLAY_ZONES.map(z => (
+              <option key={z.id} value={z.id}>Import vào {z.name}</option>
+            ))}
+          </select>
+          <Button
+            variant="primary"
+            icon={<UploadOutlined />}
+            onClick={handleImportClick}
+            loading={isParsingExcel}
+            disabled={DISPLAY_ZONES.length === 0}
+            className="!h-10 !px-4 !text-base"
+          >
+            Nhập BM.04 (Masan)
+          </Button>
+        </div>
       </div>
       <div className="grid min-h-0 flex-1 grid-cols-1 gap-2 p-2 lg:grid-cols-2 lg:gap-3 lg:p-3">
-        {displayWaves.map((wave) => (
-          <SortingWaveOverviewCell
-            key={wave.id}
-            zoneId={zoneId}
-            wave={wave}
-            onActivate={() => onSelectWave(wave.id)}
-          />
-        ))}
+        {DISPLAY_ZONES.length > 0 ? (
+          DISPLAY_ZONES.map((z) => (
+            <SortingWaveOverviewCell
+              key={z.id}
+              zoneId={z.id}
+              title={z.name}
+              onActivate={() => onSelectZone(z.id)}
+            />
+          ))
+        ) : (
+          <div className="col-span-full flex items-center justify-center text-slate-500">
+            Không có kho nào trong hệ thống
+          </div>
+        )}
       </div>
       <Modal
         open={isImportPreviewOpen}
         onCancel={closeImportPreview}
         width={OPERATOR_DESKTOP.modal.xl}
-        title="Xem trước import Excel"
+        title={`Xem trước import Excel`}
         footer={
           <Space>
             <Button variant="secondary" onClick={closeImportPreview}>
@@ -345,4 +320,4 @@ export default function SortingWaveOverviewPicker({
       </Modal>
     </div>
   );
-}
+});

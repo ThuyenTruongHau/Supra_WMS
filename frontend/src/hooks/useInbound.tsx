@@ -24,7 +24,7 @@ import {
   unassignInboundFromBufferApi,
   updateInboundDetailPickupApi,
   updateInboundOrderApi,
-} from '@/api/inbound'
+} from '@/api/inboundOperator'
 import type {
   AssignInboundToBufferInput,
   CreateInboundInput,
@@ -49,11 +49,11 @@ import type {
 } from '@/types/inbound'
 import { ApiErrorResponse } from '@/types/apiError'
 
-export const inboundListQueryKey = (zoneId: number, status?: string, search?: string) =>
-  ['inbound_orders', zoneId, status ?? '', search ?? ''] as const
+export const inboundListQueryKey = (warehouseId: number, status?: string, search?: string) =>
+  ['inbound_orders', warehouseId, status ?? '', search ?? ''] as const
 
-export const inboundSummaryQueryKey = (zoneId: number) =>
-  ['inbound_summary', zoneId] as const
+export const inboundSummaryQueryKey = (warehouseId: number) =>
+  ['inbound_summary', warehouseId] as const
 
 export const inboundDetailQueryKey = (id: number) => ['inbound_order', id] as const
 
@@ -69,32 +69,32 @@ export const inboundIncompleteVehiclesQueryKey = (orderId: number) =>
 export const inboundOperatorBoardSummaryQueryKey = (orderId: number) =>
   ['inbound_operator_board_summary', orderId] as const
 
-export const oldestIncompleteInboundQueryKey = (zoneId: number) =>
-  ['inbound_oldest_incomplete', zoneId] as const
+export const oldestIncompleteInboundQueryKey = (warehouseId: number) =>
+  ['inbound_oldest_incomplete', warehouseId] as const
 
 export const useInboundList = (
-  zoneId: number,
+  warehouseId: number,
   options?: { status?: string; search?: string },
 ) => {
   return useQuery<InboundOrder[], AxiosError<ApiErrorResponse>>({
-    queryKey: inboundListQueryKey(zoneId, options?.status, options?.search),
+    queryKey: inboundListQueryKey(warehouseId, options?.status, options?.search),
     queryFn: () =>
-      listInboundOrdersApi(zoneId, {
+      listInboundOrdersApi(warehouseId, {
         status: options?.status,
         search: options?.search,
         limit: 200,
       }),
-    enabled: zoneId > 0,
+    enabled: warehouseId > 0,
     staleTime: 30 * 1000,
     refetchOnMount: "always",
   })
 }
 
-export const useInboundSummary = (zoneId: number) => {
+export const useInboundSummary = (warehouseId: number) => {
   return useQuery<InboundOrderSummary, AxiosError<ApiErrorResponse>>({
-    queryKey: inboundSummaryQueryKey(zoneId),
-    queryFn: () => getInboundSummaryApi(zoneId),
-    enabled: zoneId > 0,
+    queryKey: inboundSummaryQueryKey(warehouseId),
+    queryFn: () => getInboundSummaryApi(warehouseId),
+    enabled: warehouseId > 0,
     staleTime: 30 * 1000,
     refetchOnMount: "always",
   })
@@ -159,11 +159,11 @@ export const useInboundOperatorBoardSummary = (
   })
 }
 
-export const useOldestIncompleteInbound = (zoneId: number) => {
+export const useOldestIncompleteInbound = (warehouseId: number) => {
   return useQuery<InboundOldestIncomplete, AxiosError<ApiErrorResponse>>({
-    queryKey: oldestIncompleteInboundQueryKey(zoneId),
-    queryFn: () => getOldestIncompleteInboundApi(zoneId),
-    enabled: zoneId > 0,
+    queryKey: oldestIncompleteInboundQueryKey(warehouseId),
+    queryFn: () => getOldestIncompleteInboundApi(warehouseId),
+    enabled: warehouseId > 0,
     staleTime: 30 * 1000,
     refetchOnMount: 'always',
     retry: (failureCount, error) => {
@@ -175,7 +175,7 @@ export const useOldestIncompleteInbound = (zoneId: number) => {
 
 const invalidateInboundQueries = (
   queryClient: ReturnType<typeof useQueryClient>,
-  zoneId?: number,
+  warehouseId?: number,
   orderId?: number,
 ) => {
   if (orderId) {
@@ -193,16 +193,16 @@ const invalidateInboundQueries = (
       queryKey: inboundOperatorBoardSummaryQueryKey(orderId),
     })
   }
-  if (zoneId) {
-    queryClient.invalidateQueries({ queryKey: ['inbound_orders', zoneId] })
-    queryClient.invalidateQueries({ queryKey: inboundSummaryQueryKey(zoneId) })
-    queryClient.invalidateQueries({ queryKey: oldestIncompleteInboundQueryKey(zoneId) })
-    queryClient.invalidateQueries({ queryKey: ['item_stock_by_zone', zoneId] })
-    queryClient.invalidateQueries({ queryKey: ['location_stock_labels', zoneId] })
-    queryClient.invalidateQueries({ queryKey: ['inbound_buffer_points', zoneId] })
-    queryClient.invalidateQueries({ queryKey: ['inbound_buffer_map_view', zoneId] })
-    queryClient.invalidateQueries({ queryKey: ['product_by_zone', zoneId] })
-    queryClient.invalidateQueries({ queryKey: ['warehouse_locations', zoneId] })
+  if (warehouseId) {
+    queryClient.invalidateQueries({ queryKey: ['inbound_orders', warehouseId] })
+    queryClient.invalidateQueries({ queryKey: inboundSummaryQueryKey(warehouseId) })
+    queryClient.invalidateQueries({ queryKey: oldestIncompleteInboundQueryKey(warehouseId) })
+    queryClient.invalidateQueries({ queryKey: ['item_stock_by_zone', warehouseId] })
+    queryClient.invalidateQueries({ queryKey: ['location_stock_labels', warehouseId] })
+    queryClient.invalidateQueries({ queryKey: ['inbound_buffer_points', warehouseId] })
+    queryClient.invalidateQueries({ queryKey: ['inbound_buffer_map_view', warehouseId] })
+    queryClient.invalidateQueries({ queryKey: ['product_by_zone', warehouseId] })
+    queryClient.invalidateQueries({ queryKey: ['warehouse_locations', warehouseId] })
   } else {
     queryClient.invalidateQueries({ queryKey: ['inbound_orders'] })
     queryClient.invalidateQueries({ queryKey: ['inbound_summary'] })
@@ -236,10 +236,10 @@ export const useUpdateInbound = () => {
 
 export const useDeleteInbound = () => {
   const queryClient = useQueryClient()
-  return useMutation<void, AxiosError<ApiErrorResponse>, { id: number; zoneId: number }>({
+  return useMutation<void, AxiosError<ApiErrorResponse>, { id: number; warehouseId: number }>({
     mutationFn: ({ id }) => deleteInboundOrderApi(id),
     onSuccess: (_data, variables) => {
-      invalidateInboundQueries(queryClient, variables.zoneId, variables.id)
+      invalidateInboundQueries(queryClient, variables.warehouseId, variables.id)
     },
   })
 }
@@ -462,8 +462,8 @@ export const useDirectOutboundFromInbound = () => {
   >({
     mutationFn: directOutboundFromInboundApi,
     onSuccess: (result) => {
-      const zoneId = result.zone_id
-      invalidateInboundQueries(queryClient, zoneId, result.inbound_order_id)
+      const warehouseId = result.zone_id
+      invalidateInboundQueries(queryClient, warehouseId, result.inbound_order_id)
       queryClient.invalidateQueries({
         queryKey: inboundAssignedDetailsQueryKey(result.inbound_order_id),
       })
@@ -471,22 +471,22 @@ export const useDirectOutboundFromInbound = () => {
         queryKey: ['inbound_buffer_assignment', result.inbound_location_id],
       })
       queryClient.invalidateQueries({
-        queryKey: ['inbound_buffer_map_view', zoneId],
+        queryKey: ['inbound_buffer_map_view', warehouseId],
       })
       queryClient.invalidateQueries({
-        queryKey: ['inbound_buffer_points', zoneId],
+        queryKey: ['inbound_buffer_points', warehouseId],
       })
       queryClient.invalidateQueries({
-        queryKey: ['location_stock_labels', zoneId],
+        queryKey: ['location_stock_labels', warehouseId],
       })
       queryClient.invalidateQueries({
-        queryKey: ['storage_relocate_commands', zoneId],
+        queryKey: ['storage_relocate_commands', warehouseId],
       })
       queryClient.invalidateQueries({
-        queryKey: ['item_stock_by_zone', zoneId],
+        queryKey: ['item_stock_by_zone', warehouseId],
       })
       queryClient.invalidateQueries({
-        queryKey: ['warehouse_locations', zoneId],
+        queryKey: ['warehouse_locations', warehouseId],
       })
       queryClient.invalidateQueries({
         queryKey: ['station_product_aggregate'],
@@ -495,22 +495,22 @@ export const useDirectOutboundFromInbound = () => {
         queryKey: ['outbound_tasks_by_wave'],
       })
       queryClient.invalidateQueries({
-        queryKey: ['incomplete_vehicles', zoneId],
+        queryKey: ['incomplete_vehicles', warehouseId],
       })
       queryClient.invalidateQueries({
-        queryKey: ['current_orders', zoneId],
+        queryKey: ['current_orders', warehouseId],
       })
       queryClient.invalidateQueries({
-        queryKey: ['outbound_sorting_station_fills', zoneId],
+        queryKey: ['outbound_sorting_station_fills', warehouseId],
       })
       queryClient.invalidateQueries({
-        queryKey: ['outbound_sorting_station_assignment', zoneId],
+        queryKey: ['outbound_sorting_station_assignment', warehouseId],
       })
       queryClient.invalidateQueries({
         queryKey: ['outbound_orders'],
       })
       queryClient.invalidateQueries({
-        queryKey: ['inbound_oldest_incomplete', zoneId],
+        queryKey: ['inbound_oldest_incomplete', warehouseId],
       })
     },
   })

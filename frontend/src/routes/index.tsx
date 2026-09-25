@@ -32,7 +32,7 @@ import OperatorOverviewPage from "@/pages/OperatorOverviewPage";
 import OperatorInboundPage from "@/pages/OperatorInboundPage";
 import OperatorOutboundPage from "@/pages/OperatorOutboundPage";
 import OperatorSortingWavePage from "@/pages/OperatorSortingWavePage";
-
+import OperatorOutboundDetailPage from "@/pages/OperatorOutboundDetailPage";
 
 
 export default function AppRoutes() {
@@ -89,6 +89,7 @@ export default function AppRoutes() {
         <Route path="import" element={<RoleGatePage admin={<ImportPage />} operator={<OperatorInboundPage />} />} />
         <Route path="import/:id" element={<ImportDetailPage />} />
         <Route path="export" element={<RoleGatePage admin={<OutboundPage />} operator={<OperatorOutboundPage />} />} />
+        <Route path="export/zone/:zoneId" element={<OperatorOutboundDetailPage />} />
         <Route path="export/sorting-waves" element={<RoleGatePage admin={<div>Tính năng chia chọn của Admin chưa hoàn thiện</div>} operator={<OperatorSortingWavePage />} />} />
         <Route path="export/:orderId" element={<OutboundDetailPage />} />
         <Route path="inventory" element={<StocktakePage />} />

@@ -15,34 +15,34 @@ import type {
 import { ApiErrorResponse } from '@/types/apiError';
 
 export const nodesQueryKey = (
-  zoneId: number,
+  warehouseId: number,
   nodeType: NodeType,
   search?: string,
-) => ['nodes', zoneId, nodeType, search ?? ''] as const;
+) => ['nodes', warehouseId, nodeType, search ?? ''] as const;
 
 export const useNodes = (
-  zoneId: number,
+  warehouseId: number,
   nodeType: NodeType,
   options?: { search?: string },
 ) => {
   return useQuery<WarehouseNode[], AxiosError<ApiErrorResponse>>({
-    queryKey: nodesQueryKey(zoneId, nodeType, options?.search),
+    queryKey: nodesQueryKey(warehouseId, nodeType, options?.search),
     queryFn: () =>
-      listNodesApi(zoneId, nodeType, {
+      listNodesApi(warehouseId, nodeType, {
         search: options?.search,
         limit: 200,
       }),
-    enabled: zoneId > 0,
+    enabled: warehouseId > 0,
     staleTime: 60 * 1000,
   });
 };
 
 const invalidateNodes = (
   queryClient: ReturnType<typeof useQueryClient>,
-  zoneId: number,
+  warehouseId: number,
   nodeType: NodeType,
 ) => {
-  queryClient.invalidateQueries({ queryKey: ['nodes', zoneId, nodeType] });
+  queryClient.invalidateQueries({ queryKey: ['nodes', warehouseId, nodeType] });
 };
 
 export const useCreateNode = () => {
@@ -60,11 +60,11 @@ export const useUpdateNode = () => {
   return useMutation<
     WarehouseNode,
     AxiosError<ApiErrorResponse>,
-    { id: number; data: UpdateNodeInput; zoneId: number; nodeType: NodeType }
+    { id: number; data: UpdateNodeInput; warehouseId: number; nodeType: NodeType }
   >({
     mutationFn: ({ id, data }) => updateNodeApi(id, data),
     onSuccess: (node, variables) => {
-      invalidateNodes(queryClient, variables.zoneId, variables.nodeType);
+      invalidateNodes(queryClient, variables.warehouseId, variables.nodeType);
     },
   });
 };
@@ -74,11 +74,11 @@ export const useDeleteNode = () => {
   return useMutation<
     void,
     AxiosError<ApiErrorResponse>,
-    { id: number; zoneId: number; nodeType: NodeType }
+    { id: number; warehouseId: number; nodeType: NodeType }
   >({
     mutationFn: ({ id }) => deleteNodeApi(id),
     onSuccess: (_, variables) => {
-      invalidateNodes(queryClient, variables.zoneId, variables.nodeType);
+      invalidateNodes(queryClient, variables.warehouseId, variables.nodeType);
     },
   });
 };

@@ -2,13 +2,13 @@ import axiosInstance from './axiosInstance';
 import type { CreateNodeInput, NodeType, UpdateNodeInput, WarehouseNode } from '@/types/node';
 
 export const listNodesApi = async (
-  zoneId: number,
+  warehouseId: number,
   nodeType: NodeType,
   options?: { search?: string; skip?: number; limit?: number },
 ): Promise<WarehouseNode[]> => {
   const response = await axiosInstance.get<WarehouseNode[]>('/api/v1/nodes/', {
     params: {
-      zone_id: zoneId,
+      zone_id: warehouseId,
       type: nodeType,
       search: options?.search || undefined,
       skip: options?.skip ?? 0,

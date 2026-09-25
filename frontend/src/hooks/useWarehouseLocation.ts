@@ -23,30 +23,30 @@ import type {
 import { ApiErrorResponse } from '@/types/apiError';
 import { getMockStockedLocatorCodes } from '@/utils/mockMapInventory';
 
-export const warehouseLocationsQueryKey = (zoneId: number) =>
-  ['warehouse_locations', zoneId] as const;
-export const itemStockByZoneQueryKey = (zoneId: number) =>
-  ['item_stock_by_zone', zoneId] as const;
-export const locationStockLabelsQueryKey = (zoneId: number) =>
-  ['location_stock_labels', zoneId] as const;
+export const warehouseLocationsQueryKey = (warehouseId: number) =>
+  ['warehouse_locations', warehouseId] as const;
+export const itemStockByZoneQueryKey = (warehouseId: number) =>
+  ['item_stock_by_zone', warehouseId] as const;
+export const locationStockLabelsQueryKey = (warehouseId: number) =>
+  ['location_stock_labels', warehouseId] as const;
 export const storageLocationsQueryKey = (
-  zoneId: number,
+  warehouseId: number,
   stockStatus: StorageStockStatus,
-) => ['storage_locations', zoneId, stockStatus] as const;
-export const storageRelocateCommandsQueryKey = (zoneId: number) =>
-  ['storage_relocate_commands', zoneId] as const;
+) => ['storage_locations', warehouseId, stockStatus] as const;
+export const storageRelocateCommandsQueryKey = (warehouseId: number) =>
+  ['storage_relocate_commands', warehouseId] as const;
 
-export const useLocationsByZone = (zoneId: number) => {
+export const useLocationsByZone = (warehouseId: number) => {
   return useQuery<WarehouseLocation[], AxiosError<ApiErrorResponse>>({
-    queryKey: warehouseLocationsQueryKey(zoneId),
-    queryFn: () => getAllLocationsByZoneApi(zoneId),
-    enabled: zoneId > 0,
+    queryKey: warehouseLocationsQueryKey(warehouseId),
+    queryFn: () => getAllLocationsByZoneApi(warehouseId),
+    enabled: warehouseId > 0,
     staleTime: 2 * 60 * 1000,
   });
 };
 
-export const useLocationByCodeMap = (zoneId: number) => {
-  const query = useZoneMapStatus(zoneId);
+export const useLocationByCodeMap = (warehouseId: number) => {
+  const query = useZoneMapStatus(warehouseId);
 
   const locationByCode = useMemo(() => {
     const map: Record<string, WarehouseLocation> = {};
@@ -55,7 +55,7 @@ export const useLocationByCodeMap = (zoneId: number) => {
         id: loc.id,
         location_code: loc.location_code,
         node_name: null,
-        zone_id: zoneId,
+        zone_id: warehouseId,
         row: loc.row ?? null,
         column: loc.column ?? null,
         level: loc.level ?? null,
@@ -68,24 +68,24 @@ export const useLocationByCodeMap = (zoneId: number) => {
       };
     }
     return map;
-  }, [query.data, zoneId]);
+  }, [query.data, warehouseId]);
 
   return { ...query, locationByCode };
 };
 
 
-export const useItemStockByZone = (zoneId: number) => {
+export const useItemStockByZone = (warehouseId: number) => {
   return useQuery({
-    queryKey: itemStockByZoneQueryKey(zoneId),
-    queryFn: () => getAllItemStockByZoneApi(zoneId),
-    enabled: zoneId > 0,
+    queryKey: itemStockByZoneQueryKey(warehouseId),
+    queryFn: () => getAllItemStockByZoneApi(warehouseId),
+    enabled: warehouseId > 0,
     staleTime: 30 * 1000,
     refetchOnMount: "always",
   });
 };
 
-export const useLocationStockLabels = (zoneId: number) => {
-  const query = useZoneMapStatus(zoneId);
+export const useLocationStockLabels = (warehouseId: number) => {
+  const query = useZoneMapStatus(warehouseId);
 
   const labelByCode = useMemo(() => {
     const map = new Map<string, LocationStockLabel>();
@@ -113,9 +113,9 @@ export const useLocationStockLabels = (zoneId: number) => {
   return { ...query, data: Array.from(labelByCode.values()), labelByCode };
 };
 
-export const useStockedLocationIds = (zoneId: number) => {
-  const locationsQuery = useLocationsByZone(zoneId);
-  const stockQuery = useItemStockByZone(zoneId);
+export const useStockedLocationIds = (warehouseId: number) => {
+  const locationsQuery = useLocationsByZone(warehouseId);
+  const stockQuery = useItemStockByZone(warehouseId);
 
   const stockedLocationIds = useMemo(() => {
     const ids = new Set<number>();
@@ -157,36 +157,36 @@ export const useLocationDetail = (locationId: number | null, enabled: boolean) =
 };
 
 export const useStorageLocations = (
-  zoneId: number,
+  warehouseId: number,
   stockStatus: StorageStockStatus,
   enabled = true,
 ) => {
   return useQuery<StorageLocation[], AxiosError<ApiErrorResponse>>({
-    queryKey: storageLocationsQueryKey(zoneId, stockStatus),
+    queryKey: storageLocationsQueryKey(warehouseId, stockStatus),
     queryFn: async () => {
       const res = await listStorageLocationsApi({
-        zoneId,
+        warehouseId,
         stockStatus,
         limit: 1000,
       });
       return res.locations;
     },
-    enabled: enabled && zoneId > 0,
+    enabled: enabled && warehouseId > 0,
     staleTime: 30 * 1000,
   });
 };
 
-export const useStorageRelocateCommands = (zoneId: number, enabled = true) => {
+export const useStorageRelocateCommands = (warehouseId: number, enabled = true) => {
   return useQuery<StorageRelocateCommand[], AxiosError<ApiErrorResponse>>({
-    queryKey: storageRelocateCommandsQueryKey(zoneId),
+    queryKey: storageRelocateCommandsQueryKey(warehouseId),
     queryFn: async () => {
       const res = await listStorageRelocateCommandsApi({
-        zoneId,
+        warehouseId,
         limit: 50,
       });
       return res.commands;
     },
-    enabled: enabled && zoneId > 0,
+    enabled: enabled && warehouseId > 0,
     staleTime: 15 * 1000,
   });
 };
@@ -201,24 +201,24 @@ export const useRelocateStorageStock = () => {
   >({
     mutationFn: relocateStorageStockApi,
     onSuccess: (_data, variables) => {
-      const { zone_id: zoneId } = variables;
+      const { zone_id: warehouseId } = variables;
       void queryClient.invalidateQueries({
-        queryKey: storageLocationsQueryKey(zoneId, 'occupied'),
+        queryKey: storageLocationsQueryKey(warehouseId, 'occupied'),
       });
       void queryClient.invalidateQueries({
-        queryKey: storageLocationsQueryKey(zoneId, 'empty'),
+        queryKey: storageLocationsQueryKey(warehouseId, 'empty'),
       });
       void queryClient.invalidateQueries({
-        queryKey: storageRelocateCommandsQueryKey(zoneId),
+        queryKey: storageRelocateCommandsQueryKey(warehouseId),
       });
       void queryClient.invalidateQueries({
-        queryKey: locationStockLabelsQueryKey(zoneId),
+        queryKey: locationStockLabelsQueryKey(warehouseId),
       });
       void queryClient.invalidateQueries({
-        queryKey: itemStockByZoneQueryKey(zoneId),
+        queryKey: itemStockByZoneQueryKey(warehouseId),
       });
       void queryClient.invalidateQueries({
-        queryKey: warehouseLocationsQueryKey(zoneId),
+        queryKey: warehouseLocationsQueryKey(warehouseId),
       });
     },
   });

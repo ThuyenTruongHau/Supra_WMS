@@ -26,7 +26,7 @@ import {
   operatorDesktopClass,
 } from "@/constants/operatorDesktopSizes";
 import { useAppStore } from "@/store/useAppStore";
-import { useZone } from "@/hooks/useZone";
+import { useWarehouses } from "@/hooks/useWarehouse";
 import {
   MOCK_AGV_NODES_LEFT,
   MOCK_AGV_NODES_RIGHT,
@@ -55,9 +55,9 @@ const ROBOT_LEGEND_STYLE = { fontSize: 11 };
 
 export default function OperatorOverviewPage() {
   const selectedWarehouseId = useAppStore((s) => s.selectedWarehouseId);
-  const { data: zones } = useZone();
+  const { data: warehouses } = useWarehouses();
   const warehouseName =
-    zones?.find((z) => z.id === selectedWarehouseId)?.name ?? "Kho được gán";
+    warehouses?.find((z) => z.id === selectedWarehouseId)?.name ?? "Kho được gán";
 
   return (
     <div className="space-y-6">

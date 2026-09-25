@@ -16,7 +16,7 @@ import {
   EnvironmentOutlined,
   SearchOutlined,
 } from "@ant-design/icons";
-import { useZone } from "@/hooks/useZone";
+import { useWarehouses } from "@/hooks/useWarehouse";
 import {
   useGetEntryPoints,
   useUpdateEntryPointStatus,
@@ -46,31 +46,31 @@ function errorDetail(err: unknown, fallback: string) {
 }
 
 export default function EntryPointSettingPage() {
-  const { data: zones, isLoading: isZonesLoading } = useZone();
+  const { data: warehouses, isLoading: isWarehousesLoading } = useWarehouses();
   const { selectedWarehouseId, setSelectedWarehouseId } = useAppStore();
-  const [activeZoneId, setActiveZoneId] = useState<number | undefined>(
+  const [activeWarehouseId, setActiveWarehouseId] = useState<number | undefined>(
     undefined,
   );
 
   useEffect(() => {
-    if (!zones?.length || activeZoneId) return;
-    const fromStore = zones.find((z) => z.id === selectedWarehouseId);
+    if (!warehouses?.length || activeWarehouseId) return;
+    const fromStore = warehouses.find((z) => z.id === selectedWarehouseId);
     const masanZone =
-      zones.find((z) => z.code === "MSC_MASAN") ||
-      zones.find((z) => (z.name || "").toLowerCase().includes("masan"));
-    setActiveZoneId(fromStore?.id ?? masanZone?.id ?? zones[0].id);
-  }, [zones, activeZoneId, selectedWarehouseId]);
+      warehouses.find((z) => z.code === "MSC_MASAN") ||
+      warehouses.find((z) => (z.name || "").toLowerCase().includes("masan"));
+    setActiveWarehouseId(fromStore?.id ?? masanZone?.id ?? warehouses[0].id);
+  }, [warehouses, activeWarehouseId, selectedWarehouseId]);
 
-  const handleZoneChange = (zoneId: number) => {
-    setActiveZoneId(zoneId);
-    setSelectedWarehouseId(zoneId);
+  const handleWarehouseChange = (warehouseId: number) => {
+    setActiveWarehouseId(warehouseId);
+    setSelectedWarehouseId(warehouseId);
   };
 
   const [searchCode, setSearchCode] = useState("");
   const debouncedSearchCode = useDebounce(searchCode, 500);
   const { data: entryPoints, isLoading: isEntryPointsLoading } =
     useGetEntryPoints({
-      zone_id: activeZoneId,
+      zone_id: activeWarehouseId,
       code: debouncedSearchCode.trim() || undefined,
     });
 
@@ -93,8 +93,8 @@ export default function EntryPointSettingPage() {
       message.warning("Vui lòng nhập hoặc chọn mã location.");
       return null;
     }
-    if (!activeZoneId) {
-      message.error("Vui lòng chọn Zone trước.");
+    if (!activeWarehouseId) {
+      message.error("Vui lòng chọn Kho trước.");
       return null;
     }
 
@@ -113,9 +113,9 @@ export default function EntryPointSettingPage() {
         );
         return null;
       }
-      if (location.zone_id !== activeZoneId) {
+      if (location.zone_id !== activeWarehouseId) {
         message.error(
-          `Location '${location.location_code}' không thuộc zone đang chọn.`,
+          `Location '${location.location_code}' không thuộc kho đang chọn.`,
         );
         return null;
       }
@@ -161,8 +161,8 @@ export default function EntryPointSettingPage() {
     warehouse_location_id?: number;
     location_code?: string;
   }) => {
-    if (!activeZoneId) {
-      message.error("Vui lòng chọn Zone trước khi thêm điểm nhập.");
+    if (!activeWarehouseId) {
+      message.error("Vui lòng chọn Kho trước khi thêm điểm nhập.");
       return;
     }
 
@@ -316,13 +316,13 @@ export default function EntryPointSettingPage() {
         extra={
           <div className="flex items-center gap-4">
             <Select
-              loading={isZonesLoading}
-              value={activeZoneId}
-              onChange={handleZoneChange}
-              placeholder="Chọn khu vực..."
+              loading={isWarehousesLoading}
+              value={activeWarehouseId}
+              onChange={handleWarehouseChange}
+              placeholder="Chọn kho..."
               className="w-56"
               options={
-                zones?.map((z) => ({ label: z.name, value: z.id })) || []
+                warehouses?.map((z) => ({ label: z.name, value: z.id })) || []
               }
             />
             <Button
@@ -426,7 +426,7 @@ export default function EntryPointSettingPage() {
                 className="bg-brand-primary"
                 loading={isResolvingLocation}
                 onClick={() => {
-                  if (activeZoneId) setSelectedWarehouseId(activeZoneId);
+                  if (activeWarehouseId) setSelectedWarehouseId(activeWarehouseId);
                   setIsMapModalOpen(true);
                 }}
               >

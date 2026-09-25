@@ -41,7 +41,7 @@ import {
 } from "@/hooks/useItem";
 import { useAppStore } from "@/store/useAppStore";
 import { useNavigate } from "react-router-dom";
-import { useZone } from "@/hooks/useZone";
+import { useWarehouses } from "@/hooks/useWarehouse";
 import { useUnits } from "@/hooks/useUnit";
 import { brand } from "@/components/ui/theme/tokens";
 import { formatQuantity, parseQuantity } from "@/utils/formatQuantity";
@@ -256,11 +256,11 @@ function formatKpi(value?: number | string) {
 
 export default function ItemPage() {
   const { selectedWarehouseId } = useAppStore();
-  const { data: zones = [] } = useZone();
+  const { data: warehouses = [] } = useWarehouses();
   const { data: units = [], isLoading: isUnitsLoading } = useUnits();
   const selectedWarehouseName =
-    zones.find((z) => z.id === selectedWarehouseId)?.name ??
-    zones.find((z) => z.id === selectedWarehouseId)?.code ??
+    warehouses.find((z) => z.id === selectedWarehouseId)?.name ??
+    warehouses.find((z) => z.id === selectedWarehouseId)?.code ??
     "Chưa chọn kho";
   const [searchInput, setSearchInput] = useState("");
   const [submittedQuery, setSubmittedQuery] = useState("");

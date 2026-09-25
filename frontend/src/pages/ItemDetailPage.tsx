@@ -27,7 +27,7 @@ import {
 } from "@/hooks/useItem";
 import type { ItemStock } from "@/types/item";
 import { useAppStore } from "@/store/useAppStore";
-import { useZone } from "@/hooks/useZone";
+import { useWarehouses } from "@/hooks/useWarehouse";
 import { useUnits } from "@/hooks/useUnit";
 import { DetailView } from "@/components/ui/DetailView";
 import dayjs from "dayjs";
@@ -189,7 +189,7 @@ const locationColumns: ColumnsType<ItemStock> = [
 export default function ItemDetailPage() {
   const navigate = useNavigate();
   const { selectedWarehouseId } = useAppStore();
-  const { data: zones = [] } = useZone();
+  const { data: warehouses = [] } = useWarehouses();
   const { data: units = [], isLoading: isUnitsLoading } = useUnits();
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [form] = Form.useForm<ItemFormValues>();
@@ -202,7 +202,7 @@ export default function ItemDetailPage() {
   const stocks = data?.stocks ?? [];
 
   const warehouseName =
-    zones.find((z) => z.id === selectedWarehouseId)?.name ?? "Chưa chọn kho";
+    warehouses.find((z) => z.id === selectedWarehouseId)?.name ?? "Chưa chọn kho";
 
   const handleOpenEdit = () => {
     if (!item) return;

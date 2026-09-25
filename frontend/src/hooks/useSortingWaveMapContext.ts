@@ -30,7 +30,7 @@ import {
 } from "@/utils/outboundStationFeSimulation";
 
 export function useSortingWaveMapContext(
-  zoneId: number,
+  warehouseId: number,
   wave: SortingWave | null,
 ) {
   const sortingStationIds = useMemo(
@@ -54,17 +54,17 @@ export function useSortingWaveMapContext(
     [outboundStationIds],
   );
 
-  const { data: incompleteVehiclesData } = useIncompleteVehicles(zoneId);
+  const { data: incompleteVehiclesData } = useIncompleteVehicles(warehouseId);
   const incompleteVehicles = incompleteVehiclesData?.vehicles ?? [];
-  const { locationByCode } = useLocationByCodeMap(zoneId);
+  const { locationByCode } = useLocationByCodeMap(warehouseId);
   const { data: sortingFillsData } = useSortingStationFills(
-    zoneId,
+    warehouseId,
     wave?.id ?? null,
   );
   const fillStations = sortingFillsData?.stations ?? [];
 
   const feSimulation = useMemo(() => {
-    if (!OUTBOUND_STATION_FE_SIM_ENABLED || zoneId <= 0 || !wave) return null;
+    if (!OUTBOUND_STATION_FE_SIM_ENABLED || warehouseId <= 0 || !wave) return null;
     return buildOutboundStationFeSimulation({
       locationByCode,
       outboundStationIds,
@@ -72,7 +72,7 @@ export function useSortingWaveMapContext(
       incompleteVehicles,
     });
   }, [
-    zoneId,
+    warehouseId,
     wave,
     locationByCode,
     outboundStationIds,
@@ -196,7 +196,7 @@ export function useSortingWaveMapContext(
 
     try {
       const assignment = await getSortingStationAssignmentApi({
-        zoneId,
+        warehouseId,
         locationCode: payload.locationCode,
         locationId: location.id,
       });
