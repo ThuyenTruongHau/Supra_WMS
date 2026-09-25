@@ -13,6 +13,7 @@ import type {
   InboundOrderUpdateRequest,
   InboundReleaseLocationsRequest,
   InboundReleaseLocationsResponse,
+  PurgePackingCacheResponse,
   InboundSuggestAllocationRequest,
   InboundSuggestAllocationResponse,
   QrCodePreviewRequest,
@@ -59,6 +60,14 @@ export const releaseInboundLocationsApi = async (
   );
   return data;
 };
+
+export const purgePackingCacheApi =
+  async (): Promise<PurgePackingCacheResponse> => {
+    const { data } = await axiosInstance.post<PurgePackingCacheResponse>(
+      `${BASE}/purge-packing-cache`,
+    );
+    return data;
+  };
 
 export const createInboundOrderApi = async (
   body: InboundOrderCreateRequest,

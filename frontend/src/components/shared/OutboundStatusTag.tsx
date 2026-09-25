@@ -12,6 +12,8 @@ const STATUS_STYLES: Record<string, string> = {
     "bg-orange-100 text-orange-800 border-orange-200 shadow-sm shadow-orange-200/60",
   pre_completed:
     "bg-amber-100 text-amber-900 border-amber-300 shadow-sm shadow-amber-200/60",
+  double_check_stock:
+    "bg-violet-100 text-violet-900 border-violet-300 shadow-sm shadow-violet-200/60",
   completed:
     "bg-emerald-100 text-emerald-800 border-emerald-200 shadow-sm shadow-emerald-200/60",
   failed:

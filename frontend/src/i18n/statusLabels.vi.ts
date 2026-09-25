@@ -23,6 +23,7 @@ export const STATUS_LABELS_VI: Record<string, string> = {
   "in-progress": "Đang thực hiện",
   in_transit: "Đang vận chuyển",
   pre_completed: "Chờ quét mã",
+  double_check_stock: "Chờ quét lại sản phẩm",
   completed: "Hoàn thành",
   discrepancy: "Chênh lệch",
   failed: "Thất bại",
@@ -35,6 +36,11 @@ export const STATUS_LABELS_VI: Record<string, string> = {
 
   // --- Tồn kho (item stock) ---
   available: "Sẵn sàng",
+  split: "Hàng lẻ",
+  cross_dock_reserved: "Cross-dock giữ chỗ",
+  damaged: "Hư hỏng",
+  quarantine: "Cách ly",
+  at_outbound_station: "Tại trạm xuất",
 
   // --- QR code ---
   stocked: "Đã gán tồn",

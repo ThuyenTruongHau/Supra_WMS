@@ -1,14 +1,26 @@
 import { create } from 'zustand';
 import { SNAPSHOT_MODE, getSnapshotConfig } from '@/snapshot/snapshotConfig';
+import type { UserAccessSummary } from '@/types/auth';
+import { syncWarehouseToUserAccess } from '@/utils/warehouseSession';
 
 interface AuthState {
   access_token: string | null;
   refresh_token: string | null;
   role_canonical: string | null;
   role: string | null;
+  roles: string[];
+  access: UserAccessSummary | null;
   username: string | null;
   isAuthenticated: boolean;
-  setAuth: (access_token: string, refresh_token: string, role_canonical: string, role: string, username: string) => void;
+  setAuth: (
+    access_token: string,
+    refresh_token: string | null,
+    role_canonical: string,
+    role: string,
+    username: string,
+    roles: string[],
+    access: UserAccessSummary,
+  ) => void;
   setToken: (access_token: string, refresh_token?: string) => void;
   clearAuth: () => void;
 }
@@ -19,9 +31,32 @@ type AuthSnapshot = Pick<
   | 'refresh_token'
   | 'role_canonical'
   | 'role'
+  | 'roles'
+  | 'access'
   | 'username'
   | 'isAuthenticated'
 >;
+
+function parseStoredAccess(): UserAccessSummary | null {
+  try {
+    const raw = localStorage.getItem('access_summary');
+    if (!raw) return null;
+    return JSON.parse(raw) as UserAccessSummary;
+  } catch {
+    return null;
+  }
+}
+
+function parseStoredRoles(): string[] {
+  try {
+    const raw = localStorage.getItem('roles');
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as unknown;
+    return Array.isArray(parsed) ? parsed.filter((r): r is string => typeof r === 'string') : [];
+  } catch {
+    return [];
+  }
+}
 
 /**
  * Bản demo offline không có endpoint đăng nhập lúc khởi động, nên auth được
@@ -35,15 +70,26 @@ const initialState = (): AuthSnapshot => {
       refresh_token: auth.refresh_token,
       role_canonical: auth.role_canonical,
       role: auth.role,
+      roles: ['admin'],
+      access: {
+        is_admin: true,
+        warehouse_scope: 'all',
+        warehouses: [],
+        modules: ['inbound', 'outbound', 'stocktake'],
+      },
       username: auth.username,
       isAuthenticated: true,
     };
   }
+  const legacyRole = localStorage.getItem('role');
+  const storedRoles = parseStoredRoles();
   return {
     access_token: localStorage.getItem('access_token'),
     refresh_token: localStorage.getItem('refresh_token'),
     role_canonical: localStorage.getItem('role_canonical'),
-    role: localStorage.getItem('role'),
+    role: legacyRole,
+    roles: storedRoles.length > 0 ? storedRoles : legacyRole ? [legacyRole] : [],
+    access: parseStoredAccess(),
     username: localStorage.getItem('username'),
     isAuthenticated: !!localStorage.getItem('access_token'),
   };
@@ -51,17 +97,36 @@ const initialState = (): AuthSnapshot => {
 
 export const useAuthStore = create<AuthState>((set) => ({
   ...initialState(),
-  setAuth: (access_token, refresh_token, role_canonical, role, username) => {
+  setAuth: (access_token, refresh_token, role_canonical, role, username, roles, access) => {
     localStorage.setItem('access_token', access_token);
-    localStorage.setItem('refresh_token', refresh_token);
     localStorage.setItem('role_canonical', role_canonical);
     localStorage.setItem('role', role);
     localStorage.setItem('username', username);
-    set({ access_token, refresh_token, role_canonical, role, username, isAuthenticated: true });
+    localStorage.setItem('roles', JSON.stringify(roles));
+    localStorage.setItem('access_summary', JSON.stringify(access));
+    if (refresh_token) {
+      localStorage.setItem('refresh_token', refresh_token);
+    } else {
+      localStorage.removeItem('refresh_token');
+    }
+    set({
+      access_token,
+      refresh_token: refresh_token ?? null,
+      role_canonical,
+      role,
+      roles,
+      access,
+      username,
+      isAuthenticated: true,
+    });
+    syncWarehouseToUserAccess(access, roles);
   },
   setToken: (access_token, refresh_token) => {
     localStorage.setItem('access_token', access_token);
-    const updates: Partial<AuthState> = { access_token };
+    const updates: Partial<AuthState> = {
+      access_token,
+      isAuthenticated: !!access_token,
+    };
     if (refresh_token) {
       localStorage.setItem('refresh_token', refresh_token);
       updates.refresh_token = refresh_token;
@@ -73,7 +138,19 @@ export const useAuthStore = create<AuthState>((set) => ({
     localStorage.removeItem('refresh_token');
     localStorage.removeItem('role_canonical');
     localStorage.removeItem('role');
+    localStorage.removeItem('roles');
+    localStorage.removeItem('access_summary');
     localStorage.removeItem('username');
-    set({ access_token: null, refresh_token: null, role_canonical: null, role: null, username: null, isAuthenticated: false });
+    set({
+      access_token: null,
+      refresh_token: null,
+      role_canonical: null,
+      role: null,
+      roles: [],
+      access: null,
+      username: null,
+      isAuthenticated: false,
+    });
+    syncWarehouseToUserAccess(null);
   },
 }));

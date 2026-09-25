@@ -201,6 +201,8 @@ export const useItemAnalyze = (warehouseId: number) => {
 };
 
 const IMPORT_POLL_MS = 1500;
+const IMPORT_POLL_TIMEOUT_MS = 10 * 60 * 1000;
+const IMPORT_PENDING_HINT_MS = 30_000;
 
 async function runImportWithPolling(
   file: File,
@@ -209,9 +211,27 @@ async function runImportWithPolling(
 ): Promise<ItemImportJobStatus> {
   const accepted: ItemImportJobAccepted = await importItemsApi(file, warehouseId);
   let job = await getItemImportJobApi(accepted.job_id);
+  const startedAt = Date.now();
 
   while (job.status === "pending" || job.status === "running") {
-    onProgress?.(job);
+    const elapsed = Date.now() - startedAt;
+    if (elapsed >= IMPORT_POLL_TIMEOUT_MS) {
+      throw new Error(
+        "Import quá thời gian chờ. Vui lòng kiểm tra Celery worker hoặc thử lại.",
+      );
+    }
+
+    const progressJob =
+      job.status === "pending" &&
+      elapsed >= IMPORT_PENDING_HINT_MS &&
+      job.message === "Đang chờ xử lý"
+        ? {
+            ...job,
+            message: "Đang khởi tạo import, vui lòng đợi…",
+          }
+        : job;
+
+    onProgress?.(progressJob);
     await new Promise((resolve) => setTimeout(resolve, IMPORT_POLL_MS));
     job = await getItemImportJobApi(accepted.job_id);
   }

@@ -2,12 +2,18 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Form, Input, Modal, Progress, Checkbox } from "antd";
 import { ScanOutlined } from "@ant-design/icons";
 import { useQuery } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
 import { Button, Select, message } from "@/components/ui";
 import { UnitSearchSelect } from "@/components/shared/UnitSearchSelect";
 import { QrCameraOverlay, QrImageImport } from "@/components/qr-scan";
 import CreateImportModal, {
   type ImportGroupDraft,
 } from "@/pages/components/CreateImportModal";
+import CreateOutboundModal, {
+  type OutboundItemDraft,
+} from "@/pages/components/CreateOutboundModal";
+import { getStockSplitApi } from "@/api/itemStock";
+import type { ItemStockResponse } from "@/types/itemStock";
 import {
   useAssignOrGetItemStock,
   useCacheForPackingUser,
@@ -15,11 +21,15 @@ import {
   useManualInboundScan,
   usePreviewQrCode,
   useAssignPackingToItem,
+  usePurgePackingCache,
 } from "@/hooks/useInboundOrder";
 import { getStaffUsernamesApi } from "@/api/auth";
-import { getItemAvailableUnitsApi } from "@/api/itemUnit";
+import { useInboundBufferLocations } from "@/hooks/useWarehouseMap";
+import { convertQuantityApi, getItemAvailableUnitsApi } from "@/api/itemUnit";
+import { formatQuantity } from "@/utils/formatQuantity";
 import {
   formatUnitSelectOptions,
+  isCaiUnitName,
   suggestQuantityForUnitOption,
   type UnitSelectOption,
 } from "@/utils/itemUnitDisplay";
@@ -34,6 +44,7 @@ import {
   type AssignedItemStock,
   type AssignOrGetItemStockRequest,
   type AssignOrGetItemStockResponse,
+  type AssignPackingToItemRequest,
   type CacheForPackingUserRequest,
   type InboundCallerResponse,
   type QrCodePreviewResponse,
@@ -48,24 +59,51 @@ import { useAppStore } from "@/store/useAppStore";
 import {
   formatAssignedProduct,
   formatAssignAggregatedHint,
-  formatManualCreatedContent,
+  formatFeBatchAdded,
+  formatFeBatchDuplicate,
+  formatFeBatchSendComplete,
+  formatFeBatchSendPartial,
+  formatFeBatchSendProgress,
+  formatFeBatchSubmitHint,
   formatManualLocationReceived,
-  formatManualPendingLocationLabel,
   formatPackerBatchSendProgress,
   formatPackerPendingItemMismatch,
   formatPendingCached,
+  formatPurgePackingCacheSuccess,
   tQrTabletInbound,
 } from "@/i18n/qrTabletInbound.vi";
+import { executeFeBatchSubmit } from "@/pages/qrtablet/feBatchScan/executeFeBatchSubmit";
+import {
+  countBatchSubmitTargets,
+  entryFromPreview,
+  kindForPreview,
+  resolveBatchTargets,
+  totalQueueCount,
+} from "@/pages/qrtablet/feBatchScan/feBatchScanUtils";
+import { useFeBatchScanQueue } from "@/pages/qrtablet/feBatchScan/useFeBatchScanQueue";
 import type { InboundScanFlow } from "@/pages/qrtablet/inboundScanFlow";
 import InboundScanFlowToggle from "@/pages/qrtablet/InboundScanFlowToggle";
+import FeBatchCollectToggle from "@/pages/qrtablet/FeBatchCollectToggle";
 import PackerLocationImportModal from "@/pages/qrtablet/packer/PackerLocationImportModal";
 import { mapLocationStocksToImportGroups } from "@/pages/qrtablet/packer/importMappers";
 import { usePackerLocationImport } from "@/pages/qrtablet/packer/usePackerLocationImport";
+import SplitStockPreviewModal from "@/pages/qrtablet/SplitStockPreviewModal";
 import {
   buildPackerBatchFetchResult,
   type PackerBatchFetchResult,
   validatePackerBatchForAnchor,
 } from "@/pages/qrtablet/packer/packerBatchUtils";
+import {
+  shouldAutoCheckSplitProduct,
+  shouldRunSplitStockGate,
+  shouldShowSplitProductToggle,
+  splitProductSubmitFlag,
+} from "@/config/splitProductConfig";
+import { resolveInboundLotValidation } from "@/config/warehouseMode";
+import {
+  LOT_NUMBER_LEGACY_HINT,
+  validateLotNumber,
+} from "@/utils/lotNumberValidation";
 
 type ScanMode = "idle" | "product" | "location" | "packingAssign";
 
@@ -79,6 +117,11 @@ type PendingLocation = {
   location_id: number;
   location_name: string;
   location_code: string;
+};
+
+type SplitGatePending = {
+  preview: QrCodePreviewResponse;
+  onContinue: () => Promise<void>;
 };
 
 type ItemBatchAnchor = Pick<
@@ -147,6 +190,7 @@ function isTransitPreview(preview: QrCodePreviewResponse | null): boolean {
 }
 
 export default function QrTabletInboundPage() {
+  const navigate = useNavigate();
   const selectedWarehouseId = useAppStore((s) => s.selectedWarehouseId);
   const inboundType = useAppStore((s) => s.inboundType);
   const isAutoWarehouse = inboundType === "auto";
@@ -160,7 +204,21 @@ export default function QrTabletInboundPage() {
   const packingMutation = useCacheForPackingUser();
   const packingStocksMutation = useGetPackingUserStocks();
   const assignPackingToItemMutation = useAssignPackingToItem();
+  const purgePackingCacheMutation = usePurgePackingCache();
   const showPackingAssignScan = isAutoWarehouse && !isPackerMode;
+  const {
+    collectMode,
+    setCollectMode,
+    queues: feBatchQueues,
+    addToQueue: addFeBatchEntry,
+    removeSucceededFromQueue: removeFeBatchSucceeded,
+    sendProgress: feBatchSendProgress,
+    isSending: isFeBatchSending,
+    beginSending: beginFeBatchSending,
+    updateSendProgress: updateFeBatchSendProgress,
+    finishSending: finishFeBatchSending,
+  } = useFeBatchScanQueue(selectedWarehouseId);
+  const feBatchTotalCount = totalQueueCount(feBatchQueues);
 
   const {
     data: staffUsernames = [],
@@ -185,11 +243,28 @@ export default function QrTabletInboundPage() {
   const [unitId, setUnitId] = useState<number | undefined>();
   const [lotNumber, setLotNumber] = useState("");
   const [manufacturingUsers, setManufacturingUsers] = useState<string[]>([]);
+  const [manufacturingMachine, setManufacturingMachine] = useState<
+    string | undefined
+  >();
+  const {
+    data: inboundBufferData,
+    isLoading: inboundBufferLoading,
+  } = useInboundBufferLocations(selectedWarehouseId ?? 0, !!preview);
+  const manufacturingMachineOptions = useMemo(
+    () =>
+      (inboundBufferData?.items ?? []).map((loc) => ({
+        value: loc.location_name ?? loc.location_code,
+        label: `${loc.location_code}${loc.location_name ? ` — ${loc.location_name}` : ""}`,
+      })),
+    [inboundBufferData],
+  );
   const [qcUsers, setQcUsers] = useState<string[]>([]);
   const [packingUser, setPackingUser] = useState<string | undefined>();
   const [cavityNumber, setCavityNumber] = useState<string | undefined>();
   const [unitOptions, setUnitOptions] = useState<UnitSelectOption[]>([]);
   const [itemBaseQuantity, setItemBaseQuantity] = useState(1);
+  const [convertedQuantity, setConvertedQuantity] = useState<number | undefined>();
+  const [convertedUnitName, setConvertedUnitName] = useState<string | undefined>();
   const [formOpen, setFormOpen] = useState(false);
   const [importGroups, setImportGroups] = useState<ImportGroupDraft[]>();
   const [warehouseId, setWarehouseId] = useState<number | undefined>();
@@ -221,6 +296,11 @@ export default function QrTabletInboundPage() {
   >([]);
   const [isAssignAggregatedForm, setIsAssignAggregatedForm] = useState(false);
   const [isSplitProduct, setIsSplitProduct] = useState(false);
+  const [splitPreviewOpen, setSplitPreviewOpen] = useState(false);
+  const [splitStocks, setSplitStocks] = useState<ItemStockResponse[]>([]);
+  const [splitGatePending, setSplitGatePending] =
+    useState<SplitGatePending | null>(null);
+  const [splitOutboundOpen, setSplitOutboundOpen] = useState(false);
 
   const openImportModal = useCallback(
     ({
@@ -273,6 +353,12 @@ export default function QrTabletInboundPage() {
     cancelLocationImport();
     setPreview(null);
     setPendingLocation(null);
+    setSplitPreviewOpen(false);
+    setSplitStocks([]);
+    setSplitGatePending(null);
+    setSplitOutboundOpen(false);
+    setConvertedQuantity(undefined);
+    setConvertedUnitName(undefined);
   }, [selectedWarehouseId, isAutoWarehouse, cancelLocationImport]);
 
   const handleScanFlowChange = useCallback(
@@ -296,15 +382,37 @@ export default function QrTabletInboundPage() {
       setLotNumber("");
       setCavityNumber(undefined);
       setManufacturingUsers([]);
+      setManufacturingMachine(undefined);
       setQcUsers([]);
       setPackingUser(undefined);
       setUnitOptions([]);
       setPendingPackAssign(null);
       setAssignLinkedPacks([]);
       setIsAssignAggregatedForm(false);
+      setConvertedQuantity(undefined);
+      setConvertedUnitName(undefined);
     },
     [cancelLocationImport],
   );
+
+  const handlePurgePackingCache = useCallback(() => {
+    Modal.confirm({
+      title: tQrTabletInbound("purgePackingCacheConfirmTitle"),
+      content: tQrTabletInbound("purgePackingCacheConfirmContent"),
+      okText: tQrTabletInbound("purgePackingCacheButton"),
+      cancelText: tQrTabletInbound("packerCloseButton"),
+      okButtonProps: { danger: true },
+      onOk: async () => {
+        try {
+          const result = await purgePackingCacheMutation.mutateAsync();
+          message.success(formatPurgePackingCacheSuccess(result.deleted));
+        } catch (err) {
+          message.error(getApiErrorMessage(err));
+          throw err;
+        }
+      },
+    });
+  }, [purgePackingCacheMutation]);
 
   const scanPending =
     assignMutation.isPending ||
@@ -313,7 +421,9 @@ export default function QrTabletInboundPage() {
     packingMutation.isPending ||
     packingStocksMutation.isPending ||
     assignPackingToItemMutation.isPending ||
-    isBatchSending;
+    purgePackingCacheMutation.isPending ||
+    isBatchSending ||
+    isFeBatchSending;
   const isPackerItemPicker =
     isPackerMode &&
     !!preview?.qr_code_id &&
@@ -333,6 +443,19 @@ export default function QrTabletInboundPage() {
     !!pendingPackAssign &&
     !!preview?.qr_code_id &&
     isPackQrType(preview.qr_type);
+
+  const splitProductToggleContext = useMemo(
+    () => ({
+      inboundType,
+      previewQrType: preview?.qr_type,
+      isPackerItemPicker,
+    }),
+    [inboundType, isPackerItemPicker, preview?.qr_type],
+  );
+
+  const showSplitProductToggle = shouldShowSplitProductToggle(
+    splitProductToggleContext,
+  );
 
   const batchNewPacksSelected = useMemo(
     () =>
@@ -413,7 +536,15 @@ export default function QrTabletInboundPage() {
   );
 
   const manufacturingReady = isStaffListReady(manufacturingUsers);
-  const lotReady = !!(lotNumber ?? "").trim();
+  const lotValidation = useMemo(
+    () => resolveInboundLotValidation(selectedWarehouseId ?? 0),
+    [selectedWarehouseId],
+  );
+  const lotValidationResult = useMemo(
+    () => validateLotNumber(lotNumber, lotValidation),
+    [lotNumber, lotValidation],
+  );
+  const lotReady = lotValidationResult.valid;
 
   const isPackingFormReady = useMemo(
     () =>
@@ -507,11 +638,54 @@ export default function QrTabletInboundPage() {
     setLotNumber("");
     setCavityNumber(undefined);
     setManufacturingUsers([]);
+    setManufacturingMachine(undefined);
     setQcUsers([]);
     setPackingUser(undefined);
-    setUnitOptions([]);
-    setItemBaseQuantity(1);
+      setUnitOptions([]);
+      setItemBaseQuantity(1);
+      setConvertedQuantity(undefined);
+      setConvertedUnitName(undefined);
   }, []);
+
+  const refreshConvertedQuantity = useCallback(
+    async (itemId: number, nextUnitId: number, nextQuantity: number) => {
+      if (!itemId || !nextUnitId || nextQuantity <= 0) {
+        setConvertedQuantity(undefined);
+        setConvertedUnitName(undefined);
+        return;
+      }
+      try {
+        const converted = await convertQuantityApi({
+          item_id: itemId,
+          unit_id: nextUnitId,
+          quantity: nextQuantity,
+        });
+        setConvertedQuantity(Number(converted.converted_quantity));
+        setConvertedUnitName(converted.base_unit_name);
+      } catch (err) {
+        setConvertedQuantity(undefined);
+        setConvertedUnitName(undefined);
+        message.error(getApiErrorMessage(err));
+      }
+    },
+    [],
+  );
+
+  useEffect(() => {
+    if (!preview?.item_id || unitId == null || quantity <= 0) {
+      setConvertedQuantity(undefined);
+      setConvertedUnitName(undefined);
+      return;
+    }
+    void refreshConvertedQuantity(preview.item_id, unitId, quantity);
+  }, [preview?.item_id, unitId, quantity, refreshConvertedQuantity]);
+
+  const convertedQuantityLabel = useMemo(() => {
+    if (convertedQuantity != null && convertedUnitName) {
+      return `${formatQuantity(convertedQuantity)} ${convertedUnitName}`;
+    }
+    return "—";
+  }, [convertedQuantity, convertedUnitName]);
 
   const applyAggregatedPreviewToForm = useCallback(
     (
@@ -521,12 +695,13 @@ export default function QrTabletInboundPage() {
       setPreview(result);
       setAssignLinkedPacks(aggregated.linked_packs);
       setIsAssignAggregatedForm(true);
-      setIsSplitProduct(Boolean(result.is_split));
+      setIsSplitProduct(isCaiUnitName(aggregated.unit_name));
       setQuantity(aggregated.quantity);
       setItemBaseQuantity(aggregated.quantity);
       setUnitId(aggregated.unit_id);
-      setLotNumber(aggregated.lot_number);
+      setLotNumber((aggregated.lot_number ?? "").trim());
       setCavityNumber(aggregated.cavity_number);
+      setManufacturingMachine(aggregated.manufacturing_machine ?? undefined);
       setManufacturingUsers(
         filterKnownStaff(
           parseStaffList(aggregated.manufacturing_user),
@@ -569,6 +744,7 @@ export default function QrTabletInboundPage() {
         !isPackerMode &&
         isAutoWarehouse &&
         isItemQrType(result.qr_type) &&
+        feBatchQueues.product.length === 0 &&
         (result.linked_packs?.length ?? 0) > 0;
 
       if (shouldAggregate) {
@@ -588,13 +764,13 @@ export default function QrTabletInboundPage() {
       setAssignLinkedPacks([]);
       setIsAssignAggregatedForm(false);
       setPreview(result);
-      setIsSplitProduct(Boolean(result.is_split));
       const defaultQty = result.quantity ?? 1;
       setQuantity(defaultQty);
       setItemBaseQuantity(defaultQty);
       setUnitId(result.unit_id);
-      setLotNumber(result.lot_number ?? "");
+      setLotNumber((result.lot_number ?? "").trim());
       setCavityNumber(result.cavity_number ?? result.cavity_numbers?.[0]);
+      setManufacturingMachine(result.manufacturing_machine ?? undefined);
       setManufacturingUsers(
         filterKnownStaff(parseStaffList(result.manufacturing_user), staffUsernameSet),
       );
@@ -608,27 +784,356 @@ export default function QrTabletInboundPage() {
           ? result.packing_user || undefined
           : undefined,
       );
-      setUnitOptions([
+      const initialUnitOptions: UnitSelectOption[] = [
         {
           value: result.unit_id,
           label: result.unit_name,
           unit_name: result.unit_name,
         },
-      ]);
+      ];
+      setUnitOptions(initialUnitOptions);
+      setIsSplitProduct(
+        shouldAutoCheckSplitProduct(
+          result.qr_type,
+          result.unit_id,
+          initialUnitOptions,
+        ),
+      );
       try {
         const available = await getItemAvailableUnitsApi(result.item_id);
-        setUnitOptions(
-          formatUnitSelectOptions(
-            available.units,
-            available.base_unit_name,
-            defaultQty,
+        const nextUnitOptions = formatUnitSelectOptions(
+          available.units,
+          available.base_unit_name,
+          defaultQty,
+        );
+        setUnitOptions(nextUnitOptions);
+        setIsSplitProduct(
+          shouldAutoCheckSplitProduct(
+            result.qr_type,
+            result.unit_id,
+            nextUnitOptions,
           ),
         );
       } catch {
         // keep base unit option
       }
     },
-    [applyAggregatedPreviewToForm, isAutoWarehouse, isPackerMode, staffUsernameSet],
+    [
+      applyAggregatedPreviewToForm,
+      feBatchQueues.product.length,
+      isAutoWarehouse,
+      isPackerMode,
+      staffUsernameSet,
+    ],
+  );
+
+  const handlePreviewWithSplitGate = useCallback(
+    async (
+      previewResult: QrCodePreviewResponse,
+      continueAssignFlow: () => Promise<void>,
+    ) => {
+      if (!shouldRunSplitStockGate(inboundType, previewResult)) {
+        await continueAssignFlow();
+        return;
+      }
+      try {
+        const split = await getStockSplitApi(previewResult.item_id);
+        if (split.total > 0) {
+          setSplitGatePending({
+            preview: previewResult,
+            onContinue: continueAssignFlow,
+          });
+          setSplitStocks(split.items);
+          setSplitPreviewOpen(true);
+          return;
+        }
+      } catch (err) {
+        message.error(getApiErrorMessage(err));
+      }
+      await continueAssignFlow();
+    },
+    [inboundType],
+  );
+
+  const handleSplitStockClose = useCallback(async () => {
+    const pending = splitGatePending;
+    setSplitPreviewOpen(false);
+    setSplitGatePending(null);
+    setSplitStocks([]);
+    if (pending) {
+      await pending.onContinue();
+    }
+  }, [splitGatePending]);
+
+  const handleSplitStockExport = useCallback(() => {
+    setSplitPreviewOpen(false);
+    setSplitOutboundOpen(true);
+  }, []);
+
+  const handleSplitOutboundSuccess = useCallback(
+    (created?: { id: number }) => {
+      setSplitOutboundOpen(false);
+      setSplitPreviewOpen(false);
+      setSplitGatePending(null);
+      setSplitStocks([]);
+      resetPreview();
+      if (created?.id) {
+        navigate(`/qrtablet/export/${created.id}`);
+      }
+    },
+    [navigate, resetPreview],
+  );
+
+  const handleSplitOutboundCancel = useCallback(() => {
+    setSplitOutboundOpen(false);
+    setSplitPreviewOpen(true);
+  }, []);
+
+  const splitOutboundPrefill = useMemo((): {
+    initialDetails: Record<string, unknown>;
+    initialItems: OutboundItemDraft[];
+  } | null => {
+    const previewResult = splitGatePending?.preview;
+    if (!previewResult?.item_id || previewResult.unit_id == null) {
+      return null;
+    }
+    return {
+      initialDetails: { type: "Lấy lẻ" },
+      initialItems: [
+        {
+          key: "split-prefill",
+          item_id: previewResult.item_id,
+          sku: previewResult.item_sku ?? undefined,
+          item_name: previewResult.item_name ?? undefined,
+          unit_id: previewResult.unit_id,
+          quantity: 1,
+        },
+      ],
+    };
+  }, [splitGatePending?.preview]);
+
+  const showFeBatchSubmitOutcome = useCallback(
+    (
+      result: { succeeded: string[]; failed: { code: string; error: string }[] },
+      onAllSuccess?: () => void,
+    ) => {
+      const total = result.succeeded.length + result.failed.length;
+      if (result.failed.length === 0) {
+        Modal.success({
+          title: formatFeBatchSendComplete(result.succeeded.length),
+          centered: true,
+          onOk: onAllSuccess,
+        });
+        return;
+      }
+      const details = result.failed
+        .map((item) => `${item.code}: ${item.error}`)
+        .join("; ");
+      Modal.warning({
+        title: tQrTabletInbound("feBatchSendPartial"),
+        content: formatFeBatchSendPartial(
+          result.succeeded.length,
+          total,
+          result.failed.length,
+          details,
+        ),
+        centered: true,
+      });
+    },
+    [],
+  );
+
+  const handleFeBatchCollectScan = useCallback(
+    async (scanned: string, resumeScanMode: ScanMode) => {
+      try {
+        const result = await previewMutation.mutateAsync({
+          qr_code: scanned,
+          warehouse_id: selectedWarehouseId,
+        });
+        if (isAssignOrGetLocationStocks(result)) {
+          message.warning(tQrTabletInbound("feBatchLocationRejected"));
+          return;
+        }
+        if (!isAssignOrGetPreview(result) || !result.preview) {
+          message.error(tQrTabletInbound("unhandledResponse"));
+          return;
+        }
+        const kind = kindForPreview(result.preview);
+        if (kind === "transit") {
+          message.warning(tQrTabletInbound("feBatchTransitRejected"));
+          return;
+        }
+        if (kind === "unsupported") {
+          message.warning(tQrTabletInbound("feBatchUnsupportedRejected"));
+          return;
+        }
+        const { added, duplicate, newCount } = addFeBatchEntry(
+          kind,
+          entryFromPreview(result.preview),
+        );
+        if (duplicate) {
+          message.info(formatFeBatchDuplicate(result.preview.code));
+        } else if (added) {
+          message.success(formatFeBatchAdded(result.preview.code, newCount));
+        }
+      } catch (err) {
+        message.error(getApiErrorMessage(err));
+      } finally {
+        setScanMode(resumeScanMode);
+      }
+    },
+    [addFeBatchEntry, previewMutation, selectedWarehouseId],
+  );
+
+  const buildSharedAssignFields = useCallback(() => {
+    return {
+      warehouse_id: selectedWarehouseId,
+      quantity,
+      unit_id: unitId,
+      lot_number: (lotNumber ?? "").trim() || undefined,
+      cavity_number: cavityNumber || undefined,
+      manufacturing_user: selectedStaffList(manufacturingUsers),
+      manufacturing_machine: manufacturingMachine || undefined,
+      qc_user: showQcUser ? selectedStaffList(qcUsers) : undefined,
+      packing_user: isAssignAggregatedForm
+        ? assignAggregatedSubmitFields?.packing_user
+        : showPackingUser
+          ? selectedStaff(packingUser)
+          : undefined,
+      is_split: splitProductSubmitFlag(
+        splitProductToggleContext,
+        isSplitProduct,
+      ),
+    };
+  }, [
+    assignAggregatedSubmitFields,
+    cavityNumber,
+    isAssignAggregatedForm,
+    isSplitProduct,
+    lotNumber,
+    manufacturingMachine,
+    manufacturingUsers,
+    packingUser,
+    qcUsers,
+    quantity,
+    selectedStaff,
+    selectedStaffList,
+    selectedWarehouseId,
+    showPackingUser,
+    showQcUser,
+    splitProductToggleContext,
+    unitId,
+  ]);
+
+  const buildScanPayloadForQr = useCallback(
+    (qrCode: string, locationRaw: string): AssignOrGetItemStockRequest => ({
+      qr_code: qrCode,
+      raw: locationRaw,
+      ...buildSharedAssignFields(),
+    }),
+    [buildSharedAssignFields],
+  );
+
+  const buildManualCachePayload = useCallback(
+    (productCode: string): AssignOrGetItemStockRequest => ({
+      raw: productCode,
+      ...buildSharedAssignFields(),
+    }),
+    [buildSharedAssignFields],
+  );
+
+  const buildPackingCachePayloadForQr = useCallback(
+    (qrCode: string): CacheForPackingUserRequest => ({
+      qr_code: qrCode,
+      quantity: quantity,
+      unit_id: unitId!,
+      lot_number: (lotNumber ?? "").trim(),
+      cavity_number: cavityNumber || undefined,
+      manufacturing_user: selectedStaffList(manufacturingUsers),
+      manufacturing_machine: manufacturingMachine || undefined,
+      qc_user: showQcUser ? selectedStaffList(qcUsers) : undefined,
+      packing_user: selectedStaff(packingUser),
+      is_split: splitProductSubmitFlag(
+        splitProductToggleContext,
+        isSplitProduct,
+      ),
+      warehouse_id: selectedWarehouseId,
+    }),
+    [
+      cavityNumber,
+      isSplitProduct,
+      lotNumber,
+      manufacturingMachine,
+      manufacturingUsers,
+      packingUser,
+      qcUsers,
+      quantity,
+      selectedStaff,
+      selectedStaffList,
+      selectedWarehouseId,
+      showQcUser,
+      splitProductToggleContext,
+      unitId,
+    ],
+  );
+
+  const buildAssignPackToItemPayloadForQr = useCallback(
+    (packCode: string, targetQrId: string): AssignPackingToItemRequest => ({
+      qr_code: packCode,
+      warehouse_id: selectedWarehouseId,
+      target_qr_id: targetQrId,
+      quantity,
+      unit_id: unitId!,
+      lot_number: (lotNumber ?? "").trim(),
+      cavity_number: cavityNumber || undefined,
+      manufacturing_user: selectedStaffList(manufacturingUsers),
+      manufacturing_machine: manufacturingMachine || undefined,
+      qc_user: showQcUser ? selectedStaffList(qcUsers) : undefined,
+      packing_user: showPackingUser ? selectedStaff(packingUser) : undefined,
+      is_split: splitProductSubmitFlag(
+        splitProductToggleContext,
+        isSplitProduct,
+        "pack",
+      ),
+    }),
+    [
+      cavityNumber,
+      isSplitProduct,
+      lotNumber,
+      manufacturingMachine,
+      manufacturingUsers,
+      packingUser,
+      qcUsers,
+      quantity,
+      selectedStaff,
+      selectedStaffList,
+      selectedWarehouseId,
+      showPackingUser,
+      showQcUser,
+      splitProductToggleContext,
+      unitId,
+    ],
+  );
+
+  const feBatchSubmitHint = useMemo(() => {
+    if (!preview) {
+      return null;
+    }
+    const kind = kindForPreview(preview);
+    if (kind !== "product" && kind !== "pack") {
+      return null;
+    }
+    const queue = feBatchQueues[kind];
+    const total = countBatchSubmitTargets(queue, preview.code);
+    if (total <= 1 && queue.length === 0) {
+      return null;
+    }
+    return formatFeBatchSubmitHint(total, queue.length);
+  }, [feBatchQueues, preview]);
+
+  const manualCacheTargetCount = useMemo(
+    () => countBatchSubmitTargets(feBatchQueues.product, preview?.code),
+    [feBatchQueues.product, preview?.code],
   );
 
   const handleAssignPackToItem = useCallback(
@@ -641,53 +1146,87 @@ export default function QrTabletInboundPage() {
         message.warning(tQrTabletInbound("packingFormIncomplete"));
         return;
       }
-      const result = await assignPackingToItemMutation.mutateAsync({
-        qr_code: pendingPackAssign.qr_code,
-        warehouse_id: selectedWarehouseId,
-        target_qr_id: String(itemPreview.qr_code_id),
-        quantity,
-        unit_id: unitId,
-        lot_number: (lotNumber ?? "").trim(),
-        cavity_number: cavityNumber || undefined,
-        manufacturing_user: selectedStaffList(manufacturingUsers),
-        qc_user: showQcUser ? selectedStaffList(qcUsers) : undefined,
-        packing_user: showPackingUser ? selectedStaff(packingUser) : undefined,
-      });
-      if (isAssignOrGetPendingCached(result)) {
-        resetPreview();
-        message.success(tQrTabletInbound("packingAssignSuccess"));
+      const targetQrId = String(itemPreview.qr_code_id);
+      const targets = resolveBatchTargets(
+        feBatchQueues.pack,
+        pendingPackAssign.qr_code,
+      );
+
+      if (targets.length <= 1) {
+        const result = await assignPackingToItemMutation.mutateAsync(
+          buildAssignPackToItemPayloadForQr(pendingPackAssign.qr_code, targetQrId),
+        );
+        if (isAssignOrGetPendingCached(result)) {
+          resetPreview();
+          setPendingPackAssign(null);
+          message.success(tQrTabletInbound("packingAssignSuccess"));
+          return;
+        }
+        message.error(tQrTabletInbound("unhandledResponse"));
         return;
       }
-      message.error(tQrTabletInbound("unhandledResponse"));
+
+      beginFeBatchSending(targets.length);
+      try {
+        const batchResult = await executeFeBatchSubmit({
+          targets,
+          buildPayload: (packCode) =>
+            buildAssignPackToItemPayloadForQr(packCode, targetQrId),
+          mutate: (payload) => assignPackingToItemMutation.mutateAsync(payload),
+          onProgress: updateFeBatchSendProgress,
+        });
+        removeFeBatchSucceeded("pack", batchResult.succeeded);
+        showFeBatchSubmitOutcome(batchResult, () => {
+          resetPreview();
+          setPendingPackAssign(null);
+        });
+        if (batchResult.failed.length === 0) {
+          resetPreview();
+          setPendingPackAssign(null);
+        }
+      } finally {
+        finishFeBatchSending();
+      }
     },
     [
       assignPackingToItemMutation,
-      cavityNumber,
+      beginFeBatchSending,
+      buildAssignPackToItemPayloadForQr,
+      feBatchQueues.pack,
+      finishFeBatchSending,
       isProductFormReady,
-      lotNumber,
-      manufacturingUsers,
-      packingUser,
       pendingPackAssign,
-      qcUsers,
-      quantity,
+      removeFeBatchSucceeded,
       resetPreview,
-      selectedStaff,
-      selectedStaffList,
-      selectedWarehouseId,
-      showPackingUser,
-      showQcUser,
+      showFeBatchSubmitOutcome,
       unitId,
+      updateFeBatchSendProgress,
     ],
   );
 
   const handlePackingAssignScan = useCallback(
     async (scanned: string) => {
+      const shouldResumeCollectScan = collectMode && !pendingPackAssign;
       setScanMode("idle");
+      if (splitPreviewOpen || splitOutboundOpen) {
+        message.warning(tQrTabletInbound("splitStockScanBlocked"));
+        if (shouldResumeCollectScan) {
+          setScanMode("packingAssign");
+        }
+        return;
+      }
       if (!selectedWarehouseId) {
         message.warning(tQrTabletInbound("selectWarehouseFirst"));
+        if (shouldResumeCollectScan) {
+          setScanMode("packingAssign");
+        }
         return;
       }
       try {
+        if (shouldResumeCollectScan) {
+          await handleFeBatchCollectScan(scanned, "packingAssign");
+          return;
+        }
         const lookup = await previewMutation.mutateAsync({
           qr_code: scanned,
           warehouse_id: selectedWarehouseId,
@@ -715,28 +1254,41 @@ export default function QrTabletInboundPage() {
           message.error(tQrTabletInbound("unhandledResponse"));
           return;
         }
-        await applyPreviewResult(packPreview.preview);
-        setPendingPackAssign({
-          qr_code: packPreview.preview.code,
-          qr_code_id: packPreview.preview.qr_code_id,
+        await handlePreviewWithSplitGate(packPreview.preview, async () => {
+          await applyPreviewResult(packPreview.preview);
+          setPendingPackAssign({
+            qr_code: packPreview.preview.code,
+            qr_code_id: packPreview.preview.qr_code_id,
+          });
         });
       } catch (err) {
         message.error(getApiErrorMessage(err));
+        if (shouldResumeCollectScan) {
+          setScanMode("packingAssign");
+        }
       }
     },
     [
       applyPreviewResult,
       assignPackingToItemMutation,
+      collectMode,
       handleAssignPackToItem,
+      handleFeBatchCollectScan,
+      handlePreviewWithSplitGate,
+      pendingPackAssign,
       previewMutation,
       selectedWarehouseId,
+      splitOutboundOpen,
+      splitPreviewOpen,
     ],
   );
 
   const handleAssignOrGetResponse = useCallback(
     async (result: AssignOrGetItemStockResponse) => {
       if (isAssignOrGetPreview(result)) {
-        await applyPreviewResult(result.preview);
+        await handlePreviewWithSplitGate(result.preview, () =>
+          applyPreviewResult(result.preview),
+        );
         return;
       }
       if (isAssignOrGetAssigned(result)) {
@@ -773,7 +1325,7 @@ export default function QrTabletInboundPage() {
       }
       message.error(tQrTabletInbound("unhandledResponse"));
     },
-    [applyPreviewResult, resetPreview],
+    [applyPreviewResult, handlePreviewWithSplitGate, resetPreview],
   );
 
   const handleManualScanResponse = useCallback(
@@ -796,47 +1348,27 @@ export default function QrTabletInboundPage() {
       }
       if (isManualInboundCreated(result)) {
         resetPreview();
+        setPendingLocation(null);
         Modal.success({
           title: tQrTabletInbound("manualCreatedTitle"),
-          content: formatManualCreatedContent(result.order_code),
+          content: result.message,
         });
+        return;
+      }
+      if (isAssignOrGetPendingCached(result)) {
+        message.success(
+          formatPendingCached(
+            result.pending.code,
+            result.pending.part_number,
+          ),
+        );
+        resetPreview();
         return;
       }
       message.error(tQrTabletInbound("unhandledResponse"));
     },
     [applyPreviewResult, resetPreview],
   );
-
-  const buildPackingCachePayload = useCallback((): CacheForPackingUserRequest => {
-    if (!preview) {
-      throw new Error("Missing preview for packing cache");
-    }
-    const payload: CacheForPackingUserRequest = {
-      qr_code: preview.code,
-      warehouse_id: selectedWarehouseId,
-      quantity,
-      unit_id: unitId!,
-      lot_number: (lotNumber ?? "").trim(),
-      cavity_number: cavityNumber || undefined,
-      manufacturing_user: selectedStaffList(manufacturingUsers),
-      qc_user: showQcUser ? selectedStaffList(qcUsers) : undefined,
-      packing_user: selectedStaff(packingUser),
-    };
-    return payload;
-  }, [
-    cavityNumber,
-    lotNumber,
-    manufacturingUsers,
-    packingUser,
-    preview,
-    qcUsers,
-    quantity,
-    selectedStaff,
-    selectedStaffList,
-    selectedWarehouseId,
-    showQcUser,
-    unitId,
-  ]);
 
   const fetchPackerBatchSnapshot = useCallback(
     async (
@@ -868,17 +1400,58 @@ export default function QrTabletInboundPage() {
   );
 
   const cachePackingForm = useCallback(async () => {
-    if (!isPackingFormReady) {
+    if (!isPackingFormReady || !preview) {
       return false;
     }
-    const result = await packingMutation.mutateAsync(buildPackingCachePayload());
-    await handleAssignOrGetResponse(result);
-    return true;
+    const kind = kindForPreview(preview);
+    if (kind !== "product" && kind !== "pack") {
+      return false;
+    }
+    const queue = feBatchQueues[kind];
+    const targets = resolveBatchTargets(queue, preview.code);
+
+    if (targets.length <= 1) {
+      const result = await packingMutation.mutateAsync(
+        buildPackingCachePayloadForQr(preview.code),
+      );
+      await handleAssignOrGetResponse(result);
+      return true;
+    }
+
+    beginFeBatchSending(targets.length);
+    try {
+      const batchResult = await executeFeBatchSubmit({
+        targets,
+        buildPayload: buildPackingCachePayloadForQr,
+        mutate: (payload) => packingMutation.mutateAsync(payload),
+        onProgress: updateFeBatchSendProgress,
+      });
+      removeFeBatchSucceeded(kind, batchResult.succeeded);
+      showFeBatchSubmitOutcome(batchResult, () => resetPreview());
+      if (batchResult.failed.length === 0) {
+        resetPreview();
+      } else if (batchResult.succeeded.length > 0) {
+        message.success(
+          formatFeBatchSendComplete(batchResult.succeeded.length),
+        );
+      }
+      return batchResult.failed.length === 0;
+    } finally {
+      finishFeBatchSending();
+    }
   }, [
-    buildPackingCachePayload,
+    beginFeBatchSending,
+    buildPackingCachePayloadForQr,
+    feBatchQueues,
+    finishFeBatchSending,
     handleAssignOrGetResponse,
     isPackingFormReady,
     packingMutation,
+    preview,
+    removeFeBatchSucceeded,
+    resetPreview,
+    showFeBatchSubmitOutcome,
+    updateFeBatchSendProgress,
   ]);
 
   const submitPackingCache = useCallback(
@@ -1006,6 +1579,7 @@ export default function QrTabletInboundPage() {
         lot_number: aggregated.lot_number,
         cavity_number: aggregated.cavity_number,
         manufacturing_user: aggregated.manufacturing_user,
+        manufacturing_machine: aggregated.manufacturing_machine,
         qc_user: aggregated.qc_user,
         packing_user: user,
       });
@@ -1021,6 +1595,7 @@ export default function QrTabletInboundPage() {
           lot_number: lot,
           cavity_number: pack.cavity_number || undefined,
           manufacturing_user: pack.manufacturing_user!,
+          manufacturing_machine: pack.manufacturing_machine || undefined,
           qc_user: pack.qc_user || undefined,
           packing_user: user,
           relation: itemBatchAnchor.qr_code_id,
@@ -1074,57 +1649,200 @@ export default function QrTabletInboundPage() {
       locationCodeOverride?: string,
     ): AssignOrGetItemStockRequest => {
       if (preview) {
-        return {
-          qr_code: preview.code,
-          raw: locationCodeOverride ?? scanned,
-          warehouse_id: selectedWarehouseId,
-          quantity,
-          unit_id: unitId,
-          lot_number: (lotNumber ?? "").trim() || undefined,
-          cavity_number: cavityNumber || undefined,
-          manufacturing_user: selectedStaffList(manufacturingUsers),
-          qc_user: showQcUser ? selectedStaffList(qcUsers) : undefined,
-          packing_user: isAssignAggregatedForm
-            ? assignAggregatedSubmitFields?.packing_user
-            : showPackingUser
-              ? selectedStaff(packingUser)
-              : undefined,
-          is_split: isSplitProduct || undefined,
-        };
+        return buildScanPayloadForQr(
+          preview.code,
+          locationCodeOverride ?? scanned,
+        );
       }
       return {
         qr_code: scanned,
         warehouse_id: selectedWarehouseId,
       };
     },
+    [buildScanPayloadForQr, preview, selectedWarehouseId],
+  );
+
+  const submitAutoAssignBatch = useCallback(
+    async (locationRaw: string) => {
+      if (!preview) {
+        return;
+      }
+      const targets = resolveBatchTargets(
+        feBatchQueues.product,
+        preview.code,
+      );
+      beginFeBatchSending(targets.length);
+      try {
+        const batchResult = await executeFeBatchSubmit({
+          targets,
+          buildPayload: (qrCode) => buildScanPayloadForQr(qrCode, locationRaw),
+          mutate: (payload) => assignMutation.mutateAsync(payload),
+          onProgress: updateFeBatchSendProgress,
+        });
+        removeFeBatchSucceeded("product", batchResult.succeeded);
+        showFeBatchSubmitOutcome(batchResult, () => resetPreview());
+        if (batchResult.failed.length === 0) {
+          resetPreview();
+        }
+      } finally {
+        finishFeBatchSending();
+      }
+    },
     [
-      assignAggregatedSubmitFields,
-      cavityNumber,
-      isAssignAggregatedForm,
-      isSplitProduct,
-      lotNumber,
-      manufacturingUsers,
-      packingUser,
+      assignMutation,
+      beginFeBatchSending,
+      buildScanPayloadForQr,
+      feBatchQueues.product,
+      finishFeBatchSending,
       preview,
-      qcUsers,
-      quantity,
-      selectedStaff,
-      selectedStaffList,
-      selectedWarehouseId,
-      showPackingUser,
-      showQcUser,
-      unitId,
+      removeFeBatchSucceeded,
+      resetPreview,
+      showFeBatchSubmitOutcome,
+      updateFeBatchSendProgress,
     ],
   );
 
+  const submitManualInboundBatch = useCallback(
+    async (locationCode: string) => {
+      const targets = resolveBatchTargets(
+        feBatchQueues.product,
+        preview?.code,
+      );
+      if (targets.length === 0) {
+        return;
+      }
+      beginFeBatchSending(targets.length);
+      try {
+        const batchResult = await executeFeBatchSubmit({
+          targets,
+          buildPayload: (qrCode) => buildScanPayloadForQr(qrCode, locationCode),
+          mutate: (payload) => manualScanMutation.mutateAsync(payload),
+          onProgress: updateFeBatchSendProgress,
+        });
+        removeFeBatchSucceeded("product", batchResult.succeeded);
+        if (batchResult.failed.length === 0) {
+          resetPreview();
+          setPendingLocation(null);
+          Modal.success({
+            title: tQrTabletInbound("manualCreatedTitle"),
+            content: formatFeBatchSendComplete(batchResult.succeeded.length),
+          });
+          return;
+        }
+        const details = batchResult.failed
+          .map((item) => `${item.code}: ${item.error}`)
+          .join("; ");
+        Modal.warning({
+          title: tQrTabletInbound("feBatchSendPartial"),
+          content: formatFeBatchSendPartial(
+            batchResult.succeeded.length,
+            targets.length,
+            batchResult.failed.length,
+            details,
+          ),
+          centered: true,
+        });
+      } finally {
+        finishFeBatchSending();
+      }
+    },
+    [
+      beginFeBatchSending,
+      buildScanPayloadForQr,
+      feBatchQueues.product,
+      finishFeBatchSending,
+      manualScanMutation,
+      preview,
+      removeFeBatchSucceeded,
+      resetPreview,
+      updateFeBatchSendProgress,
+    ],
+  );
+
+  const handleManualClose = useCallback(async () => {
+    if (!isProductFormReady || !selectedWarehouseId) {
+      return;
+    }
+    const targets = resolveBatchTargets(
+      feBatchQueues.product,
+      preview?.code,
+    );
+    if (targets.length === 0) {
+      return;
+    }
+    beginFeBatchSending(targets.length);
+    try {
+      const batchResult = await executeFeBatchSubmit({
+        targets,
+        buildPayload: buildManualCachePayload,
+        mutate: (payload) => manualScanMutation.mutateAsync(payload),
+        onProgress: updateFeBatchSendProgress,
+      });
+      removeFeBatchSucceeded("product", batchResult.succeeded);
+      if (batchResult.failed.length === 0) {
+        resetPreview();
+        Modal.success({
+          title: formatFeBatchSendComplete(batchResult.succeeded.length),
+          centered: true,
+        });
+        return;
+      }
+      const details = batchResult.failed
+        .map((item) => `${item.code}: ${item.error}`)
+        .join("; ");
+      Modal.warning({
+        title: tQrTabletInbound("feBatchSendPartial"),
+        content: formatFeBatchSendPartial(
+          batchResult.succeeded.length,
+          targets.length,
+          batchResult.failed.length,
+          details,
+        ),
+        centered: true,
+      });
+    } catch (err) {
+      message.error(getApiErrorMessage(err));
+    } finally {
+      finishFeBatchSending();
+    }
+  }, [
+    beginFeBatchSending,
+    buildManualCachePayload,
+    feBatchQueues.product,
+    finishFeBatchSending,
+    isProductFormReady,
+    manualScanMutation,
+    preview?.code,
+    removeFeBatchSucceeded,
+    resetPreview,
+    selectedWarehouseId,
+    updateFeBatchSendProgress,
+  ]);
+
   const handleScan = useCallback(
     async (scanned: string) => {
+      const currentScanMode = scanMode;
+      const shouldResumeCollectScan =
+        collectMode && currentScanMode !== "location";
+      const collectResumeScanMode: ScanMode =
+        currentScanMode === "packingAssign" ? "packingAssign" : "product";
       setScanMode("idle");
+      if (splitPreviewOpen || splitOutboundOpen) {
+        message.warning(tQrTabletInbound("splitStockScanBlocked"));
+        if (shouldResumeCollectScan) {
+          setScanMode(collectResumeScanMode);
+        }
+        return;
+      }
       if (!selectedWarehouseId) {
         message.warning(tQrTabletInbound("selectWarehouseFirst"));
         return;
       }
       try {
+        if (shouldResumeCollectScan) {
+          await handleFeBatchCollectScan(scanned, collectResumeScanMode);
+          return;
+        }
         if (isPackerMode) {
           const result = await previewMutation.mutateAsync({
             qr_code: scanned,
@@ -1136,17 +1854,44 @@ export default function QrTabletInboundPage() {
             return;
           }
           if (isAssignOrGetPreview(result)) {
-            await applyPreviewResult(result.preview);
+            await handlePreviewWithSplitGate(result.preview, () =>
+              applyPreviewResult(result.preview),
+            );
             return;
           }
           message.error(tQrTabletInbound("unhandledResponse"));
           return;
         }
         if (!isAutoWarehouse) {
+          if (currentScanMode === "location" && isProductFormReady) {
+            const batchTargets = resolveBatchTargets(
+              feBatchQueues.product,
+              preview?.code,
+            );
+            if (batchTargets.length > 1) {
+              await submitManualInboundBatch(scanned);
+              return;
+            }
+            if (preview) {
+              const result = await manualScanMutation.mutateAsync(
+                buildScanPayloadForQr(preview.code, scanned),
+              );
+              await handleManualScanResponse(result);
+              return;
+            }
+          }
           const result = await manualScanMutation.mutateAsync(
             buildScanPayload(scanned),
           );
           await handleManualScanResponse(result);
+          return;
+        }
+        if (
+          preview &&
+          isItemQrType(preview.qr_type) &&
+          resolveBatchTargets(feBatchQueues.product, preview.code).length > 1
+        ) {
+          await submitAutoAssignBatch(scanned);
           return;
         }
         const result = await assignMutation.mutateAsync(buildScanPayload(scanned));
@@ -1159,55 +1904,41 @@ export default function QrTabletInboundPage() {
             content: errorMessage,
             centered: true,
           });
-          return;
+        } else {
+          message.error(errorMessage);
         }
-        message.error(errorMessage);
+        if (shouldResumeCollectScan) {
+          setScanMode(collectResumeScanMode);
+        }
       }
     },
     [
       applyPreviewResult,
       assignMutation,
       buildScanPayload,
+      buildScanPayloadForQr,
+      collectMode,
+      feBatchQueues.product,
       handleAssignOrGetResponse,
+      handleFeBatchCollectScan,
       handleManualScanResponse,
+      handlePreviewWithSplitGate,
       isAutoWarehouse,
       isPackerMode,
+      isProductFormReady,
       beginFromLocationScan,
       manualScanMutation,
+      preview,
       previewMutation,
       resetPreview,
       selectedWarehouseId,
+      splitOutboundOpen,
+      scanMode,
+      splitPreviewOpen,
+      submitAutoAssignBatch,
+      submitManualInboundBatch,
     ],
   );
-
-  const handleManualConfirm = useCallback(async () => {
-    if (!pendingLocation || !preview || !isProductFormReady) {
-      return;
-    }
-    if (!selectedWarehouseId) {
-      message.warning(tQrTabletInbound("selectWarehouseFirst"));
-      return;
-    }
-    try {
-      const result = await manualScanMutation.mutateAsync(
-        buildScanPayload(
-          pendingLocation.location_code,
-          pendingLocation.location_code,
-        ),
-      );
-      await handleManualScanResponse(result);
-    } catch (err) {
-      message.error(getApiErrorMessage(err));
-    }
-  }, [
-    buildScanPayload,
-    handleManualScanResponse,
-    isProductFormReady,
-    manualScanMutation,
-    pendingLocation,
-    preview,
-    selectedWarehouseId,
-  ]);
 
   const handleImportDecoded = useCallback(
     async (text: string) => {
@@ -1216,6 +1947,12 @@ export default function QrTabletInboundPage() {
         return;
       }
       try {
+        if (collectMode && scanMode !== "location") {
+          const resumeScanMode: ScanMode =
+            scanMode === "packingAssign" ? "packingAssign" : "product";
+          await handleFeBatchCollectScan(text, resumeScanMode);
+          return;
+        }
         if (isPackerCacheForm && preview && isPackingFormReady) {
           const cached = await cachePackingForm();
           if (!cached) {
@@ -1239,11 +1976,14 @@ export default function QrTabletInboundPage() {
     },
     [
       cachePackingForm,
+      collectMode,
+      handleFeBatchCollectScan,
       handleScan,
       isPackerCacheForm,
       isPackingFormReady,
       preview,
       resetPreview,
+      scanMode,
       selectedWarehouseId,
     ],
   );
@@ -1255,12 +1995,22 @@ export default function QrTabletInboundPage() {
         return;
       }
       try {
+        if (collectMode && !pendingPackAssign) {
+          await handleFeBatchCollectScan(text, "packingAssign");
+          return;
+        }
         await handlePackingAssignScan(text);
       } catch (err) {
         message.error(getApiErrorMessage(err));
       }
     },
-    [handlePackingAssignScan, selectedWarehouseId],
+    [
+      collectMode,
+      handleFeBatchCollectScan,
+      handlePackingAssignScan,
+      pendingPackAssign,
+      selectedWarehouseId,
+    ],
   );
 
   const renderStaffMultiSelect = (
@@ -1397,13 +2147,6 @@ export default function QrTabletInboundPage() {
     preview?.unit_name ??
     "—";
 
-  const showSplitProductToggle =
-    isAutoWarehouse &&
-    !isPackerMode &&
-    !isPackerItemPicker &&
-    !isPackerCacheForm &&
-    !isPendingPackAssignForm;
-
   const renderSplitProductToggle = () =>
     showSplitProductToggle ? (
       <Form.Item className="!mb-4">
@@ -1438,6 +2181,10 @@ export default function QrTabletInboundPage() {
             value={assignAggregatedUnitName}
           />
           <PackerStockField
+            label={tQrTabletInbound("labelConvertedQuantity")}
+            value={convertedQuantityLabel}
+          />
+          <PackerStockField
             label={tQrTabletInbound("labelLot")}
             value={lotNumber}
           />
@@ -1450,6 +2197,10 @@ export default function QrTabletInboundPage() {
           <PackerStockField
             label={tQrTabletInbound("labelManufacturing")}
             value={serializeStaffList(manufacturingUsers)}
+          />
+          <PackerStockField
+            label={tQrTabletInbound("labelManufacturingMachine")}
+            value={manufacturingMachine}
           />
           {showQcUser ? (
             <PackerStockField
@@ -1578,6 +2329,10 @@ export default function QrTabletInboundPage() {
                 value={aggregatedBatchPreview.manufacturing_user}
               />
               <PackerStockField
+                label={tQrTabletInbound("labelManufacturingMachine")}
+                value={aggregatedBatchPreview.manufacturing_machine}
+              />
+              <PackerStockField
                 label={tQrTabletInbound("labelQc")}
                 value={aggregatedBatchPreview.qc_user}
               />
@@ -1671,23 +2426,64 @@ export default function QrTabletInboundPage() {
   };
 
   return (
-    <div className="relative flex min-h-[70vh] flex-col items-center justify-center px-4 py-8">
-      {isAutoWarehouse && (
-        <div className="absolute right-4 top-4 z-10 sm:right-6">
+    <div className="mx-auto flex w-full max-w-xl flex-col gap-4 px-1 pb-8 pt-1 md:gap-5">
+      <div className="sticky top-0 z-10 flex flex-row flex-wrap items-center justify-end gap-x-5 gap-y-2 rounded-xl border border-stripe-hairline bg-white px-4 py-3 shadow-sm">
+        <FeBatchCollectToggle
+          value={collectMode}
+          queueCount={feBatchTotalCount}
+          disabled={isFeBatchSending}
+          onChange={setCollectMode}
+        />
+        {isAutoWarehouse ? (
           <InboundScanFlowToggle
             value={scanFlow}
             onChange={handleScanFlowChange}
           />
+        ) : null}
+        {isAutoWarehouse && isPackerMode ? (
+          <Button
+            type="default"
+            danger
+            size="small"
+            loading={purgePackingCacheMutation.isPending}
+            disabled={scanPending && !purgePackingCacheMutation.isPending}
+            onClick={handlePurgePackingCache}
+          >
+            {tQrTabletInbound("purgePackingCacheButton")}
+          </Button>
+        ) : null}
+      </div>
+      {isFeBatchSending && feBatchSendProgress ? (
+        <div className="rounded-xl border border-stripe-hairline bg-white px-4 py-3 shadow-sm">
+          <p className="mb-2 text-sm text-stripe-ink-mute">
+            {formatFeBatchSendProgress(
+              feBatchSendProgress.current,
+              feBatchSendProgress.total,
+            )}
+          </p>
+          <Progress
+            percent={Math.round(
+              (feBatchSendProgress.current / feBatchSendProgress.total) * 100,
+            )}
+            showInfo={false}
+          />
         </div>
-      )}
+      ) : null}
 
-      <div className="w-full max-w-xl rounded-2xl border border-stripe-hairline bg-white p-6 shadow-sm md:p-8">
+      <div className="w-full rounded-2xl border border-stripe-hairline bg-white p-6 shadow-sm md:p-8">
         <h1 className="mb-2 text-center text-2xl font-extrabold text-brand-dark md:text-3xl">
           {tQrTabletInbound("pageTitle")}
         </h1>
         <p className="mb-8 text-center text-base text-stripe-ink-mute">
           {tQrTabletInbound("pageSubtitle")}
         </p>
+        {collectMode ? (
+          <p className="mb-4 rounded-lg bg-brand-primary/10 px-3 py-2 text-center text-sm text-brand-dark">
+            {isAutoWarehouse
+              ? tQrTabletInbound("feBatchCollectHint")
+              : tQrTabletInbound("manualFeBatchCollectHint")}
+          </p>
+        ) : null}
         <div className="flex flex-col gap-3">
           <div
             className={
@@ -1703,7 +2499,9 @@ export default function QrTabletInboundPage() {
               loading={scanPending}
               onClick={() => setScanMode("product")}
             >
-              {tQrTabletInbound("startScan")}
+              {showPackingAssignScan
+                ? tQrTabletInbound("assignFinishedProductScan")
+                : tQrTabletInbound("startScan")}
             </Button>
             {showPackingAssignScan && (
               <Button
@@ -1713,7 +2511,7 @@ export default function QrTabletInboundPage() {
                 loading={scanPending}
                 onClick={openPackingAssignScan}
               >
-                {tQrTabletInbound("startPackingScan")}
+                {tQrTabletInbound("assignPackingSlipScan")}
               </Button>
             )}
           </div>
@@ -1801,7 +2599,12 @@ export default function QrTabletInboundPage() {
       >
         {preview && (
           <Form layout="vertical" className="pt-2">
-            <Form.Item label={tQrTabletInbound("labelProduct")}>
+            {feBatchSubmitHint ? (
+              <p className="mb-4 rounded-lg bg-brand-primary/10 px-3 py-2 text-sm text-brand-dark">
+                {feBatchSubmitHint}
+              </p>
+            ) : null}
+            <Form.Item label={tQrTabletInbound("labelProduct")} required>
               <Input
                 disabled
                 value={`${preview.item_sku}${preview.item_name ? ` — ${preview.item_name}` : ""}`}
@@ -1867,6 +2670,13 @@ export default function QrTabletInboundPage() {
                       options={unitOptions}
                       onChange={(val, option) => {
                         setUnitId(val);
+                        setIsSplitProduct(
+                          shouldAutoCheckSplitProduct(
+                            preview?.qr_type,
+                            val,
+                            unitOptions,
+                          ),
+                        );
                         const suggested = suggestQuantityForUnitOption(
                           val,
                           unitOptions,
@@ -1877,6 +2687,12 @@ export default function QrTabletInboundPage() {
                         }
                       }}
                     />
+                  </Form.Item>
+                  <Form.Item
+                    label={tQrTabletInbound("labelConvertedQuantity")}
+                    className="!mb-0 col-span-2"
+                  >
+                    <Input disabled value={convertedQuantityLabel} />
                   </Form.Item>
                 </div>
                 {requiresCavity && (
@@ -1892,7 +2708,22 @@ export default function QrTabletInboundPage() {
                     />
                   </Form.Item>
                 )}
-                <Form.Item label={tQrTabletInbound("labelLot")} required>
+                <Form.Item
+                  label={tQrTabletInbound("labelLot")}
+                  required
+                  validateStatus={
+                    (lotNumber ?? "").trim() && !lotValidationResult.valid
+                      ? "error"
+                      : undefined
+                  }
+                  help={
+                    (lotNumber ?? "").trim() && !lotValidationResult.valid
+                      ? lotValidationResult.message
+                      : isAutoWarehouse
+                        ? LOT_NUMBER_LEGACY_HINT
+                        : undefined
+                  }
+                >
                   <Input
                     value={lotNumber}
                     onChange={(e) => setLotNumber(e.target.value)}
@@ -1904,6 +2735,22 @@ export default function QrTabletInboundPage() {
                   setManufacturingUsers,
                   requiresProductStaffFields,
                 )}
+                <Form.Item label={tQrTabletInbound("labelManufacturingMachine")}>
+                  <Select
+                    showSearch
+                    allowClear
+                    className="w-full"
+                    loading={inboundBufferLoading}
+                    options={manufacturingMachineOptions}
+                    placeholder={tQrTabletInbound("placeholderManufacturingMachine")}
+                    value={manufacturingMachine}
+                    onChange={(val) =>
+                      setManufacturingMachine(
+                        typeof val === "string" ? val : undefined,
+                      )
+                    }
+                  />
+                </Form.Item>
                 {showQcUser &&
                   renderStaffMultiSelect(
                     tQrTabletInbound("labelQc"),
@@ -1960,15 +2807,34 @@ export default function QrTabletInboundPage() {
                         onDecoded={handlePackingAssignImportDecoded}
                       />
                     </>
+                  ) : !isAutoWarehouse ? (
+                    <>
+                      <div className="flex gap-3">
+                        <Button
+                          variant="secondary"
+                          className="!h-12 flex-1 !text-lg"
+                          loading={isFeBatchSending}
+                          disabled={
+                            !isProductFormReady || manualCacheTargetCount === 0
+                          }
+                          onClick={() => void handleManualClose()}
+                        >
+                          {tQrTabletInbound("manualCloseButton")}
+                        </Button>
+                        <Button
+                          variant="primary"
+                          className="!h-12 flex-1 !text-lg"
+                          loading={scanPending}
+                          disabled={!isProductFormReady}
+                          onClick={() => setScanMode("location")}
+                        >
+                          {tQrTabletInbound("scanLocationButton")}
+                        </Button>
+                      </div>
+                      <QrImageImport onDecoded={handleImportDecoded} />
+                    </>
                   ) : (
                     <>
-                      {!isAutoWarehouse && pendingLocation && (
-                        <p className="rounded-lg bg-brand-primary/10 px-3 py-2 text-sm text-brand-dark">
-                          {formatManualPendingLocationLabel(
-                            pendingLocation.location_name,
-                          )}
-                        </p>
-                      )}
                       <Button
                         variant="primary"
                         className="!h-12 w-full !text-lg"
@@ -1978,17 +2844,6 @@ export default function QrTabletInboundPage() {
                       >
                         {tQrTabletInbound("scanLocationButton")}
                       </Button>
-                      {!isAutoWarehouse && pendingLocation && (
-                        <Button
-                          variant="secondary"
-                          className="!h-12 w-full !text-lg"
-                          loading={manualScanMutation.isPending}
-                          disabled={!isProductFormReady}
-                          onClick={() => void handleManualConfirm()}
-                        >
-                          {tQrTabletInbound("manualConfirmButton")}
-                        </Button>
-                      )}
                       <QrImageImport onDecoded={handleImportDecoded} />
                     </>
                   )}
@@ -2043,6 +2898,28 @@ export default function QrTabletInboundPage() {
           message.success(tQrTabletInbound("inboundComplete"));
         }}
       />
+
+      <SplitStockPreviewModal
+        open={splitPreviewOpen}
+        preview={splitGatePending?.preview ?? null}
+        stocks={splitStocks}
+        onClose={() => {
+          void handleSplitStockClose().catch((err) =>
+            message.error(getApiErrorMessage(err)),
+          );
+        }}
+        onExportSplit={handleSplitStockExport}
+      />
+
+      {splitOutboundPrefill && (
+        <CreateOutboundModal
+          open={splitOutboundOpen}
+          initialDetails={splitOutboundPrefill.initialDetails}
+          initialItems={splitOutboundPrefill.initialItems}
+          onCancel={handleSplitOutboundCancel}
+          onSuccess={handleSplitOutboundSuccess}
+        />
+      )}
     </div>
   );
 }

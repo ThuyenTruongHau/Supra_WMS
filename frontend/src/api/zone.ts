@@ -50,6 +50,7 @@ export const assignZoneLocationsApi = async (
   const { data } = await axiosInstance.put<{ assigned: number }>(
     `${ZONES_BASE}/${zoneId}/locations`,
     { location_ids: locationIds },
+    { timeout: 120_000 },
   );
   return data;
 };

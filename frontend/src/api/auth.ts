@@ -4,7 +4,6 @@ import type {
   LoginApiResponse,
   LoginRequest,
   LoginResponse,
-  RefreshResponse,
   UpdateUserInput,
   User,
   UserListResponse,
@@ -20,25 +19,19 @@ export const loginApi = async (data: LoginRequest): Promise<LoginResponse> => {
     user.roles?.find((r) => r.name === 'admin')?.name ??
     user.roles?.[0]?.name ??
     '';
+  const roleNames = user.roles?.map((r) => r.name) ?? [];
   return {
     access_token: tokens.access_token,
-    refresh_token: tokens.refresh_token ?? '',
+    refresh_token: tokens.refresh_token ?? null,
     token_type: tokens.token_type ?? 'bearer',
     role: roleName,
     role_canonical: roleName,
     user,
+    roles: roleNames,
   };
 };
 
-export const refreshApi = async (
-  refresh_token: string,
-): Promise<RefreshResponse> => {
-  const response = await axiosInstance.post<RefreshResponse>(
-    '/api/v1/auth/refresh',
-    { refresh_token },
-  );
-  return response.data;
-};
+export { refreshAccessTokenApi as refreshApi } from './authRefresh';
 
 export const getUsersApi = async (params?: {
   page?: number;
@@ -82,6 +75,7 @@ export const createUserApi = async (data: CreateUserInput): Promise<User> => {
     email: string;
     roles: User['roles'];
     warehouses?: User['warehouses'];
+    access: User['access'];
     is_active: boolean;
   }>('/api/v1/auth/signup', data);
   const body = response.data;
@@ -91,6 +85,7 @@ export const createUserApi = async (data: CreateUserInput): Promise<User> => {
     email: body.email,
     roles: body.roles ?? [],
     warehouses: body.warehouses ?? [],
+    access: body.access,
     is_active: body.is_active,
     created_at: new Date().toISOString(),
   };

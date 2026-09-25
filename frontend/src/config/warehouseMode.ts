@@ -1,3 +1,5 @@
+import type { LotNumberValidationOptions } from "@/utils/lotNumberValidation";
+
 export type WarehouseOperationType = "manual" | "auto";
 
 function parseWarehouseIds(raw: string | undefined): number[] {
@@ -33,6 +35,15 @@ export let OUTBOUND_TYPE: WarehouseOperationType = "auto";
 
 export function resolveInboundType(warehouseId: number): WarehouseOperationType {
   return INBOUND_MANUAL_WAREHOUSE_IDS.includes(warehouseId) ? "manual" : "auto";
+}
+
+/** Kho manual: FE chỉ bắt buộc nhập; kho auto: FE kiểm tra định dạng legacy. BE luôn chấp nhận raw nếu client gửi. */
+export function resolveInboundLotValidation(
+  warehouseId: number,
+): LotNumberValidationOptions {
+  return resolveInboundType(warehouseId) === "manual"
+    ? { required: true, format: "any" }
+    : { required: true, format: "legacy" };
 }
 
 export function resolveOutboundType(

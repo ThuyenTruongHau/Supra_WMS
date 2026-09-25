@@ -16,6 +16,7 @@ from app.modules.warehouse.transaction_history.history_schema import (
     HistoryCreate,
     HistoryResponse,
     HistoryListResponse,
+    TransactionHistoryLookupResponse,
 )
 
 router = APIRouter(tags=["Transaction_History"])
@@ -114,4 +115,30 @@ def get_history(history_id: int, db: DbSession):
 def list_histories(db: DbSession, page: int = Query(1, ge=1), page_size: int = Query(20, ge=1, le=100), inbound_order_id: Optional[int] = Query(None), outbound_order_id: Optional[int] = Query(None)):
     return history_service.list_histories(db, page=page, page_size=page_size, inbound_order_id=inbound_order_id, outbound_order_id=outbound_order_id)
 
+
+@router.get(
+    "/transaction-history",
+    response_model=TransactionHistoryLookupResponse,
+    dependencies=[Depends(require_permission("transaction:read"))],
+)
+def get_transaction_history(
+    db: DbSession,
+    qr_code: Optional[str] = Query(None, min_length=1),
+    order_code: Optional[str] = Query(None, min_length=1),
+):
+    if qr_code and order_code is not None:
+        raise HTTPException(
+            status_code=400,
+            detail="Provide either qr_code or order_code, not both",
+        )
+    try:
+        return history_service.get_transaction_history(
+            db,
+            qr_code=qr_code,
+            order_code=order_code,
+        )
+    except ValueError as e:
+        message = str(e)
+        status_code = 404 if "not found" in message.lower() else 400
+        raise HTTPException(status_code=status_code, detail=message) from e
 

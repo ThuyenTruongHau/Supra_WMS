@@ -54,3 +54,19 @@ export function findUnitSelectOption(
 ): UnitSelectOption | undefined {
   return options.find((option) => option.value === unitId);
 }
+
+/** Đơn vị cái (piece) — dùng cho tự bật "lấy lẻ" trên phiếu quét. */
+export function isCaiUnitName(unitName: string | undefined | null): boolean {
+  if (!unitName) return false;
+  const normalized = unitName.trim().toLowerCase();
+  return normalized === "cái" || normalized === "cai";
+}
+
+export function shouldEnableSplitProduct(
+  unitId: number | undefined,
+  options: UnitSelectOption[],
+): boolean {
+  if (unitId == null) return false;
+  const option = findUnitSelectOption(options, unitId);
+  return isCaiUnitName(option?.unit_name);
+}

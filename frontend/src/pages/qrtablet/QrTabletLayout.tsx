@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { Outlet } from "react-router-dom";
 import Header from "@/components/layout/Header";
 import { configureAppMessage } from "@/components/ui/message";
+import QrTabletHelpButton from "./QrTabletHelpButton";
 import QrTabletSidebar from "./QrTabletSidebar";
 
 /**
@@ -34,6 +35,8 @@ export default function QrTabletLayout() {
           <Outlet />
         </main>
       </div>
+
+      <QrTabletHelpButton />
     </div>
   );
 }

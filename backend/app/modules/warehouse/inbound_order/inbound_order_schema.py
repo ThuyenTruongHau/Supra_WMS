@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Optional, List, Union
+from typing import Any, Literal, Optional, List, Union
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from app.modules.warehouse.lot_number_utils import (
+    apply_lot_display_fields,
     format_lot_number_display,
+    format_lot_value_for_display,
     normalize_lot_number as _normalize_lot_number,
     resolve_lot_number_fields as _resolve_lot_number_fields,
 )
@@ -52,6 +54,18 @@ class InboundSuggestAllocationItemResponse(BaseModel):
     lot_number: Optional[str] = None
     details: dict[str, Any] = Field(default_factory=dict)
 
+    @model_validator(mode="after")
+    def set_lot_display(self) -> "InboundSuggestAllocationItemResponse":
+        disp_from, disp_to, disp_lot = apply_lot_display_fields(
+            lot_number_from=self.lot_number_from,
+            lot_number_to=self.lot_number_to,
+            lot_number=self.lot_number,
+        )
+        self.lot_number_from = disp_from
+        self.lot_number_to = disp_to
+        self.lot_number = disp_lot
+        return self
+
 
 class SuggestAdditionalResponse(BaseModel):
     detail_type: str
@@ -71,6 +85,13 @@ class InboundReleaseLocationsRequest(BaseModel):
 class InboundReleaseLocationsResponse(BaseModel):
     deleted: int
 
+
+class PurgePackingCacheResponse(BaseModel):
+    deleted: int
+    scope: Literal["pending"] = "pending"
+    message: str = "Inbound pending packing cache purged"
+
+
 class AssignOrGetItemStockRequest(BaseModel):
     qr_code: Optional[str] = Field(None, min_length=1, max_length=50)
     location_id: Optional[int] = Field(None, gt=0)
@@ -81,6 +102,7 @@ class AssignOrGetItemStockRequest(BaseModel):
     lot_number: Optional[str] = Field(None, max_length=50)
     cavity_number: Optional[str] = Field(None, max_length=50)
     manufacturing_user: Optional[str] = Field(None, max_length=100)
+    manufacturing_machine: Optional[str] = Field(None, max_length=50)
     qc_user: Optional[str] = Field(None, max_length=100)
     packing_user: Optional[str] = Field(None, max_length=100)
     is_split: Optional[bool] = Field(
@@ -90,11 +112,16 @@ class AssignOrGetItemStockRequest(BaseModel):
 
     @model_validator(mode="after")
     def require_fields_when_assign(self) -> "AssignOrGetItemStockRequest":
-        has_location = self.location_id is not None or bool(self.raw)  
+        has_location = self.location_id is not None or bool(self.raw)
         if self.qr_code is not None and has_location:
             if self.quantity is None or self.unit_id is None:
                 raise ValueError(
                     "quantity and unit_id are required when assigning a QR code to a location"
+                )
+        if self.qr_code is None and self.raw is not None:
+            if self.quantity is None or self.unit_id is None:
+                raise ValueError(
+                    "quantity and unit_id are required when caching manual QR"
                 )
         return self
 
@@ -118,10 +145,17 @@ class QrCodePreviewResponse(BaseModel):
     cavity_number: Optional[str] = None
     qr_type: str = "item"
     manufacturing_user: Optional[str] = None
+    manufacturing_machine: Optional[str] = None
     qc_user: Optional[str] = None
     packing_user: Optional[str] = None
     is_split: bool = False
     linked_packs: list["AssignedItemStockResponse"] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def set_lot_display(self) -> "QrCodePreviewResponse":
+        if self.lot_number:
+            self.lot_number = format_lot_value_for_display(self.lot_number) or self.lot_number
+        return self
 
 
 class AssignItemStockMetaResponse(BaseModel):
@@ -149,12 +183,17 @@ class CacheForPackingUserRequest(BaseModel):
     lot_number: str = Field(..., min_length=1, max_length=50)
     cavity_number: Optional[str] = Field(None, max_length=50)
     manufacturing_user: Optional[str] = Field(None, max_length=100)
+    manufacturing_machine: Optional[str] = Field(None, max_length=50)
     qc_user: Optional[str] = Field(None, max_length=100)
     packing_user: Optional[str] = Field(None, max_length=100)
     relation: Optional[int] = Field(
         None,
         gt=0,
         description="Parent item qr_code_id when linking pack to cached item",
+    )
+    is_split: Optional[bool] = Field(
+        None,
+        description="When true, cache stock as Lấy lẻ (split) for inbound detail",
     )
 
 
@@ -172,8 +211,13 @@ class AssignPackingToItemRequest(BaseModel):
     lot_number: Optional[str] = Field(None, max_length=50)
     cavity_number: Optional[str] = Field(None, max_length=50)
     manufacturing_user: Optional[str] = Field(None, max_length=100)
+    manufacturing_machine: Optional[str] = Field(None, max_length=50)
     qc_user: Optional[str] = Field(None, max_length=100)
     packing_user: Optional[str] = Field(None, max_length=100)
+    is_split: Optional[bool] = Field(
+        None,
+        description="When true, cache stock as Lấy lẻ (split) for inbound detail",
+    )
 
     @model_validator(mode="after")
     def require_fields_when_assign(self) -> "AssignPackingToItemRequest":
@@ -211,6 +255,8 @@ class AssignOrGetItemStockResponse(BaseModel):
     location_code: Optional[str] = None
     warehouse_id: Optional[int] = None
     order_code: Optional[str] = None
+    success: Optional[bool] = None
+    message: Optional[str] = None
 
 
 class AssignedItemStockResponse(BaseModel):
@@ -230,6 +276,7 @@ class AssignedItemStockResponse(BaseModel):
     qr_type: Optional[str] = None
     cavity_number: Optional[str] = None
     manufacturing_user: Optional[str] = None
+    manufacturing_machine: Optional[str] = None
     qc_user: Optional[str] = None
     packing_user: Optional[str] = None
     stock_level: Optional[int] = None
@@ -242,6 +289,18 @@ class AssignedItemStockResponse(BaseModel):
         ),
     )
 
+    @model_validator(mode="after")
+    def set_lot_display(self) -> "AssignedItemStockResponse":
+        disp_from, disp_to, disp_lot = apply_lot_display_fields(
+            lot_number_from=self.lot_number,
+            lot_number_to=self.lot_number_to,
+            lot_number=self.lot_number,
+        )
+        self.lot_number = disp_lot
+        self.lot_number_to = disp_to
+        return self
+
+
 class InboundOrderAllocationCreate(BaseModel):
     item_id: int = Field(..., gt=0)
     quantity: int = Field(..., gt=0)
@@ -253,6 +312,7 @@ class InboundOrderAllocationCreate(BaseModel):
     expiry_date: Optional[str] = None
     cavity_number: Optional[str] = None
     manufacturing_user: Optional[str] = None
+    manufacturing_machine: Optional[str] = None
     qc_user: Optional[str] = None
     packing_user: Optional[str] = None
 
@@ -329,6 +389,18 @@ class InboundOrderAllocationResponse(BaseModel):
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
     model_config = ConfigDict(from_attributes=True)
+
+    @model_validator(mode="after")
+    def set_lot_display(self) -> "InboundOrderAllocationResponse":
+        disp_from, disp_to, disp_lot = apply_lot_display_fields(
+            lot_number_from=self.lot_number_from,
+            lot_number_to=self.lot_number_to,
+            lot_number=self.lot_number,
+        )
+        self.lot_number_from = disp_from
+        self.lot_number_to = disp_to
+        self.lot_number = disp_lot
+        return self
 
 
 class InboundOrderDetailResponse(BaseModel):

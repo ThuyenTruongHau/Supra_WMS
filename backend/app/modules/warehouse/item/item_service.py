@@ -5,11 +5,12 @@ from decimal import Decimal
 from typing import Optional
 import json
 import math
+import threading
 import uuid
 from pathlib import Path
 
 from fastapi import UploadFile
-from sqlalchemy import Date, case, cast, func
+from sqlalchemy import Date, Numeric, case, cast, func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -40,20 +41,23 @@ from app.modules.warehouse.item_stock.item_stock_model import (
     positive_stock_quantity_criterion,
 )
 from app.modules.warehouse.location_map.location_model import Location
-from app.modules.warehouse.item.item_celery_task import import_item_masan_task
+from app.core.database import db_session
+from app.modules.warehouse.item.item_celery_task import import_item_masan_upsert_task
 from app.modules.warehouse.item.item_import_utils import (
     get_import_file_path,
     get_import_job,
     import_item_storage_name,
+    mark_import_job_failed,
     new_import_job_payload,
+    run_import_item_staging_phase,
     save_import_item_file,
     save_import_job,
+    update_import_job,
 )
 from app.core.logger import get_logger
 
 logger = get_logger("main")
 
-NEARLY_OUTDATED_DAYS = 30
 RECENT_QR_CODE_DAYS = 2
 MAX_QR_PRINT_QUANTITY = 50
 ALLOWED_QR_TYPES = frozenset({"item", "transit", "pack"})
@@ -133,6 +137,38 @@ def get_item_by_id(
     )
 
 
+def compute_total_inventory_value(db: Session, warehouse_id: int) -> Decimal:
+    price_text = func.nullif(Item.details.op("->>")("price"), "")
+    price_expr = cast(
+        func.nullif(func.replace(price_text, ",", ""), ""),
+        Numeric(18, 2),
+    )
+    total_inventory_value = (
+        db.query(
+            func.coalesce(
+                func.sum(ItemStock.quantity * func.coalesce(price_expr, 0)),
+                0,
+            )
+        )
+        .join(Item, Item.id == ItemStock.item_id)
+        .join(Location, Location.id == ItemStock.location_id)
+        .join(Zone, Zone.id == Location.zone_id)
+        .filter(
+            Item.warehouse_id == warehouse_id,
+            Item.is_active.is_(True),
+            ItemStock.is_active.is_(True),
+            countable_stock_level_criterion(),
+            positive_stock_quantity_criterion(),
+            Location.is_active.is_(True),
+            Zone.code.in_(settings.zone_storage),
+        )
+        .scalar()
+    )
+    if total_inventory_value is None:
+        return Decimal("0")
+    return Decimal(str(total_inventory_value))
+
+
 def analyze_items(db: Session, warehouse_id: int) -> ItemAnalyzeResponse:
     _ensure_warehouse_exists(db, warehouse_id)
 
@@ -162,28 +198,7 @@ def analyze_items(db: Session, warehouse_id: int) -> ItemAnalyzeResponse:
     if total_quantity is None:
         total_quantity = Decimal("0")
 
-    today = date.today()
-    nearly_end = today + timedelta(days=NEARLY_OUTDATED_DAYS)
-    total_nearly_outdated = (
-        db.query(func.count(func.distinct(ItemStock.item_id)))
-        .join(Item, Item.id == ItemStock.item_id)
-        .join(Location, Location.id == ItemStock.location_id)
-        .join(Zone, Zone.id == Location.zone_id)
-        .filter(
-            Item.warehouse_id == warehouse_id,
-            Item.is_active.is_(True),
-            ItemStock.is_active.is_(True),
-            countable_stock_level_criterion(),
-            positive_stock_quantity_criterion(),
-            Location.is_active.is_(True),
-            Zone.code.in_(settings.zone_storage),
-            ItemStock.expiry_date.isnot(None),
-            cast(ItemStock.expiry_date, Date) >= today,
-            cast(ItemStock.expiry_date, Date) <= nearly_end,
-        )
-        .scalar()
-        or 0
-    )
+    total_inventory_value = compute_total_inventory_value(db, warehouse_id)
 
     # Low stock: active items whose storage-zone stock qty < threshold
     stock_sum = (
@@ -219,7 +234,7 @@ def analyze_items(db: Session, warehouse_id: int) -> ItemAnalyzeResponse:
     return ItemAnalyzeResponse(
         total_items=int(total_items),
         total_quantity=Decimal(str(total_quantity)),
-        total_nearly_outdated=int(total_nearly_outdated),
+        total_inventory_value=Decimal(str(total_inventory_value)),
         total_low_stock=int(total_low_stock),
     )
 
@@ -235,7 +250,7 @@ def get_item_detail(db: Session, item_id: int) -> ItemDetailResponse:
         .filter(
             ItemStock.item_id == item.id,
             ItemStock.is_active.is_(True),
-            ItemStock.status == "available",
+            ItemStock.status.in_(["available", "split"]),
             countable_stock_level_criterion(),
             positive_stock_quantity_criterion(),
         )
@@ -246,7 +261,8 @@ def get_item_detail(db: Session, item_id: int) -> ItemDetailResponse:
     stock_items: list[ItemStockInDetail] = []
     available_quantity = 0
     for stock, location_code, location_name in stocks:
-        available_quantity += stock.quantity
+        if stock.status == "available":       
+            available_quantity += stock.quantity
         stock_items.append(
             ItemStockInDetail(
                 id=stock.id,
@@ -813,6 +829,54 @@ def render_qr_codes(payload: dict) -> str:
     )
 
 
+def _start_import_background(
+    job_id: str,
+    warehouse_id: int,
+    filename: str,
+    file_path: Path,
+) -> None:
+    def _run() -> None:
+        try:
+            with db_session() as bg_db:
+                run_import_item_staging_phase(
+                    bg_db,
+                    job_id,
+                    warehouse_id,
+                    file_path,
+                )
+            import_item_masan_upsert_task.delay(
+                job_id=job_id,
+                warehouse_id=warehouse_id,
+                filename=filename,
+            )
+        except Exception as exc:
+            logger.exception(
+                "item import staging failed job_id=%s warehouse_id=%s",
+                job_id,
+                warehouse_id,
+            )
+            try:
+                with db_session() as bg_db:
+                    mark_import_job_failed(
+                        bg_db,
+                        job_id,
+                        exc,
+                        warehouse_id=warehouse_id,
+                        filename=filename,
+                    )
+            except Exception:
+                update_import_job(
+                    job_id,
+                    status="failed",
+                    warehouse_id=warehouse_id,
+                    filename=filename,
+                    message=str(exc),
+                    error_count=1,
+                )
+
+    threading.Thread(target=_run, daemon=True).start()
+
+
 async def start_item_masan_import(
     db: Session,
     warehouse_id: int,
@@ -823,7 +887,7 @@ async def start_item_masan_import(
     if Path(file.filename or "").suffix.lower() != ".csv":
         raise ValueError("File must be a CSV file")
 
-    filename, _size = await save_import_item_file(file, warehouse_id)
+    filename, _size, file_path = await save_import_item_file(file, warehouse_id)
     job_id = str(uuid.uuid4())
 
     save_import_job(
@@ -831,10 +895,11 @@ async def start_item_masan_import(
         new_import_job_payload(job_id, warehouse_id, filename),
     )
 
-    import_item_masan_task.delay(
+    _start_import_background(
         job_id=job_id,
         warehouse_id=warehouse_id,
         filename=filename,
+        file_path=file_path,
     )
 
     return {

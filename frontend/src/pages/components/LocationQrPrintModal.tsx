@@ -208,7 +208,7 @@ export default function LocationQrPrintModal({
                 ? 'Zone này chưa có vị trí nào'
                 : 'Chưa chọn Zone',
             }}
-            className="[&_.ant-table-thead_th]:bg-slate-50! [&_.ant-table-thead_th]:text-slate-600! [&_.ant-table-thead_th]:font-semibold!"
+            className="[&_.ant-table-thead_th]:bg-slate-50! [&_.ant-table-thead_th]:text-slate-600! [&_.ant-table-thead_th]:font-semibold! [&_.ant-table-cell]:text-center!"
           />
         </div>
       ) : (

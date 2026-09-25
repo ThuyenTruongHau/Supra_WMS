@@ -10,6 +10,7 @@ from app.modules.warehouse.item_stock.item_stock_model import ItemStock
 from app.modules.warehouse.inbound_order.inbound_order_schema import InboundOrderDetailResponse
 from app.modules.warehouse.outbound_order.outbound_order_model import OutboundOrderAllocation
 from app.modules.warehouse.transaction_history.history_model import Transaction, History
+from app.modules.warehouse.notificcation.notification_service import check_and_create_notifications_under_over_min_max
 from app.core.logger import get_logger
 from app.core.cache import cache_set
 logger = get_logger("main")
@@ -70,10 +71,15 @@ class TaskStatusService:
             )
             .all()
         )
+
+        check_and_create_notifications_under_over_min_max(db, stocks[0].item, "under")
+
         for stock in stocks:
+            logger.info(f"Current status: {stock.status}")
             stock.location_id = detail.to_location_id
             if stock.status != "split":
                 stock.status = "available"
+            logger.info(f"New status: {stock.status}")
 
             db.add(Transaction(
                     from_location_id=detail.from_location_id,

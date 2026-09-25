@@ -1,6 +1,8 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
+import { useQueryClient } from '@tanstack/react-query'
+import { useAuthStore } from '@/store/useAuthStore'
 import {
   UserOutlined,
   LockOutlined,
@@ -15,12 +17,20 @@ import loginBg from '@/assets/images/login_bg.jpg'
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const { mutate: login, isPending, error } = useLogin()
+  const queryClient = useQueryClient()
 
-  const { register, handleSubmit, formState: { errors, isSubmitting }, }
+  const { register, handleSubmit, reset, formState: { errors, isSubmitting }, }
     = useForm<LoginRequest>({
       resolver: zodResolver(loginSchema),
       defaultValues: { username: '', password: '' },
     })
+
+  useEffect(() => {
+    const { isAuthenticated } = useAuthStore.getState()
+    if (isAuthenticated) return
+    reset({ username: '', password: '' })
+    queryClient.removeQueries({ queryKey: ['warehouse'] })
+  }, [queryClient, reset])
 
   const Login = (data: LoginRequest) => {
     login(data)

@@ -1,9 +1,8 @@
-import { isPickSplitOutboundOrder } from "@/utils/outboundFlow";
 import type { WarehouseOperationType } from "@/config/warehouseMode";
 
 export type OutboundLocationLogicType = "outbound_buffer" | "qc_buffer";
 
-const QC_BUFFER_TYPES = new Set(["tuyển chọn", "lấy lỗi"]);
+const QC_BUFFER_TYPES = new Set(["tuyển chọn", "lấy lỗi", "lấy lẻ"]);
 
 function isQcBufferType(value: unknown): boolean {
   if (value == null) return false;
@@ -19,8 +18,7 @@ export function resolveOutboundLocationLogicType(
 
 /**
  * Manual warehouse → always zone_outbound.
- * Auto + Lấy lẻ (split) → zone_outbound (split flow, not QC).
- * Auto + Tuyển chọn / Lấy lỗi → zone_qc.
+ * Auto + Tuyển chọn / Lấy lỗi / Lấy lẻ → zone_qc.
  */
 export function resolveOutboundLocationLogicTypeForOrder(
   orderDetails?: Record<string, unknown> | null,
@@ -28,15 +26,6 @@ export function resolveOutboundLocationLogicTypeForOrder(
   warehouseOutboundType: WarehouseOperationType = "auto",
 ): OutboundLocationLogicType {
   if (warehouseOutboundType === "manual") {
-    return "outbound_buffer";
-  }
-
-  if (isPickSplitOutboundOrder(orderDetails)) {
-    return "outbound_buffer";
-  }
-  if (
-    lineDetails?.some((line) => isPickSplitOutboundOrder(line.details))
-  ) {
     return "outbound_buffer";
   }
 

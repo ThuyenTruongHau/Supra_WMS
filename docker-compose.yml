@@ -39,7 +39,7 @@ services:
       - ./backend/.env
     volumes:
       - ./backend/logs:/app/logs
-      - ./backend/static/file_import_item:/app/static/file_import_item
+      - ./backend/app/static/file_import_item:/app/app/static/file_import_item
     depends_on:
       db:
         condition: service_healthy

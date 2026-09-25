@@ -14,6 +14,7 @@ from app.modules.warehouse.inbound_order.inbound_order_schema import (
     InboundSuggestAllocationResponse,
     InboundReleaseLocationsRequest,
     InboundReleaseLocationsResponse,
+    PurgePackingCacheResponse,
     InboundOrderCreate,
     InboundOrderResponse,
     InboundCallerResponse,
@@ -76,6 +77,16 @@ def suggest_inbound_allocation(body: InboundSuggestAllocation, db: DbSession):
 def release_inbound_locations(body: InboundReleaseLocationsRequest):
     deleted = inbound_order_service.delete_allocated_locations(body.location_ids)
     return InboundReleaseLocationsResponse(deleted=deleted)
+
+
+@router.post(
+    "/inbound-orders/purge-packing-cache",
+    response_model=PurgePackingCacheResponse,
+    dependencies=[Depends(_INBOUND_CREATE)],
+)
+def purge_packing_cache():
+    deleted = qr_code_module.delete_packing_cache()
+    return PurgePackingCacheResponse(deleted=deleted)
 
 
 @router.post(
@@ -278,6 +289,7 @@ def _assign_or_get_item_stocks(db: Session, body: AssignOrGetItemStockRequest):
             lot_number=body.lot_number,
             cavity_number=body.cavity_number,
             manufacturing_user=body.manufacturing_user,
+            manufacturing_machine=body.manufacturing_machine,
             qc_user=body.qc_user,
             packing_user=body.packing_user,
             is_split=body.is_split,
@@ -292,12 +304,11 @@ def _assign_or_get_item_stocks(db: Session, body: AssignOrGetItemStockRequest):
 @router.post(
     "/inbound-orders/manual/scan",
     response_model=AssignOrGetItemStockResponse,
-    dependencies=[Depends(_INBOUND_CREATE)],
 )
 def manual_inbound_scan(
     body: AssignOrGetItemStockRequest,
     db: DbSession,
-    current_user: Annotated[User, Depends(_INBOUND_CREATE)],
+    current_user: Annotated[User, Depends(get_dev_admin_user)],
 ):
     try:
         result = qr_code_module.assign_stock_to_location(
@@ -311,6 +322,7 @@ def manual_inbound_scan(
             lot_number=body.lot_number,
             cavity_number=body.cavity_number,
             manufacturing_user=body.manufacturing_user,
+            manufacturing_machine=body.manufacturing_machine,
             qc_user=body.qc_user,
             packing_user=body.packing_user,
         )
@@ -368,8 +380,10 @@ def assign_packing_to_item(
             lot_number=body.lot_number,
             cavity_number=body.cavity_number,
             manufacturing_user=body.manufacturing_user,
+            manufacturing_machine=body.manufacturing_machine,
             qc_user=body.qc_user,
             packing_user=body.packing_user,
+            is_split=body.is_split,
         )
     except ValueError as e:
         msg = str(e)
@@ -396,9 +410,11 @@ def cache_for_packing_user(
             lot_number=body.lot_number,
             cavity_number=body.cavity_number,
             manufacturing_user=body.manufacturing_user,
+            manufacturing_machine=body.manufacturing_machine,
             qc_user=body.qc_user,
             packing_user=body.packing_user,
             relation=body.relation,
+            is_split=body.is_split,
         )
     except ValueError as e:
         msg = str(e)

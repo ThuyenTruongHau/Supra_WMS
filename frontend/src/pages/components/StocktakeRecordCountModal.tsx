@@ -17,13 +17,23 @@ import {
 import { useWarehouseLocations } from "@/hooks/useZones";
 import { useAppStore } from "@/store/useAppStore";
 import { getApiErrorMessage } from "@/utils/apiErrorMessage";
+import { translateStatus } from "@/i18n/statusLabels.vi";
 import type { StocktakeItemStock } from "@/types/stocktake";
 
 const STOCK_STATUS_OPTIONS = [
-  { value: "available", label: "Sẵn sàng" },
-  { value: "reserved", label: "Đã giữ chỗ" },
-  { value: "cross_dock_reserved", label: "Cross-dock giữ chỗ" },
-];
+  "available",
+  "split",
+  "reserved",
+  "cross_dock_reserved",
+  "in_transit",
+  "damaged",
+  "quarantine",
+  "expired",
+  "at_outbound_station",
+].map((value) => ({
+  value,
+  label: translateStatus(value),
+}));
 
 type FormValues = {
   actual_quantity: number;
@@ -185,7 +195,7 @@ export default function StocktakeRecordCountModal({
             label="Trạng thái tồn"
             rules={[{ required: true, message: "Vui lòng chọn trạng thái!" }]}
           >
-            <Select options={STOCK_STATUS_OPTIONS} />
+            <Select options={STOCK_STATUS_OPTIONS} placeholder="Chọn trạng thái" />
           </Form.Item>
 
           <div className="flex justify-end gap-2 pt-2">

@@ -72,6 +72,7 @@ class ItemStock(Base):
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
     qc_user = Column(String(50), nullable=True, index=True)
+    manufacturing_machine = Column(String(50), nullable=True, index=True)
     manufacturing_user = Column(String(50), nullable=True, index=True)
     packing_user = Column(String(50), nullable=True, index=True)
     cavity_number = Column(String(50), nullable=True, index=True)

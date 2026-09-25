@@ -4,7 +4,9 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Any, Optional, TypedDict
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
+
+from app.modules.warehouse.lot_number_utils import apply_lot_display_fields
 
 
 class OutboundOrderDetailCreate(BaseModel):
@@ -132,6 +134,18 @@ class OutboundOrderAllocationResponse(BaseModel):
     updated_at: Optional[datetime] = None
     model_config = ConfigDict(from_attributes=True)
 
+    @model_validator(mode="after")
+    def set_lot_display(self) -> "OutboundOrderAllocationResponse":
+        disp_from, disp_to, disp_lot = apply_lot_display_fields(
+            lot_number_from=self.lot_number_from,
+            lot_number_to=self.lot_number_to,
+            lot_number=self.lot_number,
+        )
+        self.lot_number_from = disp_from
+        self.lot_number_to = disp_to
+        self.lot_number = disp_lot
+        return self
+
 
 class OutboundRobotTaskResponse(BaseModel):
     order_id: str
@@ -220,11 +234,11 @@ class OutboundConfirmNoQrResponse(BaseModel):
 class ExecuteQrManualRequest(BaseModel):
     allocation_ids: list[int] = Field(..., min_length=1)
     qr_code: str = Field(..., min_length=1, max_length=50)
-    to_location_id: int = Field(..., gt=0)
+    to_location_id: Optional[int] = Field(None, gt=0)
 
 
 class ExecuteQrManualResponse(BaseModel):
     allocation_ids: list[int]
     qr_code: str
-    to_location_id: int
+    to_location_id: Optional[int] = None
     message: str = "Manual outbound QR scan processed"

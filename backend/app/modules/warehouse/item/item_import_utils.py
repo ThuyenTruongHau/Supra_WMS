@@ -16,7 +16,7 @@ from app.core.logger import get_logger
 
 logger = get_logger("main")
 
-# backend/static/file_import_item — khớp volume Docker ./backend/static/file_import_item
+# backend/app/static/file_import_item — khớp volume Docker ./backend/app/static/file_import_item
 IMPORT_ITEM_DIR = Path(__file__).resolve().parents[3] / "static" / "file_import_item"
 ALLOWED_IMPORT_EXTENSIONS = {".csv"}
 
@@ -96,11 +96,6 @@ _STAGING_VALIDATION_SQL = text("""
         SELECT row_no, sku, 'Tên vượt quá 255 ký tự'
         FROM staging WHERE length(name) > 255
         UNION ALL
-        SELECT s.row_no, s.sku, 'Đơn vị không tồn tại: ' || s.base_unit
-        FROM staging s
-        LEFT JOIN unit u ON lower(u.name) = lower(s.base_unit)
-        WHERE s.base_unit <> '' AND u.id IS NULL
-        UNION ALL
         SELECT row_no, sku, 'base_quantity phải là số nguyên >= 1'
         FROM staging
         WHERE base_quantity <> ''
@@ -178,7 +173,7 @@ def validation_errors_for_response(errors: list[dict[str, Any]]) -> list[dict[st
     ]
 
 
-async def save_import_item_file(file: UploadFile, warehouse_id: int) -> tuple[str, int]:
+async def save_import_item_file(file: UploadFile, warehouse_id: int) -> tuple[str, int, Path]:
     if not file.filename:
         raise ValueError("File name is invalid")
 
@@ -202,7 +197,7 @@ async def save_import_item_file(file: UploadFile, warehouse_id: int) -> tuple[st
         dest.unlink(missing_ok=True)
         raise ValueError("File is empty")
 
-    return filename, size
+    return filename, size, dest
 
 
 def iter_csv_chunks(path: Path, chunk_size: int = CHUNK_SIZE) -> Iterator[list[dict[str, Any]]]:
@@ -354,7 +349,37 @@ def validate_staging_for_import(db: Session, job_id: str) -> None:
         raise ValueError(format_validation_errors(errors))
 
 
+_MASAN_UNIT_DESCRIPTION = "Tạo tự động từ import Masan"
+
+
+def ensure_units_from_staging(db: Session, job_id: str) -> int:
+    """Insert missing units referenced in staging (case-insensitive match on name)."""
+    result = db.execute(
+        text(
+            """
+            INSERT INTO unit (name, description)
+            SELECT unit_name, :description
+            FROM (
+                SELECT lower(btrim(base_unit)) AS unit_key,
+                       min(btrim(base_unit)) AS unit_name
+                FROM item_import_staging
+                WHERE job_id = CAST(:job_id AS uuid)
+                  AND btrim(base_unit) <> ''
+                GROUP BY lower(btrim(base_unit))
+            ) AS candidates
+            WHERE NOT EXISTS (
+                SELECT 1 FROM unit u WHERE lower(u.name) = candidates.unit_key
+            )
+            """
+        ),
+        {"job_id": job_id, "description": _MASAN_UNIT_DESCRIPTION},
+    )
+    db.commit()
+    return int(result.rowcount or 0)
+
+
 def upsert_staging_to_item(db: Session, job_id: str, warehouse_id: int) -> dict[str, int]:
+    units_created = ensure_units_from_staging(db, job_id)
     validate_staging_for_import(db, job_id)
 
     raw_conn = db.connection().connection
@@ -423,16 +448,16 @@ def upsert_staging_to_item(db: Session, job_id: str, warehouse_id: int) -> dict[
         "created": created_count,
         "updated": updated_count,
         "upserted": created_count + updated_count,
+        "units_created": units_created,
     }
 
 
-def run_import_item_masan_pipeline(
+def run_import_item_staging_phase(
     db: Session,
     job_id: str,
     warehouse_id: int,
-    filename: str,
-) -> dict[str, Any]:
-    file_path = get_import_file_path(warehouse_id)
+    file_path: Path,
+) -> int:
     if not file_path.exists():
         raise ValueError(f"File not found: {file_path}")
 
@@ -440,12 +465,18 @@ def run_import_item_masan_pipeline(
         update_import_job(
             job_id,
             status="running",
+            warehouse_id=warehouse_id,
             processed=processed,
             total=processed,
             message=f"Đang copy staging: {processed:,} dòng",
         )
 
-    update_import_job(job_id, status="running", message="Đang copy dữ liệu vào staging")
+    update_import_job(
+        job_id,
+        status="running",
+        warehouse_id=warehouse_id,
+        message="Đang copy dữ liệu vào staging",
+    )
 
     staging = copy_to_staging_table(
         db,
@@ -458,39 +489,93 @@ def run_import_item_masan_pipeline(
     update_import_job(
         job_id,
         status="running",
+        warehouse_id=warehouse_id,
         processed=processed,
         total=processed,
-        message=f"Đang validate và import {processed:,} dòng",
+        message=f"Đang chờ import {processed:,} dòng vào hệ thống",
+    )
+    return processed
+
+
+def run_import_item_upsert_phase(
+    db: Session,
+    job_id: str,
+    warehouse_id: int,
+    filename: str,
+    *,
+    processed: int | None = None,
+) -> dict[str, Any]:
+    job = get_import_job(job_id) or {}
+    row_count = processed if processed is not None else int(job.get("processed") or 0)
+
+    update_import_job(
+        job_id,
+        status="running",
+        warehouse_id=warehouse_id,
+        filename=filename,
+        processed=row_count,
+        total=row_count,
+        message=f"Đang validate và import {row_count:,} dòng",
     )
 
     promote = upsert_staging_to_item(db, job_id, warehouse_id)
+    units_created = int(promote.get("units_created") or 0)
+
+    summary = (
+        f"Import xong: {promote['created']:,} mới, "
+        f"{promote['updated']:,} cập nhật"
+    )
+    if units_created:
+        summary += f", {units_created:,} đơn vị mới"
 
     result = {
         "job_id": job_id,
         "status": "completed",
         "warehouse_id": warehouse_id,
         "filename": filename,
-        "processed": processed,
-        "total": processed,
+        "processed": row_count,
+        "total": row_count,
         "created": promote["created"],
         "updated": promote["updated"],
         "error_count": 0,
         "errors": [],
-        "message": (
-            f"Import xong: {promote['created']:,} mới, "
-            f"{promote['updated']:,} cập nhật"
-        ),
+        "message": summary,
     }
     save_import_job(job_id, result)
     logger.info(
-        "item import completed job_id=%s warehouse_id=%s processed=%s created=%s updated=%s",
+        "item import completed job_id=%s warehouse_id=%s processed=%s created=%s updated=%s units_created=%s",
         job_id,
         warehouse_id,
-        processed,
+        row_count,
         promote["created"],
         promote["updated"],
+        units_created,
     )
     return result
+
+
+def run_import_item_masan_pipeline(
+    db: Session,
+    job_id: str,
+    warehouse_id: int,
+    filename: str,
+    *,
+    file_path: Path | None = None,
+) -> dict[str, Any]:
+    resolved_path = file_path or get_import_file_path(warehouse_id)
+    processed = run_import_item_staging_phase(
+        db,
+        job_id,
+        warehouse_id,
+        resolved_path,
+    )
+    return run_import_item_upsert_phase(
+        db,
+        job_id,
+        warehouse_id,
+        filename,
+        processed=processed,
+    )
 
 
 def mark_import_job_failed(

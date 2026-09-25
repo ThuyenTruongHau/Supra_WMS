@@ -4,6 +4,7 @@ import {
   getInboundOrderDetailsApi,
   suggestInboundAllocationApi,
   releaseInboundLocationsApi,
+  purgePackingCacheApi,
   createInboundOrderApi,
   updateInboundOrderApi,
   deleteInboundOrderApi,
@@ -61,6 +62,12 @@ export const useReleaseInboundLocations = () => {
   return useMutation({
     mutationFn: (body: InboundReleaseLocationsRequest) =>
       releaseInboundLocationsApi(body),
+  });
+};
+
+export const usePurgePackingCache = () => {
+  return useMutation({
+    mutationFn: () => purgePackingCacheApi(),
   });
 };
 

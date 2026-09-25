@@ -1,7 +1,7 @@
 from typing import Optional
 import uuid
 import json
-from sqlalchemy import cast, Integer, or_
+from sqlalchemy import cast, func, Integer, or_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload, joinedload
 from zoneinfo import ZoneInfo
@@ -49,11 +49,33 @@ from app.core.logger import get_logger
 
 logger = get_logger("main")
 
+def _parse_split_quantities(raw: object) -> set[int]:
+    quantities: set[int] = set()
+    if raw is None or raw == "":
+        return quantities
+    if isinstance(raw, int):
+        if raw > 0:
+            quantities.add(raw)
+        return quantities
+    for part in str(raw).split(","):
+        part = part.strip()
+        if not part:
+            continue
+        n = int(part)
+        if n > 0:
+            quantities.add(n)
+    return quantities
 
 def suggest_allocation_inbound(db: Session, body: InboundSuggestAllocation):
     needed = len(body.line_items)
     reversed_keys = cache_scan_keys("inbound:reserved:*")
     reversed_location_ids = [int(k.rsplit(":", 1)[-1]) for k in reversed_keys]
+
+    zone = settings.zone_storage
+    if len(body.line_items) == 1:
+        raw = (body.line_items[0].details or {}).get("split")
+        if len(_parse_split_quantities(raw)) > 1:
+            zone = settings.zone_split
 
     query = (
         db.query(Location)
@@ -62,7 +84,7 @@ def suggest_allocation_inbound(db: Session, body: InboundSuggestAllocation):
             Location.warehouse_id == body.warehouse_id,
             Location.is_active.is_(True),
             Location.status == "empty",
-            Zone.code.in_(settings.zone_storage),
+            Zone.code.in_(zone),
         )
     )
 
@@ -163,8 +185,12 @@ def _create_stock_and_allocation(
         quantity=payload.quantity,
     )
 
-    split_quantity = int((detail.details or {}).get("split") or 0)
-    is_split_stock = split_quantity > 0 and int(payload.quantity) == split_quantity
+    # split_quantity = int((detail.details or {}).get("split") or 0)
+    # is_split_stock = split_quantity > 0 and int(payload.quantity) == split_quantity
+
+    raw_split = (detail.details or {}).get("split")
+    split_quantities = _parse_split_quantities(raw_split)
+    is_split_stock = bool(split_quantities) and int(payload.quantity) in split_quantities
 
     item_stock = ItemStock(
         item_id=payload.item_id,
@@ -177,6 +203,7 @@ def _create_stock_and_allocation(
         expiry_date=payload.expiry_date,
         cavity_number=getattr(payload, "cavity_number", None),
         manufacturing_user=getattr(payload, "manufacturing_user", None),
+        manufacturing_machine=getattr(payload, "manufacturing_machine", None),
         qc_user=getattr(payload, "qc_user", None),
         packing_user=getattr(payload, "packing_user", None),
         status = "split" if is_split_stock else "in_transit",
@@ -314,6 +341,7 @@ def _clear_pending_cache_for_qr(db: Session, qr_code_id: int, target_stock: Item
                     expiry_date=cached.get("expiry_date"),
                     cavity_number=cached.get("cavity_number"),
                     manufacturing_user=cached.get("manufacturing_user"),
+                    manufacturing_machine=cached.get("manufacturing_machine"),
                     qc_user=cached.get("qc_user"),
                     packing_user=cached.get("packing_user"),
                     status="virtual",
@@ -813,6 +841,15 @@ def execute_inbound_task(db: Session, detail_id: int) -> InboundExecuteDetailRes
         robot_task=(
             RobotTaskResponse.model_validate(robot_task) if robot_task else None
         ),
+    )
+
+
+def count_inbound_orders(db: Session, warehouse_id: int) -> int:
+    return (
+        db.query(func.count(InboundOrder.id))
+        .filter(InboundOrder.warehouse_id == warehouse_id)
+        .scalar()
+        or 0
     )
 
 

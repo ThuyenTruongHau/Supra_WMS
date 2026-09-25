@@ -36,7 +36,7 @@ import { getApiErrorMessage } from "@/utils/apiErrorMessage";
 import { exportInboundOrderMasanApi } from "@/api/masan";
 
 const TABLE_CLASS =
-  "[&_.ant-table-thead_th]:!bg-slate-50 [&_.ant-table-thead_th]:!text-slate-600 [&_.ant-table-thead_th]:!font-semibold [&_.ant-table-thead_th]:!text-base [&_.ant-table-tbody_td]:!text-base [&_.ant-table-thead_th]:!py-3 [&_.ant-table-tbody_td]:!py-3 [&_.ant-table-row]:hover:bg-slate-50/50";
+  "[&_.ant-table-thead_th]:!bg-slate-50 [&_.ant-table-thead_th]:!text-slate-600 [&_.ant-table-thead_th]:!font-semibold [&_.ant-table-thead_th]:!text-base [&_.ant-table-tbody_td]:!text-base [&_.ant-table-thead_th]:!py-3 [&_.ant-table-tbody_td]:!py-3 [&_.ant-table-row]:hover:bg-slate-50/50 [&_.ant-table-cell]:!text-center";
 
 function apiError(err: unknown): string {
   return getApiErrorMessage(err);
@@ -64,9 +64,35 @@ function formatDetailLineKey(key: string): string {
   return DETAIL_LINE_FIELD_LABELS[key] ?? key.replace(/_/g, " ");
 }
 
-function getDetailEntries(details: Record<string, unknown> | undefined) {
+/** Keys already shown in the row / allocation table — hide in expanded "Chi tiết dòng". */
+const DETAIL_EXPAND_HIDDEN_KEYS = new Set([
+  "lot",
+  "lot_number",
+  "sku",
+  "part_number",
+  "item_name",
+  "from_location_id",
+  "from_location_name",
+  "storage_location",
+  "row_no",
+  "source",
+]);
+
+/** Import metadata — not shown on order summary. */
+const ORDER_EXPAND_HIDDEN_KEYS = new Set([
+  "source",
+  "total_rows",
+  "valid_rows",
+  "invalid_rows",
+]);
+
+function getDetailEntries(
+  details: Record<string, unknown> | undefined,
+  hiddenKeys: Set<string> = DETAIL_EXPAND_HIDDEN_KEYS,
+) {
   return Object.entries(details ?? {}).filter(
-    ([, value]) =>
+    ([key, value]) =>
+      !hiddenKeys.has(key) &&
       value !== null &&
       value !== undefined &&
       value !== "" &&
@@ -206,7 +232,7 @@ export default function ImportDetailPage() {
   }, [users]);
 
   const orderExtraDetails = useMemo(
-    () => getDetailEntries(orderMeta?.details),
+    () => getDetailEntries(orderMeta?.details, ORDER_EXPAND_HIDDEN_KEYS),
     [orderMeta],
   );
 

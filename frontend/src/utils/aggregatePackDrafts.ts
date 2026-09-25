@@ -10,6 +10,7 @@ import {
 
 const STAFF_LIST_SEPARATOR = ",";
 const MAX_CAVITY_LENGTH = 50;
+const MAX_MACHINE_FIELD_LENGTH = 50;
 const MAX_STAFF_FIELD_LENGTH = 100;
 
 export class PackAggregateError extends Error {
@@ -28,6 +29,7 @@ export interface AggregatedItemFromPacks {
   lot_number: string;
   cavity_number?: string;
   manufacturing_user?: string;
+  manufacturing_machine?: string;
   qc_user?: string;
   packing_user?: string;
 }
@@ -135,6 +137,11 @@ export function aggregateAssignedPacks(
     MAX_STAFF_FIELD_LENGTH,
   );
 
+  const manufacturingMachine = unionCommaSeparated(
+    packs.map((pack) => pack.manufacturing_machine),
+    MAX_MACHINE_FIELD_LENGTH,
+  );
+
   const qcUser = unionCommaSeparated(
     packs.map((pack) => pack.qc_user),
     MAX_STAFF_FIELD_LENGTH,
@@ -151,6 +158,7 @@ export function aggregateAssignedPacks(
     lot_number: lotNumber,
     cavity_number: unionCavities(packs),
     manufacturing_user: manufacturingUser,
+    manufacturing_machine: manufacturingMachine,
     qc_user: qcUser,
     packing_user: packingUser,
   };

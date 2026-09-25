@@ -7,11 +7,12 @@ from collections import defaultdict
 
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload, selectinload
-from sqlalchemy import case, func, exists, select, and_
+from sqlalchemy import case, func, exists, select, and_, or_
 
 from app.core.config import settings
 from app.modules.warehouse.item.item_model import Item
 from app.modules.warehouse.unit.unit_model import Unit
+from app.modules.warehouse.notificcation.notification_service import check_and_create_notifications_under_over_min_max
 from app.modules.warehouse.outbound_order.outbound_order_model import (
     OutboundOrder,
     OutboundOrderDetail,
@@ -41,7 +42,12 @@ from app.modules.robot.robot_model import RobotTask
 from app.modules.robot.robot_service import task_status_service
 from app.modules.warehouse.transaction_history.history_model import History, Transaction
 from app.modules.warehouse.item.item_model import QR_Code
-from app.modules.warehouse.lot_number_utils import format_lot_number_display, lot_string_to_date, parse_legacy_lot_number
+from app.modules.warehouse.lot_number_utils import (
+    apply_lot_display_fields,
+    format_lot_number_display,
+    lot_string_to_date,
+    parse_legacy_lot_number,
+)
 
 from app.core.logger import get_logger
 
@@ -205,6 +211,15 @@ def create_outbound_order(db: Session, body: OutboundOrderCreate, user_id: int):
     except Exception as e:
         db.rollback()
         raise e
+
+
+def count_outbound_orders(db: Session, warehouse_id: int) -> int:
+    return (
+        db.query(func.count(OutboundOrder.id))
+        .filter(OutboundOrder.warehouse_id == warehouse_id)
+        .scalar()
+        or 0
+    )
 
 
 def _build_outbound_list_summary(query) -> OutboundOrderListSummary:
@@ -527,6 +542,13 @@ def _lot_as_date(col):
         else_=func.to_date(col, "DDMMYY"),
     )
 
+def _lot_sort_key(lot_col, fallback_ts):
+    return case(
+        (lot_col.op("~")(r"^\d{2}/\d{2}/\d{2}$"), func.to_date(lot_col, "DD/MM/YY")),
+        (lot_col.op("~")(r"^\d{6}$"), func.to_date(lot_col, "DDMMYY")),
+        else_=func.date(fallback_ts),
+    )
+
 def _strategy_loading_stocks(db: Session, item_id: int, strategy: str, lot_number: str = None):
     q = (
         db.query(ItemStock)
@@ -541,24 +563,36 @@ def _strategy_loading_stocks(db: Session, item_id: int, strategy: str, lot_numbe
     )
     
     if strategy == "fefo":
-        lot_from = ItemStock.lot_number_from
-        lot_to = ItemStock.lot_number_to
-        lot_date_from = case(
-            (
-                lot_from.op("~")(r"^\d{2}/\d{2}/\d{2}$"),
-                func.to_date(lot_from, "DD/MM/YY"),
-            ),
-            else_=func.to_date(lot_from, "DDMMYY"),
+        # lot_from = ItemStock.lot_number_from
+        # lot_to = ItemStock.lot_number_to
+        # lot_date_from = case(
+        #     (
+        #         lot_from.op("~")(r"^\d{2}/\d{2}/\d{2}$"),
+        #         func.to_date(lot_from, "DD/MM/YY"),
+        #     ),
+        #     else_=func.to_date(lot_from, "DDMMYY"),
+        # )
+        # lot_date_to = case(
+        #     (
+        #         lot_to.op("~")(r"^\d{2}/\d{2}/\d{2}$"),
+        #         func.to_date(lot_to, "DD/MM/YY"),
+        #     ),
+        #     else_=func.to_date(lot_to, "DDMMYY"),
+        # )
+
+        status_rank = case(
+            (ItemStock.status == "available", 0),
+            (ItemStock.status == "split", 1),
+            else_=2,
         )
-        lot_date_to = case(
-            (
-                lot_to.op("~")(r"^\d{2}/\d{2}/\d{2}$"),
-                func.to_date(lot_to, "DD/MM/YY"),
-            ),
-            else_=func.to_date(lot_to, "DDMMYY"),
+        q = q.filter(ItemStock.status.in_(["available", "split"]))
+        q = q.order_by(
+            status_rank.asc(),
+            _lot_sort_key(ItemStock.lot_number_from, ItemStock.created_at).asc(),
+            _lot_sort_key(ItemStock.lot_number_to, ItemStock.created_at).asc(),
+            ItemStock.created_at.asc(),
+            ItemStock.id.asc(),
         )
-        q = q.filter(ItemStock.status == "available")
-        q = q.order_by(lot_date_from.asc(), lot_date_to.asc(), ItemStock.id.asc())
     elif strategy == "re_qc":
         lot_from, lot_to = parse_legacy_lot_number(lot_number)
         start = lot_string_to_date(lot_from)
@@ -604,6 +638,8 @@ def _full_stock_in_location(db: Session, location_id: int) -> bool:
         .filter(ItemStock.status.in_(["available", "split"]))
         .all()
     )
+    stock_ids = [stock.id for stock in stocks]
+    logger.info(f"---stock_ids: {stock_ids}---")
     return int(sum(stock.quantity for stock in stocks))
 
 def greedy_allocate_stocks_to_lines(
@@ -1238,7 +1274,7 @@ def execute_outbound_task(
                 old_status="initialize",
                 new_status="issued",
                 description=f"Outbound order {outbound_order.id} in progress",
-                details=json.dumps([{"taskPath": task_path}]),
+                details=[{"taskPath": task_path}],
                 created_by_id=outbound_order.created_by_id,
             )
         )
@@ -1271,19 +1307,18 @@ def _settle_outbound_stock(
         else:
             flag = 0
 
+        lot_from = allocation.item_stock.lot_number_from if allocation.item_stock else None
+        lot_to = allocation.item_stock.lot_number_to if allocation.item_stock else None
+        disp_from, disp_to, disp_lot = apply_lot_display_fields(
+            lot_number_from=lot_from,
+            lot_number_to=lot_to,
+        )
         allocation_rows.append({
             "allocation_id": allocation.id,
             "part_number": allocation.item_stock.item.sku if allocation.item_stock and allocation.item_stock.item else None,
-            "lot_number_from": allocation.item_stock.lot_number_from if allocation.item_stock else None,
-            "lot_number_to": allocation.item_stock.lot_number_to if allocation.item_stock else None,
-            "lot_number": (
-                format_lot_number_display(
-                    allocation.item_stock.lot_number_from,
-                    allocation.item_stock.lot_number_to,
-                )
-                if allocation.item_stock
-                else None
-            ),
+            "lot_number_from": disp_from,
+            "lot_number_to": disp_to,
+            "lot_number": disp_lot,
             "quantity": int(allocation.quantity),
         })
 
@@ -1308,6 +1343,9 @@ def _settle_outbound_stock(
     details = {
         "allocations": allocation_rows,
     }
+
+    db.flush()
+    check_and_create_notifications_under_over_min_max(db, allocations[0].outbound_order_detail.item, "over")
 
     db.add(History(
         outbound_order_id = allocations[0].outbound_order_detail.outbound_order_id,
@@ -1376,22 +1414,46 @@ def confirm_no_qr(db: Session, order_id: str) -> dict[str, int] | None:
 
     return _settle_outbound_stock(db, allocations)
 
+
+def _resolve_location_by_scan_code(db: Session, code: str) -> Location | None:
+    normalized = (code or "").strip()
+    if not normalized:
+        return None
+    return (
+        db.query(Location)
+        .filter(
+            or_(
+                Location.location_code == normalized,
+                Location.bin_code == normalized,
+                Location.location_name == normalized,
+            )
+        )
+        .order_by(Location.id)
+        .first()
+    )
+
+
 def execute_qr_manual(
     db: Session,
     allocation_ids: list[int],
     qr_code: str,
-    to_location_id: int,
+    to_location_id: Optional[int] = None,
 ) -> dict:
     if not qr_code:
         raise ValueError("QR code is required")
 
+    logger.info(f"---{qr_code}---")
+
     qr_record = db.query(QR_Code).filter(QR_Code.code == qr_code).first()
+    resolved_to_location_id = to_location_id
+
     if not qr_record:
-        location = db.query(Location).filter(Location.location_code == qr_code).first()
+        location = _resolve_location_by_scan_code(db, qr_code)
         if not location:
             raise ValueError("QR code is invalid")
 
-        if location.id != to_location_id:
+        resolved_to_location_id = location.id
+        if to_location_id is not None and to_location_id != resolved_to_location_id:
             raise ValueError("Location code is not in the order")
 
         for allocation_id in allocation_ids:
@@ -1410,35 +1472,33 @@ def execute_qr_manual(
                 raise ValueError("Allocation not found")
             if allocation.status != "pre_completed":
                 raise ValueError("Allocation is not pre_completed")
+            if (
+                allocation.to_location_id is not None
+                and allocation.to_location_id != resolved_to_location_id
+            ):
+                raise ValueError("Location code is not in the order")
 
             stock = allocation.item_stock
             if not stock:
                 raise ValueError("Item stock not found")
-
-            allocation.to_location_id = to_location_id
-            if stock.location_id == to_location_id:
-                allocation.status = "completed"
-                stock.quantity -= allocation.quantity
-            db.flush()
-
-            db.add(
-                Transaction(
-                    from_location_id=allocation.from_location_id,
-                    to_location_id=to_location_id,
-                    transaction_type="outbound",
-                    item_stock_id=allocation.item_stock_id,
-                    quantity=int(allocation.quantity),
-                    created_by_id=allocation.outbound_order_detail.outbound_order.created_by_id,
+            if stock.quantity < allocation.quantity:
+                raise ValueError(
+                    f"Stock quantity is not enough: {stock.quantity} < {allocation.quantity}"
                 )
-            )
+
+            allocation.to_location_id = resolved_to_location_id
+            # stock.location_id = resolved_to_location_id
+            allocation.status = "double_check_stock"
+            # stock.quantity -= int(allocation.quantity)
             db.flush()
+            
     else:
         stock = qr_record.item_stock
+        taken = 0
         if not stock:
             raise ValueError("Item stock not found for QR code")
-
-        stock.location_id = to_location_id
-        db.flush()
+        
+        logger.info(f"---Steps1: Go here---")
 
         for allocation_id in allocation_ids:
             allocation = (
@@ -1449,14 +1509,52 @@ def execute_qr_manual(
             )
             if not allocation:
                 raise ValueError("Allocation not found")
-            if allocation.status != "initialize":
-                raise ValueError("Allocation is not initialize")
-            if allocation.item_stock_id != qr_record.item_stock_id:
-                raise ValueError("Allocation is not in the order")
+            if allocation.status not in ["initialize", "double_check_stock"]:
+                raise ValueError("Allocation is not initialize or double_check_stock")
+            # if allocation.item_stock_id != qr_record.item_stock_id:
+            allocation_stock = allocation.item_stock
+            current_stock = stock
 
-            allocation.status = "pre_completed"
-            allocation.item_stock.location_id = to_location_id
-            db.flush()
+            if allocation.status == "double_check_stock":
+                logger.info(f"---Steps2: Go here---")
+                if qr_record.item_stock_id != allocation.item_stock_id:
+                    raise ValueError("Stock is not the same")
+                stock.location_id = allocation.to_location_id
+                stock.quantity -= int(allocation.quantity)
+                allocation.status = "completed"
+
+                logger.info(f"---Steps3: Go here - {allocation.item_stock_id} - {allocation.status}---")
+
+                db.add(
+                    Transaction(
+                        from_location_id=allocation.from_location_id,
+                        to_location_id=allocation.to_location_id,
+                        transaction_type="outbound",
+                        item_stock_id=allocation.item_stock_id,
+                        quantity=int(allocation.quantity),
+                        created_by_id=allocation.outbound_order_detail.outbound_order.created_by_id,
+                    )
+                )
+                db.flush()
+                continue
+
+            if allocation_stock.lot_number_from != current_stock.lot_number_from or allocation_stock.lot_number_to != current_stock.lot_number_to:
+                raise ValueError("Lot number is not the same")
+            if allocation.item_stock.item_id != stock.item_id:
+                raise ValueError("Item is not the same")
+
+            taken += int(allocation.quantity)
+            if current_stock.quantity < taken:
+                raise ValueError(f"Stock quantity is not enough: {current_stock.quantity} < {taken}")
+
+            if allocation.item_stock_id != qr_record.item_stock_id:
+                allocation.item_stock_id = stock.id
+                allocation.from_location_id = stock.location_id
+            
+                
+            if allocation.status == "initialize":
+                allocation.status = "pre_completed"
+                db.flush()
 
     try:
         db.commit()
@@ -1467,5 +1565,5 @@ def execute_qr_manual(
     return {
         "allocation_ids": allocation_ids,
         "qr_code": qr_code,
-        "to_location_id": to_location_id,
+        "to_location_id": resolved_to_location_id,
     }

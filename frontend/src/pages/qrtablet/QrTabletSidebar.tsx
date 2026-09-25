@@ -3,6 +3,7 @@ import { Navigate, NavLink } from "react-router-dom";
 import logo_thado from "@/assets/logo_thadorobot.png";
 import { useLogout } from "@/hooks/useAuth";
 import { useAuthStore } from "@/store/useAuthStore";
+import { hasModuleAccess, isAdminRole, resolveRoles } from "@/utils/authSession";
 import {
   LogoutOutlined,
   ImportOutlined,
@@ -54,9 +55,20 @@ function SidebarLink({ to, icon, label, collapsed }: SidebarLinkProps) {
 }
 
 export default function QrTabletSidebar() {
-  const { username, role, isAuthenticated } = useAuthStore();
+  const { username, role, roles, isAuthenticated, access } = useAuthStore();
   const logout = useLogout();
   const [collapsed, setCollapsed] = useState(false);
+  const legacyRoles = resolveRoles(roles, role);
+  const legacyAdmin = isAdminRole(legacyRoles);
+  const showInbound =
+    hasModuleAccess(access, "inbound") ||
+    (!access && (legacyAdmin || legacyRoles.includes("inbound")));
+  const showOutbound =
+    hasModuleAccess(access, "outbound") ||
+    (!access && (legacyAdmin || legacyRoles.includes("outbound")));
+  const showStocktake =
+    hasModuleAccess(access, "stocktake") ||
+    (!access && (legacyAdmin || legacyRoles.includes("stocktake")));
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
@@ -97,24 +109,31 @@ export default function QrTabletSidebar() {
       </div>
 
       <nav className="flex flex-col gap-1 flex-1 overflow-y-auto mt-6 px-3 overflow-x-hidden">
-        <SidebarLink
-          to="/qrtablet/import"
-          icon={<ImportOutlined className="text-lg" />}
-          label="Đơn nhập"
-          collapsed={collapsed}
-        />
-        <SidebarLink
-          to="/qrtablet/export"
-          icon={<ExportOutlined className="text-lg" />}
-          label="Đơn xuất"
-          collapsed={collapsed}
-        />
-        <SidebarLink
-          to="/qrtablet/inventory"
-          icon={<AuditOutlined className="text-lg" />}
-          label="Kiểm kê"
-          collapsed={collapsed}
-        />
+        {showInbound && (
+          <SidebarLink
+            to="/qrtablet/import"
+            icon={<ImportOutlined className="text-lg" />}
+            label="Đơn nhập"
+            collapsed={collapsed}
+          />
+        )}
+        {showOutbound && (
+          <SidebarLink
+            to="/qrtablet/export"
+            icon={<ExportOutlined className="text-lg" />}
+            label="Đơn xuất"
+            collapsed={collapsed}
+          />
+        )}
+        {showStocktake && (
+          <SidebarLink
+            to="/qrtablet/inventory"
+            icon={<AuditOutlined className="text-lg" />}
+            label="Kiểm kê"
+            collapsed={collapsed}
+          />
+        )}
+        {/* In QR: không cần permission — mọi user vào qrtablet đều được in */}
         <SidebarLink
           to="/qrtablet/print-qr"
           icon={<PrinterOutlined className="text-lg" />}

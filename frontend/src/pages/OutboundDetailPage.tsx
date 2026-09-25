@@ -9,8 +9,11 @@ import {
   EditOutlined,
   CheckCircleOutlined,
   PlayCircleOutlined,
+  ScanOutlined,
   EnvironmentOutlined,
+  DownloadOutlined,
 } from "@ant-design/icons";
+import { exportOutboundOrderSoApi } from "@/api/masanOutbound";
 import {
   useGetOutboundOrderById,
   useGetOutboundOrderDetails,
@@ -20,6 +23,7 @@ import {
   useDeleteOutboundOrder,
   useCalculateOutboundOrder,
   useExecuteOutboundRobotTask,
+  useExecuteOutboundQrManual,
   useConfirmOutboundOrderNoQr,
 } from "@/hooks/useOutbound";
 import { useAppStore } from "@/store/useAppStore";
@@ -46,10 +50,20 @@ import {
   resolveExecuteDetailType,
   shouldUseManualAllocationFlow,
 } from "@/utils/outboundFlow";
+import {
+  getManualScanTitle,
+  shouldShowOutboundQrScanButton,
+} from "@/utils/outboundManualQrScan";
+import {
+  allocationIdsForManualQrScan,
+  getRobotTaskDisplayStatus,
+  taskHasPreCompletedAllocation,
+} from "@/utils/outboundRobotTaskDisplay";
 import { getApiErrorMessage } from "@/utils/apiErrorMessage";
+import { QrCameraOverlay } from "@/components/qr-scan";
 
 const TABLE_CLASS =
-  "[&_.ant-table-thead_th]:!bg-slate-50 [&_.ant-table-thead_th]:!text-slate-600 [&_.ant-table-thead_th]:!font-semibold [&_.ant-table-thead_th]:!text-base [&_.ant-table-tbody_td]:!text-base [&_.ant-table-thead_th]:!py-3 [&_.ant-table-tbody_td]:!py-3 [&_.ant-table-row]:hover:bg-slate-50/50";
+  "[&_.ant-table-thead_th]:!bg-slate-50 [&_.ant-table-thead_th]:!text-slate-600 [&_.ant-table-thead_th]:!font-semibold [&_.ant-table-thead_th]:!text-base [&_.ant-table-tbody_td]:!text-base [&_.ant-table-thead_th]:!py-3 [&_.ant-table-tbody_td]:!py-3 [&_.ant-table-row]:hover:bg-slate-50/50 [&_.ant-table-cell]:!text-center";
 
 const OUTBOUND_DETAIL_TABS = [
   { key: "list" as const, label: "Danh sách" },
@@ -82,9 +96,19 @@ function formatDetailLineKey(key: string): string {
   return DETAIL_LINE_FIELD_LABELS[key] ?? key.replace(/_/g, " ");
 }
 
+/** Keys already shown in the row table — hide in expanded "Chi tiết dòng". */
+const DETAIL_EXPAND_HIDDEN_KEYS = new Set([
+  "lot",
+  "lot_number",
+  "sku",
+  "part_number",
+  "item_name",
+]);
+
 function getDetailEntries(details: Record<string, unknown> | undefined) {
   return Object.entries(details ?? {}).filter(
-    ([, value]) =>
+    ([key, value]) =>
+      !DETAIL_EXPAND_HIDDEN_KEYS.has(key) &&
       value !== null &&
       value !== undefined &&
       value !== "" &&
@@ -96,20 +120,6 @@ const TASK_TYPE_LABEL: Record<OutboundRobotTask["task_type"], string> = {
   outbound: "XUẤT",
   return: "TRẢ",
 };
-
-function getRobotTaskDisplayStatus(
-  record: OutboundRobotTask,
-  isManualOutbound = false,
-): string {
-  const allocationStatus = record.allocations[0]?.status;
-  if (allocationStatus === "completed") return "completed";
-  // Robot ICS "completed" maps allocation to pre_completed until QR confirm.
-  if (allocationStatus === "pre_completed") return "pre_completed";
-  if (isManualOutbound) return allocationStatus || record.status;
-  if (record.task_type !== "return") return record.status;
-  if (record.status && record.status !== "initialize") return record.status;
-  return allocationStatus || record.status;
-}
 
 function displayValue(value: unknown): string {
   if (value === null || value === undefined || value === "") return "—";
@@ -196,6 +206,7 @@ export default function OutboundDetailPage() {
   const orderId = orderIdParam ? Number(orderIdParam) : undefined;
   const navigate = useNavigate();
   const outboundType = useAppStore((s) => s.outboundType);
+  const isManualOutbound = outboundType === "manual";
   const selectedWarehouseId = useAppStore((s) => s.selectedWarehouseId);
 
   const [isEditOpen, setIsEditOpen] = useState(false);
@@ -216,6 +227,13 @@ export default function OutboundDetailPage() {
   const [confirmingTaskOrderId, setConfirmingTaskOrderId] = useState<
     string | null
   >(null);
+  const [manualScanTask, setManualScanTask] = useState<OutboundRobotTask | null>(
+    null,
+  );
+  const [scanningTaskOrderId, setScanningTaskOrderId] = useState<
+    string | null
+  >(null);
+  const [exporting, setExporting] = useState(false);
 
   const {
     data: order,
@@ -262,6 +280,7 @@ export default function OutboundDetailPage() {
   const deleteMutation = useDeleteOutboundOrder();
   const calculateMutation = useCalculateOutboundOrder();
   const executeRobotTaskMutation = useExecuteOutboundRobotTask();
+  const executeQrManualMutation = useExecuteOutboundQrManual();
   const confirmNoQrMutation = useConfirmOutboundOrderNoQr();
   const { data: users = [] } = useUser();
 
@@ -528,6 +547,10 @@ export default function OutboundDetailPage() {
 
   const handleConfirmNoQr = async (record: OutboundRobotTask) => {
     if (!orderId) return;
+    if (!taskHasPreCompletedAllocation(record)) {
+      message.warning("Không có allocation chờ quét mã để xác nhận");
+      return;
+    }
     try {
       setConfirmingTaskOrderId(record.order_id);
       const result = await confirmNoQrMutation.mutateAsync({
@@ -578,6 +601,74 @@ export default function OutboundDetailPage() {
       setConfirmingTaskOrderId(null);
     }
   };
+
+  const handleManualRowQrScan = useCallback(
+    async (scanned: string) => {
+      const task = manualScanTask;
+      if (!task || !orderId) return;
+
+      const allocationIds = allocationIdsForManualQrScan(task);
+      if (allocationIds.length === 0) {
+        message.warning("Không có allocation hợp lệ để quét QR");
+        return;
+      }
+
+      const allocationStatus = getRobotTaskDisplayStatus(
+        task,
+        useManualAllocationFlow,
+      );
+      const { endId } = getTaskLocationIds(task);
+
+      if (
+        allocationStatus !== "initialize" &&
+        allocationStatus !== "pre_completed" &&
+        allocationStatus !== "double_check_stock"
+      ) {
+        message.warning("Trạng thái phân bổ không hợp lệ để quét QR");
+        return;
+      }
+
+      setManualScanTask(null);
+
+      try {
+        setScanningTaskOrderId(task.order_id);
+        await executeQrManualMutation.mutateAsync({
+          orderId,
+          body: {
+            allocation_ids: allocationIds,
+            qr_code: scanned.trim(),
+            ...(endId ? { to_location_id: endId } : {}),
+          },
+        });
+        message.success(
+          allocationStatus === "initialize"
+            ? "Đã quét sản phẩm — quét vị trí đích để hoàn tất"
+            : allocationStatus === "pre_completed"
+              ? "Đã quét vị trí — quét lại sản phẩm để hoàn tất"
+              : "Đã xác nhận xuất",
+        );
+        void refetchOrder();
+        void refetchDetails();
+        void refetchAllocationTasks();
+        void refetchLacked();
+      } catch (err) {
+        message.error(apiError(err));
+      } finally {
+        setScanningTaskOrderId(null);
+      }
+    },
+    [
+      executeQrManualMutation,
+      getTaskLocationIds,
+      manualScanTask,
+      orderId,
+      refetchAllocationTasks,
+      refetchDetails,
+      refetchLacked,
+      refetchOrder,
+      useManualAllocationFlow,
+    ],
+  );
 
   const handleDetailTabChange = useCallback(
     (tab: "list" | "allocation") => {
@@ -784,6 +875,21 @@ export default function OutboundDetailPage() {
 
   const isLoading = isOrderLoading || isDetailsLoading || isLackedLoading;
 
+  const handleExport = async () => {
+    if (!order?.id) return;
+
+    setExporting(true);
+    try {
+      message.loading({ content: "Đang xuất Excel...", key: "export" });
+      await exportOutboundOrderSoApi(order.id);
+      message.success({ content: "Đã tải file Excel", key: "export" });
+    } catch (err) {
+      message.error({ content: apiError(err), key: "export" });
+    } finally {
+      setExporting(false);
+    }
+  };
+
   const handleDelete = () => {
     if (!order?.order_code) return;
     Modal.confirmDelete({
@@ -983,12 +1089,32 @@ export default function OutboundDetailPage() {
       title: "Trạng thái",
       dataIndex: "status",
       key: "status",
-      width: 150,
+      width: isManualOutbound ? 220 : 180,
       render: (_, record) => {
         const displayStatus = getRobotTaskDisplayStatus(
           record,
           useManualAllocationFlow,
         );
+
+        if (
+          shouldShowOutboundQrScanButton(displayStatus, {
+            isManualOutbound,
+            hasAllocations: record.allocations.length > 0,
+          })
+        ) {
+          return (
+            <Button
+              variant="primary"
+              icon={<ScanOutlined />}
+              size="small"
+              loading={scanningTaskOrderId === record.order_id}
+              onClick={() => setManualScanTask(record)}
+            >
+              Quét QR
+            </Button>
+          );
+        }
+
         if (displayStatus === "initialize") {
           const { startId, endId, needsStartPick, needsEndPick } =
             getTaskLocationIds(record);
@@ -1012,7 +1138,10 @@ export default function OutboundDetailPage() {
             </Button>
           );
         }
-        if (!useManualAllocationFlow && displayStatus === "pre_completed") {
+        if (
+          !useManualAllocationFlow &&
+          taskHasPreCompletedAllocation(record)
+        ) {
           return (
             <Button
               variant="primary"
@@ -1077,26 +1206,26 @@ export default function OutboundDetailPage() {
 
   const renderExpandedRow = (record: OutboundOrderDetail) => (
     <div className="mx-2 my-1 space-y-2 rounded-lg bg-slate-50/60 px-3 py-2">
+      <DetailsEntriesPanel
+        entries={getDetailEntries(record.details)}
+        formatKey={formatDetailLineKey}
+        title="Chi tiết dòng"
+        emptyText="Không có dữ liệu bổ sung"
+      />
       <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">
         Phân bổ xuất
       </div>
-        {record.allocations.length > 0 ? (
-          <Table
-            columns={allocationColumns}
-            dataSource={record.allocations}
-            pagination={false}
-            rowKey="id"
-            size="small"
-          />
-        ) : (
-          <p className="text-sm text-slate-400 italic">Chưa có phân bổ</p>
-        )}
-        <DetailsEntriesPanel
-          entries={getDetailEntries(record.details)}
-          formatKey={formatDetailLineKey}
-          title="Chi tiết dòng"
-          emptyText="Không có dữ liệu bổ sung"
-      />
+      {record.allocations.length > 0 ? (
+        <Table
+          columns={allocationColumns}
+          dataSource={record.allocations}
+          pagination={false}
+          rowKey="id"
+          size="small"
+        />
+      ) : (
+        <p className="text-sm text-slate-400 italic">Chưa có phân bổ</p>
+      )}
     </div>
   );
 
@@ -1204,6 +1333,15 @@ export default function OutboundDetailPage() {
           </div>
         </div>
         <Space className="shrink-0">
+          <Button
+            variant="secondary"
+            icon={<DownloadOutlined />}
+            disabled={!order?.id || details.length === 0}
+            loading={exporting}
+            onClick={() => void handleExport()}
+          >
+            Export Excel
+          </Button>
           <Button
             icon={<EnvironmentOutlined />}
             disabled={!warehouseId || outboundPickLocations.length === 0}
@@ -1479,6 +1617,14 @@ export default function OutboundDetailPage() {
         details={details}
         orderLabel={order.order_code}
       />
+
+      {manualScanTask && (
+        <QrCameraOverlay
+          title={getManualScanTitle(manualScanTask)}
+          onScan={(text) => void handleManualRowQrScan(text)}
+          onClose={() => setManualScanTask(null)}
+        />
+      )}
     </div>
   );
 }

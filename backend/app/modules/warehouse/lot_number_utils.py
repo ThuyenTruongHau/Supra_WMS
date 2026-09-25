@@ -93,24 +93,86 @@ def resolve_lot_number_fields(
     legacy = normalize_lot_number(lot_number)
 
     if from_val and to_val:
-        f, _ = parse_legacy_lot_number(from_val)
-        _, t = parse_legacy_lot_number(to_val)
+        f, _ = resolve_lot_number_input(from_val)
+        _, t = resolve_lot_number_input(to_val)
         return f, t
     if from_val:
-        return parse_legacy_lot_number(from_val)
+        return resolve_lot_number_input(from_val)
     if to_val:
-        return parse_legacy_lot_number(to_val)
+        return resolve_lot_number_input(to_val)
     if legacy:
-        return parse_legacy_lot_number(legacy)
+        return resolve_lot_number_input(legacy)
     raise ValueError("lot_number_from and lot_number_to are required")
+
+def resolve_lot_number_input(value: str) -> tuple[str, str]:
+    s = normalize_lot_number(value)
+    if not s:
+        raise ValueError("lot_number is required")
+    if len(s) > 50:
+        raise ValueError("lot_number must be at most 50 characters")
+    try:
+        return parse_legacy_lot_number(s)
+    except ValueError:
+        return s, s  # lot_from = lot_to = raw user input
+
+def format_lot_part_for_display(value: str | None) -> str | None:
+    """Compact DDMMYY in DB → DD/MM/YY for API/UI. Does not parse or validate input."""
+    if value is None:
+        return None
+    s = value.strip()
+    if not s:
+        return None
+    if "/" in s:
+        return s
+    if len(s) == 6 and s.isdigit():
+        try:
+            return datetime.strptime(s, "%d%m%y").strftime("%d/%m/%y")
+        except ValueError:
+            return s
+    return s
+
+
+def format_lot_value_for_display(value: str | None) -> str | None:
+    """Format a single lot string, including compact ranges like 070826-080826."""
+    if value is None:
+        return None
+    s = value.strip()
+    if not s:
+        return None
+    if "-" in s:
+        left, _, right = s.partition("-")
+        left_disp = format_lot_part_for_display(left)
+        right_disp = format_lot_part_for_display(right)
+        if left_disp and right_disp and left_disp != right_disp:
+            return f"{left_disp}-{right_disp}"
+        return left_disp or right_disp
+    return format_lot_part_for_display(s)
 
 
 def format_lot_number_display(
     lot_number_from: str | None,
     lot_number_to: str | None,
 ) -> str | None:
-    if not lot_number_from and not lot_number_to:
+    from_disp = format_lot_part_for_display(lot_number_from)
+    to_disp = format_lot_part_for_display(lot_number_to)
+    if not from_disp and not to_disp:
         return None
-    if lot_number_from and lot_number_to and lot_number_from != lot_number_to:
-        return f"{lot_number_from}-{lot_number_to}"
-    return lot_number_from or lot_number_to
+    if from_disp and to_disp and from_disp != to_disp:
+        return f"{from_disp}-{to_disp}"
+    return from_disp or to_disp
+
+
+def apply_lot_display_fields(
+    *,
+    lot_number_from: str | None,
+    lot_number_to: str | None,
+    lot_number: str | None = None,
+) -> tuple[str | None, str | None, str | None]:
+    """Return (from, to, combined) formatted for API responses."""
+    disp_from = format_lot_part_for_display(lot_number_from)
+    disp_to = format_lot_part_for_display(lot_number_to)
+    if lot_number is not None and str(lot_number).strip():
+        disp_lot = format_lot_value_for_display(lot_number)
+    else:
+        disp_lot = format_lot_number_display(lot_number_from, lot_number_to)
+    return disp_from, disp_to, disp_lot

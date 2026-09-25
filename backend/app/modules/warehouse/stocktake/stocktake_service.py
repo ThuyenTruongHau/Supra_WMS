@@ -8,6 +8,7 @@ from sqlalchemy import case, func, or_, and_
 from app.modules.warehouse.item.item_model import Item
 from app.modules.warehouse.lot_number_utils import (
     format_lot_number_display,
+    format_lot_value_for_display,
     lot_string_to_date,
     parse_legacy_lot_number,
 )
@@ -128,7 +129,7 @@ def stocktake_item_to_response(row: StocktakeItemStock) -> StocktakeItemStockRes
         id=row.id,
         stocktake_id=row.stocktake_id,
         item_stock_id=row.item_stock_id,
-        lot_number=row.lot_number,
+        lot_number=format_lot_value_for_display(row.lot_number) or row.lot_number,
         location_id=row.location_id,
         desired_quantity=row.desired_quantity,
         actual_quantity=row.actual_quantity,
@@ -266,7 +267,11 @@ def create_stocktake(
         stocktake_items.append(StocktakeItemStock(
             stocktake_id=stocktake.id,
             item_stock_id=item_stock.id,
-            lot_number=f"{item_stock.lot_number_from}-{item_stock.lot_number_to}",
+            lot_number=format_lot_number_display(
+                item_stock.lot_number_from,
+                item_stock.lot_number_to,
+            )
+            or "",
             location_id=item_stock.location_id,
             desired_quantity=int(item_stock.quantity),
             actual_quantity=0,

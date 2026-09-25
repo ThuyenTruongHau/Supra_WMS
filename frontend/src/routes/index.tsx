@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate, Outlet } from "react-router-dom";
+import { Routes, Route, Navigate } from "react-router-dom";
 import LoginPage from "@/pages/LoginPage";
 import DashboardPage from "@/pages/DashboardPage";
 import ReportPage from "@/pages/ReportPage";
@@ -6,6 +6,7 @@ import WarehouseSettingPage from "@/pages/WarehouseSettingPage";
 import MainLayout from "@/components/layout/MainLayout";
 import { PublicRoute } from "../components/auth/PublicRoute";
 import { ProtectedRoute } from "../components/auth/ProtectedRoute";
+import { AdminRoute } from "../components/auth/AdminRoute";
 import ItemPage from "@/pages/ItemPage";
 import UserSettingPage from "@/pages/UserSettingPage";
 import ItemDetailPage from "@/pages/ItemDetailPage";
@@ -19,10 +20,8 @@ import OutboundDetailPage from "@/pages/OutboundDetailPage";
 // import ItemSettingPage from "@/pages/ItemSettingPage";
 import StocktakePage from "@/pages/StocktakePage";
 import StocktakeDetailPage from "@/pages/StocktakeDetailPage";
-import WorkerInboundVehicleListPage from "@/pages/WorkerInboundVehicleListPage";
-import WorkerInboundSkuListPage from "@/pages/WorkerInboundSkuListPage";
-import WorkerInboundPickupPage from "@/pages/WorkerInboundPickupPage";
-import WorkerInboundConfirmPage from "@/pages/WorkerInboundConfirmPage";
+import BacklogPage from "@/pages/BacklogPage";
+import NotificationPage from "@/pages/NotificationPage";
 import QrTabletLayout from "@/pages/qrtablet/QrTabletLayout";
 import QrTabletInboundPage from "@/pages/qrtablet/QrTabletInboundPage";
 import QrTabletOutboundPage from "@/pages/qrtablet/QrTabletOutboundPage";
@@ -59,21 +58,13 @@ export default function AppRoutes() {
         <Route path="print-qr" element={<QrTabletPrintQrPage />} />
       </Route>
 
-      {/* ── Worker routes (full-screen, no sidebar) ── */}
-      <Route path="/worker" element={<ProtectedRoute><Outlet /></ProtectedRoute>}>
-        <Route path="vehicles" element={<WorkerInboundVehicleListPage />} />
-        <Route path="vehicles/:vehicleNumber/skus" element={<WorkerInboundSkuListPage />} />
-        <Route path="vehicles/:vehicleNumber/skus/:detailId/pickup" element={<WorkerInboundPickupPage />} />
-        <Route path="vehicles/:vehicleNumber/skus/:detailId/confirm" element={<WorkerInboundConfirmPage />} />
-      </Route>
-
-      {/* ── Main app with sidebar ── */}
+      {/* ── Main app with sidebar (admin only) ── */}
       <Route
         path="/"
         element={
-          <ProtectedRoute>
+          <AdminRoute>
             <MainLayout />
-          </ProtectedRoute>
+          </AdminRoute>
         }
       >
         <Route index element={<Navigate to="/report" replace />} />
@@ -87,9 +78,10 @@ export default function AppRoutes() {
         <Route path="export/:orderId" element={<OutboundDetailPage />} />
         <Route path="inventory" element={<StocktakePage />} />
         <Route path="inventory/:id" element={<StocktakeDetailPage />} />
+        <Route path="backlog" element={<BacklogPage />} />
         {/* Các Route con ngoài WMS dropdown */}
         <Route path="report" element={<ReportPage />} />
-        <Route path="notification" element={<div>Trang Thông báo</div>} />
+        <Route path="notification" element={<NotificationPage />} />
         <Route path="setting" element={<div>Trang Cài Đặt</div>} />
         <Route path="setting/users" element={<UserSettingPage />} />
         <Route path="setting/warehouse" element={<WarehouseSettingPage />} />

@@ -1,19 +1,41 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { BankOutlined, DownOutlined } from "@ant-design/icons";
 import { useAppStore } from "@/store/useAppStore";
+import { useAuthStore } from "@/store/useAuthStore";
 import { useWarehouses } from "@/hooks/useWarehouse";
+import { usesAllWarehouseScope } from "@/utils/authSession";
+import type { WarehouseBrief } from "@/types/auth";
+import type { Warehouse } from "@/types/warehouse";
 
 type WarehouseSelectorProps = {
   className?: string;
 };
 
+function warehouseLabel(w: Warehouse | WarehouseBrief): string {
+  return w.name?.trim() || w.code;
+}
+
 export default function WarehouseSelector({ className }: WarehouseSelectorProps) {
-  const { data: warehouses, isLoading } = useWarehouses();
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const access = useAuthStore((s) => s.access);
+  const roles = useAuthStore((s) => s.roles);
+  const listAllWarehouses =
+    isAuthenticated && usesAllWarehouseScope(access, roles);
+  const { data: allWarehouses, isLoading: isLoadingAll } = useWarehouses({
+    enabled: listAllWarehouses,
+  });
+  const warehouses = useMemo((): (Warehouse | WarehouseBrief)[] => {
+    if (!isAuthenticated) return [];
+    if (listAllWarehouses) return allWarehouses ?? [];
+    return access?.warehouses ?? [];
+  }, [isAuthenticated, listAllWarehouses, allWarehouses, access?.warehouses]);
+
+  const isLoading = listAllWarehouses ? isLoadingAll : false;
   const { selectedWarehouseId, setSelectedWarehouseId } = useAppStore();
   const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {
-    if (warehouses && warehouses.length > 0) {
+    if (warehouses.length > 0) {
       const hasAccess = warehouses.some((warehouse) => warehouse.id === selectedWarehouseId);
       if (!hasAccess) {
         setSelectedWarehouseId(warehouses[0].id);
@@ -21,11 +43,11 @@ export default function WarehouseSelector({ className }: WarehouseSelectorProps)
     }
   }, [warehouses, selectedWarehouseId, setSelectedWarehouseId]);
 
-  const currentWarehouse = warehouses?.find(
+  const currentWarehouse = warehouses.find(
     (warehouse) => warehouse.id === selectedWarehouseId,
   );
   const warehouseName = currentWarehouse
-    ? currentWarehouse.name || currentWarehouse.code
+    ? warehouseLabel(currentWarehouse)
     : isLoading
       ? "Đang tải..."
       : "Chưa chọn kho";
@@ -66,7 +88,7 @@ export default function WarehouseSelector({ className }: WarehouseSelectorProps)
           />
 
           <div className="absolute right-0 z-20 mt-2 w-72 min-w-[288px] max-w-[288px] animate-in fade-in slide-in-from-top-1 rounded-xl border border-slate-100 bg-white py-1.5 shadow-lg duration-200">
-            {warehouses?.map((warehouse) => (
+            {warehouses.map((warehouse) => (
               <button
                 key={warehouse.id}
                 type="button"
@@ -83,7 +105,7 @@ export default function WarehouseSelector({ className }: WarehouseSelectorProps)
                       : ""
                   }
                 >
-                  {warehouse.name}
+                  {warehouseLabel(warehouse)}
                 </span>
                 {selectedWarehouseId === warehouse.id && (
                   <span className="text-xs font-bold text-brand-primary">✓</span>

@@ -5,8 +5,14 @@ from fastapi.responses import Response
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.modules.masan import masan_inbound_service
-from app.modules.masan.masan_schema import MasanInboundParseResponse
+from app.core.dependencies import require_permission
+from app.modules.masan import masan_inbound_service, masan_outbound_service
+from app.modules.masan.masan_schema import (
+    MasanInboundCallerRequest,
+    MasanInboundCallerResponse,
+    MasanInboundParseResponse,
+    MasanOutboundParseResponse,
+)
 from app.modules.warehouse.inbound_order.inbound_order_schema import (
     InboundOrderDetailResponse,
 )
@@ -49,6 +55,82 @@ async def parse_masan_inbound_preview(
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+
+@router.post(
+    "/masan/outbound-orders/parse-preview",
+    response_model=MasanOutboundParseResponse,
+    dependencies=[Depends(require_permission("outbound:create"))],
+)
+async def parse_masan_outbound_preview(
+    db: DbSession,
+    warehouse_id: int = Form(...),
+    outbound_type: Literal["manual", "auto"] = Form("auto"),
+    file: UploadFile = File(...),
+):
+    filename = (file.filename or "").lower()
+    if not filename.endswith((".xlsx", ".xls")):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="File phải là Excel (.xlsx hoặc .xls)",
+        )
+
+    content = await file.read()
+    if not content:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="File rỗng",
+        )
+
+    try:
+        return masan_outbound_service.parse_masan_outbound_preview(
+            db,
+            warehouse_id=warehouse_id,
+            content=content,
+            outbound_type=outbound_type,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+
+@router.get(
+    "/masan/outbound-orders/{order_id}/export-so",
+    dependencies=[Depends(require_permission("outbound:read"))],
+)
+def export_masan_outbound_order_so(db: DbSession, order_id: int):
+    try:
+        content, filename = masan_outbound_service.export_outbound_order_so(db, order_id)
+    except ValueError as exc:
+        message = str(exc)
+        if "not found" in message.lower():
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=message) from exc
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=message) from exc
+
+    return Response(
+        content=content,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+        },
+    )
+
+
+@router.post(
+    "/masan/inbound-orders/caller",
+    status_code=status.HTTP_202_ACCEPTED,
+    response_model=MasanInboundCallerResponse,
+)
+def caller_masan_inbound_order(db: DbSession, body: MasanInboundCallerRequest):
+    try:
+        return masan_inbound_service.caller_masan_inbound_order(
+            db,
+            body.location_ids,
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
 
 
 @router.get(

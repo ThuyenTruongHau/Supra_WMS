@@ -7,7 +7,7 @@ stock movement business logic belongs in a dedicated workflow later.
 from typing import Optional
 
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app.modules.warehouse.item_stock.item_stock_model import ItemStock
 from app.modules.warehouse.location_map.location_model import Location
@@ -19,7 +19,52 @@ from app.modules.warehouse.transaction_history.history_schema import (
     HistoryCreate,
     HistoryResponse,
     HistoryListResponse,
+    TransactionHistoryLookupResponse,
+    ItemStockLookupResponse,
+    TransactionHistoryItemResponse,
+    OrderBriefResponse,
 )
+from app.modules.warehouse.item.item_model import QR_Code
+from app.modules.warehouse.inbound_order.inbound_order_model import InboundOrder
+from app.modules.warehouse.outbound_order.outbound_order_model import OutboundOrder
+
+
+def _to_item_stock_lookup(stock: ItemStock) -> ItemStockLookupResponse:
+    location = stock.location
+    item = stock.item
+    unit = stock.unit
+    return ItemStockLookupResponse.model_validate(stock).model_copy(
+        update={
+            "item_sku": item.sku if item else None,
+            "item_name": item.name if item else None,
+            "location_code": location.location_code if location else None,
+            "location_name": location.location_name if location else None,
+            "unit_name": unit.name if unit else None,
+        }
+    )
+
+
+def _to_transaction_history_item(tx: Transaction) -> TransactionHistoryItemResponse:
+    from_location = tx.from_location
+    to_location = tx.to_location
+    return TransactionHistoryItemResponse(
+        id=tx.id,
+        from_location_id=tx.from_location_id,
+        to_location_id=tx.to_location_id,
+        from_location_code=from_location.location_code if from_location else None,
+        from_location_name=from_location.location_name if from_location else None,
+        to_location_code=to_location.location_code if to_location else None,
+        to_location_name=to_location.location_name if to_location else None,
+        transaction_type=tx.transaction_type,
+        item_stock_id=tx.item_stock_id,
+        quantity=tx.quantity,
+        created_by_id=tx.created_by_id,
+        created_at=tx.created_at,
+    )
+
+
+def _to_order_brief(order) -> OrderBriefResponse:
+    return OrderBriefResponse.model_validate(order)
 
 
 def _ensure_refs(
@@ -141,3 +186,85 @@ def list_histories(db: Session, page: int = 1, page_size: int = 20, inbound_orde
     total = query.count()
     items = query.order_by(History.id.desc()).offset((page - 1) * page_size).limit(page_size).all()
     return HistoryListResponse(items=[HistoryResponse.model_validate(h) for h in items], total=total, page=page, page_size=page_size)
+
+def get_transaction_history(
+    db: Session,
+    qr_code: str | None = None,
+    order_code: str | None = None,
+) -> TransactionHistoryLookupResponse:
+    if qr_code:
+        normalized_qr = qr_code.strip()
+        if not normalized_qr:
+            raise ValueError("qr_code is required")
+        qr_record = (
+            db.query(QR_Code).filter(QR_Code.code == normalized_qr).first()
+        )
+        if not qr_record or not qr_record.item_stock_id:
+            raise ValueError("QR code not found or not linked to stock")
+        stock = (
+            db.query(ItemStock)
+            .options(
+                joinedload(ItemStock.location),
+                joinedload(ItemStock.item),
+                joinedload(ItemStock.unit),
+            )
+            .filter(ItemStock.id == qr_record.item_stock_id)
+            .first()
+        )
+        if not stock:
+            raise ValueError("Item stock not found")
+        transactions = (
+            db.query(Transaction)
+            .options(
+                joinedload(Transaction.from_location),
+                joinedload(Transaction.to_location),
+            )
+            .filter(Transaction.item_stock_id == qr_record.item_stock_id)
+            .order_by(Transaction.created_at.asc())
+            .all()
+        )
+        return TransactionHistoryLookupResponse(
+            lookup_type="qr_code",
+            qr_code=normalized_qr,
+            item_stock_id=qr_record.item_stock_id,
+            item_stock=_to_item_stock_lookup(stock),
+            transactions=[_to_transaction_history_item(tx) for tx in transactions],
+        )
+
+    if order_code is not None:
+        normalized_code = order_code.strip()
+        if not normalized_code:
+            raise ValueError("order_code is required")
+        inbound = (
+            db.query(InboundOrder)
+            .filter(InboundOrder.order_code == normalized_code)
+            .first()
+        )
+        outbound = (
+            db.query(OutboundOrder)
+            .filter(OutboundOrder.order_code == normalized_code)
+            .first()
+        )
+        if not inbound and not outbound:
+            raise ValueError("Order not found")
+        q = db.query(History)
+        if inbound:
+            q = q.filter(History.inbound_order_id == inbound.id)
+            order_type = "inbound"
+            order_meta = _to_order_brief(inbound)
+        else:
+            q = q.filter(History.outbound_order_id == outbound.id)
+            order_type = "outbound"
+            order_meta = _to_order_brief(outbound)
+        histories = q.order_by(History.created_at.asc()).all()
+        return TransactionHistoryLookupResponse(
+            lookup_type="order",
+            order_code=normalized_code,
+            order_type=order_type,
+            order=order_meta,
+            histories=[
+                HistoryResponse.model_validate(history) for history in histories
+            ],
+        )
+
+    raise ValueError("qr_code or order_code is required")

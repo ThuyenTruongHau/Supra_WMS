@@ -5,7 +5,7 @@ from typing import Optional
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.modules.warehouse.lot_number_utils import (
-    format_lot_number_display,
+    apply_lot_display_fields,
     resolve_lot_number_fields,
 )
 
@@ -125,9 +125,12 @@ class StocktakeItemStockFormData(BaseModel):
 
     @model_validator(mode="after")
     def set_lot_display(self) -> "StocktakeItemStockFormData":
-        if self.lot_number is None:
-            self.lot_number = format_lot_number_display(
-                self.lot_number_from,
-                self.lot_number_to,
-            )
+        disp_from, disp_to, disp_lot = apply_lot_display_fields(
+            lot_number_from=self.lot_number_from,
+            lot_number_to=self.lot_number_to,
+            lot_number=self.lot_number,
+        )
+        self.lot_number_from = disp_from
+        self.lot_number_to = disp_to
+        self.lot_number = disp_lot
         return self

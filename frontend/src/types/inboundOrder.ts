@@ -124,6 +124,12 @@ export interface InboundReleaseLocationsResponse {
   deleted: number;
 }
 
+export interface PurgePackingCacheResponse {
+  deleted: number;
+  scope: "pending";
+  message: string;
+}
+
 /** --- Create --- */
 export interface InboundOrderAllocationCreate {
   item_id: number;
@@ -134,6 +140,7 @@ export interface InboundOrderAllocationCreate {
   qr_code_id?: number | null;
   cavity_number?: string | null;
   manufacturing_user?: string | null;
+  manufacturing_machine?: string | null;
   qc_user?: string | null;
   packing_user?: string | null;
 }
@@ -194,6 +201,7 @@ export interface AssignOrGetItemStockRequest {
   lot_number?: string | null;
   cavity_number?: string | null;
   manufacturing_user?: string | null;
+  manufacturing_machine?: string | null;
   qc_user?: string | null;
   packing_user?: string | null;
   is_split?: boolean | null;
@@ -213,6 +221,7 @@ export interface QrCodePreviewResponse {
   cavity_number?: string | null;
   qr_type: string;
   manufacturing_user?: string | null;
+  manufacturing_machine?: string | null;
   qc_user?: string | null;
   packing_user?: string | null;
   is_split?: boolean;
@@ -251,10 +260,12 @@ export interface CacheForPackingUserRequest {
   lot_number: string;
   cavity_number?: string | null;
   manufacturing_user?: string | null;
+  manufacturing_machine?: string | null;
   qc_user?: string | null;
   packing_user?: string | null;
   /** Parent item qr_code_id; required when caching pack QR */
   relation?: number | null;
+  is_split?: boolean;
 }
 
 export interface AssignPackingToItemRequest {
@@ -266,8 +277,10 @@ export interface AssignPackingToItemRequest {
   lot_number?: string;
   cavity_number?: string | null;
   manufacturing_user?: string;
+  manufacturing_machine?: string | null;
   qc_user?: string | null;
   packing_user?: string | null;
+  is_split?: boolean;
 }
 
 export interface PackingUserPendingStocksResponse {
@@ -292,6 +305,7 @@ export interface AssignedItemStock {
   qr_type?: string | null;
   cavity_number?: string | null;
   manufacturing_user?: string | null;
+  manufacturing_machine?: string | null;
   qc_user?: string | null;
   packing_user?: string | null;
   stock_level?: number | null;
@@ -320,6 +334,8 @@ export interface AssignOrGetItemStockResponse {
   location_code?: string | null;
   warehouse_id?: number | null;
   order_code?: string | null;
+  success?: boolean | null;
+  message?: string | null;
 }
 
 export const isAssignOrGetPreview = (
@@ -361,8 +377,12 @@ export const isManualInboundCreated = (
   value: AssignOrGetItemStockResponse,
 ): value is AssignOrGetItemStockResponse & {
   action: "created";
-  order_code: string;
-} => value.action === "created" && !!value.order_code;
+  success: true;
+  message: string;
+} =>
+  value.action === "created" &&
+  value.success === true &&
+  !!value.message?.trim();
 
 export interface InboundCallerResponse {
   order: InboundOrder;

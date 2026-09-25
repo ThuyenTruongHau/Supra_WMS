@@ -254,6 +254,15 @@ function formatKpi(value?: number | string) {
   return formatQuantity(value);
 }
 
+function formatInventoryValue(value?: number | string) {
+  const amount = parseQuantity(value);
+  return new Intl.NumberFormat("vi-VN", {
+    style: "currency",
+    currency: "VND",
+    maximumFractionDigits: 0,
+  }).format(amount);
+}
+
 export default function ItemPage() {
   const { selectedWarehouseId } = useAppStore();
   const { data: zones = [] } = useZone();
@@ -350,8 +359,8 @@ export default function ItemPage() {
       color: "#0f3d46",
     },
     {
-      label: "Cảnh báo gần hết hạn",
-      value: formatKpi(analyze?.total_nearly_outdated),
+      label: "Giá trị tồn kho",
+      value: formatInventoryValue(analyze?.total_inventory_value),
       color: "#0f3460",
     },
     {
@@ -475,7 +484,13 @@ export default function ItemPage() {
         Math.round((importJob.processed / importJob.total) * 100),
       );
     }
-    return importJob.status === "running" ? 30 : 10;
+    if (importJob.status === "running") {
+      return 30;
+    }
+    if (importJob.message && importJob.message !== "Đang chờ xử lý") {
+      return 15;
+    }
+    return 10;
   })();
 
   const columns: ColumnsType<Item> = [
@@ -516,6 +531,17 @@ export default function ItemPage() {
           </span>
         );
       },
+    },
+    {
+      title: "Tổng giá trị",
+      dataIndex: "total_price",
+      key: "total_price",
+      sorter: (a, b) => parseQuantity(a.total_price) - parseQuantity(b.total_price),
+      render: (totalPrice: number | string) => (
+        <span className="font-semibold text-brand-dark">
+          {formatInventoryValue(totalPrice)}
+        </span>
+      ),
     },
     {
       title: "Đơn vị",
@@ -663,7 +689,7 @@ export default function ItemPage() {
                     `Hiển thị ${range[0]}–${range[1]} / ${total} sản phẩm`,
                   onChange: (nextPage) => setPage(nextPage),
                 }}
-                className="[&_.ant-table-thead_th]:!bg-slate-50 [&_.ant-table-thead_th]:!text-slate-600 [&_.ant-table-thead_th]:!font-semibold [&_.ant-table-row]:hover:bg-slate-50/50"
+                className="[&_.ant-table-thead_th]:!bg-slate-50 [&_.ant-table-thead_th]:!text-slate-600 [&_.ant-table-thead_th]:!font-semibold [&_.ant-table-row]:hover:bg-slate-50/50 [&_.ant-table-cell]:!text-center"
               />
             </>
           ) : (

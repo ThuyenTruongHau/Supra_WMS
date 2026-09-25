@@ -20,6 +20,16 @@ export interface WarehouseBrief {
 
 export type UserModule = 'inbound' | 'outbound' | 'stocktake';
 
+export type WarehouseScope = 'all' | 'assigned';
+
+/** Aggregated access from backend — not raw permission codes. */
+export interface UserAccessSummary {
+  is_admin: boolean;
+  warehouse_scope: WarehouseScope;
+  warehouses: WarehouseBrief[];
+  modules: UserModule[];
+}
+
 export interface AuthTokens {
   access_token: string;
   refresh_token?: string | null;
@@ -35,10 +45,11 @@ export interface LoginApiResponse {
 /** Normalized shape used by FE login hook / store */
 export interface LoginResponse {
   access_token: string;
-  refresh_token: string;
+  refresh_token: string | null;
   token_type: string;
   role: string;
   role_canonical: string;
+  roles: string[];
   user: User;
 }
 
@@ -54,6 +65,7 @@ export interface User {
   email: string;
   roles: RoleBrief[];
   warehouses: WarehouseBrief[];
+  access: UserAccessSummary;
   is_active: boolean;
   created_at: string;
   updated_at?: string;

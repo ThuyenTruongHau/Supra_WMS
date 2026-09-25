@@ -13,7 +13,7 @@ import type {
 import { AxiosError } from 'axios';
 import { ApiErrorResponse } from '@/types/apiError';
 
-export const useWarehouses = () => {
+export const useWarehouses = (options?: { enabled?: boolean }) => {
   return useQuery<Warehouse[], Error>({
     queryKey: ['warehouse'],
     queryFn: async () => {
@@ -21,6 +21,7 @@ export const useWarehouses = () => {
       return data.items;
     },
     staleTime: 5 * 60 * 1000,
+    enabled: options?.enabled ?? true,
   });
 };
 

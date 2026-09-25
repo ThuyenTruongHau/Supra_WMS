@@ -84,7 +84,9 @@ export default function QrTabletPrintQrPage() {
               />
               <p className="mt-1 text-xs text-slate-500">
                 {isManualPrintWarehouse
-                  ? "Kho manual: nhãn QR thuần 30×50mm (không có dòng ghi tay)."
+                  ? qrType === "item"
+                    ? "Kho manual: phiếu thành phẩm có mã sản phẩm trên QR (30×50mm)."
+                    : "Kho manual: nhãn QR thuần 30×50mm (pack / di chuyển)."
                   : qrType === "transit"
                     ? "Kho auto: phiếu di chuyển có dòng ghi tay."
                     : qrType === "pack"

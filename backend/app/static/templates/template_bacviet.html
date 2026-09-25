@@ -143,26 +143,27 @@
     }
 
     .ticket-title {
-      padding: 0.5mm 0.8mm;
+      padding: 1.6mm 0.8mm 0.9mm;
       text-align: center;
       display: flex;
       flex-direction: column;
-      justify-content: center;
+      justify-content: flex-end;
+      min-height: 9mm;
     }
 
     .ticket-title h1 {
       margin: 0;
-      font-size: 9.5px;
+      font-size: 16px;
       font-weight: 700;
-      line-height: 1.05;
+      line-height: 1.1;
     }
 
     .ticket-title p {
-      margin: 0;
-      font-size: 7.5px;
+      margin: 0.25mm 0 0;
+      font-size: 11px;
       font-style: italic;
       font-weight: 700;
-      line-height: 1.05;
+      line-height: 1.1;
     }
 
     .ticket-body {
@@ -315,15 +316,6 @@
       align-self: end;
     }
 
-    /* ── Meta cố định trên form ── */
-    .meta {
-      display: flex;
-      justify-content: space-between;
-      font-size: 6px;
-      padding: 0.35mm 0.45mm 0.45mm;
-      flex-shrink: 0;
-    }
-
     @media print {
       body {
         padding: 0;
@@ -388,9 +380,6 @@
 
       /** Số phiếu trên mỗi trang A4 — đồng bộ với --labels-per-page trong CSS */
       const LABELS_PER_PAGE = 9;
-
-      /** Mã biểu mẫu in trên form (không truyền từ backend) */
-      const DOCUMENT_CODE = "PR-QĐ01-BM12-R00";
 
       /* ── Utils ── */
 
@@ -524,11 +513,6 @@
                   <div class="qr-text">${qrDisplay}</div>
                 </div>
               </div>
-
-              <div class="meta">
-                <span>Ngày ban hành:</span>
-                <span>${DOCUMENT_CODE}</span>
-              </div>
             </div>
           </div>
         `;
@@ -593,7 +577,6 @@
 
       window.BacvietPrint = {
         LABELS_PER_PAGE,
-        DOCUMENT_CODE,
         buildLabels,
         countPages,
         renderTicket,

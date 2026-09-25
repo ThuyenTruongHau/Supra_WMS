@@ -1,6 +1,5 @@
 import json
 from typing import Optional, Literal
-from zoneinfo import ZoneInfo
 
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
@@ -12,14 +11,16 @@ from app.modules.warehouse.inbound_order.inbound_order_model import (
 from app.modules.warehouse.unit import unit_service
 from app.modules.warehouse.transaction_history.history_model import History, Transaction
 from app.modules.warehouse.item_stock.item_stock_model import ItemStock
-from app.core.cache import cache_scan_keys, cache_set, get_redis, cache_delete_pattern, cache_get
+from app.core.cache import cache_scan_keys, cache_set, get_redis, cache_delete_pattern, cache_get, cache_delete
 from app.modules.warehouse.item.item_service import get_qr_code_by_code
 from app.modules.warehouse.location_map.location_model import Location
 from app.modules.warehouse.unit.unit_model import Unit
 from app.modules.warehouse.item.item_model import Item, QR_Code
 from app.modules.warehouse.lot_number_utils import (
+    apply_lot_display_fields,
     format_lot_number_display,
-    parse_legacy_lot_number,
+    format_lot_value_for_display,
+    resolve_lot_number_input,
 )
 from app.core.logger import get_logger
 from app.modules.warehouse.inbound_order.inbound_order_schema import AssignOrGetItemStockAction
@@ -74,6 +75,18 @@ def _split_details_from_flag(is_split: Optional[bool]) -> Optional[dict]:
     return None
 
 
+def _apply_split_flag_to_cache_payload(
+    cache_payload: dict,
+    is_split: Optional[bool],
+) -> None:
+    split_details = _split_details_from_flag(is_split)
+    if split_details:
+        cache_payload["details"] = split_details
+        cache_payload["is_split"] = True
+    else:
+        cache_payload["is_split"] = False
+
+
 def _is_split_from_cached(cached: dict) -> bool:
     details = cached.get("details") or {}
     if isinstance(details, dict) and _is_split_stock_type(details.get("type")):
@@ -89,11 +102,15 @@ def _apply_cached_preview_fields(payload: dict, cached: dict) -> None:
     if cached.get("unit_name"):
         payload["unit_name"] = cached["unit_name"]
     if cached.get("lot_number") is not None:
-        payload["lot_number"] = cached["lot_number"] or ""
+        payload["lot_number"] = (
+            format_lot_value_for_display(cached["lot_number"]) or cached["lot_number"] or ""
+        )
     if cached.get("cavity_number"):
         payload["cavity_number"] = cached["cavity_number"]
     if cached.get("manufacturing_user"):
         payload["manufacturing_user"] = cached["manufacturing_user"]
+    if cached.get("manufacturing_machine"):
+        payload["manufacturing_machine"] = cached["manufacturing_machine"]
     if "qc_user" in payload and cached.get("qc_user"):
         payload["qc_user"] = cached["qc_user"]
     if "packing_user" in payload and cached.get("packing_user"):
@@ -118,6 +135,7 @@ def _qr_preview_payload(qr_record) -> dict:
         "cavity_numbers": _cavity_numbers_from_item(item),
         "qr_type": qr_type,
         "manufacturing_user": "",
+        "manufacturing_machine": "",
         "is_split": False,
     }
 
@@ -132,17 +150,21 @@ def _qr_preview_payload(qr_record) -> dict:
     if linked_packs:
         payload["linked_packs"] = linked_packs
     else:
-        cached_assign = _get_cached_assign_for_qr(qr_record.id)
-        if cached_assign:
-            _apply_cached_preview_fields(payload, cached_assign)
+        cached_manual = cache_get(f"inbound:manual:raw:{qr_record.code}")
+        if cached_manual:
+            _apply_cached_preview_fields(payload, cached_manual)
         else:
-            cached_item_assign = _get_cached_item_assign_for_qr(qr_record.id)
-            if cached_item_assign:
-                _apply_cached_preview_fields(payload, cached_item_assign)
+            cached_assign = _get_cached_assign_for_qr(qr_record.id)
+            if cached_assign:
+                _apply_cached_preview_fields(payload, cached_assign)
             else:
-                cached_pending = _get_cached_pending_for_qr(qr_record.id)
-                if cached_pending:
-                    _apply_cached_preview_fields(payload, cached_pending)
+                cached_item_assign = _get_cached_item_assign_for_qr(qr_record.id)
+                if cached_item_assign:
+                    _apply_cached_preview_fields(payload, cached_item_assign)
+                else:
+                    cached_pending = _get_cached_pending_for_qr(qr_record.id)
+                    if cached_pending:
+                        _apply_cached_preview_fields(payload, cached_pending)
     # logger.info(f"Preview payload for QR {qr_record.id}: {payload}")
     return payload
 
@@ -210,6 +232,17 @@ def _resolve_location(
 def _normalize_assigned_stock(stock: dict) -> dict:
     if stock.get("lot_number") is None and stock.get("lot_number_to"):
         stock["lot_number"] = stock["lot_number_to"]
+    disp_from, disp_to, disp_lot = apply_lot_display_fields(
+        lot_number_from=stock.get("lot_number_from") or stock.get("lot_number"),
+        lot_number_to=stock.get("lot_number_to"),
+        lot_number=stock.get("lot_number"),
+    )
+    if disp_lot:
+        stock["lot_number"] = disp_lot
+    if disp_to:
+        stock["lot_number_to"] = disp_to
+    if disp_from and stock.get("lot_number_from") is not None:
+        stock["lot_number_from"] = disp_from
     if stock.get("details") is None and stock.get("is_split"):
         stock["details"] = {"type": "Lấy lẻ"}
     elif isinstance(stock.get("details"), dict):
@@ -219,14 +252,8 @@ def _normalize_assigned_stock(stock: dict) -> dict:
     return stock
 
 
-def _default_lot_number(qr_record) -> str:
-    VN = ZoneInfo("Asia/Ho_Chi_Minh")
-    created = qr_record.created_at
-    if created is None:
-        return ""
-    if created.tzinfo is None:
-        return created.strftime("%d/%m/%y")
-    return created.astimezone(VN).strftime("%d/%m/%y")
+def _default_lot_number(_qr_record) -> str:
+    return ""
 
 def _reject_if_linked_pack_recache(qr_record, qr_type: str) -> None:
     if (qr_type or "item").strip().lower() != "pack":
@@ -366,11 +393,14 @@ def assign_for_packing_user(
     lot_number: Optional[str] = None,
     cavity_number: Optional[str] = None,
     manufacturing_user: Optional[str] = None,
+    manufacturing_machine: Optional[str] = None,
     qc_user: Optional[str] = None,
     packing_user: Optional[str] = None,
     relation: Optional[int] = None,
+    is_split: Optional[bool] = None,
 ) -> dict:
     qr_record = get_qr_code_by_code(db, qr_code)
+    logger.info(f"qr_record: {qr_code} --- {qr_record}")
     if qr_record is None:
         raise ValueError("Invalid QR code")
     if not _qr_type_needs_qc_packing(qr_record.qr_type):
@@ -384,8 +414,8 @@ def assign_for_packing_user(
     lot_raw = (lot_number or "").strip()
     if not lot_raw:
         raise ValueError("lot_number is required when assigning a QR code to a location")
-    lot_from, lot_to = parse_legacy_lot_number(lot_raw)
-    resolved_lot = format_lot_number_display(lot_from, lot_to)
+    lot_from, lot_to = resolve_lot_number_input(lot_raw)
+    resolved_lot = format_lot_number_display(lot_from, lot_to) or lot_raw.strip()
     item = qr_record.item
     allowed_cavities = _cavity_numbers_from_item(item)
     if allowed_cavities:
@@ -400,6 +430,7 @@ def assign_for_packing_user(
     qr_type = _normalize_qr_type(getattr(qr_record, "qr_type", None))
     needs_qc_packing = _qr_type_needs_qc_packing(qr_type)
     resolved_manufacturing = (manufacturing_user or "").strip() or None
+    resolved_machine = (manufacturing_machine or "").strip() or None
     resolved_qc = (qc_user or "").strip() or None
     resolved_packing = (packing_user or "").strip() or None
     _validate_staff_for_location_assign(
@@ -423,6 +454,7 @@ def assign_for_packing_user(
         "item_name": item.name if item else "",
         "cavity_number": selected_cavity,
         "manufacturing_user": resolved_manufacturing,
+        "manufacturing_machine": resolved_machine,
         "stock_level": _stock_level_for_qr_type(qr_record.qr_type),
     }
     if needs_qc_packing:
@@ -448,8 +480,7 @@ def assign_for_packing_user(
     if needs_qc_packing and resolved_packing:
         _check_pending_item_for_packing_user(resolved_packing, qr_record.item_id)
     _clear_previous_qr_pending(qr_record.id)
-
-    # logger.info(f"Caching pending for QR {qr_record.id} with payload: {cache_payload}")
+    _apply_split_flag_to_cache_payload(cache_payload, is_split)
 
     cache_set(
         f"inbound:pending:qr:{qr_record.id}",
@@ -578,12 +609,17 @@ def _pack_qr_preview_payload_for_item_assign(qr_record) -> dict:
         "cavity_numbers": _cavity_numbers_from_item(item),
         "qr_type": qr_type,
         "manufacturing_user": "",
+        "manufacturing_machine": "",
         "qc_user": "",
         "packing_user": "",
     }
     cached = _get_cached_item_assign_for_qr(qr_record.id)
     if cached:
         _apply_cached_preview_fields(payload, cached)
+    else:
+        cached_pending = _get_cached_pending_for_qr(qr_record.id)
+        if cached_pending:
+            _apply_cached_preview_fields(payload, cached_pending)
     return payload
 
 def _pack_preview_result_for_item_assign(qr_record) -> dict:
@@ -602,10 +638,13 @@ def assign_packing_to_item(
     lot_number: Optional[str] = None,
     cavity_number: Optional[str] = None,
     manufacturing_user: Optional[str] = None,
+    manufacturing_machine: Optional[str] = None,
     qc_user: Optional[str] = None,
     packing_user: Optional[str] = None,
+    is_split: Optional[bool] = None,
 ) -> dict:
     qr_record = get_qr_code_by_code(db, qr_code)
+    logger.info(f"----qr_record: {qr_record}----")
 
     if qr_record is None:
         raise ValueError("Invalid QR code")
@@ -639,8 +678,8 @@ def assign_packing_to_item(
     lot_raw = (lot_number or "").strip()
     if not lot_raw:
         raise ValueError("lot_number is required when assigning a QR code to a location")
-    lot_from, lot_to = parse_legacy_lot_number(lot_raw)
-    resolved_lot = format_lot_number_display(lot_from, lot_to)
+    lot_from, lot_to = resolve_lot_number_input(lot_raw)
+    resolved_lot = format_lot_number_display(lot_from, lot_to) or lot_raw.strip()
     item = qr_record.item
     allowed_cavities = _cavity_numbers_from_item(item)
     if allowed_cavities:
@@ -655,6 +694,7 @@ def assign_packing_to_item(
     qr_type = _normalize_qr_type(getattr(qr_record, "qr_type", None))
     needs_qc_packing = _qr_type_needs_qc_packing(qr_type)
     resolved_manufacturing = (manufacturing_user or "").strip() or None
+    resolved_machine = (manufacturing_machine or "").strip() or None
     resolved_qc = (qc_user or "").strip() or None
     resolved_packing = (packing_user or "").strip() or None
     _validate_staff_for_location_assign(
@@ -678,12 +718,14 @@ def assign_packing_to_item(
         "item_name": item.name if item else "",
         "cavity_number": selected_cavity,
         "manufacturing_user": resolved_manufacturing,
+        "manufacturing_machine": resolved_machine,
         "target_qr_id": resolved_target,
         "stock_level": _stock_level_for_qr_type(qr_record.qr_type),
     }
     if needs_qc_packing:
         cache_payload["qc_user"] = resolved_qc
         cache_payload["packing_user"] = resolved_packing
+    _apply_split_flag_to_cache_payload(cache_payload, is_split)
 
     cache_set(
         f"inbound:assign:item:{qr_record.id}",
@@ -756,6 +798,7 @@ def assign_or_get_item_stock(
     lot_number: Optional[str] = None,
     cavity_number: Optional[str] = None,
     manufacturing_user: Optional[str] = None,
+    manufacturing_machine: Optional[str] = None,
     qc_user: Optional[str] = None,
     packing_user: Optional[str] = None,
     is_split: Optional[bool] = None,
@@ -788,8 +831,8 @@ def assign_or_get_item_stock(
     lot_raw = (lot_number or "").strip()
     if not lot_raw:
         raise ValueError("lot_number is required when assigning a QR code to a location")
-    lot_from, lot_to = parse_legacy_lot_number(lot_raw)
-    resolved_lot = format_lot_number_display(lot_from, lot_to)
+    lot_from, lot_to = resolve_lot_number_input(lot_raw)
+    resolved_lot = format_lot_number_display(lot_from, lot_to) or lot_raw.strip()
     item = qr_record.item
     allowed_cavities = _cavity_numbers_from_item(item)
     if allowed_cavities:
@@ -804,6 +847,7 @@ def assign_or_get_item_stock(
     qr_type = _normalize_qr_type(getattr(qr_record, "qr_type", None))
     needs_qc_packing = _qr_type_needs_qc_packing(qr_type)
     resolved_manufacturing = (manufacturing_user or "").strip() or None
+    resolved_machine = (manufacturing_machine or "").strip() or None
     resolved_qc = (qc_user or "").strip() or None
     resolved_packing = (packing_user or "").strip() or None
     _validate_staff_for_location_assign(
@@ -832,18 +876,14 @@ def assign_or_get_item_stock(
         "item_name": item.name if item else "",
         "cavity_number": selected_cavity,
         "manufacturing_user": resolved_manufacturing,
+        "manufacturing_machine": resolved_machine,
         "stock_level": _stock_level_for_qr_type(qr_record.qr_type),
     }
     if needs_qc_packing:
         cache_payload["qc_user"] = resolved_qc
         cache_payload["packing_user"] = resolved_packing
 
-    split_details = _split_details_from_flag(is_split)
-    if split_details:
-        cache_payload["details"] = split_details
-        cache_payload["is_split"] = True
-    else:
-        cache_payload["is_split"] = False
+    _apply_split_flag_to_cache_payload(cache_payload, is_split)
 
     cache_set(
         f"inbound:assign:location:{location.id}:{qr_record.id}",
@@ -999,14 +1039,18 @@ def _item_stock_preview_payload(
         "cavity_number": stock.cavity_number,
         "cavity_numbers": _cavity_numbers_from_item(item),
         "manufacturing_user": stock.manufacturing_user or "",
+        "manufacturing_machine": stock.manufacturing_machine or "",
         "location_id": stock.location_id,
         "location_name": stock.location.location_name if stock.location else None,
         "status": stock.status,
         "qr_type": (qr_record.qr_type if qr_record else "item") or "item",
+        "is_split": False,
     }
+
     if _qr_type_needs_qc_packing(payload["qr_type"]):
         payload["qc_user"] = stock.qc_user or ""
         payload["packing_user"] = stock.packing_user or ""
+
     return payload
 
 def _existing_stock_preview_result(db: Session, stock: ItemStock, qr_record=None) -> dict:
@@ -1025,6 +1069,123 @@ def _location_scan_result(location: Location) -> dict:
         "warehouse_id": location.warehouse_id,
     }
 
+def _cache_qr_manual(
+    db: Session,
+    *,
+    raw: str,
+    warehouse_id: Optional[int] = None,
+    quantity: Optional[int] = None,
+    unit_id: Optional[int] = None,
+    lot_number: Optional[str] = None,
+    cavity_number: Optional[str] = None,
+    manufacturing_user: Optional[str] = None,
+    manufacturing_machine: Optional[str] = None,
+    qc_user: Optional[str] = None,
+    packing_user: Optional[str] = None,
+) -> dict:
+    product_code = (raw or "").strip()
+    if not product_code:
+        raise ValueError("raw is required to cache product QR for manual inbound")
+
+    qr_record = get_qr_code_by_code(db, product_code)
+    if qr_record is None:
+        raise ValueError("QR code not found")
+
+    if qr_record.item_stock_id is not None:
+        raise ValueError("QR code already has item stock")
+
+    qr_type = _normalize_qr_type(getattr(qr_record, "qr_type", None))
+    if qr_type == "transit":
+        raise ValueError("Transit QR codes cannot be cached for manual inbound")
+    if qr_type not in ("item", "pack"):
+        raise ValueError("Only item or pack QR codes can be cached for manual inbound")
+
+    item = qr_record.item
+    preview = _qr_preview_payload(qr_record)
+
+    resolved_qty = int(quantity) if quantity is not None else int(preview.get("quantity") or 1)
+    resolved_unit_id = unit_id if unit_id is not None else preview.get("unit_id")
+    resolved_unit_name = preview.get("unit_name") or ""
+
+    if unit_id is not None:
+        unit = db.query(Unit).filter(Unit.id == unit_id).first()
+        if not unit:
+            raise ValueError(f"Unit not found: {unit_id}")
+        resolved_unit_name = unit.name
+
+    lot_raw = (lot_number or "").strip()
+    if lot_raw:
+        lot_from, lot_to = resolve_lot_number_input(lot_raw)
+        resolved_lot = format_lot_number_display(lot_from, lot_to) or lot_raw.strip()
+    else:
+        resolved_lot = format_lot_value_for_display(
+            (preview.get("lot_number") or "").strip()
+        ) or ""
+
+    allowed_cavities = _cavity_numbers_from_item(item)
+    if allowed_cavities:
+        selected_cavity = (cavity_number or "").strip()
+        if selected_cavity and selected_cavity not in allowed_cavities:
+            raise ValueError(f"Invalid cavity_number: {selected_cavity}")
+    else:
+        selected_cavity = (cavity_number or "").strip() or None
+
+    needs_qc_packing = _qr_type_needs_qc_packing(qr_type)
+    resolved_manufacturing = (manufacturing_user or "").strip() or None
+    resolved_machine = (manufacturing_machine or "").strip() or None
+    resolved_qc = (qc_user or "").strip() or None
+    resolved_packing = (packing_user or "").strip() or None
+
+    cache_payload = {
+        "warehouse_id": warehouse_id,
+        "qr_code_id": qr_record.id,
+        "code": qr_record.code,
+        "item_id": qr_record.item_id,
+        "item_sku": item.sku if item else "",
+        "item_name": item.name if item else "",
+        "qr_type": qr_record.qr_type,
+        "quantity": resolved_qty,
+        "unit_id": resolved_unit_id,
+        "unit_name": resolved_unit_name,
+        "lot_number": resolved_lot,
+        "cavity_number": selected_cavity,
+        "manufacturing_user": resolved_manufacturing,
+        "manufacturing_machine": resolved_machine,
+        "stock_level": _stock_level_for_qr_type(qr_record.qr_type),
+    }
+
+    if needs_qc_packing:
+        cache_payload["qc_user"] = resolved_qc
+        cache_payload["packing_user"] = resolved_packing
+
+    cache_key = (
+        f"inbound:manual:raw:{product_code}"
+    )
+    cache_set(cache_key, cache_payload, ttl=-1)
+
+    return {
+        "action": AssignOrGetItemStockAction.PENDING_CACHED,
+        "pending": {
+            "qr_code_id": qr_record.id,
+            "code": qr_record.code,
+            "part_number": item.sku if item else "",
+            "item_name": item.name if item else "",
+        },
+    }
+
+def _clear_manual_qr_cache(
+    *,
+    raw: str,
+) -> bool:
+    product_code = (raw or "").strip()
+    if not product_code:
+        raise ValueError("raw is required to clear manual QR cache")
+
+    cache_key = (
+        f"inbound:manual:raw:{product_code}"
+    )
+    cache_delete(cache_key)
+    return True
 
 def assign_stock_to_location(
     db: Session,
@@ -1038,11 +1199,11 @@ def assign_stock_to_location(
     lot_number: Optional[str] = None,
     cavity_number: Optional[str] = None,
     manufacturing_user: Optional[str] = None,
+    manufacturing_machine: Optional[str] = None,
     qc_user: Optional[str] = None,
     packing_user: Optional[str] = None,
 ) -> dict:
-    if not qr_code:
-        raise ValueError("qr_code is required")
+    logger.info(f"---{qr_code}---")
 
     qr_record = db.query(QR_Code).filter(QR_Code.code == qr_code).first()
     location = _resolve_location(db, raw, warehouse_id)
@@ -1051,7 +1212,21 @@ def assign_stock_to_location(
         location_from_qr = _resolve_location(db, qr_code, warehouse_id)
         if location_from_qr is not None and not raw:
             return _location_scan_result(location_from_qr)
-        raise ValueError("QR code not found")
+        if raw:
+            return _cache_qr_manual(
+                db,
+                raw=raw,
+                warehouse_id=warehouse_id,
+                quantity=quantity,
+                unit_id=unit_id,
+                lot_number=lot_number,
+                cavity_number=cavity_number,
+                manufacturing_user=manufacturing_user,
+                manufacturing_machine=manufacturing_machine,
+                qc_user=qc_user,
+                packing_user=packing_user,
+            )
+        raise ValueError("QR code not found")        
 
     if location is None:
         if qr_record.item_stock_id is not None:
@@ -1071,7 +1246,8 @@ def assign_stock_to_location(
         lot_raw = (lot_number or "").strip()
         if not lot_raw:
             raise ValueError("lot_number is required when assigning a QR code to a location")
-        lot_from, lot_to = parse_legacy_lot_number(lot_raw)
+        lot_from, lot_to = resolve_lot_number_input(lot_raw)
+        resolved_lot = format_lot_number_display(lot_from, lot_to) or lot_raw.strip()
 
         item = qr_record.item
         allowed_cavities = _cavity_numbers_from_item(item)
@@ -1087,6 +1263,7 @@ def assign_stock_to_location(
         qr_type = _normalize_qr_type(getattr(qr_record, "qr_type", None))
         needs_qc_packing = _qr_type_needs_qc_packing(qr_type)
         resolved_manufacturing = (manufacturing_user or "").strip() or None
+        resolved_machine = (manufacturing_machine or "").strip() or None
         resolved_qc = (qc_user or "").strip() or None
         resolved_packing = (packing_user or "").strip() or None
         _validate_staff_for_location_assign(
@@ -1101,7 +1278,7 @@ def assign_stock_to_location(
             item_id=qr_record.item_id,
             unit_id=unit_id,
             quantity=quantity,
-        )
+        )            
 
         item_stock = ItemStock(
             item_id=qr_record.item_id,
@@ -1113,12 +1290,15 @@ def assign_stock_to_location(
             expiry_date=None,
             cavity_number=selected_cavity,
             manufacturing_user=resolved_manufacturing,
+            manufacturing_machine=resolved_machine,
             qc_user=resolved_qc,
             packing_user=resolved_packing,
             status="available",
             stock_level=_stock_level_for_qr_type(qr_record.qr_type),
             is_active=True,
         )
+
+        _clear_manual_qr_cache(raw=qr_code)
 
         db.add(item_stock)
         db.flush()
@@ -1131,7 +1311,7 @@ def assign_stock_to_location(
         item_stock = qr_record.item_stock
         detail_type = "change_location"
 
-    inbound = _create_inbound_order_qr_manual(
+    created = _create_inbound_order_qr_manual(
         db,
         item_stock,
         user_id=user_id,
@@ -1143,9 +1323,9 @@ def assign_stock_to_location(
     db.commit()
     return {
         "action": AssignOrGetItemStockAction.CREATED,
-        "order_code": inbound.order_code,
+        "success": created["success"],
+        "message": created["message"],
     }
-
 
 def _create_inbound_order_qr_manual(
     db: Session,
@@ -1158,52 +1338,74 @@ def _create_inbound_order_qr_manual(
     note: Optional[str] = None,
     detail_type: Optional[str] = None,
     to_location: Optional[Location] = None,
-) -> InboundOrder:
+) -> dict:
     if not item_stock.id:
         raise ValueError("ItemStock must be flushed before wrapping inbound order")
     if not item_stock.location_id:
         raise ValueError("ItemStock requires destination location_id")
-    if item_stock.inbound_order_detail_id:
-        raise ValueError("ItemStock already linked to an inbound detail")
     location = item_stock.location  # hoặc query Location
     if not location or not location.warehouse_id:
         raise ValueError("Location / warehouse not found")
     if not item_stock.lot_number_from or not item_stock.lot_number_to:
         raise ValueError("ItemStock requires lot_number_from and lot_number_to")
     
-    inbound_order = InboundOrder(
-        warehouse_id=location.warehouse_id,
-        order_code=order_code or f"INB-M-{uuid4().hex[:8].upper()}",
-        note=note,
-        created_by_id=user_id,
-        details={},
-    )
-    db.add(inbound_order)
-    db.flush()
+    from_location_id = item_stock.location_id
+    
+    success_message: str
+
     if detail_type == "change_location":
         if not to_location:
             raise ValueError("To location is required for change location")
         to_location_id = to_location.id
+        location_label = to_location.location_name or to_location.location_code
+        success_message = f"Đã chuyển hàng sang vị trí {location_label}"
     else:
+        inbound_order = InboundOrder(
+            warehouse_id=location.warehouse_id,
+            order_code=order_code or f"INB-M-{uuid4().hex[:8].upper()}",
+            note=note,
+            created_by_id=user_id,
+            details={},
+        )
+        db.add(inbound_order)
+        db.flush()
         to_location_id = item_stock.location_id
 
-    from_location_id = item_stock.location_id
+        detail_status = "completed"
+        detail = InboundOrderDetail(
+            inbound_order_id=inbound_order.id,
+            from_location_id=from_location_id,
+            to_location_id=to_location_id,
+            detail_type=detail_type,
+            status=detail_status,
+            details={},
+        )
+        db.add(detail)
+        db.flush()
+        item_stock.inbound_order_detail_id = detail.id
 
-    detail_status = "completed"
-    detail = InboundOrderDetail(
-        inbound_order_id=inbound_order.id,
-        from_location_id=from_location_id,
-        to_location_id=to_location_id,
-        detail_type=detail_type,
-        status=detail_status,
-        details={},
-    )
-    db.add(detail)
-    db.flush()
+        allocation = InboundOrderAllocation(
+            inbound_order_detail_id=detail.id,
+            item_stock_id=item_stock.id,
+            unit_id=allocation_unit_id,
+            quantity=allocation_quantity,
+        )
+        db.add(allocation)
+        db.flush()
 
-    item_stock.inbound_order_detail_id = detail.id
+        db.add(History(
+            inbound_order_id=inbound_order.id,
+            old_status="none",
+            new_status=detail_status,
+            description=f"{detail_type} inbound created from QR scan",
+            details={"item_stock_id": item_stock.id, "from_location_id": from_location_id, "to_location_id": to_location_id},
+            created_by_id=user_id,
+        ))
+        db.flush()
+        success_message = f"Đã tạo đơn nhập {inbound_order.order_code} thành công"
+
     item_stock.location_id = to_location_id
-    item_stock.status = "available"   
+    item_stock.status = "available"
 
     db.add(Transaction(
         from_location_id=from_location_id,
@@ -1213,105 +1415,18 @@ def _create_inbound_order_qr_manual(
         quantity=int(item_stock.quantity),
         created_by_id=user_id,
     ))
-
-
-    allocation = InboundOrderAllocation(
-        inbound_order_detail_id=detail.id,
-        item_stock_id=item_stock.id,
-        unit_id=allocation_unit_id,
-        quantity=allocation_quantity,
-    )
-    db.add(allocation)
     db.flush()
 
-    db.add(History(
-        inbound_order_id=inbound_order.id,
-        old_status="none",
-        new_status=detail_status,
-        description=f"{detail_type} inbound created from QR scan",
-        details={"item_stock_id": item_stock.id, "from_location_id": from_location_id, "to_location_id": to_location_id},
-        created_by_id=user_id,
-    ))
-    db.flush()
-    return inbound_order
+    return {
+        "success": True,
+        "message": success_message,
+    }
 
-# def outbound_stock_taking_manual(
-#     db: Session,
-#     *,
-#     user_id: int,
-#     raw: Optional[str] = None,
-#     warehouse_id: Optional[int] = None,
-#     qr_code: Optional[str] = None,
-#     quantity: Optional[int] = None,
-# ) -> dict:
-#     if not qr_code:
-#         raise ValueError("qr_code is required")
-#     qr_record = db.query(QR_Code).filter(QR_Code.code == qr_code).first()
-#     location = _resolve_location(db, raw, warehouse_id)
-#     if qr_record is None:
-#         raise ValueError("QR code not found")
-#     if location is None:
-#         #preview_data_qr_code
-    
-#     item_stock = qr_record.item_stock
-#     if item_stock is None:
-#         raise ValueError("Item stock not found")
-#     if item_stock.location_id != location.id:
-#         raise ValueError("Item stock is not in the location")
-#     if item_stock.quantity < quantity:
-#         raise ValueError("Item stock quantity is less than the quantity to take")
-#     if item_stock.status != "available":
-#         raise ValueError("Item stock is not available")
 
-#     outbound_order = _create_outbound_order_qr_manual(
-#         db,
-#         item_stock,
-#         user_id=user_id,
-#         quantity=quantity,
-#         location=location,
-#     )
-
-#     try:
-#         db.commit()
-#     except Exception as e:
-#         db.rollback()
-#         raise e
-
-# def _create_outbound_order_qr_manual(
-#     db: Session,
-#     item_stock: ItemStock,
-#     *,
-#     user_id: int,
-#     quantity: int,
-#     location: Location,
-# ) -> OutboundOrder:
-#     outbound_order = OutboundOrder(
-#         warehouse_id=location.warehouse_id,
-#         order_code=order_code or f"OUT-M-{uuid4().hex[:8].upper()}",
-#         note="",
-#         created_by_id=user_id,
-#         details={},
-#     )
-#     db.add(outbound_order)
-#     db.flush()
-
-#     detail_status = "completed"
-#     detail = OutboundOrderDetail(
-#         outbound_order_id=outbound_order.id,
-#         from_location_id=item_stock.location_id,
-#         to_location_id=location.id,
-#         detail_type="manual",
-#         status=detail_status,
-#         details={},
-#     )
-
-#     db.add(detail)
-
-#     allocation = OutboundOrderAllocation(
-#         outbound_order_detail_id=detail.id,
-#         item_stock_id=item_stock.id,
-#         unit_id=item_stock.unit_id,
-#         quantity=quantity,
-#     )
-#     db.add(allocation)
-#     db.flush()
+def delete_packing_cache() -> int:
+    deleted = cache_delete_pattern("inbound:pending:*")
+    if deleted:
+        logger.info("%s inbound pending cache keys deleted", deleted)
+    else:
+        logger.info("no inbound pending cache keys to delete")
+    return deleted

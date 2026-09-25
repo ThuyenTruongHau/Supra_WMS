@@ -8,7 +8,6 @@ import {
   ComposedChart,
   Legend,
   Line,
-  LineChart,
   Pie,
   PieChart,
   ResponsiveContainer,
@@ -16,76 +15,432 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
+import { useEffect, useMemo, useState } from 'react'
+import { NavLink } from 'react-router-dom'
+import { Segmented, Spin } from 'antd'
 import { Card } from '@/components/ui'
+import { useAppStore } from '@/store/useAppStore'
+import {
+  useReportKpis,
+  useReportStockAging,
+  useReportStockAgingBucket,
+  useReportTopProducts,
+  useReportTrends,
+} from '@/hooks/useDashboard'
+import type {
+  StockAgingBucketKey,
+  StockAgingRow,
+  TopProductsPeriod,
+  TrendGranularity,
+} from '@/types/dashboard'
+import { formatInventoryValue, formatKpiNumber } from '@/utils/formatKpi'
+import { parseQuantity } from '@/utils/formatQuantity'
 
-const KPI_CARDS = [
-  { label: 'Tổng đơn nhập', value: '1,284', color: '#3aa6a6' },
-  { label: 'Tổng đơn xuất', value: '976', color: '#0f3d46' },
-  { label: 'Giá trị tồn kho', value: '4.2 tỷ', color: '#0f3460' },
-  { label: 'Sản phẩm theo dõi', value: '358 Part_number', color: '#6b7280' },
+const KPI_CARD_META = [
+  {
+    label: 'Tổng đơn nhập',
+    color: '#3aa6a6',
+    key: 'total_inbound_orders' as const,
+    to: '/import',
+  },
+  {
+    label: 'Tổng đơn xuất',
+    color: '#0f3d46',
+    key: 'total_outbound_orders' as const,
+    to: '/export',
+  },
+  {
+    label: 'Giá trị tồn kho',
+    color: '#0f3460',
+    key: 'total_inventory_value' as const,
+    to: '/items',
+  },
+  {
+    label: 'Cảnh báo',
+    color: '#6b7280',
+    key: 'unsolved_notifications' as const,
+    to: '/notification',
+  },
 ]
 
-const MONTHLY_DATA = [
-  { month: 'T1', nhap: 820, xuat: 640 },
-  { month: 'T2', nhap: 910, xuat: 720 },
-  { month: 'T3', nhap: 880, xuat: 690 },
-  { month: 'T4', nhap: 960, xuat: 780 },
-  { month: 'T5', nhap: 1020, xuat: 840 },
-  { month: 'T6', nhap: 1100, xuat: 900 },
-  { month: 'T7', nhap: 980, xuat: 820 },
-  { month: 'T8', nhap: 1050, xuat: 870 },
-  { month: 'T9', nhap: 1120, xuat: 910 },
-  { month: 'T10', nhap: 1180, xuat: 950 },
-  { month: 'T11', nhap: 1240, xuat: 980 },
-  { month: 'T12', nhap: 1284, xuat: 976 },
-]
+const TOP_PRODUCT_CHARTS = [
+  { key: 'inbound_top' as const, title: 'Nhập nhiều', fill: '#3aa6a6' },
+  { key: 'outbound_top' as const, title: 'Xuất nhiều', fill: '#0f3d46' },
+  { key: 'stock_top' as const, title: 'Tồn nhiều', fill: '#0f3460' },
+] as const
 
-const TOP_PRODUCTS = [
-  { name: 'Thép cuộn', value: 420 },
-  { name: 'Xi măng', value: 380 },
-  { name: 'Sơn nước', value: 310 },
-  { name: 'Ống nhựa', value: 280 },
-  { name: 'Cát xây dựng', value: 245 },
-]
+const STOCK_AGING_BUCKET_COLORS: Record<StockAgingBucketKey, string> = {
+  lte_30: '#3aa6a6',
+  days_31_60: '#0f3d46',
+  gt_60: '#0f3460',
+}
 
-const WAREHOUSE_DISTRIBUTION = [
-  { name: 'Kho nguyên liệu', value: 45, color: '#3aa6a6' },
-  { name: 'Kho thành phẩm', value: 35, color: '#0f3d46' },
-  { name: 'Kho vật tư', value: 20, color: '#0f3460' },
-]
+function formatStockCreatedAt(iso: string) {
+  return new Intl.DateTimeFormat('vi-VN', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  }).format(new Date(iso))
+}
 
-const ROBOT_HOURLY_DATA = [
-  { hour: '00h', coTai: 2, khongTai: 8, hieuXuat: 45, thanhCong: 12, thatBai: 1 },
-  { hour: '01h', coTai: 1, khongTai: 6, hieuXuat: 42, thanhCong: 8, thatBai: 0 },
-  { hour: '02h', coTai: 0, khongTai: 5, hieuXuat: 38, thanhCong: 5, thatBai: 0 },
-  { hour: '03h', coTai: 1, khongTai: 4, hieuXuat: 40, thanhCong: 6, thatBai: 1 },
-  { hour: '04h', coTai: 3, khongTai: 7, hieuXuat: 48, thanhCong: 14, thatBai: 1 },
-  { hour: '05h', coTai: 5, khongTai: 10, hieuXuat: 55, thanhCong: 22, thatBai: 2 },
-  { hour: '06h', coTai: 8, khongTai: 12, hieuXuat: 62, thanhCong: 35, thatBai: 2 },
-  { hour: '07h', coTai: 14, khongTai: 10, hieuXuat: 72, thanhCong: 48, thatBai: 3 },
-  { hour: '08h', coTai: 22, khongTai: 8, hieuXuat: 78, thanhCong: 62, thatBai: 3 },
-  { hour: '09h', coTai: 28, khongTai: 6, hieuXuat: 84, thanhCong: 74, thatBai: 4 },
-  { hour: '10h', coTai: 32, khongTai: 5, hieuXuat: 88, thanhCong: 82, thatBai: 3 },
-  { hour: '11h', coTai: 30, khongTai: 6, hieuXuat: 86, thanhCong: 78, thatBai: 4 },
-  { hour: '12h', coTai: 18, khongTai: 12, hieuXuat: 75, thanhCong: 52, thatBai: 2 },
-  { hour: '13h', coTai: 26, khongTai: 7, hieuXuat: 82, thanhCong: 68, thatBai: 3 },
-  { hour: '14h', coTai: 34, khongTai: 5, hieuXuat: 90, thanhCong: 86, thatBai: 4 },
-  { hour: '15h', coTai: 36, khongTai: 4, hieuXuat: 92, thanhCong: 90, thatBai: 3 },
-  { hour: '16h', coTai: 33, khongTai: 6, hieuXuat: 89, thanhCong: 84, thatBai: 5 },
-  { hour: '17h', coTai: 24, khongTai: 9, hieuXuat: 80, thanhCong: 66, thatBai: 4 },
-  { hour: '18h', coTai: 16, khongTai: 11, hieuXuat: 70, thanhCong: 44, thatBai: 3 },
-  { hour: '19h', coTai: 10, khongTai: 14, hieuXuat: 62, thanhCong: 32, thatBai: 2 },
-  { hour: '20h', coTai: 6, khongTai: 10, hieuXuat: 55, thanhCong: 24, thatBai: 2 },
-  { hour: '21h', coTai: 4, khongTai: 8, hieuXuat: 50, thanhCong: 18, thatBai: 1 },
-  { hour: '22h', coTai: 3, khongTai: 7, hieuXuat: 47, thanhCong: 14, thatBai: 1 },
-  { hour: '23h', coTai: 2, khongTai: 6, hieuXuat: 44, thanhCong: 10, thatBai: 0 },
-]
+function formatLotPreview(lot: string | null) {
+  const trimmed = lot?.trim()
+  if (!trimmed || trimmed === '/') return '—'
+  return trimmed
+}
 
-const ROBOT_CHART_MARGIN = { top: 4, right: 4, left: -12, bottom: 0 }
-const ROBOT_AXIS_TICK = { fontSize: 12, fill: '#6b7280' }
-const ROBOT_LEGEND_STYLE = { fontSize: 11 }
+function StockAgingRowList({
+  rows,
+  emptyText,
+}: {
+  rows: StockAgingRow[]
+  emptyText: string
+}) {
+  if (!rows.length) {
+    return <p className="py-6 text-center text-sm text-slate-400">{emptyText}</p>
+  }
+  return (
+    <ul className="max-h-[380px] space-y-2 overflow-y-auto pr-1 text-sm">
+      {rows.map((row) => (
+        <li
+          key={row.item_stock_id}
+          className="rounded-lg border border-slate-100 bg-slate-50/80 px-3 py-2"
+        >
+          <p className="font-medium text-brand-dark truncate" title={row.sku}>
+            {row.sku}
+          </p>
+          <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-slate-500">
+            <span>
+              <span className="text-slate-400">Lot</span>{' '}
+              {formatLotPreview(row.lot)}
+            </span>
+            <span className="text-slate-300" aria-hidden>
+              ·
+            </span>
+            <span>
+              <span className="text-slate-400">SL</span>{' '}
+              {formatKpiNumber(parseQuantity(row.quantity))}
+            </span>
+            <span className="text-slate-300" aria-hidden>
+              ·
+            </span>
+            <span>
+              <span className="text-slate-400">Tạo</span>{' '}
+              {formatStockCreatedAt(row.created_at)} — {row.holding_days} ngày
+            </span>
+          </p>
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+function formatKpiValue(
+  key: (typeof KPI_CARD_META)[number]['key'],
+  kpis: ReturnType<typeof useReportKpis>['data'],
+) {
+  if (!kpis) return '—'
+  if (key === 'total_inventory_value') {
+    return formatInventoryValue(kpis.total_inventory_value)
+  }
+  return formatKpiNumber(kpis[key])
+}
+
+type TrendChartRow = {
+  label: string
+  nhap: number
+  xuat: number
+  tonQuantity: number
+  tonValue: number
+}
+
+const TREND_AXIS_TICK = { fontSize: 11, fill: '#6b7280' }
+
+function trendXAxisProps(granularity: TrendGranularity) {
+  return {
+    dataKey: 'label' as const,
+    tick: TREND_AXIS_TICK,
+    interval: 0 as const,
+    angle: granularity === 'week' ? -25 : 0,
+    textAnchor: (granularity === 'week' ? 'end' : 'middle') as 'end' | 'middle',
+    height: granularity === 'week' ? 56 : 30,
+  }
+}
+
+function OrdersTrendTooltip({
+  active,
+  payload,
+  label,
+}: {
+  active?: boolean
+  payload?: { dataKey: string; value: number }[]
+  label?: string
+}) {
+  if (!active || !payload?.length) return null
+  const byKey = Object.fromEntries(payload.map((p) => [p.dataKey, p.value]))
+  return (
+    <div className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm shadow-md">
+      <p className="font-semibold text-slate-800 mb-1">{label}</p>
+      <p className="text-[#3aa6a6]">Nhập kho: {formatKpiNumber(byKey.nhap ?? 0)}</p>
+      <p className="text-[#0f3d46]">Xuất kho: {formatKpiNumber(byKey.xuat ?? 0)}</p>
+    </div>
+  )
+}
+
+function InventoryTrendTooltip({
+  active,
+  payload,
+  label,
+  granularity,
+}: {
+  active?: boolean
+  payload?: { dataKey: string; value: number }[]
+  label?: string
+  granularity: TrendGranularity
+}) {
+  if (!active || !payload?.length) return null
+  const byKey = Object.fromEntries(payload.map((p) => [p.dataKey, p.value]))
+  return (
+    <div className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm shadow-md">
+      <p className="font-semibold text-slate-800 mb-1">{label}</p>
+      <p className="text-[#2563eb]">
+        SL tồn: {formatKpiNumber(byKey.tonQuantity ?? 0)}
+      </p>
+      <p className="text-[#9333ea]">
+        Giá trị tồn: {formatInventoryValue(byKey.tonValue ?? 0)}
+      </p>
+      {granularity === 'week' && (
+        <p className="text-xs text-slate-400 mt-1">
+          Tồn tuần = tổng theo ngày trong tuần
+        </p>
+      )}
+    </div>
+  )
+}
+
+function HorizontalBarChart({
+  title,
+  data,
+  fill,
+}: {
+  title: string
+  data: { name: string; value: number }[]
+  fill: string
+}) {
+  return (
+    <div className="rounded-xl bg-white p-5 shadow-sm h-full">
+      <h3 className="mb-4 text-base font-semibold text-brand-dark">{title}</h3>
+      <ResponsiveContainer width="100%" height={280}>
+        <BarChart
+          data={data}
+          layout="vertical"
+          margin={{ top: 0, right: 16, left: 8, bottom: 0 }}
+        >
+          <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" horizontal={false} />
+          <XAxis type="number" tick={{ fontSize: 12, fill: '#6b7280' }} />
+          <YAxis
+            type="category"
+            dataKey="name"
+            width={100}
+            tick={{ fontSize: 12, fill: '#374151' }}
+          />
+          <Tooltip />
+          <Bar dataKey="value" name="Số lượng" fill={fill} radius={[0, 4, 4, 0]} />
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+  )
+}
+
+function OrdersTrendChart({
+  data,
+  granularity,
+  yMax,
+}: {
+  data: TrendChartRow[]
+  granularity: TrendGranularity
+  yMax: number
+}) {
+  return (
+    <ResponsiveContainer width="100%" height={320}>
+      <AreaChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+        <defs>
+          <linearGradient id="colorNhap" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="5%" stopColor="#3aa6a6" stopOpacity={0.35} />
+            <stop offset="95%" stopColor="#3aa6a6" stopOpacity={0} />
+          </linearGradient>
+          <linearGradient id="colorXuat" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="5%" stopColor="#0f3d46" stopOpacity={0.3} />
+            <stop offset="95%" stopColor="#0f3d46" stopOpacity={0} />
+          </linearGradient>
+        </defs>
+        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+        <XAxis {...trendXAxisProps(granularity)} />
+        <YAxis
+          tick={{ fontSize: 12, fill: '#6b7280' }}
+          domain={[0, yMax]}
+          allowDataOverflow
+        />
+        <Tooltip content={<OrdersTrendTooltip />} />
+        <Legend />
+        <Area
+          type="monotone"
+          dataKey="nhap"
+          name="Nhập kho"
+          stroke="#3aa6a6"
+          fill="url(#colorNhap)"
+          strokeWidth={2}
+        />
+        <Area
+          type="monotone"
+          dataKey="xuat"
+          name="Xuất kho"
+          stroke="#0f3d46"
+          fill="url(#colorXuat)"
+          strokeWidth={2}
+        />
+      </AreaChart>
+    </ResponsiveContainer>
+  )
+}
+
+function InventoryTrendChart({
+  data,
+  granularity,
+}: {
+  data: TrendChartRow[]
+  granularity: TrendGranularity
+}) {
+  return (
+    <ResponsiveContainer width="100%" height={320}>
+      <ComposedChart data={data} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
+        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+        <XAxis {...trendXAxisProps(granularity)} />
+        <YAxis
+          yAxisId="left"
+          tick={{ fontSize: 12, fill: '#6b7280' }}
+          tickFormatter={(v) => formatKpiNumber(v)}
+        />
+        <YAxis
+          yAxisId="right"
+          orientation="right"
+          tick={{ fontSize: 12, fill: '#6b7280' }}
+          tickFormatter={(v) =>
+            new Intl.NumberFormat('vi-VN', {
+              notation: 'compact',
+              maximumFractionDigits: 1,
+            }).format(Number(v))
+          }
+        />
+        <Tooltip
+          content={<InventoryTrendTooltip granularity={granularity} />}
+        />
+        <Legend />
+        <Line
+          yAxisId="left"
+          type="monotone"
+          dataKey="tonQuantity"
+          name="SL tồn"
+          stroke="#2563eb"
+          strokeWidth={2}
+          dot={false}
+        />
+        <Line
+          yAxisId="right"
+          type="monotone"
+          dataKey="tonValue"
+          name="Giá trị tồn"
+          stroke="#9333ea"
+          strokeWidth={2}
+          dot={false}
+        />
+      </ComposedChart>
+    </ResponsiveContainer>
+  )
+}
 
 export default function ReportPage() {
+  const selectedWarehouseId = useAppStore((state) => state.selectedWarehouseId)
+  const warehouseId = selectedWarehouseId || 0
+  const [trendGranularity, setTrendGranularity] =
+    useState<TrendGranularity>('day')
+  const [topProductsPeriod, setTopProductsPeriod] =
+    useState<TopProductsPeriod>('week')
+  const { data: kpis, isLoading, isFetching } = useReportKpis(warehouseId)
+  const {
+    data: trends,
+    isLoading: isTrendLoading,
+  } = useReportTrends(warehouseId, trendGranularity)
+  const {
+    data: topProducts,
+    isLoading: isTopProductsLoading,
+  } = useReportTopProducts(warehouseId, topProductsPeriod)
+  const [selectedAgingBucket, setSelectedAgingBucket] =
+    useState<StockAgingBucketKey | null>(null)
+  const {
+    data: stockAging,
+    isLoading: isStockAgingLoading,
+  } = useReportStockAging(warehouseId)
+  const {
+    data: agingBucketDetail,
+    isLoading: isAgingBucketLoading,
+  } = useReportStockAgingBucket(warehouseId, selectedAgingBucket)
+
+  useEffect(() => {
+    setSelectedAgingBucket(null)
+  }, [warehouseId])
+
+  useEffect(() => {
+    if (!stockAging?.buckets?.length) return
+    setSelectedAgingBucket((prev) => {
+      if (prev && stockAging.buckets.some((b) => b.key === prev)) return prev
+      return stockAging.buckets.reduce((best, b) =>
+        parseQuantity(b.total_quantity) > parseQuantity(best.total_quantity)
+          ? b
+          : best,
+      ).key
+    })
+  }, [stockAging])
+
+  const stockAgingPieData = useMemo(() => {
+    if (!stockAging?.buckets?.length) return []
+    return stockAging.buckets.map((b) => ({
+      key: b.key,
+      name: b.label,
+      value: parseQuantity(b.total_quantity),
+      sharePercent: b.percent,
+      color: STOCK_AGING_BUCKET_COLORS[b.key],
+    }))
+  }, [stockAging])
+
+  const trendChartData = useMemo<TrendChartRow[]>(() => {
+    if (!trends?.points?.length) return []
+    return trends.points.map((point) => ({
+      label: point.label,
+      nhap: point.inbound_orders,
+      xuat: point.outbound_orders,
+      tonQuantity: parseQuantity(point.inventory_quantity),
+      tonValue: parseQuantity(point.inventory_value),
+    }))
+  }, [trends])
+
+  const ordersYMax = useMemo(() => {
+    if (!trendChartData.length) return 2
+    const peak = Math.max(
+      ...trendChartData.flatMap((d) => [d.nhap, d.xuat]),
+    )
+    return peak + 2
+  }, [trendChartData])
+
+  const kpiCards = useMemo(
+    () =>
+      KPI_CARD_META.map((card) => ({
+        ...card,
+        value: warehouseId ? formatKpiValue(card.key, kpis) : '—',
+      })),
+    [kpis, warehouseId],
+  )
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -93,195 +448,265 @@ export default function ReportPage() {
         <span className="text-sm text-gray-400">Tháng 6 / 2026</span>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {KPI_CARDS.map((card) => (
-          <Card key={card.label}>
-            <p className="text-sm text-gray-500">{card.label}</p>
-            <p className="mt-2 text-3xl font-bold" style={{ color: card.color }}>
-              {card.value}
-            </p>
-          </Card>
-        ))}
-      </div>
-
-      <div className="rounded-xl bg-white p-5 shadow-sm">
-        <h3 className="mb-4 text-base font-semibold text-brand-dark">
-          Nhập / Xuất kho theo tháng
-        </h3>
-        <ResponsiveContainer width="100%" height={320}>
-          <AreaChart data={MONTHLY_DATA} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-            <defs>
-              <linearGradient id="colorNhap" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#3aa6a6" stopOpacity={0.35} />
-                <stop offset="95%" stopColor="#3aa6a6" stopOpacity={0} />
-              </linearGradient>
-              <linearGradient id="colorXuat" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#0f3d46" stopOpacity={0.3} />
-                <stop offset="95%" stopColor="#0f3d46" stopOpacity={0} />
-              </linearGradient>
-            </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-            <XAxis dataKey="month" tick={{ fontSize: 12, fill: '#6b7280' }} />
-            <YAxis tick={{ fontSize: 12, fill: '#6b7280' }} />
-            <Tooltip />
-            <Legend />
-            <Area
-              type="monotone"
-              dataKey="nhap"
-              name="Nhập kho"
-              stroke="#3aa6a6"
-              fill="url(#colorNhap)"
-              strokeWidth={2}
-            />
-            <Area
-              type="monotone"
-              dataKey="xuat"
-              name="Xuất kho"
-              stroke="#0f3d46"
-              fill="url(#colorXuat)"
-              strokeWidth={2}
-            />
-          </AreaChart>
-        </ResponsiveContainer>
-      </div>
-
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-        <div className="rounded-xl bg-white p-5 shadow-sm">
-          <h3 className="mb-4 text-base font-semibold text-brand-dark">
-            Top 5 sản phẩm nhập nhiều
-          </h3>
-          <ResponsiveContainer width="100%" height={280}>
-            <BarChart data={TOP_PRODUCTS} layout="vertical" margin={{ top: 0, right: 16, left: 8, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" horizontal={false} />
-              <XAxis type="number" tick={{ fontSize: 12, fill: '#6b7280' }} />
-              <YAxis
-                type="category"
-                dataKey="name"
-                width={100}
-                tick={{ fontSize: 12, fill: '#374151' }}
-              />
-              <Tooltip />
-              <Bar dataKey="value" name="Số lượng" fill="#3aa6a6" radius={[0, 4, 4, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-
-        <div className="rounded-xl bg-white p-5 shadow-sm">
-          <h3 className="mb-4 text-base font-semibold text-brand-dark">Phân bổ theo kho</h3>
-          <ResponsiveContainer width="100%" height={280}>
-            <PieChart>
-              <Pie
-                data={WAREHOUSE_DISTRIBUTION}
-                cx="50%"
-                cy="50%"
-                innerRadius={60}
-                outerRadius={100}
-                paddingAngle={3}
-                dataKey="value"
-                nameKey="name"
-                label={({ name, value }) => `${name}: ${value}%`}
+      {!warehouseId ? (
+        <Card className="p-6 text-center text-slate-500">
+          Vui lòng chọn kho để xem KPI báo cáo
+        </Card>
+      ) : (
+        <Spin spinning={isLoading && !kpis}>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            {kpiCards.map((card) => (
+              <NavLink
+                key={card.label}
+                to={card.to}
+                className="block rounded-xl transition-shadow hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-primary"
+                title={`Xem ${card.label.toLowerCase()}`}
               >
-                {WAREHOUSE_DISTRIBUTION.map((entry) => (
-                  <Cell key={entry.name} fill={entry.color} />
-                ))}
-              </Pie>
-              <Tooltip formatter={(value) => `${value}%`} />
-              <Legend />
-            </PieChart>
-          </ResponsiveContainer>
+                <Card className="h-full cursor-pointer hover:border-slate-200">
+                  <p className="text-sm text-gray-500">{card.label}</p>
+                  <p
+                    className={`mt-2 text-3xl font-bold ${isFetching && kpis ? 'opacity-70' : ''}`}
+                    style={{ color: card.color }}
+                  >
+                    {card.value}
+                  </p>
+                </Card>
+              </NavLink>
+            ))}
+          </div>
+        </Spin>
+      )}
+
+      <div className="space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h3 className="text-base font-semibold text-brand-dark">Xu hướng kho</h3>
+          <Segmented
+            value={trendGranularity}
+            onChange={(value) => setTrendGranularity(value as TrendGranularity)}
+            options={[
+              { label: '12 ngày', value: 'day' },
+              { label: '12 tuần', value: 'week' },
+            ]}
+            disabled={!warehouseId}
+          />
         </div>
+        {!warehouseId ? (
+          <div className="rounded-xl bg-white p-5 shadow-sm">
+            <p className="py-12 text-center text-slate-500">
+              Vui lòng chọn kho để xem biểu đồ xu hướng
+            </p>
+          </div>
+        ) : (
+          <Spin spinning={isTrendLoading && !trends}>
+            <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+              <div className="rounded-xl bg-white p-5 shadow-sm">
+                <h4 className="mb-4 text-sm font-semibold text-brand-dark">
+                  Đơn nhập / xuất
+                </h4>
+                <OrdersTrendChart
+                  data={trendChartData}
+                  granularity={trendGranularity}
+                  yMax={ordersYMax}
+                />
+              </div>
+              <div className="rounded-xl bg-white p-5 shadow-sm">
+                <h4 className="mb-4 text-sm font-semibold text-brand-dark">
+                  Tồn kho (SL & giá trị)
+                </h4>
+                <InventoryTrendChart
+                  data={trendChartData}
+                  granularity={trendGranularity}
+                />
+              </div>
+            </div>
+          </Spin>
+        )}
       </div>
 
       <div className="space-y-4">
-        <h3 className="text-base font-semibold text-brand-dark">Hiệu suất robot</h3>
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-          <div className="rounded-xl bg-white p-5 shadow-sm">
-            <h4 className="mb-4 text-sm font-semibold text-brand-dark">Có tải / Không tải</h4>
-            <ResponsiveContainer width="100%" height={240}>
-              <BarChart
-                data={ROBOT_HOURLY_DATA}
-                margin={ROBOT_CHART_MARGIN}
-                barGap={1}
-                barCategoryGap="18%"
-              >
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                <XAxis dataKey="hour" tick={ROBOT_AXIS_TICK} interval={3} />
-                <YAxis tick={ROBOT_AXIS_TICK} />
-                <Tooltip formatter={(value, name) => [`${value} lần`, name]} />
-                <Legend wrapperStyle={ROBOT_LEGEND_STYLE} />
-                <Bar
-                  dataKey="coTai"
-                  name="Có tải"
-                  fill="#3aa6a6"
-                  radius={[2, 2, 0, 0]}
-                  maxBarSize={10}
-                />
-                <Bar
-                  dataKey="khongTai"
-                  name="Không tải"
-                  fill="#0f3d46"
-                  radius={[2, 2, 0, 0]}
-                  maxBarSize={10}
-                />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-
-          <div className="rounded-xl bg-white p-5 shadow-sm">
-            <h4 className="mb-4 text-sm font-semibold text-brand-dark">Hiệu xuất</h4>
-            <ResponsiveContainer width="100%" height={240}>
-              <LineChart data={ROBOT_HOURLY_DATA} margin={ROBOT_CHART_MARGIN}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                <XAxis dataKey="hour" tick={ROBOT_AXIS_TICK} interval={3} />
-                <YAxis tick={ROBOT_AXIS_TICK} domain={[0, 100]} tickFormatter={(v) => `${v}%`} />
-                <Tooltip formatter={(value) => [`${value}%`, 'Hiệu xuất']} />
-                <Legend wrapperStyle={ROBOT_LEGEND_STYLE} />
-                <Line
-                  type="monotone"
-                  dataKey="hieuXuat"
-                  name="Hiệu xuất"
-                  stroke="#3aa6a6"
-                  strokeWidth={2}
-                  dot={{ r: 2, fill: '#3aa6a6', strokeWidth: 0 }}
-                  activeDot={{ r: 4, fill: '#3aa6a6' }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-
-          <div className="rounded-xl bg-white p-5 shadow-sm">
-            <h4 className="mb-4 text-sm font-semibold text-brand-dark">Thành công / Thất bại</h4>
-            <ResponsiveContainer width="100%" height={240}>
-              <ComposedChart data={ROBOT_HOURLY_DATA} margin={ROBOT_CHART_MARGIN}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                <XAxis dataKey="hour" tick={ROBOT_AXIS_TICK} interval={3} />
-                <YAxis yAxisId="left" tick={ROBOT_AXIS_TICK} />
-                <YAxis yAxisId="right" orientation="right" tick={ROBOT_AXIS_TICK} />
-                <Tooltip formatter={(value, name) => [`${value} lần`, name]} />
-                <Legend wrapperStyle={ROBOT_LEGEND_STYLE} />
-                <Bar
-                  yAxisId="left"
-                  dataKey="thanhCong"
-                  name="Thành công"
-                  fill="#3aa6a6"
-                  radius={[2, 2, 0, 0]}
-                  maxBarSize={12}
-                />
-                <Line
-                  yAxisId="right"
-                  type="monotone"
-                  dataKey="thatBai"
-                  name="Thất bại"
-                  stroke="#0f3460"
-                  strokeWidth={2}
-                  strokeDasharray="5 3"
-                  dot={{ r: 2, fill: '#0f3460', strokeWidth: 0 }}
-                  activeDot={{ r: 4, fill: '#0f3460' }}
-                />
-              </ComposedChart>
-            </ResponsiveContainer>
-          </div>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h3 className="text-base font-semibold text-brand-dark">
+            Top 5 sản phẩm
+          </h3>
+          <Segmented
+            value={topProductsPeriod}
+            onChange={(value) =>
+              setTopProductsPeriod(value as TopProductsPeriod)
+            }
+            options={[
+              { label: '1 tuần', value: 'week' },
+              { label: '1 tháng', value: 'month' },
+            ]}
+            disabled={!warehouseId}
+          />
         </div>
+        {!warehouseId ? (
+          <div className="rounded-xl bg-white p-5 shadow-sm">
+            <p className="py-12 text-center text-slate-500">
+              Vui lòng chọn kho để xem top sản phẩm
+            </p>
+          </div>
+        ) : (
+          <Spin spinning={isTopProductsLoading && !topProducts}>
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+              {TOP_PRODUCT_CHARTS.map((chart) => {
+                const rows = topProducts?.[chart.key] ?? []
+                const data = rows.map((row) => ({
+                  name: row.label,
+                  value: row.total_quantity,
+                }))
+                return (
+                  <HorizontalBarChart
+                    key={chart.key}
+                    title={chart.title}
+                    data={data}
+                    fill={chart.fill}
+                  />
+                )
+              })}
+            </div>
+          </Spin>
+        )}
+      </div>
+
+      <div className="rounded-xl bg-white p-5 shadow-sm w-full">
+        <h3 className="mb-4 text-base font-semibold text-brand-dark">
+          Tỉ lệ thời gian tồn hàng
+        </h3>
+        {!warehouseId ? (
+          <p className="py-12 text-center text-slate-500">
+            Vui lòng chọn kho để xem tỉ lệ thời gian tồn hàng
+          </p>
+        ) : (
+          <Spin spinning={isStockAgingLoading && !stockAging}>
+            <div className="grid min-h-[440px] grid-cols-1 gap-6 md:grid-cols-[3fr_4fr_3fr]">
+              <div className="min-h-[200px] md:min-h-[440px]">
+                <h4 className="mb-3 text-sm font-semibold text-brand-dark">
+                  Tồn lâu nhất
+                </h4>
+                <StockAgingRowList
+                  rows={stockAging?.longest_holding ?? []}
+                  emptyText="Chưa có tồn hợp lệ"
+                />
+              </div>
+              <div className="flex min-h-[360px] items-center justify-center px-4 py-4 md:min-h-[440px] md:px-6 md:py-6 [&_.recharts-wrapper]:!overflow-visible [&_.recharts-surface]:overflow-visible">
+                {stockAgingPieData.every((d) => d.value <= 0) ? (
+                  <p className="text-sm text-slate-400">Không có dữ liệu tồn</p>
+                ) : (
+                  <div className="flex w-full max-w-sm flex-col items-center">
+                    <ResponsiveContainer width="100%" height={300}>
+                      <PieChart margin={{ top: 8, right: 8, bottom: 8, left: 8 }}>
+                        <Pie
+                          data={stockAgingPieData}
+                          dataKey="value"
+                          nameKey="name"
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={0}
+                          outerRadius={118}
+                          paddingAngle={2}
+                          label={false}
+                          labelLine={false}
+                          onClick={(_, index) => {
+                            const slice = stockAgingPieData[index]
+                            if (slice?.key) setSelectedAgingBucket(slice.key)
+                          }}
+                          style={{ cursor: 'pointer' }}
+                        >
+                          {stockAgingPieData.map((entry) => (
+                            <Cell
+                              key={entry.key}
+                              fill={entry.color}
+                              stroke={
+                                selectedAgingBucket === entry.key
+                                  ? '#1e293b'
+                                  : '#fff'
+                              }
+                              strokeWidth={
+                                selectedAgingBucket === entry.key ? 2 : 1
+                              }
+                            />
+                          ))}
+                        </Pie>
+                        <Tooltip
+                          formatter={(value, _name, item) => {
+                            const p = item?.payload as {
+                              sharePercent?: number
+                              name?: string
+                            }
+                            const share = Number(p?.sharePercent ?? 0)
+                            return [
+                              `${formatKpiNumber(Number(value ?? 0))} (${share.toFixed(1)}%)`,
+                              p?.name ?? 'Số lượng',
+                            ]
+                          }}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                    <ul
+                      className="mt-3 w-full space-y-2 border-t border-slate-100 pt-3"
+                      aria-label="Chú thích biểu đồ tồn hàng"
+                    >
+                      {stockAgingPieData.map((entry) => (
+                        <li key={entry.key}>
+                          <button
+                            type="button"
+                            onClick={() => setSelectedAgingBucket(entry.key)}
+                            className={`flex w-full items-center justify-between gap-3 rounded-lg px-2 py-1.5 text-left text-xs transition-colors ${
+                              selectedAgingBucket === entry.key
+                                ? 'bg-slate-100 ring-1 ring-slate-200'
+                                : 'hover:bg-slate-50'
+                            }`}
+                          >
+                            <span className="flex min-w-0 items-center gap-2">
+                              <span
+                                className="h-2.5 w-2.5 shrink-0 rounded-full"
+                                style={{ backgroundColor: entry.color }}
+                              />
+                              <span className="font-medium text-slate-700 truncate">
+                                {entry.name}
+                              </span>
+                            </span>
+                            <span className="shrink-0 tabular-nums text-slate-600">
+                              {entry.sharePercent.toFixed(0)}%
+                            </span>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+              <div className="min-h-[200px] md:min-h-[440px]">
+                <h4 className="mb-3 text-sm font-semibold text-brand-dark">
+                  Chi tiết nhóm
+                </h4>
+                <div className="mb-3 flex flex-wrap gap-2">
+                  {stockAging?.buckets.map((b) => (
+                    <button
+                      key={b.key}
+                      type="button"
+                      onClick={() => setSelectedAgingBucket(b.key)}
+                      className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+                        selectedAgingBucket === b.key
+                          ? 'border-brand-primary bg-brand-primary/10 text-brand-dark'
+                          : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
+                      }`}
+                    >
+                      {b.label}
+                    </button>
+                  ))}
+                </div>
+                <Spin spinning={isAgingBucketLoading && !agingBucketDetail}>
+                  <StockAgingRowList
+                    rows={agingBucketDetail?.items ?? []}
+                    emptyText="Không có dòng trong nhóm này"
+                  />
+                </Spin>
+              </div>
+            </div>
+          </Spin>
+        )}
       </div>
     </div>
   )

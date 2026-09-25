@@ -5,7 +5,7 @@ from app.core.database import db_session
 from app.core.logger import get_logger
 from app.modules.warehouse.item.item_import_utils import (
     mark_import_job_failed,
-    run_import_item_masan_pipeline,
+    run_import_item_upsert_phase,
     update_import_job,
 )
 
@@ -13,27 +13,27 @@ logger = get_logger("main")
 
 
 @celery_app.task(
-    name="item.import_masan",
+    name="item.import_masan_upsert",
     bind=True,
     acks_late=True,
     soft_time_limit=3600,
     time_limit=3900,
 )
-def import_item_masan_task(
+def import_item_masan_upsert_task(
     self,
     job_id: str,
     warehouse_id: int,
     filename: str,
 ) -> dict:
     logger.info(
-        "item.import_masan started job_id=%s warehouse_id=%s file=%s",
+        "item.import_masan_upsert started job_id=%s warehouse_id=%s file=%s",
         job_id,
         warehouse_id,
         filename,
     )
     try:
         with db_session() as db:
-            return run_import_item_masan_pipeline(
+            return run_import_item_upsert_phase(
                 db,
                 job_id,
                 warehouse_id,
@@ -51,7 +51,7 @@ def import_item_masan_task(
                 )
         except Exception:
             logger.exception(
-                "item.import_masan failed to persist job status job_id=%s",
+                "item.import_masan_upsert failed to persist job status job_id=%s",
                 job_id,
             )
             update_import_job(
