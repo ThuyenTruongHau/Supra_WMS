@@ -426,6 +426,27 @@ def upsert_staging_to_item(db: Session, job_id: str, warehouse_id: int) -> dict[
     }
 
 
+def auto_create_missing_units(db: Session, job_id: str) -> None:
+    raw_conn = db.connection().connection
+    try:
+        with raw_conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO unit (name, description)
+                SELECT DISTINCT btrim(s.base_unit), 'Auto-generated unit: ' || btrim(s.base_unit)
+                FROM item_import_staging s
+                LEFT JOIN unit u ON lower(u.name) = lower(btrim(s.base_unit))
+                WHERE s.job_id = CAST(%s AS uuid)
+                  AND s.base_unit <> ''
+                  AND u.id IS NULL
+                """,
+                (job_id,)
+            )
+        raw_conn.commit()
+    except Exception:
+        raw_conn.rollback()
+        raise
+
 def run_import_item_masan_pipeline(
     db: Session,
     job_id: str,
@@ -454,6 +475,9 @@ def run_import_item_masan_pipeline(
         on_progress=on_copy_progress,
     )
     processed = staging["processed"]
+    
+    # Auto-create any missing units from the staging data before validation
+    auto_create_missing_units(db, job_id)
 
     update_import_job(
         job_id,

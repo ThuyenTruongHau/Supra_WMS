@@ -7,7 +7,7 @@ from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.core.dependencies import require_permission
+from app.core.dependencies import require_permission, get_current_user
 from app.modules.warehouse.item import item_service
 from app.modules.warehouse.item.item_schema import (
     ItemAnalyzeResponse,
@@ -56,7 +56,7 @@ def list_items(
 @router.get(
     "/items/analyze-items/{warehouse_id}",
     response_model=ItemAnalyzeResponse,
-    dependencies=[Depends(require_permission("item:read"))],
+    dependencies=[Depends(get_current_user)],
 )
 def analyze_items(warehouse_id: int, db: DbSession):
     try:
@@ -84,7 +84,7 @@ async def import_items_masan(
 
 @router.get(
     "/items/import/file",
-    dependencies=[Depends(require_permission("item:read"))],
+    dependencies=[Depends(get_current_user)],
 )
 def download_last_import_item_file(
     db: DbSession,
@@ -129,7 +129,7 @@ def create_item(body: ItemCreate, db: DbSession):
 @router.get(
     "/items/{item_id}",
     response_model=ItemDetailResponse,
-    dependencies=[Depends(require_permission("item:read"))],
+    dependencies=[Depends(get_current_user)],
 )
 def get_item(item_id: int, db: DbSession):
     try:
