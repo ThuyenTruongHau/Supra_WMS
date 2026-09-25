@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.core.dependencies import require_permission
+from app.core.dependencies import require_permission, get_current_user
 from app.modules.warehouse.warehouse_zone import warehouse_service
 from app.modules.warehouse.warehouse_zone.warehouse_schema import (
     WarehouseCreate,
@@ -30,7 +30,7 @@ DbSession = Annotated[Session, Depends(get_db)]
 @router.get(
     "/warehouses",
     response_model=WarehouseListResponse,
-    dependencies=[Depends(require_permission("warehouse:read"))],
+    dependencies=[Depends(get_current_user)],
 )
 def list_warehouses(
     db: DbSession,
@@ -57,7 +57,7 @@ def create_warehouse(body: WarehouseCreate, db: DbSession):
 @router.get(
     "/warehouses/{warehouse_id}",
     response_model=WarehouseResponse,
-    dependencies=[Depends(require_permission("warehouse:read"))],
+    dependencies=[Depends(get_current_user)],
 )
 def get_warehouse(warehouse_id: int, db: DbSession):
     warehouse = warehouse_service.get_warehouse_by_id(db, warehouse_id)
@@ -101,7 +101,7 @@ def delete_warehouse(warehouse_id: int, db: DbSession):
 @router.get(
     "/zones",
     response_model=ZoneListResponse,
-    dependencies=[Depends(require_permission("zone:read"))],
+    dependencies=[Depends(get_current_user)],
 )
 def list_zones(
     db: DbSession,
@@ -131,7 +131,7 @@ def create_zone(body: ZoneCreate, db: DbSession):
 @router.get(
     "/zones/{zone_id}",
     response_model=ZoneResponse,
-    dependencies=[Depends(require_permission("zone:read"))],
+    dependencies=[Depends(get_current_user)],
 )
 def get_zone(zone_id: int, db: DbSession):
     zone = warehouse_service.get_zone_by_id(db, zone_id)

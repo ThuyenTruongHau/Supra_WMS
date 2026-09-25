@@ -9,7 +9,7 @@ from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.core.dependencies import require_permission
+from app.core.dependencies import require_permission, get_current_user
 from app.modules.warehouse.location_map import location_service
 from app.modules.warehouse.location_map.location_schema import (
     LocationDetailResponse,
@@ -71,16 +71,23 @@ def list_locations_for_map(
 @router.get(
     "/locations/zones/{zone_id}/for-map",
     response_model=LocationsForMapResponse,
-    dependencies=[Depends(require_permission("location:read"))],
+    dependencies=[Depends(get_current_user)],
 )
 def list_locations_for_zone_map(
     db: DbSession,
     zone_id: int,
 ):
+    import logging
+    logger = logging.getLogger(__name__)
+    logger.info(f"API list_locations_for_zone_map called for zone {zone_id}")
     try:
         return location_service.list_locations_for_zone_map(db, zone_id)
     except ValueError as e:
+        logger.error(f"ValueError in list_locations_for_zone_map for zone {zone_id}: {e}")
         raise HTTPException(status_code=404, detail=str(e)) from e
+    except Exception as e:
+        logger.error(f"Exception in list_locations_for_zone_map for zone {zone_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.get(
@@ -258,17 +265,24 @@ def get_map_data(warehouse_id: int, db: DbSession):
 @router.get(
     "/warehouse-maps/zones/{zone_id}/map-data",
     response_model=ZoneMapLayoutResponse,
-    dependencies=[Depends(require_permission("map:read"))],
+    dependencies=[Depends(get_current_user)],
 )
 def get_zone_map_data(zone_id: int, db: DbSession):
+    import logging
+    logger = logging.getLogger(__name__)
+    logger.info(f"API get_zone_map_data called for zone {zone_id}")
     try:
         return location_service.get_zone_map_layout(db, zone_id)
     except ValueError as e:
+        logger.error(f"ValueError in get_zone_map_data for zone {zone_id}: {e}")
         msg = str(e)
         status_code = (
             404 if "No active map" in msg or "not found" in msg.lower() else 400
         )
         raise HTTPException(status_code=status_code, detail=msg) from e
+    except Exception as e:
+        logger.error(f"Exception in get_zone_map_data for zone {zone_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.get(

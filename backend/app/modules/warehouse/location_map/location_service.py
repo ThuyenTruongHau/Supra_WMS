@@ -325,6 +325,78 @@ def list_locations_for_zone_map(db: Session, zone_id: int) -> LocationsForMapRes
         locations=items,
     )
 
+def list_locations_for_zone_map(db: Session, zone_id: int) -> LocationsForMapResponse:
+    zone = db.query(Zone).filter(Zone.id == zone_id).first()
+    if not zone:
+        raise ValueError(f"Zone id not found: {zone_id}")
+
+    locations = (
+        _location_query(db, include_inactive=False)
+        .filter(Location.zone_id == zone_id)
+        .order_by(Location.id)
+        .all()
+    )
+
+    items: list[MapLocationItem] = []
+    location_codes: list[str] = []
+    assigned_ids = location_ids_with_assigned_qr() 
+
+    for loc in locations:
+        stocks = [
+            MapLocationStockItem(
+                sku=stock.item.sku if stock.item else "",
+                lot_number_from=stock.lot_number_from,
+                lot_number_to=stock.lot_number_to,
+                lot_number=format_lot_number_display(
+                    stock.lot_number_from,
+                    stock.lot_number_to,
+                ),
+                quantity=str(stock.quantity),
+            )
+            for stock in (loc.stocks or [])
+            if stock.is_active
+            and stock.quantity is not None
+            and stock.quantity > 0
+            and (
+                stock.stock_level is None or stock.stock_level <= 1
+            )
+        ]
+        for assigned in _assigned_stocks_for_location(loc.id):
+            stocks.append(
+                MapLocationStockItem(
+                    sku=assigned.get("item_sku") or "",
+                    lot_number=assigned.get("lot_number"),
+                    lot_number_from=assigned.get("lot_number"),
+                    lot_number_to=assigned.get("lot_number"),
+                    quantity=str(assigned.get("quantity") or 0),
+                )
+            )
+        status = loc.status or ("has_stock" if stocks else "empty")
+        status = overlay_status_with_assign_cache(status, loc.id, assigned_ids)
+        if stocks or loc.id in assigned_ids:
+            location_codes.append(loc.location_code)
+        items.append(
+            MapLocationItem(
+                id=loc.id,
+                location_code=loc.location_code,
+                location_name=loc.location_name,
+                bin_code=loc.bin_code,
+                row=loc.row,
+                column=loc.column,
+                level=loc.level,
+                map_x=loc.map_x,
+                map_y=loc.map_y,
+                status=status,
+                item_stock=stocks,
+            )
+        )
+
+    return LocationsForMapResponse(
+        warehouse_id=zone.warehouse_id,
+        location_codes=location_codes,
+        locations=items,
+    )
+
 def _assigned_stocks_for_location(location_id: int) -> list[dict]:
     keys = cache_scan_keys(f"inbound:assign:location:{location_id}:*")
     if not keys:
