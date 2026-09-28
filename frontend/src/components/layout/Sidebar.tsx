@@ -200,7 +200,7 @@ function SidebarGroup({
 export default function Sidebar() {
   const { user, isAuthenticated } = useAuthStore();
   const username = user?.username;
-  const role = user?.role;
+  const role = user?.roles?.[0]?.name;
   const selectedWarehouseId = useAppStore((state) => state.selectedWarehouseId);
   const warehouseId = selectedWarehouseId || 0;
   const { data: unsolvedCount = 0 } = useNotificationUnsolvedCount(warehouseId);
