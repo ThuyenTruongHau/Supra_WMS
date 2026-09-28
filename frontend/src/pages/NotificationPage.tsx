@@ -49,6 +49,7 @@ export default function NotificationPage() {
   const [page, setPage] = useState(1);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setPage(1);
   }, [warehouseId]);
 

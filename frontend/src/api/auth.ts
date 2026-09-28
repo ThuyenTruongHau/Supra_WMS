@@ -15,19 +15,12 @@ export const loginApi = async (data: LoginRequest): Promise<LoginResponse> => {
     data,
   );
   const { user, tokens } = response.data;
-  const roleName =
-    user.roles?.find((r) => r.name === 'admin')?.name ??
-    user.roles?.[0]?.name ??
-    '';
-  const roleNames = user.roles?.map((r) => r.name) ?? [];
+  
   return {
     access_token: tokens.access_token,
     refresh_token: tokens.refresh_token ?? null,
     token_type: tokens.token_type ?? 'bearer',
-    role: roleName,
-    role_canonical: roleName,
     user,
-    roles: roleNames,
   };
 };
 

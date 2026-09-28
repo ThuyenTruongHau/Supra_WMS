@@ -20,9 +20,9 @@ import {
   AimOutlined,
 } from '@ant-design/icons';
 import { Popconfirm, Tag, Tooltip } from 'antd';
+import { getApiErrorMessage } from '@/utils/apiErrorMessage';
 import Hero from '@/components/shared/Hero';
 import { isAxiosError } from 'axios';
-import { getApiErrorMessage } from '@/utils/apiErrorMessage';
 import WarehouseMapCanvas from '@/components/shared/WarehouseMapCanvas';
 import type { NodeInfo } from '@/types/warehouseMap';
 import type { Zone } from '@/types/zone';

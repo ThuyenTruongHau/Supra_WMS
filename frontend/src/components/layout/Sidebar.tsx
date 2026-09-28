@@ -2,10 +2,9 @@ import { useEffect, useState } from "react";
 import { matchPath, Navigate, NavLink, useLocation } from "react-router-dom";
 import logo_thado from "@/assets/logo_thadorobot.png";
 import { useLogout } from "@/hooks/useAuth";
+import { useAuthStore } from "@/store/useAuthStore";
 import { useNotificationUnsolvedCount } from "@/hooks/useNotification";
 import { useAppStore } from "@/store/useAppStore";
-import { useAuthStore } from "@/store/useAuthStore";
-import { SNAPSHOT_MODE } from "@/snapshot/snapshotConfig";
 import {
   LogoutOutlined,
   BarChartOutlined,
@@ -15,7 +14,6 @@ import {
   ImportOutlined,
   ExportOutlined,
   AuditOutlined,
-  UnorderedListOutlined,
   BellOutlined,
   SettingOutlined,
   ClusterOutlined,
@@ -23,6 +21,7 @@ import {
   UserOutlined,
   HomeOutlined,
   QrcodeOutlined,
+  UnorderedListOutlined,
 } from "@ant-design/icons";
 
 interface SidebarLinkProps {
@@ -30,11 +29,6 @@ interface SidebarLinkProps {
   icon: React.ReactNode;
   label: string;
   collapsed: boolean;
-  badge?: number;
-}
-
-function formatBadgeCount(count: number) {
-  return count > 99 ? "99+" : String(count);
 }
 
 interface SubLinkProps {
@@ -64,9 +58,7 @@ function isGroupActive(items: SidebarGroupItem[], pathname: string) {
   );
 }
 
-function SidebarLink({ to, icon, label, collapsed, badge }: SidebarLinkProps) {
-  const showBadge = badge != null && badge > 0;
-
+function SidebarLink({ to, icon, label, collapsed }: SidebarLinkProps) {
   return (
     <NavLink
       to={to}
@@ -82,21 +74,13 @@ function SidebarLink({ to, icon, label, collapsed, badge }: SidebarLinkProps) {
           }`}
         >
           <div
-            className={`relative w-9 h-9 flex items-center justify-center rounded-lg transition-all shrink-0 ${
+            className={`w-9 h-9 flex items-center justify-center rounded-lg transition-all shrink-0 ${
               isActive
                 ? "bg-brand-primary text-white shadow-lg shadow-brand-primary/20"
                 : "bg-slate-800 text-slate-400 group-hover:bg-slate-700 group-hover:text-white"
             }`}
           >
             {icon}
-            {showBadge && (
-              <span
-                className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 flex items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-bold leading-none border-2 border-slate-900"
-                aria-label={`${badge} thông báo chưa xử lý`}
-              >
-                {formatBadgeCount(badge)}
-              </span>
-            )}
           </div>
           <span
             className={`text-sm tracking-wide transition-all duration-300 overflow-hidden whitespace-nowrap ${collapsed ? "opacity-0 max-w-0" : "opacity-100 max-w-[150px]"}`}
@@ -214,14 +198,17 @@ function SidebarGroup({
 }
 
 export default function Sidebar() {
-  const { username, role, isAuthenticated } = useAuthStore();
+  const { user, isAuthenticated } = useAuthStore();
+  const username = user?.username;
+  const role = user?.role;
   const selectedWarehouseId = useAppStore((state) => state.selectedWarehouseId);
   const warehouseId = selectedWarehouseId || 0;
   const { data: unsolvedCount = 0 } = useNotificationUnsolvedCount(warehouseId);
   const logout = useLogout();
   const [collapsed, setCollapsed] = useState(false);
+  const isAdmin = !!user?.access?.is_admin;
 
-  if (!SNAPSHOT_MODE && !isAuthenticated) {
+  if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
 
@@ -260,66 +247,108 @@ export default function Sidebar() {
       </div>
 
       <nav className="flex flex-col gap-1 flex-1 overflow-y-auto mt-6 px-3 overflow-x-hidden">
-        <SidebarLink
-          to="/report"
-          icon={<BarChartOutlined className="text-lg" />}
-          label="Báo cáo"
-          collapsed={collapsed}
-        />
+        {isAdmin ? (
+          <>
+            <SidebarLink
+              to="/report"
+              icon={<BarChartOutlined className="text-lg" />}
+              label="Báo cáo"
+              collapsed={collapsed}
+            />
 
-        <SidebarGroup
-          label="Quản lý kho"
-          icon={<ShopOutlined className="text-lg" />}
-          items={[
-            {
-              to: "/dashboard",
-              icon: <AppstoreOutlined />,
-              label: "Tổng quan",
-            },
-            { to: "/items", icon: <BoxPlotOutlined />, label: "Sản phẩm" },
-            { to: "/zones", icon: <ClusterOutlined />, label: "Zone" },
-            { to: "/import", icon: <ImportOutlined />, label: "Nhập kho" },
-            { to: "/export", icon: <ExportOutlined />, label: "Xuất kho" },
-            { to: "/inventory", icon: <AuditOutlined />, label: "Kiểm kê" },
-            {
-              to: "/backlog",
-              icon: <UnorderedListOutlined />,
-              label: "Backlog",
-            },
-          ]}
-          collapsed={collapsed}
-        />
-        <SidebarLink
-          to="/notification"
-          icon={<BellOutlined className="text-lg" />}
-          label="Thông báo"
-          collapsed={collapsed}
-          badge={unsolvedCount}
-        />
-        <SidebarGroup
-          label="Cài đặt"
-          icon={<SettingOutlined className="text-lg" />}
-          items={[
-            {
-              to: "/setting/users",
-              icon: <UserOutlined />,
-              label: "Người dùng",
-            },
-            { to: "/setting/warehouse", icon: <HomeOutlined />, label: "Kho" },
-            {
-              to: "/setting/units",
-              icon: <ExportOutlined />,
-              label: "Đơn vị",
-            },
-            {
-              to: "/setting/qr-codes",
-              icon: <QrcodeOutlined />,
-              label: "Quản lý QR",
-            },
-            // { to: "/setting/items", icon: <BoxPlotOutlined />, label: "Sản phẩm" },
-          ]}
-          collapsed={collapsed}
-        />
+            <SidebarGroup
+              label="Quản lý kho"
+              icon={<ShopOutlined className="text-lg" />}
+              items={[
+                {
+                  to: "/dashboard",
+                  icon: <AppstoreOutlined />,
+                  label: "Tổng quan",
+                },
+                { to: "/items", icon: <BoxPlotOutlined />, label: "Sản phẩm" },
+                { to: "/zones", icon: <ClusterOutlined />, label: "Zone" },
+                { to: "/import", icon: <ImportOutlined />, label: "Nhập kho" },
+                { to: "/export", icon: <ExportOutlined />, label: "Xuất kho" },
+                { to: "/inventory", icon: <AuditOutlined />, label: "Kiểm kê" },
+                {
+                  to: "/backlog",
+                  icon: <UnorderedListOutlined />,
+                  label: "Backlog",
+                },
+              ]}
+              collapsed={collapsed}
+            />
+            <SidebarLink
+              to="/notification"
+              icon={<BellOutlined className="text-lg" />}
+              label="Thông báo"
+              collapsed={collapsed}
+              badge={unsolvedCount}
+            />
+            <SidebarGroup
+              label="Cài đặt"
+              icon={<SettingOutlined className="text-lg" />}
+              items={[
+                {
+                  to: "/setting/users",
+                  icon: <UserOutlined />,
+                  label: "Người dùng",
+                },
+                { to: "/setting/warehouse", icon: <HomeOutlined />, label: "Kho" },
+                {
+                  to: "/setting/units",
+                  icon: <ExportOutlined />,
+                  label: "Đơn vị",
+                },
+                {
+                  to: "/setting/qr-codes",
+                  icon: <QrcodeOutlined />,
+                  label: "Quản lý QR",
+                },
+              ]}
+              collapsed={collapsed}
+            />
+          </>
+        ) : (
+          <>
+            <SidebarLink
+              to="/overview"
+              icon={<AppstoreOutlined className="text-lg" />}
+              label="Tổng quan"
+              collapsed={collapsed}
+            />
+            <SidebarLink
+              to="/import"
+              icon={<ImportOutlined className="text-lg" />}
+              label="Nhập kho"
+              collapsed={collapsed}
+            />
+            <SidebarLink
+              to="/export"
+              icon={<ExportOutlined className="text-lg" />}
+              label="Xuất kho"
+              collapsed={collapsed}
+            />
+            <SidebarLink
+              to="/inventory"
+              icon={<AuditOutlined className="text-lg" />}
+              label="Kiểm kê"
+              collapsed={collapsed}
+            />
+            <SidebarLink
+              to="/qrtablet"
+              icon={<QrcodeOutlined className="text-lg" />}
+              label="Giao diện PDA"
+              collapsed={collapsed}
+            />
+            <SidebarLink
+              to="/print-qr"
+              icon={<QrcodeOutlined className="text-lg" />}
+              label="In mã QR"
+              collapsed={collapsed}
+            />
+          </>
+        )}
       </nav>
 
       <div
@@ -342,7 +371,7 @@ export default function Sidebar() {
               {username || "User"}
             </div>
             <div className="text-[10px] text-slate-500 uppercase tracking-wider">
-              {role || "Role"}
+              {user?.roles?.[0]?.name || (isAdmin ? "Admin" : "Operator")}
             </div>
           </div>
         </div>

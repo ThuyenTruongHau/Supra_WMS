@@ -485,6 +485,9 @@ def run_import_item_staging_phase(
         on_progress=on_copy_progress,
     )
     processed = staging["processed"]
+    
+    # Auto-create any missing units from the staging data before validation
+    auto_create_missing_units(db, job_id)
 
     update_import_job(
         job_id,

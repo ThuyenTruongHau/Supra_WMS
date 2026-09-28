@@ -10,6 +10,103 @@ export interface MapData {
   yAttrMin?: number;
 }
 
+export interface ZoneMapLayoutNode {
+  id: number;
+  location_code: string;
+  location_name: string | null;
+  bin_code: string | null;
+  row: string | null;
+  column: string | null;
+  level: string | null;
+  map_x: number | null;
+  map_y: number | null;
+}
+
+export interface ZoneMapLayoutResponse {
+  zone_id: number;
+  warehouse_id: number;
+  nodes: ZoneMapLayoutNode[];
+}
+
+export interface LocationSyncSummary {
+  created: number;
+  updated: number;
+  unchanged: number;
+  reactivated: number;
+  deactivated: number;
+}
+
+export interface WarehouseMapImportResult {
+  id: number;
+  zone_id: number;
+  source_sha256: string;
+  original_filename: string;
+  zip_sha256: string;
+  zip_size_bytes: number;
+  download_url: string;
+  map_type: string | null;
+  width: number;
+  height: number;
+  node_count: number;
+  shelf_count: number;
+  waypoint_count: number;
+  line_count: number;
+  is_active: boolean;
+  created_at: string;
+  activated_at: string;
+  location_sync: LocationSyncSummary;
+  message?: string;
+}
+
+export interface WarehouseMapMetadata {
+  id: number;
+  zone_id: number | null;
+  source_sha256: string;
+  original_filename: string | null;
+  zip_sha256: string | null;
+  zip_size_bytes: number | null;
+  map_type: string | null;
+  width: number;
+  height: number;
+  x_attr_min: number | null;
+  y_attr_min: number | null;
+  node_count: number;
+  shelf_count: number;
+  waypoint_count: number;
+  line_count: number;
+  is_active: boolean;
+  created_at: string;
+  activated_at: string;
+}
+
+export interface InboundBufferPoint {
+  id: number;
+  location_code: string;
+  node_name: string | null;
+  status: string;
+  row: string | null;
+  column: string | null;
+  bin: string | null;
+  location_type?: string | null;
+}
+
+export interface InboundBufferPointsResponse {
+  zone_id: number;
+  location_type?: string;
+  points: InboundBufferPoint[];
+}
+
+export interface InboundBufferMapView {
+  zone_id: number;
+  location_type?: string;
+  map: MapData;
+  points: InboundBufferPoint[];
+  origin: { min_x: number; min_y: number };
+  buffer_node_count: number;
+  focus_node_count?: number;
+}
+
+/** Parsed map node used by WarehouseMapCanvas click/selection. */
 export interface NodeInfo {
   x: number;
   y: number;
@@ -21,76 +118,6 @@ export interface NodeInfo {
   extraTypes: number[];
 }
 
-/** Move every reference of a bin that left the map onto a bin that is in it. */
-export interface MapRemapEntry {
-  from_bin: string;
-  to_bin: string;
-}
-
-export interface MapSyncMatchedItem {
-  location_id: number;
-  bin_code: string | null;
-  location_name: string | null;
-  matched_by: 'bin_code' | 'row_column_level' | 'location_code';
-  previous_location_code: string | null;
-  location_code: string;
-}
-
-export interface MapSyncCreatedItem {
-  location_id: number;
-  bin_code: string | null;
-  location_name: string | null;
-  location_code: string;
-}
-
-export interface MapSyncRemappedItem {
-  from_location_id: number;
-  from_bin: string | null;
-  to_location_id: number;
-  to_bin: string | null;
-  moved: Record<string, number>;
-}
-
-/** Also used for `blocked`, where `quantity` is the stock that prevents retiring. */
-export interface MapSyncRetiredItem {
-  location_id: number;
-  bin_code: string | null;
-  location_name: string | null;
-  references: Record<string, number>;
-  quantity?: string | null;
-}
-
-export interface MapSyncFreedCode {
-  location_id: number;
-  bin_code: string | null;
-  released_location_code: string;
-}
-
-export interface MapSyncUnnamedNode {
-  location_code: string;
-  node_name: string | null;
-}
-
-export interface WarehouseMapImportResult {
-  total_shelves: number;
-  matched: MapSyncMatchedItem[];
-  created: MapSyncCreatedItem[];
-  remapped: MapSyncRemappedItem[];
-  retired: MapSyncRetiredItem[];
-  blocked: MapSyncRetiredItem[];
-  freed_codes: MapSyncFreedCode[];
-  nodes_without_bin_code: MapSyncUnnamedNode[];
-  counts: {
-    matched: number;
-    created: number;
-    remapped: number;
-    retired: number;
-    blocked: number;
-  };
-  warehouse_map_id?: number | null;
-  source?: string | null;
-  moved_cache_entries?: number | null;
-}
 
 export interface MapLocationItemStock {
   sku: string;
@@ -106,6 +133,8 @@ export interface FullLocationDetail {
   row: string | null;
   column: string | null;
   level: string | null;
+  map_x: number | null;
+  map_y: number | null;
   status: string;
   item_stock: MapLocationItemStock[];
 }

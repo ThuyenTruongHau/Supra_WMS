@@ -1,0 +1,19 @@
+/**
+ * Thu nhỏ toàn bộ UI operator trên tablet 8–10" — giữ layout desktop.
+ * Chỉ áp dụng khi body có class `operator-ui` (UserLayout mount).
+ * Giá trị khớp OPERATOR_TABLET trong operatorDesktopSizes.ts.
+ */
+
+/* Tablet landscape ~9–10" — nới zoom sau khi tăng floor typography */
+@media (max-width: 1280px) {
+  body.operator-ui {
+    zoom: 0.9;
+  }
+}
+
+/* Tablet nhỏ / portrait ~8" (+ phone tạm) */
+@media (max-width: 768px) {
+  body.operator-ui {
+    zoom: 0.82;
+  }
+}

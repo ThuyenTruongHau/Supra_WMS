@@ -1,4 +1,21 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+
+import { AxiosError } from 'axios';
+import {
+  DEFAULT_MAP_LOCATION_TYPE,
+  getActiveMapApi,
+  getActiveMapMetadataApi,
+  getInboundBufferMapViewApi,
+  getInboundBufferPointsApi,
+  importMapApi,
+  type MapLocationTypeParam,
+} from '@/api/warehouseMap';
+import type {
+  InboundBufferMapView,
+  InboundBufferPointsResponse,
+  WarehouseMapMetadata,
+} from '@/types/warehouseMap';
+import type { ApiErrorResponse } from '@/types/apiError';
 import {
   getActiveWarehouseMapApi,
   getFullLocationsApi,
@@ -7,6 +24,8 @@ import {
   previewWarehouseMapImportApi,
   downloadActiveMapApi,
   getLocationDetailByIdApi,
+  getZoneMapLayoutApi,
+  getZoneMapStatusApi,
 } from '@/api/warehouseMap';
 import type {
   MapData,
@@ -14,9 +33,8 @@ import type {
   FullLocationsResponse,
   WarehouseMapImportResult,
   WarehouseLocationItemStockDetail,
+  ZoneMapLayoutResponse,
 } from '@/types/warehouseMap';
-import { AxiosError } from 'axios';
-import { ApiErrorResponse } from '@/types/apiError';
 import { LIVE_QUERY_OPTIONS } from '@/utils/liveQueryOptions';
 import type { OutboundLocationLogicType } from '@/utils/outboundLocationLogic';
 
@@ -144,5 +162,142 @@ export const useLocationDetail = (
     queryFn: () => getLocationDetailByIdApi(locationId as number),
     enabled: !!locationId && locationId > 0,
     ...LIVE_QUERY_OPTIONS,
+  });
+};
+
+
+export const warehouseMapQueryKey = (warehouseId: number) => ['warehouse_map', warehouseId] as const;
+export const warehouseMapMetadataQueryKey = (warehouseId: number) =>
+  ['warehouse_map_metadata', warehouseId] as const;
+function locationIdsKey(locationIds?: number[]) {
+  if (!locationIds || locationIds.length === 0) return 'all';
+  return [...locationIds].sort((a, b) => a - b).join(',');
+}
+
+export const inboundBufferPointsQueryKey = (
+  warehouseId: number,
+  locationType: MapLocationTypeParam = DEFAULT_MAP_LOCATION_TYPE,
+  locationIds?: number[],
+) =>
+  [
+    'inbound_buffer_points',
+    warehouseId,
+    locationType,
+    locationIdsKey(locationIds),
+  ] as const;
+export const inboundBufferMapViewQueryKey = (
+  warehouseId: number,
+  locationType: MapLocationTypeParam = DEFAULT_MAP_LOCATION_TYPE,
+  locationIds?: number[],
+) =>
+  [
+    'inbound_buffer_map_view',
+    warehouseId,
+    locationType,
+    locationIdsKey(locationIds),
+  ] as const;
+
+export const useActiveMap = (warehouseId: number) => {
+  return useQuery<MapData, AxiosError<ApiErrorResponse>>({
+    queryKey: warehouseMapQueryKey(warehouseId),
+    queryFn: () => getActiveMapApi(warehouseId),
+    enabled: warehouseId > 0,
+    staleTime: 2 * 60 * 1000,
+    retry: (failureCount, error) => {
+      if (error.response?.status === 404) return false;
+      return failureCount < 2;
+    },
+  });
+};
+
+export const useActiveMapMetadata = (warehouseId: number) => {
+  return useQuery<WarehouseMapMetadata, AxiosError<ApiErrorResponse>>({
+    queryKey: warehouseMapMetadataQueryKey(warehouseId),
+    queryFn: () => getActiveMapMetadataApi(warehouseId),
+    enabled: warehouseId > 0,
+    staleTime: 2 * 60 * 1000,
+    retry: (failureCount, error) => {
+      if (error.response?.status === 404) return false;
+      return failureCount < 2;
+    },
+  });
+};
+
+export const useInboundBufferPoints = (
+  warehouseId: number,
+  locationType: MapLocationTypeParam = DEFAULT_MAP_LOCATION_TYPE,
+  locationIds?: number[],
+) => {
+  const hasExplicitEmptyFilter = Array.isArray(locationIds) && locationIds.length === 0;
+  return useQuery<InboundBufferPointsResponse, AxiosError<ApiErrorResponse>>({
+    queryKey: inboundBufferPointsQueryKey(warehouseId, locationType, locationIds),
+    queryFn: () => getInboundBufferPointsApi(warehouseId, locationType, locationIds),
+    enabled: warehouseId > 0 && !hasExplicitEmptyFilter,
+    staleTime: 60 * 1000,
+  });
+};
+
+export const useInboundBufferMapView = (
+  warehouseId: number,
+  locationType: MapLocationTypeParam = DEFAULT_MAP_LOCATION_TYPE,
+  locationIds?: number[],
+) => {
+  const hasExplicitEmptyFilter = Array.isArray(locationIds) && locationIds.length === 0;
+  return useQuery<InboundBufferMapView, AxiosError<ApiErrorResponse>>({
+    queryKey: inboundBufferMapViewQueryKey(warehouseId, locationType, locationIds),
+    queryFn: () => getInboundBufferMapViewApi(warehouseId, locationType, locationIds),
+    enabled: warehouseId > 0 && !hasExplicitEmptyFilter,
+    staleTime: 60 * 1000,
+    retry: (failureCount, error) => {
+      if (error.response?.status === 404 || error.response?.status === 422) return false;
+      return failureCount < 2;
+    },
+  });
+};
+
+export const useZoneMapLayout = (zoneId: number) => {
+  return useQuery<ZoneMapLayoutResponse, AxiosError<ApiErrorResponse>>({
+    queryKey: ['zone_map_layout', zoneId],
+    queryFn: () => getZoneMapLayoutApi(zoneId),
+    enabled: zoneId > 0,
+    staleTime: 5 * 60 * 1000,
+    retry: (failureCount, error) => {
+      if (error.response?.status === 404) return false;
+      return failureCount < 2;
+    },
+  });
+};
+
+export const useZoneMapStatus = (zoneId: number) => {
+  return useQuery<FullLocationsResponse, AxiosError<ApiErrorResponse>>({
+    queryKey: ['zone_map_status', zoneId],
+    queryFn: () => getZoneMapStatusApi(zoneId),
+    enabled: zoneId > 0,
+    refetchInterval: 5000, // Poll every 5 seconds for status
+    staleTime: 1000,
+  });
+};
+
+export const useImportMap = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<
+    WarehouseMapImportResult,
+    AxiosError<ApiErrorResponse>,
+    { warehouseId: number; file: File }
+  >({
+    mutationFn: ({ warehouseId, file }) => importMapApi(warehouseId, file),
+    onSuccess: async (_data, variables) => {
+      const { warehouseId } = variables;
+
+      await Promise.all([
+        queryClient.resetQueries({ queryKey: warehouseMapQueryKey(warehouseId) }),
+        queryClient.resetQueries({ queryKey: warehouseMapMetadataQueryKey(warehouseId) }),
+        queryClient.invalidateQueries({ queryKey: ['inbound_buffer_points', warehouseId] }),
+        queryClient.invalidateQueries({ queryKey: ['inbound_buffer_map_view', warehouseId] }),
+        queryClient.invalidateQueries({ queryKey: ['warehouse_locations', warehouseId] }),
+        queryClient.invalidateQueries({ queryKey: ['item_stock_by_zone', warehouseId] }),
+      ]);
+    },
   });
 };

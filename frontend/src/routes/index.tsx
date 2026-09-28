@@ -6,7 +6,6 @@ import WarehouseSettingPage from "@/pages/WarehouseSettingPage";
 import MainLayout from "@/components/layout/MainLayout";
 import { PublicRoute } from "../components/auth/PublicRoute";
 import { ProtectedRoute } from "../components/auth/ProtectedRoute";
-import { AdminRoute } from "../components/auth/AdminRoute";
 import ItemPage from "@/pages/ItemPage";
 import UserSettingPage from "@/pages/UserSettingPage";
 import ItemDetailPage from "@/pages/ItemDetailPage";
@@ -22,12 +21,19 @@ import StocktakePage from "@/pages/StocktakePage";
 import StocktakeDetailPage from "@/pages/StocktakeDetailPage";
 import BacklogPage from "@/pages/BacklogPage";
 import NotificationPage from "@/pages/NotificationPage";
-import QrTabletLayout from "@/pages/qrtablet/QrTabletLayout";
 import QrTabletInboundPage from "@/pages/qrtablet/QrTabletInboundPage";
 import QrTabletOutboundPage from "@/pages/qrtablet/QrTabletOutboundPage";
 import QrTabletOutboundDetailPage from "@/pages/qrtablet/QrTabletOutboundDetailPage";
 import QrTabletStocktakePage from "@/pages/qrtablet/QrTabletStocktakePage";
 import QrTabletPrintQrPage from "@/pages/qrtablet/QrTabletPrintQrPage";
+
+import { RoleGatePage } from "../components/auth/RoleGatePage";
+import { RoleHomeRedirect } from "@/components/auth/RoleHomeRedirect";
+import OperatorOverviewPage from "@/pages/OperatorOverviewPage";
+import OperatorInboundPage from "@/pages/OperatorInboundPage";
+import OperatorOutboundPage from "@/pages/OperatorOutboundPage";
+import OperatorSortingWavePage from "@/pages/OperatorSortingWavePage";
+import OperatorOutboundDetailPage from "@/pages/OperatorOutboundDetailPage";
 
 
 export default function AppRoutes() {
@@ -46,7 +52,7 @@ export default function AppRoutes() {
         path="/qrtablet"
         element={
           <ProtectedRoute>
-            <QrTabletLayout />
+            <MainLayout />
           </ProtectedRoute>
         }
       >
@@ -58,27 +64,39 @@ export default function AppRoutes() {
         <Route path="print-qr" element={<QrTabletPrintQrPage />} />
       </Route>
 
-      {/* ── Main app with sidebar (admin only) ── */}
+      {/* ── Main app with sidebar ── */}
       <Route
         path="/"
         element={
-          <AdminRoute>
+          <ProtectedRoute>
             <MainLayout />
-          </AdminRoute>
+          </ProtectedRoute>
         }
       >
-        <Route index element={<Navigate to="/report" replace />} />
+        <Route index element={<RoleHomeRedirect />} />
+        <Route
+          path="overview"
+          element={
+            <RoleGatePage
+              admin={<Navigate to="/report" replace />}
+              operator={<OperatorOverviewPage />}
+            />
+          }
+        />
         <Route path="dashboard" element={<DashboardPage />} />
         <Route path="items" element={<ItemPage />} />
         <Route path="items/:id" element={<ItemDetailPage />} />
         <Route path="zones" element={<ZoneSettingPage />} />
-        <Route path="import" element={<ImportPage />} />
+        <Route path="import" element={<RoleGatePage admin={<ImportPage />} operator={<OperatorInboundPage />} />} />
         <Route path="import/:id" element={<ImportDetailPage />} />
-        <Route path="export" element={<OutboundPage />} />
+        <Route path="export" element={<RoleGatePage admin={<OutboundPage />} operator={<OperatorOutboundPage />} />} />
+        <Route path="export/zone/:zoneId" element={<OperatorOutboundDetailPage />} />
+        <Route path="export/sorting-waves" element={<RoleGatePage admin={<div>Tính năng chia chọn của Admin chưa hoàn thiện</div>} operator={<OperatorSortingWavePage />} />} />
         <Route path="export/:orderId" element={<OutboundDetailPage />} />
         <Route path="inventory" element={<StocktakePage />} />
         <Route path="inventory/:id" element={<StocktakeDetailPage />} />
         <Route path="backlog" element={<BacklogPage />} />
+        <Route path="print-qr" element={<QrTabletPrintQrPage />} />
         {/* Các Route con ngoài WMS dropdown */}
         <Route path="report" element={<ReportPage />} />
         <Route path="notification" element={<NotificationPage />} />

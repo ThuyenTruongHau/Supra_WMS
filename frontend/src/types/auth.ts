@@ -42,14 +42,10 @@ export interface LoginApiResponse {
   tokens: AuthTokens;
 }
 
-/** Normalized shape used by FE login hook / store */
 export interface LoginResponse {
   access_token: string;
   refresh_token: string | null;
   token_type: string;
-  role: string;
-  role_canonical: string;
-  roles: string[];
   user: User;
 }
 

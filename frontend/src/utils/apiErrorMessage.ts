@@ -1,5 +1,5 @@
 import { isAxiosError } from "axios";
-import type { ApiErrorResponse, ValidationErrorItem } from "@/types/apiError";
+import type { ApiErrorResponse, ApiValidationErrorItem } from "@/types/apiError";
 import {
   isQrTypeLocationConflictMessage,
   translateApiMessage,
@@ -40,7 +40,7 @@ function fieldLabelFromLoc(loc?: (string | number)[]): string | null {
   return FIELD_LABELS[last] ?? last;
 }
 
-function formatValidationItem(item: ValidationErrorItem): string | null {
+function formatValidationItem(item: ApiValidationErrorItem): string | null {
   if (!item.msg) return null;
   const message = cleanMessage(item.msg);
   const label = fieldLabelFromLoc(item.loc);
@@ -62,7 +62,7 @@ function extractDetailMessages(detail: unknown): string[] {
 
   if (Array.isArray(detail)) {
     return detail
-      .map((item) => formatValidationItem(item as ValidationErrorItem))
+      .map((item) => formatValidationItem(item as ApiValidationErrorItem))
       .filter((message): message is string => !!message);
   }
 

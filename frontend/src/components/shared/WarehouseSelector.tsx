@@ -17,10 +17,10 @@ function warehouseLabel(w: Warehouse | WarehouseBrief): string {
 
 export default function WarehouseSelector({ className }: WarehouseSelectorProps) {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
-  const access = useAuthStore((s) => s.access);
-  const roles = useAuthStore((s) => s.roles);
+  const user = useAuthStore((s) => s.user);
+  const access = user?.access;
   const listAllWarehouses =
-    isAuthenticated && usesAllWarehouseScope(access, roles);
+    isAuthenticated && usesAllWarehouseScope(access);
   const { data: allWarehouses, isLoading: isLoadingAll } = useWarehouses({
     enabled: listAllWarehouses,
   });

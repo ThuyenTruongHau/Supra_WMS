@@ -3,7 +3,7 @@ import { Navigate, NavLink } from "react-router-dom";
 import logo_thado from "@/assets/logo_thadorobot.png";
 import { useLogout } from "@/hooks/useAuth";
 import { useAuthStore } from "@/store/useAuthStore";
-import { hasModuleAccess, isAdminRole, resolveRoles } from "@/utils/authSession";
+import { hasModuleAccess } from "@/utils/authSession";
 import {
   LogoutOutlined,
   ImportOutlined,
@@ -55,20 +55,17 @@ function SidebarLink({ to, icon, label, collapsed }: SidebarLinkProps) {
 }
 
 export default function QrTabletSidebar() {
-  const { username, role, roles, isAuthenticated, access } = useAuthStore();
+  const { user, isAuthenticated } = useAuthStore();
+  const username = user?.username;
+  const access = user?.access;
   const logout = useLogout();
   const [collapsed, setCollapsed] = useState(false);
-  const legacyRoles = resolveRoles(roles, role);
-  const legacyAdmin = isAdminRole(legacyRoles);
   const showInbound =
-    hasModuleAccess(access, "inbound") ||
-    (!access && (legacyAdmin || legacyRoles.includes("inbound")));
+    hasModuleAccess(access, "inbound");
   const showOutbound =
-    hasModuleAccess(access, "outbound") ||
-    (!access && (legacyAdmin || legacyRoles.includes("outbound")));
+    hasModuleAccess(access, "outbound");
   const showStocktake =
-    hasModuleAccess(access, "stocktake") ||
-    (!access && (legacyAdmin || legacyRoles.includes("stocktake")));
+    hasModuleAccess(access, "stocktake");
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
@@ -162,7 +159,7 @@ export default function QrTabletSidebar() {
               {username || "User"}
             </div>
             <div className="text-[10px] text-slate-500 uppercase tracking-wider">
-              {role || "Role"}
+              {user?.roles?.[0]?.name || (access?.is_admin ? "Admin" : "Operator")}
             </div>
           </div>
         </div>

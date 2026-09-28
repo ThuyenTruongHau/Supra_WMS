@@ -1,20 +1,66 @@
+import { useState, useEffect } from "react";
 import { SettingOutlined } from "@ant-design/icons";
 import { useAppStore } from "@/store/useAppStore";
 import { useLocation } from "react-router-dom";
 import WarehouseSelector from "@/components/shared/WarehouseSelector";
 
+function formatHeaderDateTime(date: Date, lang: string): string {
+  const locale = lang === "EN" ? "en-GB" : "vi-VN";
+  return date.toLocaleString(locale, {
+    weekday: "short",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  });
+}
+
 export default function Header() {
   const location = useLocation();
   const isSettingPage = location.pathname.startsWith('/setting');
   const { lang, setLang } = useAppStore();
+  
+  const [now, setNow] = useState(() => new Date());
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(new Date()), 1000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  // Removed isConnecting and isError because useZone was removed in origin/main's Header
+  const statusTone = "online";
+  const systemStatusLabel =
+    lang === "EN"
+      ? "SYSTEM  ·  ONLINE"
+      : "HỆ THỐNG  ·  HOẠT ĐỘNG";
 
   return (
-    <div className="flex flex-row justify-between h-full items-center px-4 w-full">
-      <h1 className="font-extrabold text-2xl pl-3 border-l-4 border-brand-primary bg-gradient-to-r from-brand-primary to-slate-800 bg-clip-text text-transparent">
+    <div className="flex flex-row justify-between h-full items-center px-4 w-full gap-4">
+      <h1 className="font-extrabold text-3xl sm:text-4xl bg-gradient-to-r from-brand-primary to-brand-dark bg-clip-text text-transparent leading-tight">
         Hệ thống quản lý kho
       </h1>
+      <div
+        className={`iot-status mt-1 inline-flex items-center gap-2 iot-status--online`}
+        title={systemStatusLabel}
+        role="status"
+        aria-live="polite"
+      >
+        <span className="iot-status__led" aria-hidden />
+        <span className="iot-status__label">{systemStatusLabel}</span>
+      </div>
 
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-4 min-w-0">
+        {/* Ngày giờ */}
+        <time
+          dateTime={now.toISOString()}
+          className="hidden sm:block text-base font-semibold text-stripe-ink-mute tabular-nums whitespace-nowrap"
+        >
+          {formatHeaderDateTime(now, lang)}
+        </time>
+
         {/* 1. Bộ chọn Kho hiện tại hoặc Nhãn Cài đặt */}
         {isSettingPage ? (
           <div className="relative flex h-14 w-72 min-w-[288px] max-w-[288px] items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4">
