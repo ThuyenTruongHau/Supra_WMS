@@ -276,7 +276,7 @@ export async function getInboundBufferMapViewApi(
 
 export async function importMapApi(warehouseId: number, file: File): Promise<WarehouseMapImportResult> {
   const formData = new FormData();
-  formData.append('zone_id', String(warehouseId));
+  formData.append('warehouse_id', String(warehouseId));
   formData.append('file', file);
 
   const response = await axiosInstance.post<WarehouseMapImportResult>(
