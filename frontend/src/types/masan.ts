@@ -33,6 +33,21 @@ export interface MasanInboundParseResponse {
   group_count: number;
   warnings: string[];
 }
+/** Đúng 1 trong 2: vehicle_no hoặc item_id. */
+export type MasanInboundDetailFilter =
+  | { vehicle_no: string; item_id?: never }
+  | { item_id: number; vehicle_no?: never };
+
+export interface MasanInboundCallerRequest {
+  location_ids: number[];
+}
+
+export interface MasanInboundCallerResponse {
+  queued: number;
+  detail_ids: number[];
+  job_ids: string[];
+}
+
 export interface MasanOutboundPreviewRow {
   row_no: number;
   vehicle_no: string | null;
