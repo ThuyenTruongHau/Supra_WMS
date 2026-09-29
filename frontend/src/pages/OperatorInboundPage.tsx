@@ -11,7 +11,6 @@ import {
 import {
   Button,
   Modal,
-  Select,
   Space,
   Table,
   cn,
@@ -34,52 +33,37 @@ import OperatorMapCanvas, {
 import OperatorInboundOrderBrowser from "@/components/inbound/OperatorInboundOrderBrowser";
 import DirectOutboundFromInboundBoard from "@/components/inbound/DirectOutboundFromInboundBoard";
 import InboundLocationInfoModal from "@/components/inbound/InboundLocationInfoModal";
-import QrAssignInboundModal from "@/components/inbound/QrAssignInboundModal";
+import { exportInboundOrderMasanApi } from "@/api/masan";
+import { useCallerMasanInbound } from "@/hooks/useMasanInbound";
+import { useZonesMapStatus } from "@/hooks/useWarehouseMap";
 
 import { useAppStore } from "@/store/useAppStore";
 
-import { useProduct } from "@/hooks/useProduct";
 import {
   getInboundBufferAssignmentApi,
   getInboundDailyReportApi,
-  getInboundDetailReportApi,
+  parseMasanInboundExcelApi,
+  suggestMasanAllocationApi,
+  createMasanInboundOrderApi,
 } from "@/api/inboundOperator";
 import {
-  formatEmptyLocationLabel,
-  getAllLocationsByZoneApi,
-  listEmptyLocationsApi,
-} from "@/api/warehouseLocation";
-import {
-  useCreateInbound,
   useInboundAssignedDetails,
   useInboundList,
-  useInboundOperatorBoardSummary,
   useOldestIncompleteInbound,
-  useSendInboundCommands,
 } from "@/hooks/useInbound";
 import { useLocationByCodeMap } from "@/hooks/useWarehouseLocation";
 import type {
   InboundAssignedDetail,
   InboundBufferAssignment,
-  InboundDetailInput,
   MasanCreatePayload,
 } from "@/types/inbound";
 import { getApiErrorDetail } from "@/types/apiError";
-import {
-  parseMasanInboundExcelApi,
-  suggestMasanAllocationApi,
-  createMasanInboundOrderApi,
-} from "@/api/inboundOperator";
-import type { EmptyLocation } from "@/types/warehouseLocation";
 import { SOURCE_TABS, type SourceTabKey } from "@/data/mockOperatorInbound";
 import { toDisplayInteger } from "@/utils/number";
-import {
-  buildInboundOperatorMetrics,
-  buildInboundRobotRows,
-  mapInboundGoodsLegend,
-} from "@/utils/operatorHeaderMetrics";
 
 type SideListTab = "orders" | "commands";
+
+const INBOUND_MAP_ZONE_IDS = [2, 3];
 
 function formatAssignedSkuLot(row: InboundAssignedDetail): string {
   const sku = row.product_sku?.trim() || "—";
@@ -112,33 +96,23 @@ const SOURCE_TAB_META: Record<
 export default function OperatorInboundPage() {
   const warehouseId = useAppStore((s) => s.selectedWarehouseId);
 
-  const { data, isLoading, isError, error } =
-    useOldestIncompleteInbound(warehouseId);
+  const { data } = useOldestIncompleteInbound(warehouseId);
   const orderId = data?.order?.id ?? 0;
   const { data: assignedPayload, isLoading: assignedLoading } =
     useInboundAssignedDetails(orderId, orderId > 0);
   const assignedDetails = assignedPayload?.details ?? EMPTY_ASSIGNED_DETAILS;
-  const { data: boardSummary } = useInboundOperatorBoardSummary(
-    orderId,
-    orderId > 0,
-  );
-  const {
-    data: inboundOrders = [],
+  const { data: inboundOrders = [],
     isLoading: inboundOrdersLoading,
     isError: inboundOrdersError,
   } = useInboundList(warehouseId);
   const { locationByCode } = useLocationByCodeMap(warehouseId);
-  const { data: products = [] } = useProduct(warehouseId);
-  const createMutation = useCreateInbound();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const mapSingleClickTimerRef = useRef<number | null>(null);
 
   const [sourceTab, setSourceTab] = useState<SourceTabKey>("cont");
   const [sideListTab, setSideListTab] = useState<SideListTab>("orders");
   const [mode, setMode] = useState<"auto" | "manual">("auto");
-  const [qrModalOpen, setQrModalOpen] = useState(false);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
-  const [clock, setClock] = useState(() => new Date());
   const [assignModalOpen, setAssignModalOpen] = useState(false);
   const [unassignModalOpen, setUnassignModalOpen] = useState(false);
   const [bufferAssignment, setBufferAssignment] =
@@ -162,9 +136,37 @@ export default function OperatorInboundPage() {
 
   const [isExportingDailyExcel, setIsExportingDailyExcel] = useState(false);
   const [isExportingDetailReport, setIsExportingDetailReport] = useState(false);
+  const [focusedInboundOrderId, setFocusedInboundOrderId] = useState<
+    number | null
+  >(null);
 
-  const sendCommandsMutation = useSendInboundCommands();
+  const callerMutation = useCallerMasanInbound();
   const queryClient = useQueryClient();
+  const inboundMapStatus = useZonesMapStatus(INBOUND_MAP_ZONE_IDS);
+  const inboundLocationIdByCode = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const cell of inboundMapStatus.items) {
+      map.set(cell.location_code, cell.id);
+    }
+    return map;
+  }, [inboundMapStatus.items]);
+  const callerLocationIds = useMemo(() => {
+    const codes =
+      selectedAutoColumnCodes.length > 0
+        ? selectedAutoColumnCodes
+        : [...inboundLocationIdByCode.keys()];
+    const ids = codes
+      .map((code) => inboundLocationIdByCode.get(code))
+      .filter((id): id is number => id != null);
+    return [...new Set(ids)];
+  }, [inboundLocationIdByCode, selectedAutoColumnCodes]);
+
+  /** Sơ đồ operator vẽ zone 2+3; tra cứu id theo status map đó, không theo warehouseId. */
+  const resolveInboundMapLocationId = (locationCode: string): number | null => {
+    const fromInboundMap = inboundLocationIdByCode.get(locationCode);
+    if (fromInboundMap != null) return fromInboundMap;
+    return locationByCode[locationCode]?.id ?? null;
+  };
 
   const resetImportState = () => {
     setMasanDraftPayload(null);
@@ -309,29 +311,33 @@ export default function OperatorInboundPage() {
   };
 
   const handleExportDetailReport = async () => {
-    if (!orderId) {
-      message.warning("Không có đơn nhập đang xử lý để xuất báo cáo");
+    const exportOrderId =
+      focusedInboundOrderId ?? inboundOrders[0]?.id ?? null;
+    if (exportOrderId == null) {
+      message.warning("Không có đơn nhập nào để xuất báo cáo");
       return;
     }
 
     setIsExportingDetailReport(true);
     try {
-      const report = await getInboundDetailReportApi(orderId);
-      const { downloadInboundDetailReportExcel } =
-        await import("@/utils/inboundDetailExport");
-      downloadInboundDetailReportExcel(report);
-      message.success("Đã xuất báo cáo Excel");
+      message.loading({ content: "Đang xuất Excel...", key: "masan-inbound-export" });
+      await exportInboundOrderMasanApi(exportOrderId);
+      const orderCode =
+        inboundOrders.find((o) => o.id === exportOrderId)?.order_code ??
+        String(exportOrderId);
+      message.success({
+        content: `Đã tải báo cáo nhập Masan (${orderCode})`,
+        key: "masan-inbound-export",
+      });
     } catch (err: unknown) {
-      message.error(getApiErrorDetail(err, "Không thể xuất báo cáo Excel"));
+      message.error({
+        content: getApiErrorDetail(err, "Không thể xuất báo cáo Excel"),
+        key: "masan-inbound-export",
+      });
     } finally {
       setIsExportingDetailReport(false);
     }
   };
-
-  useEffect(() => {
-    const t = window.setInterval(() => setClock(new Date()), 1000);
-    return () => window.clearInterval(t);
-  }, []);
 
   useEffect(
     () => () => {
@@ -341,26 +347,6 @@ export default function OperatorInboundPage() {
     },
     [],
   );
-
-  const metrics = useMemo(() => {
-    if (!data) return null;
-    return buildInboundOperatorMetrics({
-      orderCode: data.order.order_code,
-      orderStatus: data.order.status,
-      carrierName: data.supplier_name,
-      bufferSlots: boardSummary?.buffer_slots ?? {
-        occupied_count: Math.max(
-          data.empty_locators_total - data.empty_locators_count,
-          0,
-        ),
-        empty_count: data.empty_locators_count,
-        total: data.empty_locators_total,
-      },
-      goodsLegend: mapInboundGoodsLegend(boardSummary?.goods_status),
-      robotRows: buildInboundRobotRows(assignedDetails),
-      compact: true,
-    });
-  }, [assignedDetails, boardSummary, data]);
 
   useEffect(() => {
     const nextIds = assignedDetails.map((d) => d.detail_id);
@@ -382,18 +368,18 @@ export default function OperatorInboundPage() {
       message.warning("Không có đơn nhập đang xử lý trong kho này.");
       return;
     }
-    const location = locationByCode[payload.locationCode];
-    if (!location) {
+    const locationId = resolveInboundMapLocationId(payload.locationCode);
+    if (locationId == null) {
       message.error(
         `Không tìm thấy warehouse location cho mã ${payload.locationCode}`,
       );
       return;
     }
     setSelectedBufferCode(payload.locationCode);
-    setSelectedBufferLocationId(location.id);
+    setSelectedBufferLocationId(locationId);
 
     try {
-      const assignment = await getInboundBufferAssignmentApi(location.id);
+      const assignment = await getInboundBufferAssignmentApi(locationId);
       if (assignment.is_assigned) {
         setBufferAssignment(assignment);
         setUnassignModalOpen(true);
@@ -412,14 +398,14 @@ export default function OperatorInboundPage() {
   };
 
   const openLocationInfo = (payload: BufferCellClickPayload) => {
-    const location = locationByCode[payload.locationCode];
-    if (!location) {
+    const locationId = resolveInboundMapLocationId(payload.locationCode);
+    if (locationId == null) {
       message.error(
         `Không tìm thấy warehouse location cho mã ${payload.locationCode}`,
       );
       return;
     }
-    setInfoLocationId(location.id);
+    setInfoLocationId(locationId);
     setLocationInfoOpen(true);
   };
 
@@ -458,10 +444,10 @@ export default function OperatorInboundPage() {
     const selectedLocationKeys = new Set<string>();
     for (const code of columnCodes) {
       selectedLocationKeys.add(normalize(code));
-      const location = locationByCode[code];
-      if (location) {
-        selectedLocationKeys.add(normalize(location.location_code));
-        selectedLocationKeys.add(normalize(location.bin));
+      const legacy = locationByCode[code];
+      if (legacy) {
+        selectedLocationKeys.add(normalize(legacy.location_code));
+        selectedLocationKeys.add(normalize(legacy.bin));
       }
     }
     selectedLocationKeys.delete("");
@@ -477,26 +463,9 @@ export default function OperatorInboundPage() {
       .map((detail) => detail.detail_id);
     setSelectedIds(matchingDetailIds);
 
-    if (matchingDetailIds.length > 0) {
-      message.success(
-        `Đã chọn cột ${columnCodes.length} ô · ${matchingDetailIds.length} lệnh tương ứng`,
-      );
-    } else {
-      message.warning(
-        `Đã chọn cột ${columnCodes.length} ô nhưng chưa có lệnh tương ứng`,
-      );
-    }
-  };
-
-  const handleMapBackgroundClick = () => {
-    if (mapSingleClickTimerRef.current != null) {
-      window.clearTimeout(mapSingleClickTimerRef.current);
-      mapSingleClickTimerRef.current = null;
-    }
-    setSelectedAutoColumnCodes([]);
-    setSelectedIds(assignedDetails.map((detail) => detail.detail_id));
-    setSelectedBufferCode(null);
-    setSelectedBufferLocationId(null);
+    message.info(
+      `Đã chọn cột ${columnCodes.length} ô · bấm "Gọi robot nhập" để gọi cột này`,
+    );
   };
 
   const clearBufferSelection = () => {
@@ -508,17 +477,16 @@ export default function OperatorInboundPage() {
   };
 
   const handleCallRobot = () => {
-    if (!orderId) {
-      message.warning("Không có đơn nhập đang xử lý trong kho này.");
-      return;
-    }
-    if (selectedIds.length === 0) {
-      message.warning("Vui lòng chọn ít nhất 1 lệnh đã gán để gửi.");
+    if (callerLocationIds.length === 0) {
+      message.warning("Không có ô buffer nhập nào để gọi robot.");
       return;
     }
 
-    const count = selectedIds.length;
-    const detailIds = [...selectedIds];
+    const locationIds = [...callerLocationIds];
+    const scopeLabel =
+      selectedAutoColumnCodes.length > 0
+        ? `cột đã chọn (${locationIds.length} ô)`
+        : `tất cả ${locationIds.length} ô buffer nhập`;
 
     Modal.confirm({
       title: "Xác nhận gọi robot nhập",
@@ -526,40 +494,29 @@ export default function OperatorInboundPage() {
       content: (
         <div className="mt-2 space-y-1 text-sm text-slate-600">
           <p>
-            Gửi lệnh xuống robot cho <strong>{count}</strong> dòng đã chọn.
+            Gọi robot cho <strong>{scopeLabel}</strong>.
           </p>
-          <p>Hệ thống dùng điểm lấy / điểm trả đã gán trên từng lệnh.</p>
+          <p>
+            Mỗi ô sẽ lấy dòng nhập đang chờ (Khởi tạo) cũ nhất; ô không có
+            dòng chờ sẽ được bỏ qua.
+          </p>
         </div>
       ),
-      okText: "Gửi lệnh",
+      okText: "Gọi robot",
       cancelText: "Hủy",
       onOk: () =>
-        sendCommandsMutation.mutateAsync(
-          {
-            orderId,
-            data: { detail_ids: detailIds },
+        callerMutation.mutateAsync(locationIds, {
+          onSuccess: (result) => {
+            if (result.queued > 0) {
+              message.success(`Đã gửi ${result.queued} lệnh xuống robot.`);
+            } else {
+              message.warning("Không có dòng nào đang chờ ở các ô đã chọn.");
+            }
           },
-          {
-            onSuccess: (order) => {
-              setSelectedIds([]);
-              if (order.status === "completed") {
-                message.success(
-                  `Đã gửi ${count} lệnh. Đơn nhập đã hoàn thành.`,
-                );
-              } else {
-                message.success(`Đã gửi ${count} lệnh xuống robot.`);
-              }
-            },
-            onError: (err) => {
-              const detail = err.response?.data?.detail;
-              message.error(
-                typeof detail === "string"
-                  ? detail
-                  : "Không thể gửi lệnh robot",
-              );
-            },
+          onError: (err) => {
+            message.error(getApiErrorDetail(err, "Không thể gọi robot nhập"));
           },
-        ),
+        }),
     });
   };
 
@@ -621,14 +578,8 @@ export default function OperatorInboundPage() {
     },
   ];
 
-  const clockLabel = clock.toLocaleTimeString("vi-VN", {
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-  });
-
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-hidden">
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
 
 
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-stripe-hairline bg-panel shadow-stripe-1">
@@ -732,8 +683,8 @@ export default function OperatorInboundPage() {
                   <Button
                     variant="primary"
                     icon={<ScanOutlined />}
-                    onClick={() => setQrModalOpen(true)}
-                    disabled={warehouseId <= 0 || !orderId}
+                    onClick={() => console.log("[OperatorInbound] Quét QR gán ô")}
+                    disabled={warehouseId <= 0}
                     className="!h-10 !px-4 !text-base !bg-cyan-600 hover:!bg-cyan-700 !border-cyan-600 hover:!border-cyan-700"
                   >
                     Quét QR gán ô
@@ -830,9 +781,11 @@ export default function OperatorInboundPage() {
                 {sideListTab === "orders" ? (
                   <OperatorInboundOrderBrowser
                     key={warehouseId}
+                    warehouseId={warehouseId}
                     orders={inboundOrders}
                     loading={inboundOrdersLoading}
                     error={inboundOrdersError}
+                    onFocusedOrderIdChange={setFocusedInboundOrderId}
                   />
                 ) : (
                   <Table<InboundAssignedDetail>
@@ -863,7 +816,7 @@ export default function OperatorInboundPage() {
                   variant="secondary"
                   icon={<FileExcelOutlined />}
                   loading={isExportingDetailReport}
-                  disabled={!orderId}
+                  disabled={inboundOrders.length === 0}
                   onClick={() => void handleExportDetailReport()}
                   className="!h-10 !w-full justify-center !text-sm disabled:!border-stripe-hairline disabled:!bg-white disabled:!text-slate-400 disabled:!opacity-100"
                 >
@@ -872,13 +825,15 @@ export default function OperatorInboundPage() {
                 <Button
                   variant="primary"
                   icon={<RobotOutlined />}
-                  disabled={selectedIds.length === 0 || !orderId}
-                  loading={sendCommandsMutation.isPending}
+                  disabled={callerLocationIds.length === 0}
+                  loading={callerMutation.isPending}
                   onClick={handleCallRobot}
                   className="!h-10 !w-full justify-center !text-sm disabled:!bg-brand-primary/45 disabled:!text-white disabled:!opacity-100"
                 >
                   Gọi robot nhập
-                  {selectedIds.length > 0 ? ` (${selectedIds.length})` : ""}
+                  {selectedAutoColumnCodes.length > 0
+                    ? ` (cột ${callerLocationIds.length} ô)`
+                    : " (tất cả)"}
                 </Button>
               </div>
             </div>
@@ -912,14 +867,6 @@ export default function OperatorInboundPage() {
         onClose={clearBufferSelection}
       />
 
-      <QrAssignInboundModal
-        open={qrModalOpen}
-        orderId={orderId}
-        assignedDetails={assignedDetails}
-        locationByCode={locationByCode}
-        onClose={() => setQrModalOpen(false)}
-      />
-
       <Modal
         open={isMasanPreviewOpen}
         onCancel={closeImportPreview}
@@ -951,7 +898,7 @@ export default function OperatorInboundPage() {
         </p>
 
         <Table
-          rowKey={(record, index) => String(index)}
+          rowKey={(_, index) => String(index)}
           dataSource={masanPreviewData}
           pagination={false}
           scroll={{ x: 800, y: 400 }}
