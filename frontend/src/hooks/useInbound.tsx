@@ -81,8 +81,9 @@ export const useInboundList = (
     queryFn: () =>
       listInboundOrdersApi(warehouseId, {
         status: options?.status,
-        search: options?.search,
-        limit: 200,
+        q: options?.search,
+        page: 1,
+        page_size: 100,
       }),
     enabled: warehouseId > 0,
     staleTime: 30 * 1000,
@@ -215,7 +216,7 @@ export const useCreateInbound = () => {
   return useMutation<InboundOrder, AxiosError<ApiErrorResponse>, CreateInboundInput>({
     mutationFn: createInboundOrderApi,
     onSuccess: (order) => {
-      invalidateInboundQueries(queryClient, order.zone_id)
+      invalidateInboundQueries(queryClient, order.warehouse_id)
     },
   })
 }
@@ -229,7 +230,7 @@ export const useUpdateInbound = () => {
   >({
     mutationFn: ({ id, data }) => updateInboundOrderApi(id, data),
     onSuccess: (order) => {
-      invalidateInboundQueries(queryClient, order.zone_id, order.id)
+      invalidateInboundQueries(queryClient, order.warehouse_id, order.id)
     },
   })
 }
@@ -254,7 +255,7 @@ export const useSendInboundCommand = () => {
     mutationFn: ({ orderId, detailId, data }) =>
       sendInboundCommandApi(orderId, detailId, data),
     onSuccess: (order) => {
-      invalidateInboundQueries(queryClient, order.zone_id, order.id)
+      invalidateInboundQueries(queryClient, order.warehouse_id, order.id)
     },
   })
 }
@@ -268,7 +269,7 @@ export const useSendInboundCommands = () => {
   >({
     mutationFn: ({ orderId, data }) => sendInboundCommandsApi(orderId, data),
     onSuccess: (order) => {
-      invalidateInboundQueries(queryClient, order.zone_id, order.id)
+      invalidateInboundQueries(queryClient, order.warehouse_id, order.id)
       queryClient.invalidateQueries({
         queryKey: inboundAssignedDetailsQueryKey(order.id),
       })
@@ -276,13 +277,13 @@ export const useSendInboundCommands = () => {
         queryKey: inboundOrderVehiclesQueryKey(order.id),
       })
       queryClient.invalidateQueries({
-        queryKey: ['inbound_buffer_map_view', order.zone_id],
+        queryKey: ['inbound_buffer_map_view', order.warehouse_id],
       })
       queryClient.invalidateQueries({
-        queryKey: ['inbound_buffer_points', order.zone_id],
+        queryKey: ['inbound_buffer_points', order.warehouse_id],
       })
       queryClient.invalidateQueries({
-        queryKey: ['location_stock_labels', order.zone_id],
+        queryKey: ['location_stock_labels', order.warehouse_id],
       })
     },
   })
@@ -311,7 +312,7 @@ export const useCompleteInbound = () => {
   return useMutation<InboundOrder, AxiosError<ApiErrorResponse>, number>({
     mutationFn: completeInboundOrderApi,
     onSuccess: (order) => {
-      invalidateInboundQueries(queryClient, order.zone_id, order.id)
+      invalidateInboundQueries(queryClient, order.warehouse_id, order.id)
     },
   })
 }
@@ -321,7 +322,7 @@ export const useCancelInbound = () => {
   return useMutation<InboundOrder, AxiosError<ApiErrorResponse>, number>({
     mutationFn: cancelInboundOrderApi,
     onSuccess: (order) => {
-      invalidateInboundQueries(queryClient, order.zone_id, order.id)
+      invalidateInboundQueries(queryClient, order.warehouse_id, order.id)
     },
   })
 }
@@ -391,7 +392,7 @@ export const useAssignInboundToBuffer = () => {
   >({
     mutationFn: ({ orderId, data }) => assignInboundToBufferApi(orderId, data),
     onSuccess: (order) => {
-      invalidateInboundQueries(queryClient, order.zone_id, order.id)
+      invalidateInboundQueries(queryClient, order.warehouse_id, order.id)
       queryClient.invalidateQueries({
         queryKey: inboundAssignedDetailsQueryKey(order.id),
       })
@@ -429,7 +430,7 @@ export const useUnassignInboundFromBuffer = () => {
   >({
     mutationFn: ({ orderId, data }) => unassignInboundFromBufferApi(orderId, data),
     onSuccess: (order, variables) => {
-      invalidateInboundQueries(queryClient, order.zone_id, order.id)
+      invalidateInboundQueries(queryClient, order.warehouse_id, order.id)
       queryClient.invalidateQueries({
         queryKey: inboundAssignedDetailsQueryKey(order.id),
       })
@@ -441,13 +442,13 @@ export const useUnassignInboundFromBuffer = () => {
       })
       // Ép map buffer lấy status mới (empty/less) ngay sau hủy gán
       queryClient.invalidateQueries({
-        queryKey: ['inbound_buffer_map_view', order.zone_id],
+        queryKey: ['inbound_buffer_map_view', order.warehouse_id],
       })
       queryClient.invalidateQueries({
-        queryKey: ['inbound_buffer_points', order.zone_id],
+        queryKey: ['inbound_buffer_points', order.warehouse_id],
       })
       queryClient.invalidateQueries({
-        queryKey: ['location_stock_labels', order.zone_id],
+        queryKey: ['location_stock_labels', order.warehouse_id],
       })
     },
   })
