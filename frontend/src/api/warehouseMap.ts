@@ -10,7 +10,6 @@ import type {
   WarehouseMapMetadata,
   ZoneMapLayoutResponse,
 } from '@/types/warehouseMap';
-import type { WarehouseLocationDetail } from '@/types/warehouseLocation';
 import { logMapDebug, summarizeMapDataForLog } from '@/utils/warehouseMapRender';
 
 export const getActiveWarehouseMapApi = async (

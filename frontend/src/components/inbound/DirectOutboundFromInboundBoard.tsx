@@ -26,9 +26,9 @@ import { useStationProductAggregate } from "@/hooks/useOutboundTask";
 import { useSortingWaves } from "@/hooks/useSortingWave";
 import {
   useLocationByCodeMap,
-  useLocationDetail,
   useLocationsByZone,
 } from "@/hooks/useWarehouseLocation";
+import { useLocationDetail } from "@/hooks/useWarehouseMap";
 import { useProduct } from "@/hooks/useProduct";
 import { getInboundBufferAssignmentApi } from "@/api/inboundOperator";
 import type { InboundBufferAssignment } from "@/types/inbound";
@@ -256,8 +256,7 @@ export default function DirectOutboundFromInboundBoard({
     selectedInboundLocation != null &&
     displayBin(selectedInboundLocation).startsWith("BP");
   const { data: inboundLocationDetail } = useLocationDetail(
-    inboundLocationId ?? null,
-    isSelectedBypass,
+    isSelectedBypass ? inboundLocationId ?? undefined : undefined,
   );
   const productById = useMemo(
     () => new Map(products.map((product) => [product.id, product])),
@@ -270,12 +269,10 @@ export default function DirectOutboundFromInboundBoard({
     }
     return stocks
       .map((stock) => {
-        const product = productById.get(stock.product_id);
-        const sku = product?.sku || `#${stock.product_id}`;
+        const product = productById.get(stock.item_id);
+        const sku = stock.sku || product?.sku || `#${stock.item_id}`;
         const name = product?.name || "Chưa có tên hàng";
-        const quantity = toDisplayInteger(
-          Number(stock.available_quantity || 0),
-        );
+        const quantity = toDisplayInteger(Number(stock.quantity || 0));
         return `${sku} - ${name} - ${quantity}`;
       })
       .join("; ");

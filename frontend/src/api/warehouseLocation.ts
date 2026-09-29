@@ -12,7 +12,6 @@ import type {
   SuggestEmptyLocationsInput,
   SuggestEmptyLocationsResponse,
   WarehouseLocation,
-  WarehouseLocationDetail,
 } from '@/types/warehouseLocation';
 import { formatDisplayBin } from '@/utils/locationBin';
 
@@ -66,13 +65,6 @@ export async function getAllItemStockByZoneApi(warehouseId: number): Promise<Ite
   }
 
   return all;
-}
-
-export async function getLocationDetailApi(locationId: number): Promise<WarehouseLocationDetail> {
-  const response = await axiosInstance.get<WarehouseLocationDetail>(
-    `/api/v1/warehouse-location-details/${locationId}`,
-  );
-  return response.data;
 }
 
 export async function suggestEmptyLocationsApi(

@@ -1,5 +1,5 @@
 import { Modal } from "@/components/ui";
-import { useLocationDetail } from "@/hooks/useWarehouseLocation";
+import { useLocationDetail } from "@/hooks/useWarehouseMap";
 import { useProduct } from "@/hooks/useProduct";
 import { formatDisplayBin } from "@/utils/locationBin";
 import { toDisplayInteger } from "@/utils/number";
@@ -26,13 +26,15 @@ export default function InboundLocationInfoModal({
     data,
     isLoading,
     isError,
-  } = useLocationDetail(locationId, open);
+  } = useLocationDetail(open ? locationId ?? undefined : undefined);
   const { data: products = [] } = useProduct(zoneId);
   const productById = new Map(products.map((product) => [product.id, product]));
 
   const location = data?.location;
+  const locationBin = location?.bin ?? location?.bin_code ?? null;
   const locationName = location
-    ? formatDisplayBin(location.bin, location.location_type) ||
+    ? formatDisplayBin(locationBin, location.location_type) ||
+      location.location_name ||
       location.location_code
     : "";
 
@@ -98,6 +100,7 @@ export default function InboundLocationInfoModal({
               <dl className="space-y-0">
                 {[
                   ["Mã location", data.location.location_code],
+                  ["Tên", data.location.location_name],
                   ["Loại", data.location.location_type],
                   [
                     "Hàng / Cột / Tầng",
@@ -112,11 +115,10 @@ export default function InboundLocationInfoModal({
                   [
                     "Bin",
                     formatDisplayBin(
-                      data.location.bin,
+                      locationBin,
                       data.location.location_type,
                     ),
                   ],
-                  ["Sức chứa", data.location.capacity],
                   ["Trạng thái", data.location.status],
                 ].map(([label, value]) => (
                   <div
@@ -149,7 +151,7 @@ export default function InboundLocationInfoModal({
               ) : (
                 <div className="divide-y divide-slate-200">
                   {data.item_stock.map((stock) => {
-                    const product = productById.get(stock.product_id);
+                    const product = productById.get(stock.item_id);
                     return (
                       <article
                         key={stock.id}
@@ -158,39 +160,23 @@ export default function InboundLocationInfoModal({
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
                             <p className="truncate text-lg font-semibold text-slate-800">
-                              {product?.name || `Sản phẩm #${stock.product_id}`}
+                              {product?.name || stock.sku || `Sản phẩm #${stock.item_id}`}
                             </p>
                             <p className="mt-1 font-mono text-base text-slate-500">
-                              {product?.sku || `#${stock.product_id}`}
+                              {stock.sku || product?.sku || `#${stock.item_id}`}
                             </p>
                           </div>
                           <div className="shrink-0 text-right">
                             <p className="text-2xl font-bold tabular-nums text-brand-dark">
-                              {toDisplayInteger(
-                                Number(stock.available_quantity || 0),
-                              )}
+                              {toDisplayInteger(Number(stock.quantity || 0))}
                             </p>
                             <p className="text-sm text-slate-500">
-                              {product?.base_unit || "khả dụng"}
+                              {product?.base_unit || "SL"}
                             </p>
                           </div>
                         </div>
 
                         <div className="mt-4 grid grid-cols-2 gap-4 border-t border-slate-100 pt-4">
-                          <div>
-                            <p className="text-sm text-slate-500">Tổng SL</p>
-                            <p className="mt-1 text-base font-semibold tabular-nums text-slate-700">
-                              {toDisplayInteger(Number(stock.quantity || 0))}
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-sm text-slate-500">Đã giữ</p>
-                            <p className="mt-1 text-base font-semibold tabular-nums text-slate-700">
-                              {toDisplayInteger(
-                                Number(stock.reserved_quantity || 0),
-                              )}
-                            </p>
-                          </div>
                           <div>
                             <p className="text-sm text-slate-500">LOT</p>
                             <p className="mt-1 text-base font-medium text-slate-700">
@@ -201,6 +187,12 @@ export default function InboundLocationInfoModal({
                             <p className="text-sm text-slate-500">Hạn dùng</p>
                             <p className="mt-1 text-base font-medium text-slate-700">
                               {displayValue(stock.expiry_date)}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-sm text-slate-500">Tình trạng</p>
+                            <p className="mt-1 text-base font-medium text-slate-700">
+                              {displayValue(stock.status)}
                             </p>
                           </div>
                         </div>

@@ -29,19 +29,6 @@ export interface ItemStockRow {
   updated_at: string;
 }
 
-export interface WarehouseLocationStockSummary {
-  item_stock_count: number;
-  total_quantity: string;
-  total_reserved_quantity: string;
-  total_available_quantity: string;
-}
-
-export interface WarehouseLocationDetail {
-  location: WarehouseLocation;
-  item_stock: ItemStockRow[];
-  summary: WarehouseLocationStockSummary;
-}
-
 export interface EmptyLocation {
   id: number;
   location_code: string;

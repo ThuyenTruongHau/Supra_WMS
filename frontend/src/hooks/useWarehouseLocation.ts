@@ -4,7 +4,6 @@ import { AxiosError } from 'axios';
 import {
   getAllItemStockByZoneApi,
   getAllLocationsByZoneApi,
-  getLocationDetailApi,
   listStorageLocationsApi,
   listStorageRelocateCommandsApi,
   relocateStorageStockApi,
@@ -18,7 +17,6 @@ import type {
   StorageRelocateResult,
   StorageStockStatus,
   WarehouseLocation,
-  WarehouseLocationDetail,
 } from '@/types/warehouseLocation';
 import { ApiErrorResponse } from '@/types/apiError';
 import { getMockStockedLocatorCodes } from '@/utils/mockMapInventory';
@@ -145,15 +143,6 @@ export const useStockedLocationIds = (warehouseId: number) => {
     stockedLocationIds,
     isLoading: stockQuery.isLoading || locationsQuery.isLoading,
   };
-};
-
-export const useLocationDetail = (locationId: number | null, enabled: boolean) => {
-  return useQuery<WarehouseLocationDetail, AxiosError<ApiErrorResponse>>({
-    queryKey: ['warehouse_location_detail', locationId],
-    queryFn: () => getLocationDetailApi(locationId!),
-    enabled: enabled && locationId !== null && locationId > 0,
-    staleTime: 60 * 1000,
-  });
 };
 
 export const useStorageLocations = (
