@@ -53,10 +53,14 @@ function drawShelfByStatus(
   } else {
     ctx.fillStyle = SHELF_FULL_COLOR;
   }
-  ctx.fillRect(x - half, y - half, half * 2, half * 2);
+  const size = half * 2;
+  const radius = Math.max(4, half * 0.15);
+  ctx.beginPath();
+  ctx.roundRect(x - half, y - half, size, size, radius);
+  ctx.fill();
   ctx.strokeStyle = SHELF_STROKE_COLOR;
   ctx.lineWidth = invScale * 0.8;
-  ctx.strokeRect(x - half, y - half, half * 2, half * 2);
+  ctx.stroke();
 }
 
 /**
