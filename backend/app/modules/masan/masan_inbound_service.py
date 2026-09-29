@@ -4,7 +4,7 @@ from io import BytesIO
 from typing import Any, Optional
 
 from openpyxl import Workbook, load_workbook
-from sqlalchemy import String, cast, or_
+from sqlalchemy import or_
 from sqlalchemy.orm import Session, joinedload, selectinload
 from app.modules.warehouse.inbound_order.inbound_celery_task import accept_inbound_task_task
 
@@ -559,8 +559,7 @@ def get_masan_inbound_order_details(
 
     if vehicle_no is not None and vehicle_no.strip():
         query = query.filter(
-            cast(InboundOrderDetail.details["vehicle_no"], String)
-            == vehicle_no.strip()
+            InboundOrderDetail.details.op("->>")("vehicle_no") == vehicle_no.strip()
         )
     else:
         query = (
