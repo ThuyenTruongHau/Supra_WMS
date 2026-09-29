@@ -537,6 +537,51 @@ curl -X GET "http://localhost:8001/api/v1/masan/inbound-orders/36/details?item_i
 
 ---
 
+## 5b. API Gọi robot nhập theo vị trí (Masan)
+
+Operator bấm **Gọi robot nhập**: gửi danh sách ô buffer nhập, backend tự tìm dòng cần chạy ở mỗi ô và đẩy vào hàng đợi Celery (`inbound.accept_task` — cùng logic với `POST /inbound-allocations/{detail_id}/accept-task`).
+
+```http
+POST /api/v1/masan/inbound-orders/caller
+Content-Type: application/json
+```
+
+**Không cần xác thực.**
+
+### Request body
+
+```json
+{ "location_ids": [12, 13, 14] }
+```
+
+| Field | Kiểu | Bắt buộc | Mô tả |
+|-------|------|----------|-------|
+| `location_ids` | int[] | Có (≥ 1 phần tử) | ID các ô buffer nhập (= `from_location_id` của detail) |
+
+**Cách chọn detail:** với mỗi `location_id`, lấy detail có `from_location_id = location_id` và `status = "initialize"`, **id nhỏ nhất** (cũ nhất). Ô không có detail chờ → bỏ qua, không báo lỗi.
+
+### Response `202`
+
+```json
+{
+  "queued": 2,
+  "detail_ids": [36, 41],
+  "job_ids": ["c1f0...", "9ab2..."]
+}
+```
+
+| Field | Mô tả |
+|-------|-------|
+| `queued` | Số detail đã đẩy vào hàng đợi (`0` = không ô nào có dòng chờ) |
+| `detail_ids` | Các `InboundOrderDetail.id` được gọi |
+| `job_ids` | Celery task id tương ứng |
+
+> API chỉ **xếp hàng**; lỗi ICS/robot xảy ra sau đó không trả về ở response này (Celery tự retry lỗi ICS tạm thời tối đa 3 lần — xem log worker).
+
+**Frontend operator:** mặc định gửi toàn bộ ô buffer nhập trên sơ đồ (zone 2, 3); nếu operator double-click chọn một cột thì chỉ gửi các ô của cột đó.
+
+---
+
 ## 6. Bảng tóm tắt API
 
 | # | Method | Endpoint | Auth | Ghi chú |
@@ -547,6 +592,7 @@ curl -X GET "http://localhost:8001/api/v1/masan/inbound-orders/36/details?item_i
 | 4 | GET | `/inbound-orders?warehouse_id=&page_size=` | Không | Danh sách đơn, `page_size` = limit |
 | 5 | GET | `/masan/inbound-orders/{id}/details?vehicle_no=` | Không | Lọc detail theo số xe |
 | 6 | GET | `/masan/inbound-orders/{id}/details?item_id=` | Không | Lọc detail theo item |
+| 7 | POST | `/masan/inbound-orders/caller` | Không | Gọi robot theo `location_ids`, trả `202` |
 
 ---
 
@@ -573,6 +619,7 @@ curl -X GET "http://localhost:8001/api/v1/masan/inbound-orders/36/details?item_i
 4. Ghép Parse + Suggest theo index → `POST /inbound-orders?inbound_type={cùng giá trị bước 1}`
 5. Tra cứu danh sách: `GET /inbound-orders?warehouse_id=...&page_size=...`
 6. Chi tiết theo xe/item: `GET /masan/inbound-orders/{id}/details?vehicle_no=...` **hoặc** `?item_id=...` (không dùng cả hai)
+7. Gọi robot: `POST /masan/inbound-orders/caller` với `location_ids` các ô buffer nhập
 
 ---
 
