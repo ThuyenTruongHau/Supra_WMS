@@ -1,6 +1,32 @@
 import axiosInstance from "./axiosInstance";
-import type { MasanInboundParseResponse } from "@/types/masan";
+import type {
+  MasanInboundCallerResponse,
+  MasanInboundDetailFilter,
+  MasanInboundParseResponse,
+} from "@/types/masan";
+import type { InboundOrderDetail } from "@/types/inboundOrder";
 import { downloadBlobFromResponse } from "@/utils/downloadBlob";
+
+export const getMasanInboundDetailsApi = async (
+  inboundOrderId: number,
+  filter: MasanInboundDetailFilter,
+): Promise<InboundOrderDetail[]> => {
+  const { data } = await axiosInstance.get<InboundOrderDetail[]>(
+    `/api/v1/masan/inbound-orders/${inboundOrderId}/details`,
+    { params: filter },
+  );
+  return data;
+};
+
+export const callerMasanInboundApi = async (
+  locationIds: number[],
+): Promise<MasanInboundCallerResponse> => {
+  const { data } = await axiosInstance.post<MasanInboundCallerResponse>(
+    "/api/v1/masan/inbound-orders/caller",
+    { location_ids: locationIds },
+  );
+  return data;
+};
 
 export const parseMasanInboundPreviewApi = async (
   file: File,

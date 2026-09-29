@@ -27,16 +27,16 @@ import type {
   MasanSuggestAllocationResponse,
   MasanCreatePayload
 } from '@/types/inbound'
+import type { InboundOrderListResponse } from '@/types/inboundOrder'
 
 export const listInboundOrdersApi = async (
   warehouseId: number,
-  params?: { status?: string; search?: string; skip?: number; limit?: number },
+  params?: { status?: string; q?: string; page?: number; page_size?: number },
 ): Promise<InboundOrder[]> => {
-  const response = await axiosInstance.get<any>('/api/v1/inbound-orders/', {
+  const response = await axiosInstance.get<InboundOrderListResponse>('/api/v1/inbound-orders', {
     params: { warehouse_id: warehouseId, ...params },
   })
-  // Backend trả về InboundOrderListResponse có object { items: [] } nên cần .items
-  return response.data?.items || []
+  return response.data?.items ?? []
 }
 
 export const getInboundSummaryApi = async (
