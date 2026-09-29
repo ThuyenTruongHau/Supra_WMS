@@ -297,8 +297,8 @@ export function drawStationOverlayLabel(
     ctx.beginPath()
     ctx.moveTo(x - half * 0.8, yPos)
     ctx.lineTo(x + half * 0.8, yPos)
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)'
-    ctx.lineWidth = Math.max(2, half * 0.04 * scale)
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.95)'
+    ctx.lineWidth = Math.max(4, half * 0.07)
     ctx.stroke()
   }
 
@@ -486,8 +486,8 @@ export function drawShelfStockLabel(
     ctx.beginPath()
     ctx.moveTo(x - half * 0.8, yPos)
     ctx.lineTo(x + half * 0.8, yPos)
-    ctx.strokeStyle = highlighted ? 'rgba(255, 255, 255, 0.8)' : 'rgba(255, 255, 255, 0.5)'
-    ctx.lineWidth = Math.max(1, 1 * scale)
+    ctx.strokeStyle = highlighted ? '#ffffff' : 'rgba(255, 255, 255, 0.92)'
+    ctx.lineWidth = Math.max(4, half * 0.07)
     ctx.stroke()
   }
 
@@ -505,7 +505,7 @@ export function drawShelfStockLabel(
   ctx.fillStyle = highlighted ? '#D7ECEB' : SHELF_TECH.labelPrimary
   ctx.fillText(fitLabelText(ctx, lineSl, maxW), x, cursorY)
 
-  // Date (lot / mfg date)
+  // Lot nguyên bản từ DB, ví dụ 040526
   if (lot) {
     dividerY = cursorY + qtyStep / 2 + lineGap / 2
     drawDivider(dividerY)
@@ -584,8 +584,8 @@ export function drawOutboundSortingShelfLabel(
         ctx.beginPath()
         ctx.moveTo(x - half * 0.8, yPos)
         ctx.lineTo(x + half * 0.8, yPos)
-        ctx.strokeStyle = highlighted ? 'rgba(255, 255, 255, 0.8)' : 'rgba(255, 255, 255, 0.5)'
-        ctx.lineWidth = Math.max(1, 1 * scale)
+        ctx.strokeStyle = highlighted ? '#ffffff' : 'rgba(255, 255, 255, 0.92)'
+        ctx.lineWidth = Math.max(4, half * 0.07)
         ctx.stroke()
       }
 
@@ -689,8 +689,8 @@ export function drawOutboundSortingShelfLabel(
     ctx.beginPath()
     ctx.moveTo(x - half * 0.8, yPos)
     ctx.lineTo(x + half * 0.8, yPos)
-    ctx.strokeStyle = highlighted ? 'rgba(255, 255, 255, 0.8)' : 'rgba(255, 255, 255, 0.5)'
-    ctx.lineWidth = Math.max(1, 1 * scale)
+    ctx.strokeStyle = highlighted ? '#ffffff' : 'rgba(255, 255, 255, 0.92)'
+    ctx.lineWidth = Math.max(4, half * 0.07)
     ctx.stroke()
   }
 
