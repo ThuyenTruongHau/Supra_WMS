@@ -22,7 +22,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import dayjs from "dayjs";
 import {
   OPERATOR_DESKTOP,
-  OPERATOR_MAP_TUNING,
+  OPERATOR_INBOUND_MAP_TUNING,
   operatorDesktopClass,
   operatorDesktopTableWidths,
 } from "@/constants/operatorDesktopSizes";
@@ -765,10 +765,10 @@ export default function OperatorInboundPage() {
               >
                 <div className="relative min-h-0 flex-1 overflow-hidden rounded-lg bg-panel">
                   <OperatorMapCanvas
-                    zoneId={10}
+                    zoneId={3}
                     showInboundSeparator={true}
                     className="!h-full"
-                    tuning={OPERATOR_MAP_TUNING}
+                    tuning={OPERATOR_INBOUND_MAP_TUNING}
                     selectedCodes={
                       mode === "manual" && selectedBufferCode ? [selectedBufferCode] :
                         mode === "auto" ? selectedAutoColumnCodes : undefined

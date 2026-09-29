@@ -50,6 +50,15 @@ export const OPERATOR_DESKTOP = {
 /**
  * Tuning map operator **Đơn nhập** — fit quanh các điểm buffer trong khung board.
  */
+export const OPERATOR_INBOUND_MAP_TUNING = {
+  fitPaddingRatio: 0.02,
+  fitScaleFactor: 1,
+  shelfSizeFactor: 1.1,
+  baseNodeSize: 400,
+  /** Phóng chữ label trong ô map operator (chỉ trang user). */
+  labelTextScale: 1.88,
+} as const;
+
 export const OPERATOR_MAP_TUNING = {
   fitPaddingRatio: 0.02,
   fitScaleFactor: 1,

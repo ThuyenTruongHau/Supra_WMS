@@ -18,8 +18,8 @@ export interface ZoneMapLayoutNode {
   row: string | null;
   column: string | null;
   level: string | null;
-  map_x: number | null;
-  map_y: number | null;
+  map_x: number;
+  map_y: number;
 }
 
 export interface ZoneMapLayoutResponse {
