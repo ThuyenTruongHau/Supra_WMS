@@ -26,6 +26,7 @@ import {
   SHELF_EMPTY_COLOR,
   SHELF_SELECTED_COLOR,
   SHELF_STROKE_COLOR,
+  SHELF_RESERVED_COLOR,
   SHELF_IN_TRANSIT_COLOR,
 } from "@/utils/warehouseMapUtils";
 
@@ -33,25 +34,29 @@ const LABEL_MIN_SCREEN_PX = 16;
 
 // ─── Drawing helpers ──────────────────────────────────────────────────────────
 /**
- * Vẽ ô kệ theo trạng thái tồn kho, dùng màu chuẩn WarehouseMapCanvas.
- * - empty   → SHELF_EMPTY_COLOR (xám)
- * - taking  → SHELF_IN_TRANSIT_COLOR (cam — đang lấy hàng)
- * - *       → SHELF_FULL_COLOR (xanh brand — có hàng)
+ * Vẽ ô kệ theo trạng thái, cùng thứ tự màu với WarehouseMapCanvas.
+ * - reserved   → SHELF_RESERVED_COLOR
+ * - in_transit → SHELF_IN_TRANSIT_COLOR
+ * - has_stock / có tồn → SHELF_FULL_COLOR
+ * - còn lại    → SHELF_EMPTY_COLOR
  */
 function drawShelfByStatus(
   ctx: CanvasRenderingContext2D,
   status: string,
+  isFull: boolean,
   x: number,
   y: number,
   half: number,
   invScale: number,
 ) {
-  if (status === "empty") {
-    ctx.fillStyle = SHELF_EMPTY_COLOR;
-  } else if (status === "taking") {
+  if (status === "reserved") {
+    ctx.fillStyle = SHELF_RESERVED_COLOR;
+  } else if (status === "in_transit") {
     ctx.fillStyle = SHELF_IN_TRANSIT_COLOR;
-  } else {
+  } else if (isFull || status === "has_stock") {
     ctx.fillStyle = SHELF_FULL_COLOR;
+  } else {
+    ctx.fillStyle = SHELF_EMPTY_COLOR;
   }
   const size = half * 2;
   const radius = Math.max(4, half * 0.15);
@@ -364,9 +369,10 @@ export default function OperatorMapCanvas({
       const isSelected = interactive && selectedCodes.has(node.content);
       const label = labels.get(node.content);
       const status = label?.display_status ?? "empty";
+      const isFull = label != null && !label.is_empty;
 
       // Vẽ ô kệ với màu theo trạng thái
-      drawShelfByStatus(ctx, status, node.x, node.y, shelfHalf, invScale);
+      drawShelfByStatus(ctx, status, isFull, node.x, node.y, shelfHalf, invScale);
 
       // Viền nổi bật khi đang được chọn
       if (isSelected) {
