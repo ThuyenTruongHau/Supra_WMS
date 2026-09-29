@@ -6,8 +6,8 @@
 
 export const OPERATOR_DESKTOP = {
   headerHeight: 64,
-  /** main padding: p-3 (12) sm:p-4 (16) */
-  mainPadding: { base: 12, sm: 16 },
+  /** main padding: p-1.5 (6) sm:p-2 (8) */
+  mainPadding: { base: 6, sm: 8 },
   boardHeight: 500,
   mapMinHeight: 0,
   controlHeight: 44,
@@ -101,7 +101,7 @@ export const OPERATOR_DIRECT_OUTBOUND_MAP_TUNING = {
 
 export const operatorDesktopClass = {
   headerHeight: 'h-16',
-  mainPadding: 'p-3 sm:p-4',
+  mainPadding: 'p-1.5 sm:p-2',
   boardHeight: 'h-[500px]',
   boardMinHeight: 'min-h-[500px]',
   /** Co giãn theo vùng board còn lại — dùng thay boardHeight trên trang operator 1 màn. */
