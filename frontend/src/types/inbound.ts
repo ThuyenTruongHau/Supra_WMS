@@ -1,6 +1,12 @@
 import { randomHex } from '@/utils/randomId'
 
+import type { InboundOrder } from './inboundOrder'
+
+export type { InboundOrder }
+
 export type InboundOrderStatus =
+  | 'initialize'
+  | 'in_progress'
   | 'pending'
   | 'receiving'
   | 'completed'
@@ -34,18 +40,6 @@ export interface InboundOrderDetail {
   pickup_node_name: string | null
   pickup_node_qr_code: string | null
   status: InboundDetailStatus
-}
-
-export interface InboundOrder {
-  id: number
-  order_code: string
-  status: InboundOrderStatus
-  zone_id: number
-  created_by: number
-  created_by_name: string | null
-  created_at: string
-  updated_at: string
-  details: InboundOrderDetail[]
 }
 
 export interface InboundOrderSummary {
