@@ -28,6 +28,12 @@ export interface ZoneMapLayoutResponse {
   nodes: ZoneMapLayoutNode[];
 }
 
+/** Chuyển mọi tham chiếu của bin bị loại khỏi map sang bin có trong map mới. */
+export interface MapRemapEntry {
+  from_bin: string;
+  to_bin: string;
+}
+
 export interface LocationSyncSummary {
   created: number;
   updated: number;

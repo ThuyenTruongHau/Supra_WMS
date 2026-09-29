@@ -1,4 +1,11 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useCallback } from 'react';
+import {
+  useQuery,
+  useQueries,
+  useMutation,
+  useQueryClient,
+  type UseQueryResult,
+} from '@tanstack/react-query';
 
 import { AxiosError } from 'axios';
 import {
@@ -30,9 +37,11 @@ import {
 import type {
   MapData,
   MapRemapEntry,
+  FullLocationDetail,
   FullLocationsResponse,
   WarehouseMapImportResult,
   WarehouseLocationItemStockDetail,
+  ZoneMapLayoutNode,
   ZoneMapLayoutResponse,
 } from '@/types/warehouseMap';
 import { LIVE_QUERY_OPTIONS } from '@/utils/liveQueryOptions';
@@ -275,6 +284,78 @@ export const useZoneMapStatus = (zoneId: number) => {
     enabled: zoneId > 0,
     refetchInterval: 5000, // Poll every 5 seconds for status
     staleTime: 1000,
+  });
+};
+
+export type MergedZoneQueries<TItem> = {
+  /** Item của mọi zone đã tải được, gộp và bỏ trùng theo location_code (zone đứng trước được giữ). */
+  items: TItem[];
+  /** Còn ít nhất 1 zone đang tải lần đầu. */
+  isLoading: boolean;
+  /** Các zone lỗi (kể cả lỗi khi polling lại mà vẫn còn data cũ). */
+  failedZoneIds: number[];
+};
+
+function mergeZoneResults<TData, TItem extends { location_code: string }>(
+  zoneIds: number[],
+  results: UseQueryResult<TData>[],
+  pickItems: (data: TData) => TItem[],
+): MergedZoneQueries<TItem> {
+  const seen = new Set<string>();
+  const items: TItem[] = [];
+  const failedZoneIds: number[] = [];
+  results.forEach((result, index) => {
+    if (result.isError) failedZoneIds.push(zoneIds[index]);
+    if (!result.data) return;
+    for (const item of pickItems(result.data)) {
+      if (seen.has(item.location_code)) continue;
+      seen.add(item.location_code);
+      items.push(item);
+    }
+  });
+  return {
+    items,
+    isLoading: results.some((r) => r.isLoading),
+    failedZoneIds,
+  };
+}
+
+/** Layout của nhiều zone, gọi song song rồi gộp node. Cache dùng chung với useZoneMapLayout. */
+export const useZonesMapLayout = (zoneIds: number[]) => {
+  const combine = useCallback(
+    (results: UseQueryResult<ZoneMapLayoutResponse>[]) =>
+      mergeZoneResults<ZoneMapLayoutResponse, ZoneMapLayoutNode>(zoneIds, results, (d) => d.nodes),
+    [zoneIds],
+  );
+  return useQueries({
+    queries: zoneIds.map((zoneId) => ({
+      queryKey: ['zone_map_layout', zoneId],
+      queryFn: () => getZoneMapLayoutApi(zoneId),
+      staleTime: 5 * 60 * 1000,
+      retry: (failureCount: number, error: Error) => {
+        if ((error as AxiosError).response?.status === 404) return false;
+        return failureCount < 2;
+      },
+    })),
+    combine,
+  });
+};
+
+/** Trạng thái location của nhiều zone, polling song song rồi gộp. Cache dùng chung với useZoneMapStatus. */
+export const useZonesMapStatus = (zoneIds: number[]) => {
+  const combine = useCallback(
+    (results: UseQueryResult<FullLocationsResponse>[]) =>
+      mergeZoneResults<FullLocationsResponse, FullLocationDetail>(zoneIds, results, (d) => d.locations),
+    [zoneIds],
+  );
+  return useQueries({
+    queries: zoneIds.map((zoneId) => ({
+      queryKey: ['zone_map_status', zoneId],
+      queryFn: () => getZoneMapStatusApi(zoneId),
+      refetchInterval: 5000,
+      staleTime: 1000,
+    })),
+    combine,
   });
 };
 

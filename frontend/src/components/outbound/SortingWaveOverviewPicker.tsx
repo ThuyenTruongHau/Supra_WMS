@@ -75,8 +75,8 @@ type SortingWaveOverviewPickerProps = {
 };
 
 const DISPLAY_ZONES = [
-  { id: 12, name: "Khu vực chia chọn (Zone 12)" },
-  { id: 13, name: "Khu vực xuất hàng (Zone 13)" }
+  { id: 4, name: "Khu vực chia chọn (Zone 12)" },
+  { id: 5, name: "Khu vực xuất hàng (Zone 13)" }
 ];
 
 export default React.memo(function SortingWaveOverviewPicker({

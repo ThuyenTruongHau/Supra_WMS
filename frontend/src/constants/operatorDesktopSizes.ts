@@ -65,7 +65,7 @@ export const OPERATOR_MAP_TUNING = {
   shelfSizeFactor: 1,
   baseNodeSize: 400,
   /** Phóng chữ label trong ô map operator (chỉ trang user). */
-  labelTextScale: 1.55,
+  labelTextScale: 1.85,
 } as const;
 
 export const OPERATOR_MAP_CANVAS_DEFAULTS = {
@@ -73,7 +73,7 @@ export const OPERATOR_MAP_CANVAS_DEFAULTS = {
   fitPaddingRatio: 0.08,
   baseNodeSize: 800,
   shelfSizeFactor: 0.7,
-  labelTextScale: 1,
+  labelTextScale: 1.8,
 } as const;
 
 /**
@@ -81,22 +81,22 @@ export const OPERATOR_MAP_CANVAS_DEFAULTS = {
  * (không uniformGridFit), fit quanh station của wave, size theo khoảng cách focus.
  */
 export const OPERATOR_WAVE_MAP_TUNING = {
-  fitPaddingRatio: 0.06,
-  fitScaleFactor: 1,
+  fitPaddingRatio: 0.04,
+  fitScaleFactor: 1.1,
   shelfSizeFactor: 0.58,
   baseNodeSize: 800,
-  labelTextScale: 1.65,
+  labelTextScale: 1.85,
 } as const
 
 /**
  * Tuning dual-map **Xuất trực tiếp** — fit quanh các điểm buffer của cả 2 cột.
  */
 export const OPERATOR_DIRECT_OUTBOUND_MAP_TUNING = {
-  fitPaddingRatio: 0.04,
+  fitPaddingRatio: 0.02,
   fitScaleFactor: 1,
-  shelfSizeFactor: 1,
-  baseNodeSize: 400,
-  labelTextScale: 1.55,
+  shelfSizeFactor: 1.1,
+  baseNodeSize: 420,
+  labelTextScale: 1.88,
 } as const
 
 export const operatorDesktopClass = {

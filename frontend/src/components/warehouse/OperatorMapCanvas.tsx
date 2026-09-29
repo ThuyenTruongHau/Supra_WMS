@@ -1,5 +1,8 @@
 /**
- * OperatorMapCanvas — Bản đồ kho vận hành theo zone.
+ * OperatorMapCanvas — Bản đồ kho vận hành theo 1 hoặc nhiều zone.
+ *
+ * Nhiều zone: gọi layout/status của các zone song song, gộp node theo location_code
+ * rồi vẽ chung (các zone cùng hệ toạ độ map_x/map_y của warehouse).
  *
  * Thay đổi so với phiên bản cũ (theo quyết định đã chốt):
  * - Kích thước ô cố định: `baseNodeSize * shelfSizeFactor` (không còn computeMinShelfSpacing).
@@ -9,7 +12,7 @@
  * - Chỉ cho click / double-click vào ô kệ.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useZoneMapLayout, useZoneMapStatus } from "@/hooks/useWarehouseMap";
+import { useZonesMapLayout, useZonesMapStatus } from "@/hooks/useWarehouseMap";
 import type { LocationStockLabel } from "@/types/warehouseLocation";
 import { type MapContentBounds } from "@/utils/warehouseMapRender";
 import { OPERATOR_MAP_CANVAS_DEFAULTS } from "@/constants/operatorDesktopSizes";
@@ -115,7 +118,8 @@ type MapNode = {
 };
 
 type Props = {
-  zoneId: number;
+  /** 1 zone hoặc danh sách zone cần vẽ chung trên cùng canvas. */
+  zoneId: number | number[];
   showInboundSeparator?: boolean;
   className?: string;
   selectedCodes?: string[];
@@ -226,25 +230,35 @@ export default function OperatorMapCanvas({
   interactiveCodes,
 }: Props) {
   // ── API data ────────────────────────────────────────────────────────────────
-  const {
-    data: layoutResponse,
-    isLoading: isLayoutLoading,
-    isError: isLayoutError,
-  } = useZoneMapLayout(zoneId);
+  const zoneIdsKey = (Array.isArray(zoneId) ? zoneId : [zoneId]).join(",");
+  const zoneIds = useMemo(
+    () =>
+      [...new Set(zoneIdsKey.split(",").map(Number))]
+        .filter((id) => Number.isFinite(id) && id > 0)
+        .sort((a, b) => a - b),
+    [zoneIdsKey],
+  );
 
-  const {
-    data: statusResponse,
-    isLoading: isStatusLoading,
-    isError: isStatusError,
-  } = useZoneMapStatus(zoneId);
+  const layoutQuery = useZonesMapLayout(zoneIds);
+  const statusQuery = useZonesMapStatus(zoneIds);
+  const layoutNodes = layoutQuery.items;
 
-  const isLoading = isLayoutLoading || isStatusLoading;
-  const isError = isLayoutError || isStatusError;
+  const isLoading = layoutQuery.isLoading || statusQuery.isLoading;
+  const failedZoneIds = useMemo(
+    () => [...new Set([...layoutQuery.failedZoneIds, ...statusQuery.failedZoneIds])].sort((a, b) => a - b),
+    [layoutQuery.failedZoneIds, statusQuery.failedZoneIds],
+  );
 
-  // ── Derived data (useMemo — tránh tính lại khi statusResponse chưa đổi) ────
+  useEffect(() => {
+    if (failedZoneIds.length > 0) {
+      console.warn(`[OperatorMapCanvas] Không tải được zone: ${failedZoneIds.join(", ")}`);
+    }
+  }, [failedZoneIds]);
+
+  // ── Derived data (useMemo — tránh tính lại khi status chưa đổi) ────────────
   const labelByCode = useMemo(() => {
     const map = new Map<string, LocationStockLabel>();
-    for (const cell of statusResponse?.locations ?? []) {
+    for (const cell of statusQuery.items) {
       let qty = 0;
       for (const item of cell.item_stock ?? []) {
         qty += Number(item.quantity) || 0;
@@ -264,7 +278,7 @@ export default function OperatorMapCanvas({
       });
     }
     return map;
-  }, [statusResponse]);
+  }, [statusQuery.items]);
   const interactiveCodeSet = useMemo(() => {
     if (interactiveCodes == null) return null;
     if (interactiveCodes instanceof Set) return interactiveCodes;
@@ -312,7 +326,7 @@ export default function OperatorMapCanvas({
   // ── Draw ────────────────────────────────────────────────────────────────────
   const draw = useCallback(() => {
     const canvas = canvasRef.current;
-    if (!canvas || !layoutResponse) return;
+    if (!canvas) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
@@ -378,7 +392,7 @@ export default function OperatorMapCanvas({
     }
 
     ctx.restore();
-  }, [showInboundSeparator, layoutResponse, isInteractiveCode]);
+  }, [showInboundSeparator, isInteractiveCode]);
 
   // ── Fit ─────────────────────────────────────────────────────────────────────
   /**
@@ -447,16 +461,18 @@ export default function OperatorMapCanvas({
     draw();
   }, [selectedCodes, draw]);
 
-  // Build nodes từ layoutResponse + tính bounds
+  // Build nodes từ layout đã gộp + tính bounds (chờ mọi zone tải xong để không vẽ nửa chừng)
   useEffect(() => {
-    if (!layoutResponse || layoutResponse.nodes.length === 0) {
+    if (layoutQuery.isLoading) return;
+    if (layoutNodes.length === 0) {
       nodesRef.current = [];
       contentBoundsRef.current = null;
       setHasData(false);
+      draw();
       return;
     }
 
-    const nodes: MapNode[] = layoutResponse.nodes.map((n) => ({
+    const nodes: MapNode[] = layoutNodes.map((n) => ({
       x: n.map_x,
       y: -(n.map_y) * 1.2, // Lật ngược trục Y (Flip Y)
       content: n.location_code,
@@ -497,7 +513,7 @@ export default function OperatorMapCanvas({
 
     setHasData(true);
     resizeCanvas();
-  }, [layoutResponse, resizeCanvas]);
+  }, [layoutQuery.isLoading, layoutNodes, resizeCanvas, draw]);
 
   // ResizeObserver
   useEffect(() => {
@@ -584,15 +600,21 @@ export default function OperatorMapCanvas({
         </div>
       )}
 
-      {!isLoading && isError && (
+      {!isLoading && !hasData && failedZoneIds.length > 0 && (
         <div className="absolute inset-0 flex items-center justify-center bg-white/70 px-4 text-center text-sm text-slate-500">
           Không tải được bản đồ
         </div>
       )}
 
-      {!isLoading && !isError && hasData && labelByCode.size === 0 && (
+      {!isLoading && hasData && failedZoneIds.length > 0 && (
+        <div className="pointer-events-none absolute right-3 top-3 rounded-lg bg-amber-50/95 px-3 py-1.5 text-xs text-amber-700 shadow-sm">
+          Không tải được zone {failedZoneIds.join(", ")}
+        </div>
+      )}
+
+      {!isLoading && failedZoneIds.length === 0 && hasData && labelByCode.size === 0 && (
         <div className="pointer-events-none absolute bottom-3 left-3 rounded-lg bg-white/90 px-3 py-1.5 text-xs text-slate-500 shadow-sm">
-          Chưa có điểm nào trong zone
+          Chưa có điểm nào trên bản đồ
         </div>
       )}
     </div>

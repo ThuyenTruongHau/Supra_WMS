@@ -561,7 +561,7 @@ export default function DirectOutboundFromInboundBoard({
           <div className="relative min-h-0 flex-1 overflow-hidden bg-industrial-pattern p-2">
             {zoneId > 0 ? (
               <OperatorMapCanvas
-                zoneId={10}
+                zoneId={[2,3]}
                 showInboundSeparator={true}
                 tuning={OPERATOR_DIRECT_OUTBOUND_MAP_TUNING}
                 selectedCodes={inboundLocationCode ? [inboundLocationCode] : undefined}
@@ -587,7 +587,7 @@ export default function DirectOutboundFromInboundBoard({
             {zoneId > 0 ? (
               <OperatorMapCanvas
                 key={`wave-all-${allWaveStationIds.join(",") || "zone"}`}
-                zoneId={11}
+                zoneId={[4,5]}
                 tuning={OPERATOR_DIRECT_OUTBOUND_MAP_TUNING}
                 selectedCodes={outboundLocationCode ? [outboundLocationCode] : undefined}
                 interactiveCodes={waveInteractiveCodes}
