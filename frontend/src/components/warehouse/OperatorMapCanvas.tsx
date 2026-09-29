@@ -260,6 +260,7 @@ export default function OperatorMapCanvas({
         location_type: null,
         quantity: qty,
         line_count: (cell.item_stock ?? []).length,
+        lot_number: cell.item_stock?.[0]?.lot_number ?? null,
       });
     }
     return map;
