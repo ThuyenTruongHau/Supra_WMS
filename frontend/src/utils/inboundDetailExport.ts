@@ -16,34 +16,20 @@ function formatDateShort(value?: string | null): string {
   return dayjs(value).format("DD/MM/YYYY");
 }
 
-function countInboundPallets(order: InboundOrder): number {
-  return order.details.reduce((sum, detail) => {
-    const palletCount =
-      detail.pallet_quantity != null && Number(detail.pallet_quantity) > 0
-        ? Number(detail.pallet_quantity)
-        : 1;
-    return sum + palletCount;
-  }, 0);
-}
-
-function sumInboundExpectedQuantity(order: InboundOrder): number {
-  return order.details.reduce(
-    (sum, detail) => sum + Number(detail.expected_quantity ?? 0),
-    0,
-  );
-}
-
 function toListRows(orders: InboundOrder[]) {
-  return orders.map((order, index) => ({
-    STT: index + 1,
-    "Mã đơn nhập": order.order_code,
-    "Số pallet": toDisplayInteger(countInboundPallets(order)),
-    "Tổng SL": toDisplayInteger(sumInboundExpectedQuantity(order)),
-    "Trạng thái": ORDER_STATUS_LABELS[order.status] ?? order.status,
-    "Người tạo": order.created_by_name ?? String(order.created_by),
-    "Ngày tạo": formatDateShort(order.created_at),
-    "Số dòng SP": order.details.length,
-  }));
+  return orders.map((order, index) => {
+    const validRows = order.details?.valid_rows;
+    return {
+      STT: index + 1,
+      "Mã đơn nhập": order.order_code,
+      "Trạng thái": ORDER_STATUS_LABELS[order.status] ?? order.status,
+      "Người tạo": String(order.created_by_id),
+      "Ngày tạo": formatDateShort(order.created_at),
+      "Số dòng SP":
+        typeof validRows === "number" ? toDisplayInteger(validRows) : "",
+      "Ghi chú": order.note ?? "",
+    };
+  });
 }
 
 export function downloadInboundListExcel(
