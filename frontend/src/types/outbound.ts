@@ -40,6 +40,10 @@ export interface GetOutboundOrdersParams {
   status?: string;
 }
 
+export interface GetOutboundOrdersBySkuParams extends GetOutboundOrdersParams {
+  sku: string;
+}
+
 export interface OutboundOrderLineItemCreate {
   item_id: number;
   quantity: number;

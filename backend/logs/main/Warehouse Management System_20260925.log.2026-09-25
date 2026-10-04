@@ -1,0 +1,31 @@
+2026-09-25 16:31:06,767 - main - INFO - Starting app
+2026-09-25 16:31:06,805 - main - INFO - Redis connected: redis://10.73.231.5:6379/0 (prefix=wms)
+2026-09-25 16:31:06,806 - main - INFO - Websocket manager started
+2026-09-25 16:31:21,138 - main - INFO - Stopping app
+2026-09-25 16:31:21,138 - main - INFO - Websocket manager stopped
+2026-09-25 16:31:28,152 - main - INFO - Starting app
+2026-09-25 16:31:28,191 - main - INFO - Redis connected: redis://10.73.231.5:6379/0 (prefix=wms)
+2026-09-25 16:31:28,192 - main - INFO - Websocket manager started
+2026-09-25 16:42:22,750 - main - INFO - outbound.get_order_details order_id=65
+2026-09-25 16:42:22,750 - main - INFO - outbound.get_lacked_details order_id=65
+2026-09-25 16:42:22,751 - main - INFO - outbound.get_order_by_id order_id=65
+2026-09-25 16:42:22,751 - main - INFO - outbound.get_robot_tasks order_id=65
+2026-09-25 16:42:34,487 - main - INFO - outbound.get_lacked_details order_id=64
+2026-09-25 16:42:34,491 - main - INFO - outbound.get_robot_tasks order_id=64
+2026-09-25 16:42:34,497 - main - INFO - outbound.get_order_details order_id=64
+2026-09-25 16:42:34,502 - main - INFO - outbound.get_order_by_id order_id=64
+2026-09-25 16:42:44,580 - main - INFO - outbound.get_robot_tasks order_id=63
+2026-09-25 16:42:44,585 - main - INFO - outbound.get_order_by_id order_id=63
+2026-09-25 16:42:44,589 - main - INFO - outbound.get_lacked_details order_id=63
+2026-09-25 16:42:44,590 - main - INFO - outbound.get_order_details order_id=63
+2026-09-25 16:43:19,494 - main - INFO - outbound.get_order_details order_id=59
+2026-09-25 16:43:19,495 - main - INFO - outbound.get_lacked_details order_id=59
+2026-09-25 16:43:19,496 - main - INFO - outbound.get_order_by_id order_id=59
+2026-09-25 16:43:19,497 - main - INFO - outbound.get_robot_tasks order_id=59
+2026-09-25 16:43:29,676 - main - INFO - outbound.get_lacked_details order_id=66
+2026-09-25 16:43:29,678 - main - INFO - outbound.get_robot_tasks order_id=66
+2026-09-25 16:43:29,682 - main - INFO - outbound.get_order_by_id order_id=66
+2026-09-25 16:43:29,685 - main - INFO - outbound.get_order_details order_id=66
+2026-09-25 16:43:33,441 - main - INFO - outbound.get_order_details order_id=66
+2026-09-26 08:37:25,865 - main - INFO - inbound.get_order_details order_code=IN-20260921-133453
+2026-09-26 08:37:30,920 - main - INFO - inbound.get_order_details order_code=IN-20260921-133453

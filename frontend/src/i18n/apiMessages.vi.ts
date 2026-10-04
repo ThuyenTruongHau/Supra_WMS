@@ -9,9 +9,6 @@ const CALLER_PREFIX = /^Error calling inbound order:\s*/i;
 const QR_TYPE_LOCATION_CONFLICT =
   /^Location already has QR type '(\w+)', cannot assign QR type '(\w+)'$/;
 
-const PACKING_USER_PENDING_ITEM_CONFLICT =
-  /^Packing user already has pending stock for item '([^']+)', cannot cache a different item$/;
-
 const PACK_ALREADY_LINKED =
   /^Pack QR is already linked to an item and cannot be modified$/;
 
@@ -133,8 +130,9 @@ export const API_MESSAGES_VI: Record<string, string> = {
     "Nhóm hàng phải có ít nhất một sản phẩm",
   "Inbound detail": "Không tìm thấy nhóm hàng",
   "Inbound allocation": "Không tìm thấy dòng phân bổ",
-  "Only initialize order can be deleted":
-    "Chỉ xóa được đơn ở trạng thái khởi tạo",
+  "Completed order cannot be deleted": "Không thể xóa đơn đã hoàn thành",
+  "Stock is allocated to an outbound order":
+    "Hàng của đơn nhập đã được phân bổ cho đơn xuất, không thể xóa",
   "Only initialize order can be updated":
     "Chỉ sửa được đơn ở trạng thái khởi tạo",
   "New line item requires from_location_id": "Dòng mới thiếu điểm cấp",
@@ -175,16 +173,6 @@ function applyDictionary(message: string): string {
     }
   }
   return message;
-}
-
-function translatePackingUserPendingItemConflict(message: string): string | null {
-  const match = message.match(PACKING_USER_PENDING_ITEM_CONFLICT);
-  if (!match) return null;
-  const [, existingSku] = match;
-  return (
-    `Người đóng gói đã có hàng tạm của sản phẩm ${existingSku}. ` +
-    "Không thể lưu tạm sản phẩm khác."
-  );
 }
 
 function translatePackAlreadyLinked(message: string): string | null {
@@ -281,9 +269,6 @@ export function translateApiMessage(message: string): string {
 
   const anchorPackItemMismatch = translateAnchorPackItemMismatch(target);
   if (anchorPackItemMismatch) return anchorPackItemMismatch;
-
-  const pendingItemConflict = translatePackingUserPendingItemConflict(target);
-  if (pendingItemConflict) return pendingItemConflict;
 
   const qrConflict = translateQrTypeLocationConflict(target);
   if (qrConflict) return qrConflict;

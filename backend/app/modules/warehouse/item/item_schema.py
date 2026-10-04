@@ -132,6 +132,19 @@ class ItemListResponse(BaseModel):
     page_size: int
 
 
+class ItemSkuOption(BaseModel):
+    id: int
+    sku: str
+    name: str
+
+
+class ItemSkuListResponse(BaseModel):
+    items: list[ItemSkuOption]
+    total: int
+    page: int
+    page_size: int
+
+
 class ItemAnalyzeResponse(BaseModel):
     total_items: int
     total_quantity: Decimal

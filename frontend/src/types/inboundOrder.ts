@@ -78,6 +78,10 @@ export interface GetInboundOrdersParams {
   status?: string;
 }
 
+export interface GetInboundOrdersBySkuParams extends GetInboundOrdersParams {
+  sku: string;
+}
+
 /** --- Suggest allocation --- */
 export interface InboundSuggestAllocationItem {
   item_id: number;

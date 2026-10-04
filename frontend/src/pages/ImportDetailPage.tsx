@@ -31,6 +31,11 @@ import CreateImportModal, {
 } from "./components/CreateImportModal";
 import { detailsToEntries } from "@/utils/keyValueDetails";
 import { computeDetailProgress } from "@/utils/detailProgress";
+import {
+  buildDeleteOrderContent,
+  COMPLETED_ORDER_DELETE_HINT,
+  isOrderDeletable,
+} from "@/utils/orderDeleteConfirm";
 
 import { getApiErrorMessage } from "@/utils/apiErrorMessage";
 import { exportInboundOrderMasanApi } from "@/api/masan";
@@ -265,7 +270,7 @@ export default function ImportDetailPage() {
   const handleDelete = () => {
     if (!orderCode) return;
     Modal.confirmDelete({
-      content: `Bạn có chắc chắn muốn xóa đơn nhập "${orderCode}"?`,
+      content: buildDeleteOrderContent("đơn nhập", orderCode, orderMeta?.status),
       onOk: () =>
         new Promise<void>((resolve, reject) => {
           deleteMutation.mutate(orderCode, {
@@ -598,10 +603,10 @@ export default function ImportDetailPage() {
           <Button
             variant="dangerText"
             icon={<DeleteOutlined />}
-            disabled={!allInitialize || details.length === 0}
+            disabled={!isOrderDeletable(orderMeta?.status) || details.length === 0}
             loading={deleteMutation.isPending}
             title={
-              !allInitialize ? "Chỉ đơn ở trạng thái khởi tạo mới được xóa" : undefined
+              !isOrderDeletable(orderMeta?.status) ? COMPLETED_ORDER_DELETE_HINT : undefined
             }
             onClick={handleDelete}
           >

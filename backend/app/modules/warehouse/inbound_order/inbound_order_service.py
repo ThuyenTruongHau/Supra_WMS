@@ -1,7 +1,7 @@
 from typing import Optional
 import uuid
 import json
-from sqlalchemy import cast, func, Integer, or_
+from sqlalchemy import cast, exists, func, Integer, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload, joinedload
 from zoneinfo import ZoneInfo
@@ -37,6 +37,7 @@ from app.modules.warehouse.inbound_order.inbound_order_schema import (
     _resolve_lot_number_fields,
 )
 from app.modules.warehouse.location_map.location_model import Location
+from app.modules.warehouse.outbound_order.outbound_order_model import OutboundOrderAllocation
 from app.modules.warehouse.item.item_model import Item, QR_Code
 from app.modules.warehouse.unit.unit_model import ItemUnit, Unit
 from app.modules.warehouse.item_stock.item_stock_model import ItemStock
@@ -140,6 +141,24 @@ def suggest_allocation_inbound(db: Session, body: InboundSuggestAllocation):
     return InboundSuggestAllocationResponse(line_items=line_items)
 
 def _delete_item_stock(db: Session, stock: ItemStock) -> None:
+    allocated = (
+        db.query(OutboundOrderAllocation)
+        .filter(OutboundOrderAllocation.item_stock_id == stock.id)
+        .first()
+    )
+    if allocated:
+        raise ValueError("Stock is allocated to an outbound order")
+
+    db.query(ItemStockRelation).filter(
+        or_(
+            ItemStockRelation.parent_stock_id == stock.id,
+            ItemStockRelation.child_stock_id == stock.id,
+        )
+    ).delete(synchronize_session=False)
+    db.query(Transaction).filter(
+        Transaction.item_stock_id == stock.id
+    ).delete(synchronize_session=False)
+
     qrs = db.query(QR_Code).filter(QR_Code.item_stock_id == stock.id).all()
     for qr in qrs:
         db.delete(qr)
@@ -450,6 +469,31 @@ def _purge_detail(db: Session, detail: InboundOrderDetail) -> None:
     db.delete(detail)
 
 
+def _detach_completed_detail(db: Session, detail: InboundOrderDetail) -> None:
+    """Drop the order linkage of a completed detail but keep its stocks in inventory."""
+    robot_tasks = (
+        db.query(RobotTask)
+        .filter(RobotTask.inbound_order_detail_id == detail.id)
+        .all()
+    )
+    for task in robot_tasks:
+        db.delete(task)
+
+    for allocation in list(detail.allocations):
+        db.delete(allocation)
+
+    stocks = (
+        db.query(ItemStock)
+        .filter(ItemStock.inbound_order_detail_id == detail.id)
+        .all()
+    )
+    for stock in stocks:
+        stock.inbound_order_detail_id = None
+
+    db.flush()
+    db.delete(detail)
+
+
 def _delete_inbound_order_history(db: Session, inbound_order_id: int) -> None:
     db.query(History).filter(
         History.inbound_order_id == inbound_order_id
@@ -460,13 +504,14 @@ def delete_inbound_order(db: Session, order_code: str) -> None:
     order = (
         db.query(InboundOrder)
         .filter(InboundOrder.order_code == order_code)
+        .with_for_update(of=InboundOrder)
         .first()
     )
     if not order:
         raise ValueError("Inbound order not found")
 
-    if order.status != "initialize":
-        raise ValueError("Only initialize and cancelled order can be deleted")
+    if order.status == "completed":
+        raise ValueError("Completed order cannot be deleted")
 
     existing_details = (
         db.query(InboundOrderDetail)
@@ -474,16 +519,30 @@ def delete_inbound_order(db: Session, order_code: str) -> None:
         .filter(InboundOrderDetail.inbound_order_id == order.id)
         .all()
     )
-    for detail in existing_details:
-        _purge_detail(db, detail)
-
-    _delete_inbound_order_history(db, order.id)
-    db.delete(order)
+    kept = purged = 0
     try:
+        for detail in existing_details:
+            if detail.status == "completed":
+                _detach_completed_detail(db, detail)
+                kept += 1
+            else:
+                _purge_detail(db, detail)
+                purged += 1
+
+        _delete_inbound_order_history(db, order.id)
+        db.delete(order)
         db.commit()
     except IntegrityError as e:
         db.rollback()
         raise ValueError(f"Database conflict: {e.orig}") from e
+    except Exception:
+        db.rollback()
+        raise
+
+    logger.info(
+        f"Deleted inbound order {order_code}: "
+        f"kept {kept} completed detail(s), purged {purged} detail(s)"
+    )
 
 
 def update_inbound_order(db: Session, order_code: str, body: InboundOrderUpdate, inbound_type: str, user_id: int) -> InboundOrder:
@@ -872,6 +931,60 @@ def get_inbound_order(
 ):
     base_query = db.query(InboundOrder).filter(
         InboundOrder.warehouse_id == warehouse_id
+    )
+
+    if q and q.strip():
+        term = f"%{q.strip()}%"
+        base_query = base_query.join(InboundOrder.created_by).filter(
+            or_(
+                InboundOrder.order_code.ilike(term),
+                User.username.ilike(term),
+            )
+        )
+
+    summary = _build_inbound_list_summary(base_query)
+
+    filtered_query = base_query
+    if status:
+        filtered_query = filtered_query.filter(InboundOrder.status == status)
+
+    total = filtered_query.count()
+    items = (
+        filtered_query.order_by(InboundOrder.created_at.desc(), InboundOrder.id.desc())
+        .offset((page - 1) * page_size)
+        .limit(page_size)
+        .all()
+    )
+    return items, total, summary
+
+
+def get_inbound_orders_by_sku(
+    db: Session,
+    warehouse_id: int,
+    sku: str,
+    page: int = 1,
+    page_size: int = 10,
+    q: Optional[str] = None,
+    status: Optional[str] = None,
+):
+    sku_term = f"%{sku.strip()}%"
+    sku_match = exists(
+        select(1)
+        .select_from(InboundOrderAllocation)
+        .join(
+            InboundOrderDetail,
+            InboundOrderDetail.id == InboundOrderAllocation.inbound_order_detail_id,
+        )
+        .join(ItemStock, ItemStock.id == InboundOrderAllocation.item_stock_id)
+        .join(Item, Item.id == ItemStock.item_id)
+        .where(
+            InboundOrderDetail.inbound_order_id == InboundOrder.id,
+            Item.sku.ilike(sku_term),
+        )
+    )
+    base_query = db.query(InboundOrder).filter(
+        InboundOrder.warehouse_id == warehouse_id,
+        sku_match,
     )
 
     if q and q.strip():

@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   getInboundOrdersApi,
+  getInboundOrdersBySkuApi,
   getInboundOrderDetailsApi,
   suggestInboundAllocationApi,
   releaseInboundLocationsApi,
@@ -21,6 +22,7 @@ import type {
   AssignOrGetItemStockRequest,
   AssignPackingToItemRequest,
   CacheForPackingUserRequest,
+  GetInboundOrdersBySkuParams,
   GetInboundOrdersParams,
   InboundOrderCreateRequest,
   InboundOrderDeleteResponse,
@@ -31,13 +33,34 @@ import type {
 } from "@/types/inboundOrder";
 import type { AxiosError } from "axios";
 import type { ApiErrorResponse } from "@/types/apiError";
-import { LIVE_QUERY_OPTIONS } from "@/utils/liveQueryOptions";
+import {
+  INVENTORY_QUERY_ROOTS,
+  LIVE_QUERY_OPTIONS,
+} from "@/utils/liveQueryOptions";
 
-export const useGetInboundOrders = (params: GetInboundOrdersParams) => {
+export const useGetInboundOrders = (
+  params: GetInboundOrdersParams,
+  options?: { enabled?: boolean },
+) => {
   return useQuery({
     queryKey: ["inboundOrders", params],
     queryFn: () => getInboundOrdersApi(params),
-    enabled: params.warehouse_id > 0,
+    enabled: params.warehouse_id > 0 && (options?.enabled ?? true),
+    ...LIVE_QUERY_OPTIONS,
+  });
+};
+
+export const useGetInboundOrdersBySku = (
+  params: GetInboundOrdersBySkuParams,
+  options?: { enabled?: boolean },
+) => {
+  return useQuery({
+    queryKey: ["inboundOrdersBySku", params],
+    queryFn: () => getInboundOrdersBySkuApi(params),
+    enabled:
+      params.warehouse_id > 0 &&
+      params.sku.trim().length > 0 &&
+      (options?.enabled ?? true),
     ...LIVE_QUERY_OPTIONS,
   });
 };
@@ -112,8 +135,13 @@ export const useDeleteInboundOrder = () => {
     string
   >({
     mutationFn: deleteInboundOrderApi,
-    onSuccess: () => {
+    onSuccess: (_, orderCode) => {
       queryClient.invalidateQueries({ queryKey: ["inboundOrders"] });
+      queryClient.invalidateQueries({ queryKey: ["inboundOrdersBySku"] });
+      queryClient.removeQueries({ queryKey: ["inboundOrderDetails", orderCode] });
+      for (const root of INVENTORY_QUERY_ROOTS) {
+        queryClient.invalidateQueries({ queryKey: [root] });
+      }
     },
   });
 };

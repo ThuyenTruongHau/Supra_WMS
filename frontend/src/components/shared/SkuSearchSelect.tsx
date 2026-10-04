@@ -2,7 +2,7 @@ import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { AutoComplete } from "antd";
 import { SearchOutlined } from "@ant-design/icons";
 import { Button, Input } from "@/components/ui";
-import { useGetItems } from "@/hooks/useItem";
+import { useGetItemSkus, useGetItems } from "@/hooks/useItem";
 import { useDebounce } from "@/hooks/useDebounce";
 import { cn } from "@/components/ui/utils/cn";
 
@@ -49,6 +49,8 @@ type SkuSearchSelectProps = {
   disabled?: boolean;
   browsePageSize?: number;
   searchPageSize?: number;
+  /** `skus`: GET /items/skus (mã + tên). Mặc định danh sách item đầy đủ. */
+  lookup?: "items" | "skus";
 };
 
 type ItemQueryParams = {
@@ -76,6 +78,7 @@ export function SkuSearchSelect({
   disabled,
   browsePageSize = BROWSE_PAGE_SIZE,
   searchPageSize = SEARCH_PAGE_SIZE,
+  lookup = "items",
 }: SkuSearchSelectProps) {
   const instanceId = useId();
   const [searchInput, setSearchInput] = useState(value ?? "");
@@ -138,13 +141,21 @@ export function SkuSearchSelect({
     }
   }, [debouncedSearch, warehouseId, searchPageSize, browsePageSize, openDropdown]);
 
-  const { data, isFetching, isError, refetch } = useGetItems({
+  const itemQuery = {
     warehouse_id: warehouseId,
     q: queryParams?.q,
     page: queryParams?.page ?? 1,
     page_size: queryParams?.page_size ?? browsePageSize,
-    enabled: queryParams !== null && warehouseId > 0,
-  });
+    enabled: queryParams !== null && warehouseId > 0 && lookup === "items",
+  };
+  const skuQueryParams = {
+    ...itemQuery,
+    enabled: queryParams !== null && warehouseId > 0 && lookup === "skus",
+  };
+  const itemsResult = useGetItems(itemQuery);
+  const skusResult = useGetItemSkus(skuQueryParams);
+  const { data, isFetching, isError, refetch } =
+    lookup === "skus" ? skusResult : itemsResult;
 
   const options: SkuSearchOption[] = isFetching
     ? []
@@ -153,8 +164,8 @@ export function SkuSearchSelect({
         label: `${it.sku} - ${it.name}`,
         item_name: it.name,
         item_id: it.id,
-        base_unit: it.base_unit,
-        base_quantity: it.base_quantity,
+        base_unit: "base_unit" in it ? it.base_unit : undefined,
+        base_quantity: "base_quantity" in it ? it.base_quantity : undefined,
       })) ?? []);
 
   const loadBrowse = () => {

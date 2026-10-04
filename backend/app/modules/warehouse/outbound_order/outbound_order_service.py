@@ -112,7 +112,7 @@ def _get_fixed_quantity(db: Session, outbound_order: OutboundOrder, item_id: int
         .join(Zone, Zone.id == Location.zone_id)
         .filter(
             ItemStock.item_id == item_id,
-            Zone.code.in_(settings.zone_storage),
+            Zone.code.in_(list(settings.zone_storage) + list(settings.zone_split)),
             ItemStock.available_quantity > 0,
             ItemStock.is_active.is_(True),
         )
@@ -241,6 +241,48 @@ def get_outbound_order(
 ):
     base_query = db.query(OutboundOrder).filter(
         OutboundOrder.warehouse_id == warehouse_id
+    )
+    if q:
+        base_query = base_query.filter(OutboundOrder.order_code.ilike(f"%{q}%"))
+
+    summary = _build_outbound_list_summary(base_query)
+
+    filtered_query = base_query
+    if status:
+        filtered_query = filtered_query.filter(OutboundOrder.status == status)
+
+    total = filtered_query.count()
+    items = (
+        filtered_query.order_by(OutboundOrder.created_at.desc())
+        .offset((page - 1) * page_size)
+        .limit(page_size)
+        .all()
+    )
+    return items, total, summary
+
+
+def get_outbound_orders_by_sku(
+    db: Session,
+    warehouse_id: int,
+    sku: str,
+    page: int = 1,
+    page_size: int = 10,
+    q: Optional[str] = None,
+    status: Optional[str] = None,
+):
+    sku_term = f"%{sku.strip()}%"
+    sku_match = exists(
+        select(1)
+        .select_from(OutboundOrderDetail)
+        .join(Item, Item.id == OutboundOrderDetail.item_id)
+        .where(
+            OutboundOrderDetail.outbound_order_id == OutboundOrder.id,
+            Item.sku.ilike(sku_term),
+        )
+    )
+    base_query = db.query(OutboundOrder).filter(
+        OutboundOrder.warehouse_id == warehouse_id,
+        sku_match,
     )
     if q:
         base_query = base_query.filter(OutboundOrder.order_code.ilike(f"%{q}%"))
@@ -492,45 +534,94 @@ def _delete_outbound_order_history(db: Session, outbound_order_id: int) -> None:
     ).delete(synchronize_session=False)
 
 
-def _purge_outbound_detail(db: Session, detail: OutboundOrderDetail) -> None:
+def _purge_outbound_detail(db: Session, detail: OutboundOrderDetail) -> set[int]:
+    """Delete the detail and its allocations; return robot task ids they referenced.
+
+    Completed allocations have already settled stock, so removing the row keeps
+    the deducted quantity. Unfinished allocations only hold a reservation, which
+    is released once the row is gone.
+    """
     allocations = (
         db.query(OutboundOrderAllocation)
         .filter(OutboundOrderAllocation.outbound_order_detail_id == detail.id)
         .all()
     )
+    robot_task_ids: set[int] = set()
     for allocation in allocations:
+        if allocation.robot_task_id is not None:
+            robot_task_ids.add(allocation.robot_task_id)
         db.delete(allocation)
 
     db.delete(detail)
+    return robot_task_ids
+
+
+def _delete_orphan_robot_tasks(db: Session, robot_task_ids: set[int]) -> int:
+    if not robot_task_ids:
+        return 0
+    db.flush()
+    still_used = {
+        task_id
+        for (task_id,) in db.query(OutboundOrderAllocation.robot_task_id)
+        .filter(OutboundOrderAllocation.robot_task_id.in_(robot_task_ids))
+        .distinct()
+        .all()
+    }
+    orphan_ids = robot_task_ids - still_used
+    if not orphan_ids:
+        return 0
+    tasks = db.query(RobotTask).filter(RobotTask.id.in_(orphan_ids)).all()
+    for task in tasks:
+        db.delete(task)
+    return len(tasks)
 
 
 def delete_outbound_order(db: Session, order_code: str) -> None:
     order = (
         db.query(OutboundOrder)
         .filter(OutboundOrder.order_code == order_code)
+        .with_for_update(of=OutboundOrder)
         .first()
     )
     if not order:
         raise ValueError("Outbound order not found")
 
-    if order.status != "initialize":
-        raise ValueError("Only initialize order can be deleted")
+    if order.status == "completed":
+        raise ValueError("Completed order cannot be deleted")
 
+    was_initialize = order.status == "initialize"
     existing_details = (
         db.query(OutboundOrderDetail)
         .filter(OutboundOrderDetail.outbound_order_id == order.id)
         .all()
     )
-    for detail in existing_details:
-        _purge_outbound_detail(db, detail)
-
-    _delete_outbound_order_history(db, order.id)
-    db.delete(order)
     try:
+        robot_task_ids: set[int] = set()
+        for detail in existing_details:
+            robot_task_ids |= _purge_outbound_detail(db, detail)
+
+        deleted_tasks = _delete_orphan_robot_tasks(db, robot_task_ids)
+
+        _delete_outbound_order_history(db, order.id)
+        db.delete(order)
         db.commit()
     except IntegrityError as e:
         db.rollback()
         raise ValueError(f"Database conflict: {e.orig}") from e
+    except Exception:
+        db.rollback()
+        raise
+
+    logger.info(
+        f"Deleted outbound order {order_code}: "
+        f"{len(existing_details)} detail(s), {deleted_tasks} robot task(s)"
+    )
+    if not was_initialize:
+        logger.warning(
+            f"Outbound order {order_code} was deleted while in progress; "
+            "robot tasks on ICS are not cancelled and pallets at the outbound "
+            "station must be returned manually"
+        )
 
 
 def _lot_as_date(col):
@@ -556,7 +647,7 @@ def _strategy_loading_stocks(db: Session, item_id: int, strategy: str, lot_numbe
         .join(Zone, Zone.id == Location.zone_id)
         .filter(
             ItemStock.item_id == item_id,
-            Zone.code.in_(settings.zone_storage),
+            Zone.code.in_(list(settings.zone_storage) + list(settings.zone_split)),
             ItemStock.available_quantity > 0,
             ItemStock.is_active.is_(True),
         )
@@ -636,6 +727,7 @@ def _full_stock_in_location(db: Session, location_id: int) -> bool:
         db.query(ItemStock)
         .filter(ItemStock.location_id == location_id)
         .filter(ItemStock.status.in_(["available", "split"]))
+        .filter(ItemStock.is_active.is_(True))
         .all()
     )
     stock_ids = [stock.id for stock in stocks]

@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   getOutboundOrdersApi,
+  getOutboundOrdersBySkuApi,
   getOutboundOrderByIdApi,
   getOutboundOrderDetailsApi,
   getOutboundLackedDetailsApi,
@@ -17,6 +18,7 @@ import {
 } from "@/api/outboundOrder";
 import type {
   CalculateOutboundRequest,
+  GetOutboundOrdersBySkuParams,
   GetOutboundOrdersParams,
   OutboundOrderCreateRequest,
   OutboundOrderDeleteResponse,
@@ -26,13 +28,34 @@ import type {
 } from "@/types/outbound";
 import type { AxiosError } from "axios";
 import type { ApiErrorResponse } from "@/types/apiError";
-import { LIVE_QUERY_OPTIONS } from "@/utils/liveQueryOptions";
+import {
+  INVENTORY_QUERY_ROOTS,
+  LIVE_QUERY_OPTIONS,
+} from "@/utils/liveQueryOptions";
 
-export const useGetOutboundOrders = (params: GetOutboundOrdersParams) => {
+export const useGetOutboundOrders = (
+  params: GetOutboundOrdersParams,
+  options?: { enabled?: boolean },
+) => {
   return useQuery({
     queryKey: ["outboundOrders", params],
     queryFn: () => getOutboundOrdersApi(params),
-    enabled: params.warehouse_id > 0,
+    enabled: params.warehouse_id > 0 && (options?.enabled ?? true),
+    ...LIVE_QUERY_OPTIONS,
+  });
+};
+
+export const useGetOutboundOrdersBySku = (
+  params: GetOutboundOrdersBySkuParams,
+  options?: { enabled?: boolean },
+) => {
+  return useQuery({
+    queryKey: ["outboundOrdersBySku", params],
+    queryFn: () => getOutboundOrdersBySkuApi(params),
+    enabled:
+      params.warehouse_id > 0 &&
+      params.sku.trim().length > 0 &&
+      (options?.enabled ?? true),
     ...LIVE_QUERY_OPTIONS,
   });
 };
@@ -166,6 +189,10 @@ export const useDeleteOutboundOrder = () => {
     mutationFn: deleteOutboundOrderApi,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["outboundOrders"] });
+      queryClient.invalidateQueries({ queryKey: ["outboundOrdersBySku"] });
+      for (const root of INVENTORY_QUERY_ROOTS) {
+        queryClient.invalidateQueries({ queryKey: [root] });
+      }
     },
   });
 };

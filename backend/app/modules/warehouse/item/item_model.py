@@ -56,7 +56,7 @@ class Item(Base):
                 .where(
                     Location.warehouse_id == warehouse_id,
                     Location.is_active.is_(True),
-                    Zone.code.in_(settings.zone_storage),
+                    Zone.code.in_(list(settings.zone_storage) + list(settings.zone_split)),
                 )
                 .correlate_except(Location, Zone)
             ),

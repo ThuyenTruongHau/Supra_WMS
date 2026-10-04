@@ -3,6 +3,7 @@ import { isAxiosError } from "axios";
 import type {
   CalculateOutboundRequest,
   CalculateOutboundResponse,
+  GetOutboundOrdersBySkuParams,
   GetOutboundOrdersParams,
   LackedDetail,
   OutboundOrder,
@@ -25,6 +26,16 @@ export const getOutboundOrdersApi = async (
   const { data } = await axiosInstance.get<OutboundOrderListResponse>(BASE, {
     params,
   });
+  return data;
+};
+
+export const getOutboundOrdersBySkuApi = async (
+  params: GetOutboundOrdersBySkuParams,
+): Promise<OutboundOrderListResponse> => {
+  const { data } = await axiosInstance.get<OutboundOrderListResponse>(
+    `${BASE}/by-item`,
+    { params },
+  );
   return data;
 };
 

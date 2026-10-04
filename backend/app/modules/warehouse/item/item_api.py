@@ -7,7 +7,7 @@ from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.core.dependencies import require_permission
+from app.core.dependencies import get_current_user, require_permission
 from app.modules.warehouse.item import item_service
 from app.modules.warehouse.item.item_schema import (
     ItemAnalyzeResponse,
@@ -16,6 +16,7 @@ from app.modules.warehouse.item.item_schema import (
     ItemImportJobAccepted,
     ItemImportJobStatus,
     ItemListResponse,
+    ItemSkuListResponse,
     ItemResponse,
     ItemUpdate,
     QRCodeCreate,
@@ -50,6 +51,26 @@ def list_items(
         warehouse_id=warehouse_id,
         q=q,
         is_active=is_active,
+    )
+
+
+@router.get(
+    "/items/skus",
+    response_model=ItemSkuListResponse,
+)
+def list_item_skus(
+    db: DbSession,
+    warehouse_id: int = Query(..., gt=0),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    q: Optional[str] = Query(None, description="Lọc nhanh theo mã hoặc tên sản phẩm"),
+):
+    return item_service.list_item_skus(
+        db,
+        warehouse_id=warehouse_id,
+        page=page,
+        page_size=page_size,
+        q=q,
     )
 
 
@@ -228,7 +249,7 @@ def list_recent_qr_codes(
 
 @router.post(
     "/qr-codes/preview",
-    dependencies=[Depends(require_permission("item:read"))],
+    dependencies=[Depends(get_current_user)],
 )
 def preview_qr_codes(
     db: DbSession,
@@ -244,7 +265,7 @@ def preview_qr_codes(
 
 @router.post(
     "/qr-codes/create",
-    dependencies=[Depends(require_permission("item:create"))],
+    dependencies=[Depends(get_current_user)],
 )
 def create_qr_codes_batch(
     body: QRCodePrintCreateBody,
@@ -267,7 +288,7 @@ def create_qr_codes_batch(
 
 @router.post(
     "/qr-codes/generate",
-    dependencies=[Depends(require_permission("item:create"))],
+    dependencies=[Depends(get_current_user)],
 )
 def generate_qr_codes(
     db: DbSession,

@@ -192,7 +192,7 @@ def get_stock_split(db: Session, item_id: int) -> ItemStockSplitListResponse:
         .filter(
             ItemStock.item_id == item_id,
             ItemStock.status == "split",
-            Zone.code.in_(settings.zone_storage),
+            Zone.code.in_(list(settings.zone_storage) + list(settings.zone_split)),
             ItemStock.available_quantity > 0,
             positive_stock_quantity_criterion(),
             countable_stock_level_criterion(),

@@ -36,6 +36,19 @@ export interface ItemListResponse {
   page_size?: number
 }
 
+export interface ItemSkuOption {
+  id: number
+  sku: string
+  name: string
+}
+
+export interface ItemSkuListResponse {
+  items: ItemSkuOption[]
+  total: number
+  page: number
+  page_size: number
+}
+
 export type CreateItemInput = {
   sku: string
   name: string

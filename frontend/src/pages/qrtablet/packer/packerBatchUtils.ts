@@ -97,56 +97,19 @@ export function isPackerBatchSnapshotEmpty(snapshot: PackerBatchSnapshot): boole
   );
 }
 
-export function hasAnyPackerPending(
-  unlinkedItems: AssignedItemStock[],
-  linkedItems: AssignedItemStock[],
-  itemAnchors: AssignedItemStock[],
-): boolean {
-  return (
-    unlinkedItems.length > 0 ||
-    linkedItems.length > 0 ||
-    itemAnchors.length > 0
-  );
-}
-
-/** Pending exists for this packing user but none matches the scanned item anchor. */
-export function findPackerBatchItemMismatch(
-  anchor: ItemBatchAnchorRef,
-  unlinkedItems: AssignedItemStock[],
-  linkedItems: AssignedItemStock[],
-  itemAnchors: AssignedItemStock[],
-): AssignedItemStock | undefined {
-  const all = [...unlinkedItems, ...linkedItems, ...itemAnchors];
-  return all.find((stock) => stock.item_id !== anchor.item_id);
-}
-
 export type PackerBatchAnchorValidation =
   | { ok: true }
-  | { ok: false; reason: "item_mismatch"; pendingStock: AssignedItemStock }
   | { ok: false; reason: "no_pending" };
 
+/** No matching packs for this anchor — allow direct item form even if packer has other pending SKUs. */
 export function validatePackerBatchForAnchor(
-  anchor: ItemBatchAnchorRef,
+  _anchor: ItemBatchAnchorRef,
   fetchResult: PackerBatchFetchResult,
 ): PackerBatchAnchorValidation {
-  const { snapshot, unlinkedItems, linkedItems, itemAnchors } = fetchResult;
+  const { snapshot } = fetchResult;
 
   if (!isPackerBatchSnapshotEmpty(snapshot)) {
     return { ok: true };
-  }
-
-  if (!hasAnyPackerPending(unlinkedItems, linkedItems, itemAnchors)) {
-    return { ok: false, reason: "no_pending" };
-  }
-
-  const pendingStock = findPackerBatchItemMismatch(
-    anchor,
-    unlinkedItems,
-    linkedItems,
-    itemAnchors,
-  );
-  if (pendingStock) {
-    return { ok: false, reason: "item_mismatch", pendingStock };
   }
 
   return { ok: false, reason: "no_pending" };

@@ -3,6 +3,7 @@ import type {
   AssignOrGetItemStockRequest,
   AssignOrGetItemStockResponse,
   CacheForPackingUserRequest,
+  GetInboundOrdersBySkuParams,
   GetInboundOrdersParams,
   InboundCallerResponse,
   InboundOrder,
@@ -29,6 +30,16 @@ export const getInboundOrdersApi = async (
   const { data } = await axiosInstance.get<InboundOrderListResponse>(BASE, {
     params,
   });
+  return data;
+};
+
+export const getInboundOrdersBySkuApi = async (
+  params: GetInboundOrdersBySkuParams,
+): Promise<InboundOrderListResponse> => {
+  const { data } = await axiosInstance.get<InboundOrderListResponse>(
+    `${BASE}/by-item`,
+    { params },
+  );
   return data;
 };
 

@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   listItemsApi,
+  listItemSkusApi,
   getItemByIdApi,
   createItemApi,
   updateItemApi,
@@ -59,6 +60,23 @@ export const useGetItems = (params: UseGetItemsParams) => {
     },
     enabled: params.warehouse_id > 0 && (params.enabled ?? true),
     ...LIVE_QUERY_OPTIONS,
+  });
+};
+
+export const useGetItemSkus = (params: UseGetItemsParams) => {
+  const page = params.page ?? 1;
+  const page_size = params.page_size ?? params.limit ?? 20;
+
+  return useQuery({
+    queryKey: ["itemSkus", params.warehouse_id, params.q, page, page_size],
+    queryFn: () =>
+      listItemSkusApi({
+        warehouse_id: params.warehouse_id,
+        q: params.q,
+        page,
+        page_size,
+      }),
+    enabled: params.warehouse_id > 0 && (params.enabled ?? true),
   });
 };
 

@@ -23,6 +23,8 @@ from app.modules.warehouse.item.item_schema import (
     ItemCreate,
     ItemDetailResponse,
     ItemListResponse,
+    ItemSkuListResponse,
+    ItemSkuOption,
     ItemResponse,
     ItemStockInDetail,
     ItemUpdate,
@@ -121,6 +123,36 @@ def list_items(
     )
     return ItemListResponse(
         items=[ItemResponse.model_validate(i) for i in items],
+        total=total,
+        page=page,
+        page_size=page_size,
+    )
+
+
+def list_item_skus(
+    db: Session,
+    *,
+    warehouse_id: int,
+    page: int = 1,
+    page_size: int = 20,
+    q: Optional[str] = None,
+) -> ItemSkuListResponse:
+    query = db.query(Item.id, Item.sku, Item.name).filter(
+        Item.warehouse_id == warehouse_id,
+        Item.is_active.is_(True),
+    )
+    if q and q.strip():
+        like = f"%{q.strip()}%"
+        query = query.filter((Item.sku.ilike(like)) | (Item.name.ilike(like)))
+    total = query.count()
+    rows = (
+        query.order_by(Item.sku.asc(), Item.id.asc())
+        .offset((page - 1) * page_size)
+        .limit(page_size)
+        .all()
+    )
+    return ItemSkuListResponse(
+        items=[ItemSkuOption(id=row.id, sku=row.sku, name=row.name) for row in rows],
         total=total,
         page=page,
         page_size=page_size,
@@ -259,10 +291,14 @@ def get_item_detail(db: Session, item_id: int) -> ItemDetailResponse:
     )
 
     stock_items: list[ItemStockInDetail] = []
-    available_quantity = 0
+    available_quantity = Decimal("0")
+    split_quantity = Decimal("0")
     for stock, location_code, location_name in stocks:
-        if stock.status == "available":       
-            available_quantity += stock.quantity
+        qty = Decimal(str(stock.quantity or 0))
+        if stock.status == "available":
+            available_quantity += qty
+        elif stock.status == "split":
+            split_quantity += qty
         stock_items.append(
             ItemStockInDetail(
                 id=stock.id,
@@ -282,11 +318,12 @@ def get_item_detail(db: Session, item_id: int) -> ItemDetailResponse:
                 status=stock.status,
             )
         )
-
+ 
     return ItemDetailResponse(
         item=ItemResponse.model_validate(item),
         stocks=stock_items,
         available_quantity=available_quantity,
+        split_quantity=split_quantity,
     )
 
 

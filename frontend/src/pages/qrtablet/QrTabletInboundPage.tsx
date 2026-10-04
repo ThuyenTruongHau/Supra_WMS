@@ -67,7 +67,6 @@ import {
   formatFeBatchSubmitHint,
   formatManualLocationReceived,
   formatPackerBatchSendProgress,
-  formatPackerPendingItemMismatch,
   formatPendingCached,
   formatPurgePackingCacheSuccess,
   tQrTabletInbound,
@@ -1491,20 +1490,7 @@ export default function QrTabletInboundPage() {
       const validation = validatePackerBatchForAnchor(anchor, fetchResult);
 
       if (!validation.ok) {
-        if (validation.reason === "item_mismatch") {
-          message.error(
-            formatPackerPendingItemMismatch(
-              user,
-              validation.pendingStock.item_sku ||
-                String(validation.pendingStock.item_id),
-              anchor.item_sku || String(anchor.item_id),
-            ),
-          );
-        } else if (validation.reason === "no_pending") {
-          setPackerItemDirectForm(true);
-        } else {
-          message.warning(tQrTabletInbound("packerNoPacksForAnchor"));
-        }
+        setPackerItemDirectForm(true);
         return;
       }
 
@@ -1534,18 +1520,7 @@ export default function QrTabletInboundPage() {
     const validation = validatePackerBatchForAnchor(itemBatchAnchor, fetchResult);
 
     if (!validation.ok) {
-      if (validation.reason === "item_mismatch") {
-        message.error(
-          formatPackerPendingItemMismatch(
-            user,
-            validation.pendingStock.item_sku ||
-              String(validation.pendingStock.item_id),
-            itemBatchAnchor.item_sku || String(itemBatchAnchor.item_id),
-          ),
-        );
-      } else {
-        message.warning(tQrTabletInbound("packerNoPacksForAnchor"));
-      }
+      message.warning(tQrTabletInbound("packerNoPacksForAnchor"));
       return;
     }
 

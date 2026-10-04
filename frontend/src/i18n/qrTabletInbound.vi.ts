@@ -54,8 +54,6 @@ export const QR_TABLET_INBOUND_VI = {
   packerNoPacksToConfirm: "Cần quét ít nhất 1 pack trước khi xác nhận item",
   packerNoPacksForAnchor:
     "Người đóng gói chưa có pack hoặc item nào khớp với sản phẩm đang quét.",
-  packerPendingItemMismatch:
-    "Người đóng gói {packingUser} đang gom sản phẩm {pendingSku}, không khớp với item đang quét ({anchorSku}).",
   packerMixedUnit: "Các pack phải cùng đơn vị",
   packerItemMismatch: "Pack không thuộc cùng sản phẩm với item",
   packerInvalidLot: "Số lô pack không hợp lệ hoặc không gom được",
@@ -182,17 +180,6 @@ export function formatPackerBatchSendProgress(
   return QR_TABLET_INBOUND_VI.packerBatchSendProgress
     .replace("{current}", String(current))
     .replace("{total}", String(total));
-}
-
-export function formatPackerPendingItemMismatch(
-  packingUser: string,
-  pendingSku: string,
-  anchorSku: string,
-): string {
-  return QR_TABLET_INBOUND_VI.packerPendingItemMismatch
-    .replace("{packingUser}", packingUser)
-    .replace("{pendingSku}", pendingSku)
-    .replace("{anchorSku}", anchorSku);
 }
 
 export function formatManualLocationReceived(location: string): string {

@@ -142,6 +142,37 @@ def list_inbound_orders(
 
 
 @router.get(
+    "/inbound-orders/by-item",
+    response_model=InboundOrderListResponse,
+)
+def list_inbound_orders_by_item(
+    db: DbSession,
+    warehouse_id: int = Query(...),
+    sku: str = Query(..., min_length=1, description="Lọc đơn có allocation của mã sản phẩm"),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(10, ge=1, le=100),
+    q: Optional[str] = Query(None, description="Tìm theo mã đơn hoặc người tạo"),
+    status: Optional[str] = Query(None, description="Lọc trạng thái đơn"),
+):
+    orders, total, summary = inbound_order_service.get_inbound_orders_by_sku(
+        db,
+        warehouse_id=warehouse_id,
+        sku=sku,
+        page=page,
+        page_size=page_size,
+        q=q,
+        status=status,
+    )
+    return InboundOrderListResponse(
+        items=[InboundOrderResponse.model_validate(o) for o in orders],
+        total=total,
+        page=page,
+        page_size=page_size,
+        summary=summary,
+    )
+
+
+@router.get(
     "/inbound-orders/{order_code}/details",
     response_model=list[InboundOrderDetailResponse],
     dependencies=[Depends(_INBOUND_READ)],

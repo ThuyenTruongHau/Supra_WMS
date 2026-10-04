@@ -42,6 +42,11 @@ import OutboundMapModal from "@/pages/components/OutboundMapModal";
 import { buildOutboundLocationOverrides } from "@/utils/outboundMap";
 import { detailsToEntries } from "@/utils/keyValueDetails";
 import { computeDetailProgress } from "@/utils/detailProgress";
+import {
+  buildDeleteOrderContent,
+  COMPLETED_ORDER_DELETE_HINT,
+  isOrderDeletable,
+} from "@/utils/orderDeleteConfirm";
 import { formatOutboundCalculateError } from "@/utils/outboundErrors";
 import { resolveOutboundLocationLogicTypeForOrder } from "@/utils/outboundLocationLogic";
 import {
@@ -890,7 +895,7 @@ export default function QrTabletOutboundDetailPage() {
   const handleDelete = () => {
     if (!order?.order_code) return;
     Modal.confirmDelete({
-      content: `Bạn có chắc chắn muốn xóa đơn xuất "${order.order_code}"?`,
+      content: buildDeleteOrderContent("đơn xuất", order.order_code, order.status),
       onOk: () =>
         new Promise<void>((resolve, reject) => {
           deleteMutation.mutate(order.order_code, {
@@ -1367,11 +1372,11 @@ export default function QrTabletOutboundDetailPage() {
             variant="dangerText"
             icon={<DeleteOutlined />}
             className="!h-11"
-            disabled={!allInitialize || details.length === 0}
+            disabled={!isOrderDeletable(order?.status) || details.length === 0}
             loading={deleteMutation.isPending}
             title={
-              !allInitialize
-                ? "Chỉ đơn ở trạng thái khởi tạo mới được xóa"
+              !isOrderDeletable(order?.status)
+                ? COMPLETED_ORDER_DELETE_HINT
                 : undefined
             }
             onClick={handleDelete}

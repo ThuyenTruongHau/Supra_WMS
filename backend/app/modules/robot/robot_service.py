@@ -110,23 +110,23 @@ class TaskStatusService:
             raise ValueError("orderId is required")
 
         robot_task = db.query(RobotTask).filter(RobotTask.order_id == order_id).first()
-        if not robot_task:
-            raise ValueError("Robot task not found")
-
-        if robot_task.status == "completed":
+        if robot_task and robot_task.status == "completed":
             return
 
-        if robot_task.inbound_order_detail_id is not None:
+        detail = None
+        allocations = []
+        if robot_task is None:
+            logger.warning(f"Robot task {order_id} not found (order may have been deleted); status only recorded")
+        elif robot_task.inbound_order_detail_id is not None:
             detail = robot_task.inbound_order_detail
-        elif robot_task.outbound_order_allocations is not None:
+        elif robot_task.outbound_order_allocations:
             allocations = robot_task.outbound_order_allocations
-            
         else:
-            raise ValueError("Order not found")
+            logger.warning(f"Robot task {order_id} has no linked order; status only recorded")
 
         ics_status = str(payload.get("status"))
-        if ics_status in MAPPING_STATUS:
-            if robot_task.inbound_order_detail_id is not None:
+        if ics_status in MAPPING_STATUS and (detail is not None or allocations):
+            if detail is not None:
                 detail.status = MAPPING_STATUS[ics_status]
                 if MAPPING_STATUS[ics_status] == "completed":
                     logger.info(f"Receive completed for {order_id}")

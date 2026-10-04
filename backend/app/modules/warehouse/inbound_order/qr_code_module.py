@@ -477,8 +477,6 @@ def assign_for_packing_user(
     else:
         raise ValueError("Only item or pack QR codes can be cached for packing")
 
-    if needs_qc_packing and resolved_packing:
-        _check_pending_item_for_packing_user(resolved_packing, qr_record.item_id)
     _clear_previous_qr_pending(qr_record.id)
     _apply_split_flag_to_cache_payload(cache_payload, is_split)
 
@@ -894,33 +892,6 @@ def assign_or_get_item_stock(
         part_number=item.sku if item else "",
         location=location.location_name,
     )
-
-def _check_pending_item_for_packing_user(
-    packing_user: str,
-    item_id: Optional[int],
-) -> None:
-    username = (packing_user or "").strip()
-    if not username or item_id is None:
-        return
-    keys = cache_scan_keys(f"inbound:pending:user:{username}:*")
-    if not keys:
-        return
-    r = get_redis()
-    incoming_item_id = int(item_id)
-    for raw in r.mget(keys):
-        if not raw:
-            continue
-        cached = json.loads(raw)
-        existing_item_id = cached.get("item_id")
-        if existing_item_id is None:
-            continue
-        if int(existing_item_id) != incoming_item_id:
-            existing_sku = (cached.get("item_sku") or "").strip() or str(existing_item_id)
-            raise ValueError(
-                f"Packing user already has pending stock for item '{existing_sku}', "
-                f"cannot cache a different item"
-            )
-
 
 def _clear_previous_qr_pending(qr_id: int) -> None:
     r = get_redis()

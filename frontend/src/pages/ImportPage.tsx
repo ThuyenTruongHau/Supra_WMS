@@ -14,7 +14,11 @@ import type { ColumnsType } from "antd/es/table";
 import CreateImportModal, {
   type ImportGroupDraft,
 } from "./components/CreateImportModal";
-import { useGetInboundOrders } from "@/hooks/useInboundOrder";
+import { SkuSearchSelect } from "@/components/shared/SkuSearchSelect";
+import {
+  useGetInboundOrders,
+  useGetInboundOrdersBySku,
+} from "@/hooks/useInboundOrder";
 import { useAppStore } from "@/store/useAppStore";
 import type { InboundOrder } from "@/types/inboundOrder";
 import { parseMasanInboundPreviewApi } from "@/api/masan";
@@ -43,6 +47,7 @@ export default function ImportPage() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [searchInput, setSearchInput] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+  const [skuQuery, setSkuQuery] = useState("");
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [importGroups, setImportGroups] = useState<
     ImportGroupDraft[] | undefined
@@ -58,13 +63,22 @@ export default function ImportPage() {
     return () => window.clearTimeout(timer);
   }, [searchInput]);
 
-  const { data: ordersData, isLoading, refetch } = useGetInboundOrders({
+  const listParams = {
     warehouse_id: selectedWarehouseId || 0,
     page,
     page_size: PAGE_SIZE,
     q: searchQuery || undefined,
     status: statusFilter === "all" ? undefined : statusFilter,
-  });
+  };
+  const skuActive = skuQuery.length > 0;
+  const listQuery = useGetInboundOrders(listParams, { enabled: !skuActive });
+  const skuListQuery = useGetInboundOrdersBySku(
+    { ...listParams, sku: skuQuery },
+    { enabled: skuActive },
+  );
+  const { data: ordersData, isLoading, refetch } = skuActive
+    ? skuListQuery
+    : listQuery;
   const orders = ordersData?.items ?? [];
 
   const { data: users = [] } = useUser();
@@ -272,6 +286,18 @@ export default function ImportPage() {
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
             />
+            <div className="w-[420px] max-w-full shrink-0">
+              <SkuSearchSelect
+                lookup="skus"
+                warehouseId={selectedWarehouseId || 0}
+                value={skuQuery || undefined}
+                placeholder="Mã sản phẩm"
+                onChange={(sku) => {
+                  setSkuQuery(sku?.trim() ?? "");
+                  setPage(1);
+                }}
+              />
+            </div>
           </div>
 
           <div className="flex items-center gap-3">

@@ -114,6 +114,38 @@ def list_outbound_orders(
 
 
 @router.get(
+    "/outbound-orders/by-item",
+    response_model=OutboundOrderListResponse,
+    dependencies=[Depends(_OUTBOUND_READ)],
+)
+def list_outbound_orders_by_item(
+    db: DbSession,
+    warehouse_id: int = Query(...),
+    sku: str = Query(..., min_length=1, description="Lọc đơn có dòng chi tiết của mã sản phẩm"),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(10, ge=1, le=100),
+    q: Optional[str] = Query(None),
+    status: Optional[str] = Query(None),
+):
+    orders, total, summary = outbound_order_service.get_outbound_orders_by_sku(
+        db,
+        warehouse_id=warehouse_id,
+        sku=sku,
+        page=page,
+        page_size=page_size,
+        q=q,
+        status=status,
+    )
+    return OutboundOrderListResponse(
+        items=[OutboundOrderCreateResponse.model_validate(o) for o in orders],
+        total=total,
+        page=page,
+        page_size=page_size,
+        summary=summary,
+    )
+
+
+@router.get(
     "/outbound-orders/id/{order_id}",
     response_model=OutboundOrderUpdateResponse,
     dependencies=[Depends(_OUTBOUND_READ)],

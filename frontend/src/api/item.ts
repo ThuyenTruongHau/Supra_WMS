@@ -1,7 +1,7 @@
 import axiosInstance from './axiosInstance'
 import { downloadBlobFromResponse } from '@/utils/downloadBlob'
 import type {
-  Item, ItemListParams, ItemListResponse,
+  Item, ItemListParams, ItemListResponse, ItemSkuListResponse,
   CreateItemInput, UpdateItemInput,
   ItemAnalyzeResponse,
   ItemDetails,
@@ -25,6 +25,23 @@ export const listItemsApi = async (params: ItemListParams) => {
       page: page ?? 1,
       page_size: page_size ?? limit ?? 20,
       is_active,
+    },
+  })
+  return data
+}
+
+export const listItemSkusApi = async (params: {
+  warehouse_id: number
+  q?: string
+  page?: number
+  page_size?: number
+}) => {
+  const { data } = await axiosInstance.get<ItemSkuListResponse>(`${BASE}/skus`, {
+    params: {
+      warehouse_id: params.warehouse_id,
+      q: params.q,
+      page: params.page ?? 1,
+      page_size: params.page_size ?? 20,
     },
   })
   return data
