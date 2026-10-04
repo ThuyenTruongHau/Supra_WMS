@@ -12,7 +12,6 @@ MAPPING_STATUS = {
     "7": "failed",
     "3": "cancelled",
     "8": "completed",
-    "9": "completed"
 }
 
 def _mapped_task_status_expr(raw_status_col):

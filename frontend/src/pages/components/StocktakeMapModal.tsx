@@ -3,6 +3,7 @@ import { Modal, Button } from "@/components/ui";
 import WarehouseMapCanvas from "@/components/shared/WarehouseMapCanvas";
 import InboundStatusTag from "@/components/shared/InboundStatusTag";
 import type { NodeInfo } from "@/types/warehouseMap";
+import { isShelfNodeType } from "@/utils/warehouseMapUtils";
 import type { StocktakeItemStock } from "@/types/stocktake";
 import {
   buildStocktakeLocationOverrides,
@@ -82,7 +83,7 @@ export default function StocktakeMapModal({
           skipFullLocationsFetch
           locationOverrides={locationOverrides}
           onNodeClick={(node) => {
-            if (node?.type === 1) {
+            if (isShelfNodeType(node?.type)) {
               setSelectedNode(node);
             } else {
               setSelectedNode(null);

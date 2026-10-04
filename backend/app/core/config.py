@@ -49,6 +49,8 @@ class Settings(BaseSettings):
     zone_storage: list[str] = ["Zone_3"]
     zone_qc: list[str] = ["Zone_2.1"]
     zone_split: list[str] = ["Zone_split"]
+    zone_sorting: list[str] = ["Zone_sorting_1", "Zone_sorting_2"]
+    zone_cc: list[str] = ["Zone_CC_01", "Zone_CC_02"]
 
     # Warehouses using manual (full-form) print templates — JSON array or comma list, e.g. [2]
     manual_warehouse_ids: list[int] = []

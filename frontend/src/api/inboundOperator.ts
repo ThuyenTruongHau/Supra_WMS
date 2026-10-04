@@ -191,10 +191,11 @@ export const getInboundIncompleteVehiclesApi = async (
 }
 
 export const getInboundAssignedDetailsApi = async (
-  orderId: number,
+  orderIds: number[],
 ): Promise<InboundAssignedDetailsResponse> => {
-  const response = await axiosInstance.get<InboundAssignedDetailsResponse>(
-    `/api/v1/inbound-orders/${orderId}/assigned-details`,
+  const response = await axiosInstance.post<InboundAssignedDetailsResponse>(
+    '/api/v1/inbound-orders/assigned-details',
+    { order_ids: orderIds },
   )
   return response.data
 }

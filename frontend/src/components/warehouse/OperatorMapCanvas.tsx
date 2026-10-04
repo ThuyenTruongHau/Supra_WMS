@@ -9,7 +9,7 @@
  * - Màu sắc theo chuẩn WarehouseMapCanvas (import từ warehouseMapUtils).
  * - Bỏ khái niệm bufferCodes làm mờ kệ — tất cả node trong zone đều có status.
  * - Không có pan, zoom, virtual grid hay responsive zoom.
- * - Chỉ cho click / double-click vào ô kệ.
+ * - Chỉ cho tap / click vào ô kệ (pointerup; parent tự phân biệt 1 vs 2 tap).
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useZonesMapLayout, useZonesMapStatus } from "@/hooks/useWarehouseMap";
@@ -133,7 +133,6 @@ type Props = {
   className?: string;
   selectedCodes?: string[];
   onBufferCellClick?: (payload: BufferCellClickPayload) => void;
-  onBufferCellDoubleClick?: (payload: BufferCellClickPayload) => void;
   tuning?: BufferMapCanvasTuning;
   /** Label overlay theo mã ô (vd. biển số xe / tên KH trên sorting station). */
   overlayLabelByCode?: Record<string, string>;
@@ -190,36 +189,36 @@ function drawInboundSeparator(
   shelfHalf: number,
   invScale: number
 ) {
-  const sortedNodes = [...nodes].sort((a, b) => a.x - b.x);
-  const columns: { x: number; isBP: boolean; isCN: boolean }[] = [];
+  const sortedNodes = [...nodes].sort((a, b) => a.y - b.y);
+  const rows: { y: number; isBP: boolean; isCN: boolean }[] = [];
   for (const node of sortedNodes) {
-    if (columns.length === 0 || node.x - columns[columns.length - 1].x > shelfHalf) {
-      columns.push({ x: node.x, isBP: false, isCN: false });
+    if (rows.length === 0 || node.y - rows[rows.length - 1].y > shelfHalf) {
+      rows.push({ y: node.y, isBP: false, isCN: false });
     }
-    const currentCol = columns[columns.length - 1];
+    const currentRow = rows[rows.length - 1];
     const bin = labelByCode.get(node.content)?.bin ?? "";
-    if (bin.includes("BP")) currentCol.isBP = true;
-    if (bin.includes("CN")) currentCol.isCN = true;
+    if (bin.includes("BP")) currentRow.isBP = true;
+    if (bin.includes("CN")) currentRow.isCN = true;
   }
 
-  const allY = nodes.map((n) => n.y);
-  const minY = Math.min(...allY) - shelfHalf;
-  const maxY = Math.max(...allY) + shelfHalf;
+  const allX = nodes.map((n) => n.x);
+  const minX = Math.min(...allX) - shelfHalf;
+  const maxX = Math.max(...allX) + shelfHalf;
 
   ctx.save();
   ctx.beginPath();
   ctx.strokeStyle = "rgba(100, 116, 139, 0.8)";
   ctx.lineWidth = 4 * invScale;
-  for (let i = 0; i < columns.length - 1; i++) {
-    const col1 = columns[i];
-    const col2 = columns[i + 1];
+  for (let i = 0; i < rows.length - 1; i++) {
+    const row1 = rows[i];
+    const row2 = rows[i + 1];
     if (
-      (col1.isBP && col2.isCN && !col1.isCN && !col2.isBP) ||
-      (col1.isCN && col2.isBP && !col1.isBP && !col2.isCN)
+      (row1.isBP && row2.isCN && !row1.isCN && !row2.isBP) ||
+      (row1.isCN && row2.isBP && !row1.isBP && !row2.isCN)
     ) {
-      const separatorX = (col1.x + col2.x) / 2;
-      ctx.moveTo(separatorX, minY);
-      ctx.lineTo(separatorX, maxY);
+      const separatorY = (row1.y + row2.y) / 2;
+      ctx.moveTo(minX, separatorY);
+      ctx.lineTo(maxX, separatorY);
     }
   }
   ctx.stroke();
@@ -233,7 +232,6 @@ export default function OperatorMapCanvas({
   className,
   selectedCodes,
   onBufferCellClick,
-  onBufferCellDoubleClick,
   tuning,
   overlayLabelByCode,
   interactiveCodes,
@@ -306,7 +304,6 @@ export default function OperatorMapCanvas({
   const interactiveCodesRef = useRef<Set<string> | null>(null);
 
   const onClickRef = useRef(onBufferCellClick);
-  const onDoubleClickRef = useRef(onBufferCellDoubleClick);
 
   const scaleRef = useRef(1);
   const offsetXRef = useRef(0);
@@ -445,7 +442,6 @@ export default function OperatorMapCanvas({
 
   // Sync callback refs (không cần trigger redraw)
   useEffect(() => { onClickRef.current = onBufferCellClick; }, [onBufferCellClick]);
-  useEffect(() => { onDoubleClickRef.current = onBufferCellDoubleClick; }, [onBufferCellDoubleClick]);
 
   useEffect(() => {
     labelByCodeRef.current = labelByCode;
@@ -518,6 +514,13 @@ export default function OperatorMapCanvas({
     collapseAxis("x");
     collapseAxis("y");
 
+    // Quay layout đã parse 90° sang phải: (x, y) -> (y, -x). Chữ label vẫn nằm ngang.
+    for (const node of nodes) {
+      const nextX = node.y;
+      node.y = -node.x;
+      node.x = nextX;
+    }
+
     nodesRef.current = nodes;
     contentBoundsRef.current = computeMapSizeFromNodes(nodes, tuningRef.current.baseNodeSize);
 
@@ -535,15 +538,20 @@ export default function OperatorMapCanvas({
     return () => observer.disconnect();
   }, [resizeCanvas]);
 
-  // Click / Double-click
+  // Tap / click (pointerup — ổn định trên tablet & TV; không dùng dblclick)
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const resolveClickPayload = (e: MouseEvent): BufferCellClickPayload | null => {
+    const resolveClickPayload = (
+      clientX: number,
+      clientY: number,
+    ): BufferCellClickPayload | null => {
       const rect = canvas.getBoundingClientRect();
-      const sx = e.clientX - rect.left;
-      const sy = e.clientY - rect.top;
+      const scaleX = canvas.width / Math.max(rect.width, 1);
+      const scaleY = canvas.height / Math.max(rect.height, 1);
+      const sx = (clientX - rect.left) * scaleX;
+      const sy = (clientY - rect.top) * scaleY;
       const wx = (sx - offsetXRef.current) / scaleRef.current;
       const wy = (sy - offsetYRef.current) / scaleRef.current;
 
@@ -575,26 +583,19 @@ export default function OperatorMapCanvas({
       };
     };
 
-    const onClick = (e: MouseEvent) => {
-      const payload = resolveClickPayload(e);
+    const onPointerUp = (e: PointerEvent) => {
+      if (e.button !== 0) return;
+      const payload = resolveClickPayload(e.clientX, e.clientY);
       if (payload) onClickRef.current?.(payload);
     };
 
-    const onDoubleClick = (e: MouseEvent) => {
-      if (!onDoubleClickRef.current) return;
-      const payload = resolveClickPayload(e);
-      if (payload) onDoubleClickRef.current(payload);
-    };
-
-    canvas.addEventListener("click", onClick);
-    canvas.addEventListener("dblclick", onDoubleClick);
-    canvas.style.cursor =
-      onClickRef.current || onDoubleClickRef.current ? "pointer" : "default";
+    canvas.addEventListener("pointerup", onPointerUp);
+    canvas.style.cursor = onClickRef.current ? "pointer" : "default";
+    canvas.style.touchAction = "none";
     return () => {
-      canvas.removeEventListener("click", onClick);
-      canvas.removeEventListener("dblclick", onDoubleClick);
+      canvas.removeEventListener("pointerup", onPointerUp);
     };
-  }, [onBufferCellClick, onBufferCellDoubleClick, isInteractiveCode]);
+  }, [onBufferCellClick, isInteractiveCode]);
 
   // ── Render ───────────────────────────────────────────────────────────────────
   return (

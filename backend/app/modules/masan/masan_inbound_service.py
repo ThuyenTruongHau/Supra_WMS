@@ -28,6 +28,8 @@ from app.modules.warehouse.inbound_order.inbound_order_model import (
     InboundOrderDetail,
 )
 from app.modules.warehouse.inbound_order.inbound_order_schema import (
+    InboundAssignedDetailItem,
+    InboundAssignedDetailsResponse,
     InboundOrderDetailResponse,
     InboundSuggestAdditionalDetail,
     InboundSuggestAllocation,
@@ -602,3 +604,100 @@ def caller_masan_inbound_order(db: Session, location_ids: list[int]) -> dict[str
         "job_ids": job_ids,
     }
 
+
+def _location_display_label(location: Location | None) -> str | None:
+    if location is None:
+        return None
+    return (
+        (location.location_name or "").strip()
+        or (location.location_code or "").strip()
+        or (location.bin_code or "").strip()
+        or None
+    )
+
+
+def _product_fields_from_detail(
+    detail: InboundOrderDetail,
+) -> tuple[str | None, str | None, str | None]:
+    extra = detail.details if isinstance(detail.details, dict) else {}
+    sku = (extra.get("sku") or extra.get("part_number") or None)
+    if sku is not None:
+        sku = str(sku).strip() or None
+    name = extra.get("item_name") or extra.get("product_name")
+    if name is not None:
+        name = str(name).strip() or None
+    lot: str | None = None
+
+    for allocation in detail.allocations:
+        stock = allocation.item_stock
+        item = stock.item if stock else None
+        if item:
+            sku = sku or (item.sku or None)
+            name = name or (item.name or None)
+        if stock and not lot:
+            lot = format_lot_number_display(
+                stock.lot_number_from,
+                stock.lot_number_to,
+            )
+
+    return sku, name, lot
+
+
+def list_inbound_details_awaiting_robot(
+    db: Session,
+    order_ids: list[int],
+) -> InboundAssignedDetailsResponse:
+    unique_order_ids = list(dict.fromkeys(order_ids))
+    if not unique_order_ids:
+        return InboundAssignedDetailsResponse(order_ids=[], details=[])
+
+    existing_ids = {
+        row[0]
+        for row in db.query(InboundOrder.id)
+        .filter(InboundOrder.id.in_(unique_order_ids))
+        .all()
+    }
+    missing = [oid for oid in unique_order_ids if oid not in existing_ids]
+    if missing:
+        raise ValueError(f"Inbound order(s) not found: {', '.join(map(str, missing))}")
+
+    allocation_load, unit_load, from_loc, to_loc = _detail_query_options()
+    details = (
+        db.query(InboundOrderDetail)
+        .options(allocation_load, unit_load, from_loc, to_loc)
+        .filter(
+            InboundOrderDetail.inbound_order_id.in_(unique_order_ids),
+            InboundOrderDetail.status == "initialize",
+            InboundOrderDetail.detail_type != "manual",
+            InboundOrderDetail.from_location_id.isnot(None),
+            InboundOrderDetail.to_location_id.isnot(None),
+        )
+        .order_by(InboundOrderDetail.inbound_order_id, InboundOrderDetail.id)
+        .all()
+    )
+
+    items: list[InboundAssignedDetailItem] = []
+    for detail in details:
+        sku, name, lot = _product_fields_from_detail(detail)
+        items.append(
+            InboundAssignedDetailItem(
+                detail_id=detail.id,
+                inbound_order_id=detail.inbound_order_id,
+                product_sku=sku,
+                product_name=name,
+                lot_number=lot,
+                from_location=_location_display_label(detail.from_location),
+                to_location=_location_display_label(detail.to_location),
+                from_location_code=(
+                    detail.from_location.location_code
+                    if detail.from_location
+                    else None
+                ),
+                status=detail.status,
+            )
+        )
+
+    return InboundAssignedDetailsResponse(
+        order_ids=unique_order_ids,
+        details=items,
+    )

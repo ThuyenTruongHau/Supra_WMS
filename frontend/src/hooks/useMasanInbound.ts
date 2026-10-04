@@ -35,6 +35,7 @@ export const useCallerMasanInbound = () => {
       queryClient.invalidateQueries({ queryKey: ["masanInboundDetails"] });
       queryClient.invalidateQueries({ queryKey: ["inboundOrderDetails"] });
       queryClient.invalidateQueries({ queryKey: ["inbound_orders"] });
+      queryClient.invalidateQueries({ queryKey: ["inbound_assigned_details"] });
     },
   });
 };

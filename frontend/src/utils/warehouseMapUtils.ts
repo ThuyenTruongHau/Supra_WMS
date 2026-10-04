@@ -23,14 +23,33 @@ export const BOX_SELECT_DRAG_THRESHOLD = 4; // px — below this, treat as click
 export const BOX_SELECT_FILL = 'rgba(34, 197, 94, 0.15)';
 export const BOX_SELECT_STROKE = '#22c55e';
 
+/** Type 1 (older maps) and type 12 (newer storage points) are both shelves. */
+export function isShelfNodeType(type: number | null | undefined): boolean {
+  return type === 1 || type === 12;
+}
+
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 
 /**
- * Parse a raw nodeArr row into a typed NodeInfo.
- * Y-axis is flipped here (y_new = mapHeight - y_old) so the canvas coordinate
- * system (Y ↓) matches the map data coordinate system (Y ↑).
- * This is done ONCE at load time — never repeated per frame.
+ * Map JSON → canvas: dời gốc (xAttrMin/yAttrMin), lật trục Y.
+ * Quay 90° CW chỉ bật khi `rotateClockwise90` (UI operator); admin giữ nguyên hướng map.
  */
+export function toCanvasPoint(
+  x: number,
+  y: number,
+  mapHeight: number,
+  xAttrMin = 0,
+  yAttrMin = 0,
+  rotateClockwise90 = false,
+): { x: number; y: number } {
+  const canvasX = x - xAttrMin;
+  const canvasY = mapHeight - (y - yAttrMin);
+  if (rotateClockwise90) {
+    return { x: canvasY, y: -canvasX };
+  }
+  return { x: canvasX, y: canvasY };
+}
+
 export function getShelfNodesInWorldRect(
   nodes: NodeInfo[],
   minWx: number,
@@ -40,7 +59,7 @@ export function getShelfNodesInWorldRect(
 ): NodeInfo[] {
   return nodes.filter(
     (node) =>
-      node.type === 1 &&
+      isShelfNodeType(node.type) &&
       node.content &&
       node.x >= minWx &&
       node.x <= maxWx &&
@@ -49,10 +68,25 @@ export function getShelfNodesInWorldRect(
   );
 }
 
-export function parseNode(row: (number | string | number[])[], mapHeight: number): NodeInfo {
+/** Admin map: mặc định không quay 90°. */
+export function parseNode(
+  row: (number | string | number[])[],
+  mapHeight: number,
+  xAttrMin = 0,
+  yAttrMin = 0,
+  rotateClockwise90 = false,
+): NodeInfo {
+  const point = toCanvasPoint(
+    row[0] as number,
+    row[1] as number,
+    mapHeight,
+    xAttrMin,
+    yAttrMin,
+    rotateClockwise90,
+  );
   return {
-    x: row[0] as number,
-    y: mapHeight - (row[1] as number), // ← Y-flip: JSON Y↑  →  Canvas Y↓
+    x: point.x,
+    y: point.y,
     type: row[2] as number,
     content: String(row[3]),
     name: String(row[4] ?? ''),

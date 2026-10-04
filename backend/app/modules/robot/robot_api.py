@@ -16,6 +16,7 @@ router = APIRouter(tags=["Robot"])
 def receive_task_status(payload: dict[str, Any]) -> dict[str, int]:
     if not payload.get("orderId"):
         return {"code": 1000}
+    logger.info(f"Payload: {payload}")
     try:
         result = run_logic_task(persist_task_status, payload=payload)
         if result:

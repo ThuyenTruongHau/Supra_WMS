@@ -29,7 +29,6 @@ import QrTabletPrintQrPage from "@/pages/qrtablet/QrTabletPrintQrPage";
 
 import { RoleGatePage } from "../components/auth/RoleGatePage";
 import { RoleHomeRedirect } from "@/components/auth/RoleHomeRedirect";
-import OperatorOverviewPage from "@/pages/OperatorOverviewPage";
 import OperatorInboundPage from "@/pages/OperatorInboundPage";
 import OperatorOutboundPage from "@/pages/OperatorOutboundPage";
 import OperatorSortingWavePage from "@/pages/OperatorSortingWavePage";
@@ -79,7 +78,7 @@ export default function AppRoutes() {
           element={
             <RoleGatePage
               admin={<Navigate to="/report" replace />}
-              operator={<OperatorOverviewPage />}
+              operator={<ReportPage />}
             />
           }
         />

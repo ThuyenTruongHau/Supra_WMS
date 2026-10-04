@@ -20,6 +20,7 @@ from app.modules.warehouse.outbound_order.outbound_order_model import (
 )
 from app.modules.warehouse.outbound_order.outbound_order_schema import (
     OutboundOrderCreate,
+    OutboundOrderDetailCreate,
     OutboundOrderCreateResponse,
     OutboundOrderUpdate,
     OutboundOrderDetailResponse,
@@ -147,6 +148,11 @@ def _get_fixed_quantity(db: Session, outbound_order: OutboundOrder, item_id: int
     ).scalar()
     return int(total or 0)
 
+def _is_masan_import_outbound_create(body: OutboundOrderCreate) -> bool:
+    note = (body.note or "").strip()
+    return note == "Import BM.04" or note.startswith("Import BM.04")
+
+
 def create_outbound_order(db: Session, body: OutboundOrderCreate, user_id: int):
     try:
         outbound_order = OutboundOrder(
@@ -164,6 +170,8 @@ def create_outbound_order(db: Session, body: OutboundOrderCreate, user_id: int):
         logger.info(f"Type: {type}")
         if (body.details or {}).get("type") in ["Tuyển chọn", "tuyển chọn", "Lấy lỗi", "lấy lỗi", "Lấy lẻ", "lấy lẻ"]:
             flag = True
+
+        created_detail_rows: list[tuple[OutboundOrderDetail, OutboundOrderDetailCreate]] = []
 
         for line_item in body.line_items:
             unit = db.query(Unit).filter(Unit.id == line_item.unit_id).first()
@@ -188,6 +196,7 @@ def create_outbound_order(db: Session, body: OutboundOrderCreate, user_id: int):
             )
             db.add(detail)
             db.flush()
+            created_detail_rows.append((detail, line_item))
 
         _enforce_pick_split_manual_details(db, outbound_order)
 
@@ -206,6 +215,30 @@ def create_outbound_order(db: Session, body: OutboundOrderCreate, user_id: int):
 
         db.commit()
         db.refresh(outbound_order)
+
+        if _is_masan_import_outbound_create(body) and not flag:
+            calculate_lines = [
+                DetailForCalculate(
+                    id=detail.id,
+                    item_id=detail.item_id,
+                    quantity=detail.quantity,
+                    unit_id=line_item.unit_id,
+                    details=detail.details or line_item.details,
+                    detail_type=detail.detail_type,
+                )
+                for detail, line_item in created_detail_rows
+            ]
+            calculate_outbound_order(
+                db,
+                CalculateOutboundDetail(
+                    warehouse_id=body.warehouse_id,
+                    outbound_order_id=outbound_order.id,
+                    line_items=calculate_lines,
+                ),
+                strategy="fefo",
+            )
+            db.refresh(outbound_order)
+
         return OutboundOrderCreateResponse.model_validate(outbound_order)
 
     except Exception as e:

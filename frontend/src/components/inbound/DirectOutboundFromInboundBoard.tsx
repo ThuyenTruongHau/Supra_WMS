@@ -12,7 +12,8 @@ import {
 import { Button, Input, Modal, Select, message } from "@/components/ui";
 import {
   OPERATOR_DESKTOP,
-  OPERATOR_DIRECT_OUTBOUND_MAP_TUNING,
+  OPERATOR_INBOUND_MAP_TUNING,
+  OPERATOR_WAVE_MAP_TUNING,
 } from "@/constants/operatorDesktopSizes";
 import OperatorMapCanvas from "@/components/warehouse/OperatorMapCanvas";
 import { WAVE_STATION_LOCATION_TYPES } from "@/api/warehouseMap";
@@ -37,6 +38,7 @@ import type { WarehouseLocation } from "@/types/warehouseLocation";
 import { getApiErrorDetail } from "@/types/apiError";
 import { toDisplayInteger } from "@/utils/number";
 import { formatDisplayBin } from "@/utils/locationBin";
+import { OUTBOUND_MAP_ZONE_IDS } from "@/constants/outboundMapZones";
 import type { SortingWave } from "@/types/sortingWave";
 
 const EMPTY_SORTING_WAVES: SortingWave[] = [];
@@ -119,7 +121,10 @@ export default function DirectOutboundFromInboundBoard({
   const [inboundAssignment, setInboundAssignment] =
     useState<InboundBufferAssignment | null>(null);
 
-  const { data: assignedPayload } = useInboundAssignedDetails(orderId, orderId > 0);
+  const { data: assignedPayload } = useInboundAssignedDetails(
+    orderId > 0 ? [orderId] : [],
+    orderId > 0,
+  );
   const assignedDetails = assignedPayload?.details ?? [];
   const assignMutation = useAssignInboundToBuffer();
 
@@ -485,7 +490,7 @@ export default function DirectOutboundFromInboundBoard({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-panel">
-      <div className="grid shrink-0 grid-cols-1 items-end gap-2 border-b border-stripe-hairline px-3 py-2.5 sm:px-4 md:grid-cols-3 xl:grid-cols-[repeat(3,minmax(0,1fr))_auto]">
+      <div className="grid shrink-0 grid-cols-1 items-end gap-2 border-b border-stripe-hairline px-3 py-2.5 sm:px-4 @min-[768px]:grid-cols-3 @min-[1280px]:grid-cols-[repeat(3,minmax(0,1fr))_auto]">
         <div className="min-w-0 space-y-1">
           <label className="block text-xs font-semibold uppercase tracking-wider text-slate-500">
             Điểm nhập
@@ -548,8 +553,8 @@ export default function DirectOutboundFromInboundBoard({
         </Button>
       </div>
 
-      <div className="grid min-h-0 flex-1 grid-cols-1 overflow-hidden xl:grid-cols-2">
-        <div className="flex min-h-0 min-w-0 flex-col overflow-hidden xl:border-r xl:border-stripe-hairline">
+      <div className="grid min-h-0 flex-1 grid-cols-1 overflow-hidden @min-[1280px]:grid-cols-2">
+        <div className="flex min-h-0 min-w-0 flex-col overflow-hidden @min-[1280px]:border-r @min-[1280px]:border-stripe-hairline">
           <div className="flex shrink-0 items-center border-b border-stripe-hairline px-3 py-2">
             <h4 className="text-sm font-semibold text-brand-dark">
               Sơ đồ điểm nhập
@@ -558,9 +563,9 @@ export default function DirectOutboundFromInboundBoard({
           <div className="relative min-h-0 flex-1 overflow-hidden bg-industrial-pattern p-2">
             {zoneId > 0 ? (
               <OperatorMapCanvas
-                zoneId={[2,3]}
+                zoneId={[2, 12]}
                 showInboundSeparator={true}
-                tuning={OPERATOR_DIRECT_OUTBOUND_MAP_TUNING}
+                tuning={OPERATOR_INBOUND_MAP_TUNING}
                 selectedCodes={inboundLocationCode ? [inboundLocationCode] : undefined}
                 interactiveCodes={inboundInteractiveCodes}
                 onBufferCellClick={handleInboundMapClick}
@@ -574,7 +579,7 @@ export default function DirectOutboundFromInboundBoard({
           </div>
         </div>
 
-        <div className="flex min-h-0 min-w-0 flex-col overflow-hidden border-t border-stripe-hairline xl:border-t-0">
+        <div className="flex min-h-0 min-w-0 flex-col overflow-hidden border-t border-stripe-hairline @min-[1280px]:border-t-0">
           <div className="flex shrink-0 items-center border-b border-stripe-hairline px-3 py-2">
             <h4 className="text-sm font-semibold text-brand-dark">
               Sơ đồ chia chọn & cửa xuất
@@ -584,8 +589,8 @@ export default function DirectOutboundFromInboundBoard({
             {zoneId > 0 ? (
               <OperatorMapCanvas
                 key={`wave-all-${allWaveStationIds.join(",") || "zone"}`}
-                zoneId={[4,5]}
-                tuning={OPERATOR_DIRECT_OUTBOUND_MAP_TUNING}
+                zoneId={[...OUTBOUND_MAP_ZONE_IDS]}
+                tuning={OPERATOR_WAVE_MAP_TUNING}
                 selectedCodes={outboundLocationCode ? [outboundLocationCode] : undefined}
                 interactiveCodes={waveInteractiveCodes}
                 onBufferCellClick={handleWaveMapClick}

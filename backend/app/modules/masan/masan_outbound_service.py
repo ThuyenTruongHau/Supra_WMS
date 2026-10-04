@@ -7,6 +7,7 @@ from typing import Any, Optional
 from openpyxl import Workbook, load_workbook
 from sqlalchemy.orm import Session, joinedload, selectinload
 
+from app.core.cache import cache_set, cache_get, cache_scan_keys
 from app.modules.masan.masan_outbound_excel import (
     COLUMN_ALIASES,
     DATA_START_ROW,
@@ -418,3 +419,47 @@ def export_outbound_order_so(db: Session, order_id: int) -> tuple[bytes, str]:
     wb.save(buffer)
     filename = f"{order.order_code}_LayHangSO.xlsx"
     return buffer.getvalue(), filename
+
+
+def assign_cc_zone(db: Session, warehouse_id: int) -> None:
+    _ensure_warehouse_exists(db, warehouse_id)
+    available_orders = db.query(OutboundOrder).filter(
+        OutboundOrder.status != "completed",
+        OutboundOrder.warehouse_id == warehouse_id
+    ).all()
+    if not available_orders:
+        return
+    order_ids = [o.id for o in available_orders]
+
+    keys = cache_scan_keys(f"outbound:assigned_cc_details:{warehouse_id}:*")
+    assigned_ids: list[int] = []
+    for key in keys:
+        suffix = key.rsplit(":", 1)[-1]
+        if suffix.isdigit():
+            assigned_ids.append(int(suffix))
+
+    list_details = db.query(OutboundOrderDetail).filter(
+        OutboundOrderDetail.outbound_order_id.in_(order_ids),
+        ~OutboundOrderDetail.id.in_(assigned_ids)
+    ).all()
+
+    details_by_vehicle: dict[str, list[OutboundOrderDetail]] = defaultdict(list)
+    for detail in list_details:
+        meta = detail.details if isinstance(detail.details, dict) else {}
+        raw = meta.get("vehicle_no")
+        vehicle_number = str(raw).strip() if raw is not None else ""
+        if not vehicle_number:
+            vehicle_number = "no_vehicle"
+        details_by_vehicle[vehicle_number].append(detail)
+        cache_set(f"outbound:assigned_cc_details:{warehouse_id}:{detail.id}", detail.id, -1)
+
+    
+
+
+
+
+
+
+        
+        
+        

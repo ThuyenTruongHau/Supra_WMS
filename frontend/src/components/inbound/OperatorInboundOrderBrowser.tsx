@@ -342,7 +342,7 @@ export default function OperatorInboundOrderBrowser({
             </p>
           </div>
         </div>
-        <div className="min-h-0 flex-1 overflow-auto p-2">
+        <div className="operator-panel-scroll min-h-0 flex-1 p-2">
           <Table<InboundOrderDetail>
             columns={detailColumns}
             dataSource={rows}
@@ -350,6 +350,7 @@ export default function OperatorInboundOrderBrowser({
             pagination={false}
             size="middle"
             tableLayout="fixed"
+            scroll={{ x: "max-content" }}
             loading={masanFilter ? masanDetailsQuery.isLoading : false}
             locale={{
               emptyText: masanDetailsQuery.isError
@@ -405,7 +406,7 @@ export default function OperatorInboundOrderBrowser({
         </div>
 
         {skuFilter ? (
-          <div className="min-h-0 flex-1 overflow-auto p-2">
+          <div className="operator-panel-scroll min-h-0 flex-1 p-2">
             <Table<InboundOrderDetail>
               columns={[
                 {
@@ -444,7 +445,7 @@ export default function OperatorInboundOrderBrowser({
             Không tải được chi tiết đơn nhập
           </div>
         ) : (
-          <div className="grid min-h-0 flex-1 auto-rows-min grid-cols-1 gap-3 overflow-y-auto p-3 sm:grid-cols-2">
+          <div className="operator-panel-scroll grid min-h-0 flex-1 auto-rows-min grid-cols-1 gap-3 p-3 sm:grid-cols-2">
             {vehicles.length === 0 ? (
               <div className="col-span-full py-10 text-center text-sm text-slate-500">
                 Đơn nhập chưa có dòng nào
@@ -521,7 +522,7 @@ export default function OperatorInboundOrderBrowser({
   }
 
   return (
-    <div className="grid h-full min-h-0 auto-rows-min grid-cols-1 gap-3 overflow-y-auto bg-panel p-3 sm:grid-cols-2">
+    <div className="operator-panel-scroll grid h-full min-h-0 auto-rows-min grid-cols-1 gap-3 bg-panel p-3 sm:grid-cols-2">
       {orders.length === 0 ? (
         <div className="col-span-full py-10 text-center text-sm text-slate-500">
           Không có lệnh nhập

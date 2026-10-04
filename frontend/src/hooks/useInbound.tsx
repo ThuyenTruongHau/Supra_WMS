@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { AxiosError } from 'axios'
 import {
@@ -60,8 +61,11 @@ export const inboundDetailQueryKey = (id: number) => ['inbound_order', id] as co
 export const inboundOrderByVehicleQueryKey = (orderId: number) =>
   ['inbound_order_by_vehicle', orderId] as const
 
-export const inboundAssignedDetailsQueryKey = (orderId: number) =>
-  ['inbound_assigned_details', orderId] as const
+export const inboundAssignedDetailsQueryKey = (orderIds: number[]) =>
+  [
+    'inbound_assigned_details',
+    [...orderIds].sort((a, b) => a - b).join(','),
+  ] as const
 
 export const inboundIncompleteVehiclesQueryKey = (orderId: number) =>
   ['inbound_incomplete_vehicles', orderId] as const
@@ -121,11 +125,18 @@ export const useInboundOrderByVehicle = (orderId: number, enabled = true) => {
   })
 }
 
-export const useInboundAssignedDetails = (orderId: number, enabled = true) => {
+export const useInboundAssignedDetails = (
+  orderIds: number[],
+  enabled = true,
+) => {
+  const sortedIds = useMemo(
+    () => [...orderIds].filter((id) => id > 0).sort((a, b) => a - b),
+    [orderIds],
+  )
   return useQuery<InboundAssignedDetailsResponse, AxiosError<ApiErrorResponse>>({
-    queryKey: inboundAssignedDetailsQueryKey(orderId),
-    queryFn: () => getInboundAssignedDetailsApi(orderId),
-    enabled: enabled && orderId > 0,
+    queryKey: inboundAssignedDetailsQueryKey(sortedIds),
+    queryFn: () => getInboundAssignedDetailsApi(sortedIds),
+    enabled: enabled && sortedIds.length > 0,
     staleTime: 15 * 1000,
     refetchOnMount: 'always',
   })
@@ -185,7 +196,7 @@ const invalidateInboundQueries = (
       queryKey: inboundOrderByVehicleQueryKey(orderId),
     })
     queryClient.invalidateQueries({
-      queryKey: inboundAssignedDetailsQueryKey(orderId),
+      queryKey: inboundAssignedDetailsQueryKey([orderId]),
     })
     queryClient.invalidateQueries({
       queryKey: inboundIncompleteVehiclesQueryKey(orderId),
@@ -271,7 +282,7 @@ export const useSendInboundCommands = () => {
     onSuccess: (order) => {
       invalidateInboundQueries(queryClient, order.warehouse_id, order.id)
       queryClient.invalidateQueries({
-        queryKey: inboundAssignedDetailsQueryKey(order.id),
+        queryKey: inboundAssignedDetailsQueryKey([order.id]),
       })
       queryClient.invalidateQueries({
         queryKey: inboundOrderVehiclesQueryKey(order.id),
@@ -394,7 +405,7 @@ export const useAssignInboundToBuffer = () => {
     onSuccess: (order) => {
       invalidateInboundQueries(queryClient, order.warehouse_id, order.id)
       queryClient.invalidateQueries({
-        queryKey: inboundAssignedDetailsQueryKey(order.id),
+        queryKey: inboundAssignedDetailsQueryKey([order.id]),
       })
       queryClient.invalidateQueries({
         queryKey: inboundOrderVehiclesQueryKey(order.id),
@@ -432,7 +443,7 @@ export const useUnassignInboundFromBuffer = () => {
     onSuccess: (order, variables) => {
       invalidateInboundQueries(queryClient, order.warehouse_id, order.id)
       queryClient.invalidateQueries({
-        queryKey: inboundAssignedDetailsQueryKey(order.id),
+        queryKey: inboundAssignedDetailsQueryKey([order.id]),
       })
       queryClient.invalidateQueries({
         queryKey: ['inbound_buffer_assignment', variables.data.location_id],
@@ -466,7 +477,7 @@ export const useDirectOutboundFromInbound = () => {
       const warehouseId = result.zone_id
       invalidateInboundQueries(queryClient, warehouseId, result.inbound_order_id)
       queryClient.invalidateQueries({
-        queryKey: inboundAssignedDetailsQueryKey(result.inbound_order_id),
+        queryKey: inboundAssignedDetailsQueryKey([result.inbound_order_id]),
       })
       queryClient.invalidateQueries({
         queryKey: ['inbound_buffer_assignment', result.inbound_location_id],

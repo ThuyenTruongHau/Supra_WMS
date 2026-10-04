@@ -110,21 +110,26 @@ export interface InboundIncompleteVehiclesResponse {
 
 export interface InboundAssignedDetail {
   detail_id: number
-  vehicle_number: string | null
+  inbound_order_id?: number
   product_sku: string | null
   product_name: string | null
   lot_number: string | null
-  expected_quantity: number
-  event_date: string | null
+  from_location: string | null
+  to_location: string | null
+  from_location_code?: string | null
   status: string
-  pickup_node_name: string | null
-  pickup_node_code: string | null
+  /** @deprecated Legacy operator fields — API assigned-details may omit */
+  vehicle_number?: string | null
+  expected_quantity?: number
+  event_date?: string | null
+  pickup_node_name?: string | null
+  pickup_node_code?: string | null
   location_code?: string | null
   location_bin?: string | null
 }
 
 export interface InboundAssignedDetailsResponse {
-  order_id: number
+  order_ids: number[]
   details: InboundAssignedDetail[]
 }
 

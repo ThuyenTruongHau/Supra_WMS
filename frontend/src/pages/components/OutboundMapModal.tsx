@@ -3,6 +3,7 @@ import { Modal, Button } from "@/components/ui";
 import WarehouseMapCanvas from "@/components/shared/WarehouseMapCanvas";
 import OutboundStatusTag from "@/components/shared/OutboundStatusTag";
 import type { NodeInfo } from "@/types/warehouseMap";
+import { isShelfNodeType } from "@/utils/warehouseMapUtils";
 import type { OutboundOrderDetail } from "@/types/outbound";
 import {
   buildOutboundLocationOverrides,
@@ -86,7 +87,7 @@ export default function OutboundMapModal({
           skipFullLocationsFetch
           locationOverrides={locationOverrides}
           onNodeClick={(node) => {
-            if (node?.type === 1) {
+            if (isShelfNodeType(node?.type)) {
               setSelectedNode(node);
             } else {
               setSelectedNode(null);

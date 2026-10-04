@@ -155,7 +155,7 @@ export default function OperatorPageHeader({
           )}
         >
           {metricsLoading ? (
-            <div className="grid animate-pulse grid-cols-2 gap-2 sm:grid-cols-4 xl:grid-cols-6">
+            <div className="grid animate-pulse grid-cols-2 gap-2 sm:grid-cols-4 xl:grid-cols-6 @min-[640px]:grid-cols-4 @min-[1280px]:grid-cols-6">
               {Array.from({ length: 4 }).map((_, i) => (
                 <div key={i} className="px-2 py-1">
                   <div className="h-3 w-16 rounded bg-panel-soft" />
@@ -170,14 +170,14 @@ export default function OperatorPageHeader({
           ) : metrics && metrics.length > 0 ? (
             <div
               className={cn(
-                "grid grid-cols-2 gap-1 sm:grid-cols-3 sm:divide-x sm:divide-stripe-hairline",
+                "grid grid-cols-2 gap-1 sm:grid-cols-3 sm:divide-x sm:divide-stripe-hairline @min-[640px]:grid-cols-3 @min-[640px]:divide-x @min-[640px]:divide-stripe-hairline",
                 metrics.length >= 5
-                  ? "xl:grid-cols-5"
+                  ? "xl:grid-cols-5 @min-[1280px]:grid-cols-5"
                   : metrics.length === 4
-                    ? "xl:grid-cols-4"
+                    ? "xl:grid-cols-4 @min-[1280px]:grid-cols-4"
                     : metrics.length === 3
-                      ? "xl:grid-cols-3"
-                      : "xl:grid-cols-2",
+                      ? "xl:grid-cols-3 @min-[1280px]:grid-cols-3"
+                      : "xl:grid-cols-2 @min-[1280px]:grid-cols-2",
               )}
             >
               {metrics.map((m) => (

@@ -30,8 +30,11 @@ from app.modules.warehouse.inbound_order.inbound_order_schema import (
     PackingUserPendingStocksResponse,
     RelocateAssignedStockRequest,
     RelocateAssignedStockResponse,
+    InboundAssignedDetailsRequest,
+    InboundAssignedDetailsResponse,
 )
 from app.modules.warehouse.inbound_order import inbound_order_service, qr_code_module
+from app.modules.masan import masan_inbound_service
 from app.modules.warehouse.inbound_order.inbound_celery_task import (
     accept_inbound_task_task,
     caller_inbound_order_task,
@@ -139,6 +142,25 @@ def list_inbound_orders(
         page_size=page_size,
         summary=summary,
     )
+
+
+@router.post(
+    "/inbound-orders/assigned-details",
+    response_model=InboundAssignedDetailsResponse,
+)
+def list_inbound_assigned_details(
+    body: InboundAssignedDetailsRequest,
+    db: DbSession,
+):
+    try:
+        return masan_inbound_service.list_inbound_details_awaiting_robot(
+            db,
+            body.order_ids,
+        )
+    except ValueError as e:
+        msg = str(e)
+        code = 404 if "not found" in msg.lower() else 400
+        raise HTTPException(status_code=code, detail=msg) from e
 
 
 @router.get(

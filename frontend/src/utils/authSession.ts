@@ -15,8 +15,7 @@ export function isRefreshApiUrl(url?: string): boolean {
 
 export function getHomePathFromUser(user: User | null): string {
   if (!user) return '/login';
-  if (user.access.is_admin) return '/overview';
-  return '/report';
+  return '/overview';
 }
 
 export function hasModuleAccess(

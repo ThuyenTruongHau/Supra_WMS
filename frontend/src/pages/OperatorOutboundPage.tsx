@@ -49,6 +49,7 @@ export default function OperatorOutboundPage() {
       />
 
       <SortingWaveOverviewPicker
+        warehouseId={selectedWarehouseId}
         onSelectZone={handleEnterZoneDetail}
         className="min-h-0 flex-1"
       />

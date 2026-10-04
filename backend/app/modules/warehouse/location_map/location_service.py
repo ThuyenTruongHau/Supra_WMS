@@ -58,6 +58,9 @@ SHELF_NODE_NAME_PATTERN = re.compile(
     r"^R(?P<row>\d+)[_-]C(?P<column>\d+)[_-]L(?P<level>\d+)[_-]B(?P<bin>.+)$",
     re.IGNORECASE,
 )
+# Type 1 is the shelf marker in older map exports. Type 12 is the same shelf
+# role in newer exports (storage points paired with a waypoint).
+SHELF_NODE_TYPES = frozenset({1, 12})
 # A node name made only of digits is the map editor's default (it mirrors the node
 # number), so it carries no identity that survives a re-export.
 UNLABELLED_NODE_NAME_PATTERN = re.compile(r"^\d+$")
@@ -96,6 +99,15 @@ def _location_query(db: Session, *, include_inactive: bool = False):
     if not include_inactive:
         q = q.filter(Location.is_active.is_(True))
     return q
+
+
+def _raw_combined_lot(lot_from: Optional[str], lot_to: Optional[str]) -> Optional[str]:
+    """Keep lot as stored: 040526 or 040526-050526, no DD/MM/YY split."""
+    start = (lot_from or "").strip()
+    end = (lot_to or "").strip()
+    if start and end and start != end:
+        return f"{start}-{end}"
+    return start or end or None
 
 
 def _ensure_warehouse_and_zone(
@@ -203,7 +215,7 @@ def list_locations_for_map(db: Session, warehouse_id: int) -> LocationsForMapRes
                 sku=stock.item.sku if stock.item else "",
                 lot_number_from=stock.lot_number_from,
                 lot_number_to=stock.lot_number_to,
-                lot_number=format_lot_number_display(
+                lot_number=_raw_combined_lot(
                     stock.lot_number_from,
                     stock.lot_number_to,
                 ),
@@ -275,7 +287,7 @@ def list_locations_for_zone_map(db: Session, zone_id: int) -> LocationsForMapRes
                 sku=stock.item.sku if stock.item else "",
                 lot_number_from=stock.lot_number_from,
                 lot_number_to=stock.lot_number_to,
-                lot_number=format_lot_number_display(
+                lot_number=_raw_combined_lot(
                     stock.lot_number_from,
                     stock.lot_number_to,
                 ),
@@ -347,7 +359,7 @@ def list_locations_for_zone_map(db: Session, zone_id: int) -> LocationsForMapRes
                 sku=stock.item.sku if stock.item else "",
                 lot_number_from=stock.lot_number_from,
                 lot_number_to=stock.lot_number_to,
-                lot_number=format_lot_number_display(
+                lot_number=_raw_combined_lot(
                     stock.lot_number_from,
                     stock.lot_number_to,
                 ),
@@ -1184,7 +1196,7 @@ def sync_locations_from_map(
     }
 
 def parse_shelf_node_from_map_node(node: list) -> Optional[ParsedShelfNode]:
-    if len(node) < 5 or node[2] != 1:
+    if len(node) < 5 or node[2] not in SHELF_NODE_TYPES:
         return None
 
     name = str(node[4])

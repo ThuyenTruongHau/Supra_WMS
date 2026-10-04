@@ -30,6 +30,10 @@ import {
   pickQuickExportProduct,
 } from "@/utils/quickPalletOutbound";
 import { useQueryClient } from "@tanstack/react-query";
+import {
+  isOutboundDetailZoneId,
+  outboundMapZoneIdsFor,
+} from "@/constants/outboundMapZones";
 
 export default function OperatorOutboundDetailPage() {
   const { zoneId: zoneIdStr } = useParams<{ zoneId: string }>();
@@ -38,8 +42,7 @@ export default function OperatorOutboundDetailPage() {
 
   const zoneId = Number(zoneIdStr);
 
-  // Validate URL param
-  if (isNaN(zoneId) || (zoneId !== 12 && zoneId !== 13)) {
+  if (isNaN(zoneId) || !isOutboundDetailZoneId(zoneId)) {
     return <Navigate to="/export" replace />;
   }
 
@@ -47,7 +50,7 @@ export default function OperatorOutboundDetailPage() {
   const createOutboundOrderMutation = useCreateOutboundOrder();
 
   const [quickPalletExporting, setQuickPalletExporting] = useState<
-    12 | 13 | null
+    1 | 2 | null
   >(null);
   const [isExportingSO, setIsExportingSO] = useState(false);
   const [isExportingDailyExcel, setIsExportingDailyExcel] = useState(false);
@@ -172,6 +175,7 @@ export default function OperatorOutboundDetailPage() {
     <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-hidden bg-slate-50">
       <SortingWaveStationBoard
         zoneId={zoneId}
+        mapZoneIds={outboundMapZoneIdsFor(zoneId)}
         fillHeight
         className="min-h-0 flex-1"
         selectedWaveId={zoneId}
@@ -180,7 +184,7 @@ export default function OperatorOutboundDetailPage() {
         onBack={handleBackToOverview}
         mapToolbarTitle={
           <h3 className="text-3xl font-black text-brand-dark">
-            Bản đồ chia chọn & cửa xuất (Khu vực {zoneId})
+            Bản đồ chia chọn & cửa xuất
           </h3>
         }
         mapToolbar={

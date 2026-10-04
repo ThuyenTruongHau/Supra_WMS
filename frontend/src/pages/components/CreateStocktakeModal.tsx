@@ -4,6 +4,7 @@ import { Button, Card, Input, Modal, Select, Space, cn, message } from "@/compon
 import { Tag } from "antd";
 import WarehouseMapCanvas from "@/components/shared/WarehouseMapCanvas";
 import type { NodeInfo } from "@/types/warehouseMap";
+import { isShelfNodeType } from "@/utils/warehouseMapUtils";
 import { useCreateStocktake } from "@/hooks/useStocktake";
 import { useFullLocations } from "@/hooks/useWarehouseMap";
 import { useGetItems } from "@/hooks/useItem";
@@ -348,7 +349,7 @@ export default function CreateStocktakeModal({
             hideDrawer
             selectedLocationCodes={selectedLocationCodes}
             onNodeClick={(node: NodeInfo | null) => {
-              if (!node || node.type !== 1 || !node.content) {
+              if (!node || !isShelfNodeType(node.type) || !node.content) {
                 if (node) message.warning("Chỉ chọn được điểm kệ (shelf node).");
                 return;
               }

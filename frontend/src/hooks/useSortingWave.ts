@@ -18,7 +18,7 @@ export const sortingWavesQueryKey = (warehouseId: number, search?: string) =>
 
 export const useSortingWaves = (
   warehouseId: number,
-  options?: { search?: string },
+  options?: { search?: string; enabled?: boolean },
 ) => {
   return useQuery<SortingWave[], AxiosError<ApiErrorResponse>>({
     queryKey: sortingWavesQueryKey(warehouseId, options?.search),
@@ -27,7 +27,7 @@ export const useSortingWaves = (
         search: options?.search,
         limit: 200,
       }),
-    enabled: warehouseId > 0,
+    enabled: (options?.enabled ?? true) && warehouseId > 0,
     staleTime: 60 * 1000,
   });
 };

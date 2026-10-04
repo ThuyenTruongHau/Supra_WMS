@@ -1,19 +1,51 @@
 /**
- * Thu nhỏ toàn bộ UI operator trên tablet 8–10" — giữ layout desktop.
- * Chỉ áp dụng khi body có class `operator-ui` (UserLayout mount).
- * Giá trị khớp OPERATOR_TABLET trong operatorDesktopSizes.ts.
+ * Operator UI: full viewport tablet (stage scale trong UserLayout).
  */
 
-/* Tablet landscape ~9–10" — nới zoom sau khi tăng floor typography */
+html:has(body.operator-ui),
+html:has(body.operator-ui) body,
+html:has(body.operator-ui) #root {
+  height: 100%;
+  min-height: 100dvh;
+}
+
+body.operator-ui {
+  overflow: hidden;
+  overscroll-behavior: none;
+  width: 100%;
+  min-height: 100dvh;
+}
+
+body.operator-ui.operator-stage-active {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100dvh;
+}
+
+.operator-stage .operator-header-clock {
+  display: block !important;
+}
+
 @media (max-width: 1280px) {
-  body.operator-ui {
+  body.operator-ui:not(.operator-stage-active) {
     zoom: 0.9;
   }
 }
 
-/* Tablet nhỏ / portrait ~8" (+ phone tạm) */
 @media (max-width: 768px) {
-  body.operator-ui {
+  body.operator-ui:not(.operator-stage-active) {
     zoom: 0.82;
   }
+}
+
+/** Vùng cuộn trong layout operator (tablet không chuột — vuốt dọc/ngang). */
+.operator-panel-scroll {
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow-x: auto;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-x pan-y;
 }

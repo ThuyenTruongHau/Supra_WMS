@@ -526,3 +526,26 @@ class RelocateAssignedStockResponse(BaseModel):
     from_location_code: str
     to_location_code: str
     message: str = "Assigned stock cache relocated"
+
+
+class InboundAssignedDetailsRequest(BaseModel):
+    order_ids: list[int] = Field(..., min_length=1)
+
+
+class InboundAssignedDetailItem(BaseModel):
+    """Dòng inbound auto còn initialize — chưa gọi robot (operator tab Lệnh gọi)."""
+
+    detail_id: int
+    inbound_order_id: int
+    product_sku: Optional[str] = None
+    product_name: Optional[str] = None
+    lot_number: Optional[str] = None
+    from_location: Optional[str] = None
+    to_location: Optional[str] = None
+    from_location_code: Optional[str] = None
+    status: str = "initialize"
+
+
+class InboundAssignedDetailsResponse(BaseModel):
+    order_ids: list[int] = Field(default_factory=list)
+    details: list[InboundAssignedDetailItem] = Field(default_factory=list)

@@ -1,4 +1,5 @@
 import type { MapData } from '@/types/warehouseMap';
+import { isShelfNodeType, toCanvasPoint } from '@/utils/warehouseMapUtils';
 
 const MAP_DEBUG_PREFIX = '[WarehouseMap]';
 
@@ -39,12 +40,21 @@ export function parseMapNode(
   row: (number | string | number[])[],
   nodeKeys: string[],
   mapHeight: number,
+  xAttrMin = 0,
+  yAttrMin = 0,
 ): ParsedMapNode {
   const index = buildKeyIndex(nodeKeys);
+  const point = toCanvasPoint(
+    row[index.x] as number,
+    row[index.y] as number,
+    mapHeight,
+    xAttrMin,
+    yAttrMin,
+  );
 
   return {
-    x: row[index.x] as number,
-    y: mapHeight - (row[index.y] as number),
+    x: point.x,
+    y: point.y,
     type: row[index.type] as number,
     content: row[index.content] as string,
     name: row[index.name] as string,
@@ -55,14 +65,16 @@ export function parseMapNode(
 }
 
 export function parseMapNodes(data: MapData): ParsedMapNode[] {
-  return data.nodeArr.map((row) => parseMapNode(row, data.nodeKeys, data.height));
+  return data.nodeArr.map((row) =>
+    parseMapNode(row, data.nodeKeys, data.height, data.xAttrMin ?? 0, data.yAttrMin ?? 0),
+  );
 }
 
 /** Khoảng cách gần nhất giữa các shelf (world units). */
 export function computeMinShelfSpacing(
   nodes: Array<{ x: number; y: number; type: number }>,
 ): number {
-  const shelves = nodes.filter((node) => node.type === 1);
+  const shelves = nodes.filter((node) => isShelfNodeType(node.type));
   if (shelves.length < 2) return Number.POSITIVE_INFINITY;
 
   let min = Number.POSITIVE_INFINITY;
@@ -409,6 +421,8 @@ export function parseLinePath(
   lineRow: (string | number | (number | null)[])[],
   lineKeys: string[],
   mapHeight: number,
+  xAttrMin = 0,
+  yAttrMin = 0,
 ): { x: number; y: number }[] {
   const index = buildKeyIndex(lineKeys);
   const rawPath = lineRow[index.path];
@@ -421,7 +435,7 @@ export function parseLinePath(
     const coords: { x: number; y: number }[] = [];
     for (const point of rawPath as unknown as number[][]) {
       if (point && point.length >= 2 && point[0] != null && point[1] != null) {
-        coords.push({ x: point[0], y: mapHeight - point[1] });
+        coords.push(toCanvasPoint(point[0], point[1], mapHeight, xAttrMin, yAttrMin));
       }
     }
     return coords;
@@ -434,7 +448,7 @@ export function parseLinePath(
   const coords: { x: number; y: number }[] = [];
 
   for (let i = 0; i < length; i += 2) {
-    coords.push({ x: points[i], y: mapHeight - points[i + 1] });
+    coords.push(toCanvasPoint(points[i], points[i + 1], mapHeight, xAttrMin, yAttrMin));
   }
 
   return coords;
@@ -479,7 +493,13 @@ export function computeMapContentBounds(data: MapData): MapContentBounds {
   }
 
   for (const lineRow of data.lineArr) {
-    for (const point of parseLinePath(lineRow, data.lineKeys, data.height)) {
+    for (const point of parseLinePath(
+      lineRow,
+      data.lineKeys,
+      data.height,
+      data.xAttrMin ?? 0,
+      data.yAttrMin ?? 0,
+    )) {
       bounds = updateBounds(bounds, point.x, point.y);
     }
   }
@@ -542,7 +562,7 @@ export function summarizeMapDataForLog(data: MapData | null | undefined) {
 
   const shelfCount = data.nodeArr.filter((row) => {
     const typeIndex = data.nodeKeys.indexOf('type');
-    return typeIndex >= 0 && row[typeIndex] === 1;
+    return typeIndex >= 0 && isShelfNodeType(row[typeIndex] as number);
   }).length;
 
   return {

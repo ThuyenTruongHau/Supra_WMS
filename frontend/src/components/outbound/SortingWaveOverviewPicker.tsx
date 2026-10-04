@@ -11,18 +11,27 @@ import {
 import OperatorMapCanvas from "@/components/warehouse/OperatorMapCanvas";
 import { parseMasanOutboundPreviewApi } from "@/api/masan";
 import type { MasanOutboundPreviewRow } from "@/types/masan";
+import { resolveOutboundType } from "@/config/warehouseMode";
 import { useCreateOutboundOrder } from "@/hooks/useOutbound";
 import type { OutboundOrderLineItemCreate } from "@/types/outbound";
+import { buildMasanOutboundCreateRequest } from "@/utils/masanOutboundImport";
 import { toDisplayInteger } from "@/utils/number";
+import dayjs from "dayjs";
+import type { MasanOutboundParseResponse } from "@/types/masanOutbound";
+import {
+  OUTBOUND_DISPLAY_ZONES,
+  type OutboundDisplayZone,
+} from "@/constants/outboundMapZones";
 
 type SortingWaveOverviewCellProps = {
   zoneId: number;
+  zoneIds: readonly number[];
   title: string;
   onActivate: () => void;
 };
 
 function SortingWaveOverviewCell({
-  zoneId,
+  zoneIds,
   title,
   onActivate,
 }: SortingWaveOverviewCellProps) {
@@ -59,7 +68,7 @@ function SortingWaveOverviewCell({
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(14,165,233,0.06),transparent_55%)]" />
         <div className="relative h-full min-h-0 overflow-hidden rounded-lg bg-panel">
           <OperatorMapCanvas
-            zoneId={zoneId}
+            zoneId={[...zoneIds]}
             tuning={OPERATOR_WAVE_MAP_TUNING}
             className="pointer-events-none !h-full !min-h-0"
           />
@@ -70,16 +79,15 @@ function SortingWaveOverviewCell({
 }
 
 type SortingWaveOverviewPickerProps = {
+  warehouseId: number;
   onSelectZone: (zoneId: number) => void;
   className?: string;
 };
 
-const DISPLAY_ZONES = [
-  { id: 4, name: "Khu vực chia chọn (Zone 12)" },
-  { id: 5, name: "Khu vực xuất hàng (Zone 13)" }
-];
+const DISPLAY_ZONES: OutboundDisplayZone[] = OUTBOUND_DISPLAY_ZONES;
 
 export default React.memo(function SortingWaveOverviewPicker({
+  warehouseId,
   onSelectZone,
   className,
 }: SortingWaveOverviewPickerProps) {
@@ -135,8 +143,14 @@ export default React.memo(function SortingWaveOverviewPicker({
     setIsParsingExcel(true);
     resetImportState();
 
+    if (!warehouseId) {
+      message.warning("Vui lòng chọn kho trước khi import");
+      return;
+    }
+
     try {
-      const result = await parseMasanOutboundPreviewApi(file, selectedImportZoneId, "auto");
+      const outboundType = resolveOutboundType(warehouseId);
+      const result = await parseMasanOutboundPreviewApi(file, warehouseId, outboundType);
 
       setImportLineItems(result.line_items);
       setImportPreviewRows(result.preview_rows);
@@ -154,15 +168,28 @@ export default React.memo(function SortingWaveOverviewPicker({
       message.error("Không có dữ liệu để import");
       return;
     }
+    if (!warehouseId) {
+      message.warning("Vui lòng chọn kho trước khi import");
+      return;
+    }
 
     try {
+      const parseResult: MasanOutboundParseResponse = {
+        line_items: importLineItems as OutboundOrderLineItemCreate[],
+        preview_rows: importPreviewRows,
+        total_rows: importPreviewRows.length,
+        valid_rows: importLineItems.length,
+        invalid_rows: importPreviewRows.filter((row) => row.error).length,
+        warnings: importWarnings.map((w) => w.message),
+      };
+      const orderCode = `OUT-${dayjs().format("YYYYMMDD-HHmmss")}`;
+      const outboundType = resolveOutboundType(warehouseId);
       await createOutboundOrderMutation.mutateAsync({
-        outboundType: "auto",
-        data: {
-          warehouse_id: selectedImportZoneId,
-          order_code: `OUT-${Date.now()}`,
-          line_items: importLineItems as OutboundOrderLineItemCreate[],
-        },
+        outboundType,
+        data: buildMasanOutboundCreateRequest(parseResult, {
+          warehouseId,
+          orderCode,
+        }),
       });
       message.success("Import đơn xuất thành công!");
       closeImportPreview();
@@ -263,12 +290,13 @@ export default React.memo(function SortingWaveOverviewPicker({
           </Button>
         </div>
       </div>
-      <div className="grid min-h-0 flex-1 grid-cols-1 gap-2 p-2 lg:grid-cols-2 lg:gap-3 lg:p-3">
+      <div className="grid min-h-0 flex-1 grid-cols-1 gap-2 p-2 @min-[1024px]:grid-cols-2 @min-[1024px]:gap-3 @min-[1024px]:p-3">
         {DISPLAY_ZONES.length > 0 ? (
           DISPLAY_ZONES.map((z) => (
             <SortingWaveOverviewCell
               key={z.id}
               zoneId={z.id}
+              zoneIds={z.zoneIds}
               title={z.name}
               onActivate={() => onSelectZone(z.id)}
             />

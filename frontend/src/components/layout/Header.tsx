@@ -56,7 +56,7 @@ export default function Header() {
         {/* Ngày giờ */}
         <time
           dateTime={now.toISOString()}
-          className="hidden sm:block text-base font-semibold text-stripe-ink-mute tabular-nums whitespace-nowrap"
+          className="operator-header-clock hidden text-base font-semibold text-stripe-ink-mute tabular-nums whitespace-nowrap sm:block"
         >
           {formatHeaderDateTime(now, lang)}
         </time>

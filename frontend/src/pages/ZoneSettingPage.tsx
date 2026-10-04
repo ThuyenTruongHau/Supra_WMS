@@ -25,6 +25,7 @@ import Hero from '@/components/shared/Hero';
 import { isAxiosError } from 'axios';
 import WarehouseMapCanvas from '@/components/shared/WarehouseMapCanvas';
 import type { NodeInfo } from '@/types/warehouseMap';
+import { isShelfNodeType } from '@/utils/warehouseMapUtils';
 import type { Zone } from '@/types/zone';
 import {
   useAssignZoneLocations,
@@ -553,7 +554,7 @@ export default function ZoneSettingPage() {
             selectedLocationCodes={selectedLocationCodes}
             onBoxSelect={handleBoxSelect}
             onNodeClick={(node: NodeInfo | null) => {
-              if (!node || node.type !== 1 || !node.content) {
+              if (!node || !isShelfNodeType(node.type) || !node.content) {
                 if (node) message.warning('Chỉ chọn được điểm kệ (shelf node).');
                 return;
               }

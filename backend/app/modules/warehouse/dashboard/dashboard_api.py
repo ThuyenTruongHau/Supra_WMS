@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.core.dependencies import require_permission
+from app.core.dependencies import get_current_user
 from app.modules.warehouse.dashboard import dashboard_service
 from app.modules.warehouse.dashboard import dashboard_trend_service
 from app.modules.warehouse.dashboard import dashboard_top_products_service
@@ -22,24 +22,11 @@ router = APIRouter(tags=["Dashboard"])
 
 DbSession = Annotated[Session, Depends(get_db)]
 
-_REPORT_KPI_READ = require_permission(
-    "inbound:read",
-    "outbound:read",
-    "item:read",
-    "notification:read",
-)
-
-_REPORT_TREND_READ = require_permission(
-    "inbound:read",
-    "outbound:read",
-    "item:read",
-)
-
 
 @router.get(
     "/dashboard/report-kpis",
     response_model=ReportKpiResponse,
-    dependencies=[Depends(_REPORT_KPI_READ)],
+    dependencies=[Depends(get_current_user)],
 )
 def get_report_kpis(
     db: DbSession,
@@ -51,7 +38,7 @@ def get_report_kpis(
 @router.get(
     "/dashboard/report-trends",
     response_model=ReportTrendResponse,
-    dependencies=[Depends(_REPORT_TREND_READ)],
+    dependencies=[Depends(get_current_user)],
 )
 def get_report_trends(
     db: DbSession,
@@ -68,7 +55,7 @@ def get_report_trends(
 @router.get(
     "/dashboard/report-top-products",
     response_model=ReportTopProductsResponse,
-    dependencies=[Depends(_REPORT_TREND_READ)],
+    dependencies=[Depends(get_current_user)],
 )
 def get_report_top_products(
     db: DbSession,
@@ -82,13 +69,10 @@ def get_report_top_products(
     )
 
 
-_REPORT_STOCK_AGING_READ = require_permission("item:read")
-
-
 @router.get(
     "/dashboard/report-stock-aging",
     response_model=ReportStockAgingOverviewResponse,
-    dependencies=[Depends(_REPORT_STOCK_AGING_READ)],
+    dependencies=[Depends(get_current_user)],
 )
 def get_report_stock_aging_overview(
     db: DbSession,
@@ -103,7 +87,7 @@ def get_report_stock_aging_overview(
 @router.get(
     "/dashboard/report-stock-aging/bucket",
     response_model=ReportStockAgingBucketResponse,
-    dependencies=[Depends(_REPORT_STOCK_AGING_READ)],
+    dependencies=[Depends(get_current_user)],
 )
 def get_report_stock_aging_bucket(
     db: DbSession,

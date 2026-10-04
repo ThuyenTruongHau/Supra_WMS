@@ -10,7 +10,7 @@
  *  - Zoom centred on cursor (mousewheel) with configurable min/max
  *  - Smooth pan (left-button drag)
  *  - Lines drawn exclusively from the `path` array (index 6 of lineArr)
- *  - Nodes: type=0 → small grey circle | type=1 → hatched square (shelf)
+ *  - Nodes: type=0 → small grey circle | type=1 or 12 → hatched square (shelf)
  *  - Node sizes are screen-constant (baseSize / scale) — never blow up on zoom
  *  - Click detection via inverse-transform → Euclidean distance (hitRadius)
  *  - Diagonal hatch pattern for shelves is generated once and cached
@@ -57,7 +57,9 @@ import {
   BOX_SELECT_FILL,
   BOX_SELECT_STROKE,
   getShelfNodesInWorldRect,
+  isShelfNodeType,
   parseNode,
+  toCanvasPoint,
 } from '@/utils/warehouseMapUtils';
 
 // ─── Props ──────────────────────────────────────────────────────────────────────
@@ -257,7 +259,9 @@ const WarehouseMapCanvas: React.FC<WarehouseMapCanvasProps> = ({
         for (const pt of rawPath as unknown as number[][]) {
           if (pt && pt.length >= 2 && pt[0] != null && pt[1] != null) {
             // Y-flip for path coordinates: same rule as nodes
-            coords.push({ x: pt[0], y: mapData.height - pt[1] });
+            coords.push(
+              toCanvasPoint(pt[0], pt[1], mapData.height, mapData.xAttrMin ?? 0, mapData.yAttrMin ?? 0),
+            );
           }
         }
       } else {
@@ -269,7 +273,15 @@ const WarehouseMapCanvas: React.FC<WarehouseMapCanvasProps> = ({
         const len = pts.length % 2 === 0 ? pts.length : pts.length - 1;
         for (let i = 0; i < len; i += 2) {
           // Y-flip for path coordinates: same rule as nodes
-          coords.push({ x: pts[i], y: mapData.height - pts[i + 1] });
+          coords.push(
+            toCanvasPoint(
+              pts[i],
+              pts[i + 1],
+              mapData.height,
+              mapData.xAttrMin ?? 0,
+              mapData.yAttrMin ?? 0,
+            ),
+          );
         }
       }
 
@@ -294,7 +306,7 @@ const WarehouseMapCanvas: React.FC<WarehouseMapCanvasProps> = ({
         ctx.arc(x, y, baseSize * 0.3, 0, Math.PI * 2);
         ctx.fillStyle = NODE_NORMAL_COLOR;
         ctx.fill();
-      } else if (type === 1) {
+      } else if (isShelfNodeType(type)) {
         const half = baseSize * 0.7;
         const isSelected = selectedCodesRef.current.has(String(node.content));
         const isFull = fullCodesRef.current.has(node.content);
@@ -454,7 +466,9 @@ const WarehouseMapCanvas: React.FC<WarehouseMapCanvasProps> = ({
         return;
       }
       mapDataRef.current = data;
-      const parsedNodes = data.nodeArr.map((row) => parseNode(row, data.height));
+      const parsedNodes = data.nodeArr.map((row) =>
+        parseNode(row, data.height, data.xAttrMin ?? 0, data.yAttrMin ?? 0),
+      );
       nodesRef.current = parsedNodes;
 
       fitToCanvas();
@@ -652,7 +666,7 @@ const WarehouseMapCanvas: React.FC<WarehouseMapCanvasProps> = ({
         const dx = wx - node.x;
         const dy = wy - node.y;
         const dist = Math.sqrt(dx * dx + dy * dy);
-        if (dist < hitRadiusWorld && dist < closestDist && node.type == 1) {
+        if (dist < hitRadiusWorld && dist < closestDist && isShelfNodeType(node.type)) {
           closestDist = dist;
           closest = node;
         }

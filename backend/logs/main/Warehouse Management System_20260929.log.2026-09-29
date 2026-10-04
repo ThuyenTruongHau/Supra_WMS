@@ -1,0 +1,416 @@
+2026-09-29 09:13:51,480 - main - INFO - Starting app
+2026-09-29 09:13:51,483 - main - INFO - Redis connected: redis://192.168.50.200:6379/0 (prefix=wms)
+2026-09-29 09:13:51,483 - main - INFO - Websocket manager started
+2026-09-29 09:13:52,984 - main - INFO - Starting app
+2026-09-29 09:13:52,988 - main - INFO - Redis connected: redis://192.168.50.200:6379/0 (prefix=wms)
+2026-09-29 09:13:52,988 - main - INFO - Websocket manager started
+2026-09-29 09:13:54,474 - main - INFO - Starting app
+2026-09-29 09:13:54,496 - main - INFO - Redis connected: redis://192.168.50.200:6379/0 (prefix=wms)
+2026-09-29 09:13:54,497 - main - INFO - Websocket manager started
+2026-09-29 09:14:11,818 - main - INFO - Stopping app
+2026-09-29 09:14:11,818 - main - INFO - Websocket manager stopped
+2026-09-29 09:14:13,402 - main - INFO - Starting app
+2026-09-29 09:14:13,417 - main - INFO - Redis connected: redis://192.168.50.200:6379/0 (prefix=wms)
+2026-09-29 09:14:13,417 - main - INFO - Websocket manager started
+2026-09-29 09:23:16,225 - main - INFO - Stopping app
+2026-09-29 09:23:16,225 - main - INFO - Websocket manager stopped
+2026-09-29 09:23:17,807 - main - INFO - Starting app
+2026-09-29 09:23:17,810 - main - INFO - Redis connected: redis://192.168.50.200:6379/0 (prefix=wms)
+2026-09-29 09:23:17,810 - main - INFO - Websocket manager started
+2026-09-29 09:23:19,288 - main - INFO - Starting app
+2026-09-29 09:23:19,291 - main - INFO - Redis connected: redis://192.168.50.200:6379/0 (prefix=wms)
+2026-09-29 09:23:19,291 - main - INFO - Websocket manager started
+2026-09-29 09:23:55,131 - main - INFO - Stopping app
+2026-09-29 09:23:55,132 - main - INFO - Websocket manager stopped
+2026-09-29 09:23:56,676 - main - INFO - Starting app
+2026-09-29 09:23:56,680 - main - INFO - Redis connected: redis://192.168.50.200:6379/0 (prefix=wms)
+2026-09-29 09:23:56,680 - main - INFO - Websocket manager started
+2026-09-29 09:23:58,323 - main - INFO - Stopping app
+2026-09-29 09:23:58,323 - main - INFO - Websocket manager stopped
+2026-09-29 09:23:59,799 - main - INFO - Starting app
+2026-09-29 09:23:59,823 - main - INFO - Redis connected: redis://192.168.50.200:6379/0 (prefix=wms)
+2026-09-29 09:23:59,823 - main - INFO - Websocket manager started
+2026-09-29 09:29:30,240 - main - INFO - Successfully logged in user cong
+2026-09-29 09:29:45,949 - main - INFO - Successfully logged in user cong
+2026-09-29 09:30:13,589 - main - INFO - Successfully logged in user admin
+2026-09-29 09:36:11,434 - main - INFO - Stopping app
+2026-09-29 09:36:11,435 - main - INFO - Websocket manager stopped
+2026-09-29 09:36:15,372 - main - INFO - Starting app
+2026-09-29 09:36:15,376 - main - INFO - Redis connected: redis://192.168.50.200:6379/0 (prefix=wms)
+2026-09-29 09:36:15,376 - main - INFO - Websocket manager started
+2026-09-29 09:36:22,039 - main - INFO - inbound.get_order_details order_code=IN-20260925-172404
+2026-09-29 09:36:53,002 - main - INFO - Successfully logged in user cong
+2026-09-29 09:46:10,419 - main - INFO - Successfully logged in user admin
+2026-09-29 09:53:51,883 - main - INFO - Successfully logged in user cong
+2026-09-29 09:59:38,263 - main - INFO - Stopping app
+2026-09-29 09:59:38,265 - main - INFO - Websocket manager stopped
+2026-09-29 09:59:40,015 - main - INFO - Starting app
+2026-09-29 09:59:40,036 - main - INFO - Redis connected: redis://192.168.50.200:6379/0 (prefix=wms)
+2026-09-29 09:59:40,036 - main - INFO - Websocket manager started
+2026-09-29 10:00:48,437 - main - INFO - Stopping app
+2026-09-29 10:00:48,438 - main - INFO - Websocket manager stopped
+2026-09-29 10:00:50,017 - main - INFO - Starting app
+2026-09-29 10:00:50,020 - main - INFO - Redis connected: redis://192.168.50.200:6379/0 (prefix=wms)
+2026-09-29 10:00:50,020 - main - INFO - Websocket manager started
+2026-09-29 10:01:50,937 - main - INFO - Stopping app
+2026-09-29 10:01:50,938 - main - INFO - Websocket manager stopped
+2026-09-29 10:01:52,454 - main - INFO - Starting app
+2026-09-29 10:01:52,458 - main - INFO - Redis connected: redis://192.168.50.200:6379/0 (prefix=wms)
+2026-09-29 10:01:52,458 - main - INFO - Websocket manager started
+2026-09-29 10:01:59,639 - main - INFO - []
+2026-09-29 10:03:15,979 - main - INFO - Stopping app
+2026-09-29 10:03:15,980 - main - INFO - Websocket manager stopped
+2026-09-29 10:03:17,627 - main - INFO - Starting app
+2026-09-29 10:03:17,630 - main - INFO - Redis connected: redis://192.168.50.200:6379/0 (prefix=wms)
+2026-09-29 10:03:17,630 - main - INFO - Websocket manager started
+2026-09-29 10:03:32,428 - main - INFO - Stopping app
+2026-09-29 10:03:32,429 - main - INFO - Websocket manager stopped
+2026-09-29 10:03:34,038 - main - INFO - Starting app
+2026-09-29 10:03:34,041 - main - INFO - Redis connected: redis://192.168.50.200:6379/0 (prefix=wms)
+2026-09-29 10:03:34,041 - main - INFO - Websocket manager started
+2026-09-29 10:10:21,061 - main - INFO - Stopping app
+2026-09-29 10:10:21,062 - main - INFO - Websocket manager stopped
+2026-09-29 10:10:22,630 - main - INFO - Starting app
+2026-09-29 10:10:22,632 - main - INFO - Redis connected: redis://192.168.50.200:6379/0 (prefix=wms)
+2026-09-29 10:10:22,633 - main - INFO - Websocket manager started
+2026-09-29 10:12:29,147 - main - INFO - inbound.get_order_details order_code=IN-20260925-172404
+2026-09-29 10:12:52,262 - main - INFO - inbound.get_order_details order_code=IN-20260925-172404
+2026-09-29 10:12:56,205 - main - INFO - inbound.accept_task detail_id=1
+2026-09-29 10:13:02,055 - main - INFO - inbound.accept_task detail_id=1
+2026-09-29 10:13:05,377 - main - INFO - inbound.get_order_details order_code=IN-20260925-172404
+2026-09-29 10:13:07,562 - main - INFO - inbound.accept_task detail_id=1
+2026-09-29 10:13:12,911 - main - INFO - inbound.accept_task detail_id=1
+2026-09-29 10:18:59,146 - main - INFO - Assigning locations to zone 6: 24 location(s)
+2026-09-29 10:19:48,702 - main - INFO - Assigning locations to zone 7: 4 location(s)
+2026-09-29 10:20:49,185 - main - INFO - Assigning locations to zone 7: 0 location(s)
+2026-09-29 10:21:09,489 - main - INFO - Assigning locations to zone 3: 32 location(s)
+2026-09-29 10:22:25,898 - main - INFO - Assigning locations to zone 3: 32 location(s)
+2026-09-29 10:25:03,780 - main - INFO - Assigning locations to zone 4: 12 location(s)
+2026-09-29 10:25:13,779 - main - INFO - Assigning locations to zone 5: 12 location(s)
+2026-09-29 10:39:07,617 - main - INFO - inbound.get_order_details order_code=IN-20260925-172404
+2026-09-29 10:39:10,033 - main - INFO - inbound.accept_task detail_id=1
+2026-09-29 10:39:15,346 - main - INFO - inbound.accept_task detail_id=1
+2026-09-29 10:39:20,703 - main - INFO - inbound.accept_task detail_id=1
+2026-09-29 10:39:26,064 - main - INFO - inbound.accept_task detail_id=1
+2026-09-29 10:40:59,379 - main - INFO - inbound.get_order_details order_code=IN-20260925-172404
+2026-09-29 10:45:00,734 - main - INFO - inbound.get_order_details order_code=IN-20260925-172404
+2026-09-29 13:45:36,217 - main - INFO - Stopping app
+2026-09-29 13:45:36,217 - main - INFO - Websocket manager stopped
+2026-09-29 13:45:38,290 - main - INFO - Starting app
+2026-09-29 13:45:38,310 - main - INFO - Redis connected: redis://192.168.50.200:6379/0 (prefix=wms)
+2026-09-29 13:45:38,310 - main - INFO - Websocket manager started
+2026-09-29 13:46:06,293 - main - INFO - Stopping app
+2026-09-29 13:46:06,293 - main - INFO - Websocket manager stopped
+2026-09-29 13:46:07,753 - main - INFO - Starting app
+2026-09-29 13:46:07,756 - main - INFO - Redis connected: redis://192.168.50.200:6379/0 (prefix=wms)
+2026-09-29 13:46:07,756 - main - INFO - Websocket manager started
+2026-09-29 13:46:26,872 - main - INFO - Stopping app
+2026-09-29 13:46:26,872 - main - INFO - Websocket manager stopped
+2026-09-29 13:46:28,402 - main - INFO - Starting app
+2026-09-29 13:46:28,424 - main - INFO - Redis connected: redis://192.168.50.200:6379/0 (prefix=wms)
+2026-09-29 13:46:28,424 - main - INFO - Websocket manager started
+2026-09-29 13:47:14,558 - main - INFO - inbound.caller_order order_code=string
+2026-09-29 13:47:40,679 - main - INFO - Stopping app
+2026-09-29 13:47:40,680 - main - INFO - Websocket manager stopped
+2026-09-29 13:47:42,370 - main - INFO - Starting app
+2026-09-29 13:47:42,390 - main - INFO - Redis connected: redis://192.168.50.200:6379/0 (prefix=wms)
+2026-09-29 13:47:42,390 - main - INFO - Websocket manager started
+2026-09-29 13:47:43,870 - main - INFO - Starting app
+2026-09-29 13:47:43,888 - main - INFO - Redis connected: redis://192.168.50.200:6379/0 (prefix=wms)
+2026-09-29 13:47:43,888 - main - INFO - Websocket manager started
+2026-09-29 13:47:45,335 - main - INFO - Starting app
+2026-09-29 13:47:45,338 - main - INFO - Redis connected: redis://192.168.50.200:6379/0 (prefix=wms)
+2026-09-29 13:47:45,338 - main - INFO - Websocket manager started
+2026-09-29 13:47:48,713 - main - INFO - Stopping app
+2026-09-29 13:47:48,713 - main - INFO - Websocket manager stopped
+2026-09-29 13:47:50,206 - main - INFO - Starting app
+2026-09-29 13:47:50,210 - main - INFO - Redis connected: redis://192.168.50.200:6379/0 (prefix=wms)
+2026-09-29 13:47:50,211 - main - INFO - Websocket manager started
+2026-09-29 13:48:26,238 - main - INFO - Stopping app
+2026-09-29 13:48:26,238 - main - INFO - Websocket manager stopped
+2026-09-29 13:48:27,751 - main - INFO - Starting app
+2026-09-29 13:48:27,753 - main - INFO - Redis connected: redis://192.168.50.200:6379/0 (prefix=wms)
+2026-09-29 13:48:27,753 - main - INFO - Websocket manager started
+2026-09-29 13:48:52,162 - main - INFO - Stopping app
+2026-09-29 13:48:52,162 - main - INFO - Websocket manager stopped
+2026-09-29 13:48:53,643 - main - INFO - Starting app
+2026-09-29 13:48:53,647 - main - INFO - Redis connected: redis://192.168.50.200:6379/0 (prefix=wms)
+2026-09-29 13:48:53,647 - main - INFO - Websocket manager started
+2026-09-29 13:48:55,173 - main - INFO - Stopping app
+2026-09-29 13:48:55,173 - main - INFO - Websocket manager stopped
+2026-09-29 13:48:56,721 - main - INFO - Starting app
+2026-09-29 13:48:56,724 - main - INFO - Redis connected: redis://192.168.50.200:6379/0 (prefix=wms)
+2026-09-29 13:48:56,725 - main - INFO - Websocket manager started
+2026-09-29 13:48:58,189 - main - INFO - Starting app
+2026-09-29 13:48:58,204 - main - INFO - Redis connected: redis://192.168.50.200:6379/0 (prefix=wms)
+2026-09-29 13:48:58,204 - main - INFO - Websocket manager started
+2026-09-29 13:49:10,237 - main - INFO - Stopping app
+2026-09-29 13:49:10,237 - main - INFO - Websocket manager stopped
+2026-09-29 13:49:11,703 - main - INFO - Starting app
+2026-09-29 13:49:11,726 - main - INFO - Redis connected: redis://192.168.50.200:6379/0 (prefix=wms)
+2026-09-29 13:49:11,726 - main - INFO - Websocket manager started
+2026-09-29 13:50:47,853 - main - INFO - Stopping app
+2026-09-29 13:50:47,853 - main - INFO - Websocket manager stopped
+2026-09-29 13:50:49,425 - main - INFO - Starting app
+2026-09-29 13:50:49,428 - main - INFO - Redis connected: redis://192.168.50.200:6379/0 (prefix=wms)
+2026-09-29 13:50:49,428 - main - INFO - Websocket manager started
+2026-09-29 13:50:58,260 - main - INFO - Stopping app
+2026-09-29 13:50:58,260 - main - INFO - Websocket manager stopped
+2026-09-29 13:50:59,793 - main - INFO - Starting app
+2026-09-29 13:50:59,795 - main - INFO - Redis connected: redis://192.168.50.200:6379/0 (prefix=wms)
+2026-09-29 13:50:59,796 - main - INFO - Websocket manager started
+2026-09-29 13:53:50,411 - main - INFO - Assigning locations to zone 2: 28 location(s)
+2026-09-29 14:01:55,073 - main - INFO - Successfully logged in user admin
+2026-09-29 14:02:57,002 - main - INFO - inbound.get_order_details order_code=IN-20260925-172404
+2026-09-29 14:19:39,453 - main - INFO - inbound.get_order_details order_code=IN-20260925-172404
+2026-09-29 14:47:59,779 - main - INFO - inbound.get_order_details order_code=IN-20260925-172404
+2026-09-29 14:59:50,485 - main - INFO - inbound.get_order_details order_code=IN-20260925-172404
+2026-09-29 15:10:07,186 - main - INFO - inbound.get_order_details order_code=IN-20260925-172404
+2026-09-29 15:10:31,724 - main - INFO - inbound.get_order_details order_code=IN-20260925-172404
+2026-09-29 15:16:49,644 - main - INFO - Stopping app
+2026-09-29 15:16:49,644 - main - INFO - Websocket manager stopped
+2026-09-29 15:16:51,361 - main - INFO - Starting app
+2026-09-29 15:16:51,376 - main - INFO - Redis connected: redis://192.168.50.200:6379/0 (prefix=wms)
+2026-09-29 15:16:51,377 - main - INFO - Websocket manager started
+2026-09-29 15:17:03,699 - main - INFO - Stopping app
+2026-09-29 15:17:03,700 - main - INFO - Websocket manager stopped
+2026-09-29 15:17:05,182 - main - INFO - Starting app
+2026-09-29 15:17:05,186 - main - INFO - Redis connected: redis://192.168.50.200:6379/0 (prefix=wms)
+2026-09-29 15:17:05,186 - main - INFO - Websocket manager started
+2026-09-29 15:17:16,009 - main - INFO - Stopping app
+2026-09-29 15:17:16,010 - main - INFO - Websocket manager stopped
+2026-09-29 15:17:17,511 - main - INFO - Starting app
+2026-09-29 15:17:17,515 - main - INFO - Redis connected: redis://192.168.50.200:6379/0 (prefix=wms)
+2026-09-29 15:17:17,515 - main - INFO - Websocket manager started
+2026-09-29 15:17:35,731 - main - INFO - Stopping app
+2026-09-29 15:17:35,732 - main - INFO - Websocket manager stopped
+2026-09-29 15:17:37,252 - main - INFO - Starting app
+2026-09-29 15:17:37,255 - main - INFO - Redis connected: redis://192.168.50.200:6379/0 (prefix=wms)
+2026-09-29 15:17:37,255 - main - INFO - Websocket manager started
+2026-09-29 15:17:49,408 - main - INFO - Stopping app
+2026-09-29 15:17:49,409 - main - INFO - Websocket manager stopped
+2026-09-29 15:17:50,964 - main - INFO - Starting app
+2026-09-29 15:17:50,968 - main - INFO - Redis connected: redis://192.168.50.200:6379/0 (prefix=wms)
+2026-09-29 15:17:50,968 - main - INFO - Websocket manager started
+2026-09-29 15:17:53,040 - main - INFO - Stopping app
+2026-09-29 15:17:53,040 - main - INFO - Websocket manager stopped
+2026-09-29 15:17:54,498 - main - INFO - Starting app
+2026-09-29 15:17:54,523 - main - INFO - Redis connected: redis://192.168.50.200:6379/0 (prefix=wms)
+2026-09-29 15:17:54,524 - main - INFO - Websocket manager started
+2026-09-29 15:17:55,618 - main - INFO - Stopping app
+2026-09-29 15:17:55,618 - main - INFO - Websocket manager stopped
+2026-09-29 15:17:57,056 - main - INFO - Starting app
+2026-09-29 15:17:57,059 - main - INFO - Redis connected: redis://192.168.50.200:6379/0 (prefix=wms)
+2026-09-29 15:17:57,059 - main - INFO - Websocket manager started
+2026-09-29 15:18:15,504 - main - INFO - Stopping app
+2026-09-29 15:18:15,504 - main - INFO - Websocket manager stopped
+2026-09-29 15:18:16,943 - main - INFO - Starting app
+2026-09-29 15:18:16,957 - main - INFO - Redis connected: redis://192.168.50.200:6379/0 (prefix=wms)
+2026-09-29 15:18:16,957 - main - INFO - Websocket manager started
+2026-09-29 15:18:35,285 - main - INFO - Stopping app
+2026-09-29 15:18:35,285 - main - INFO - Websocket manager stopped
+2026-09-29 15:18:36,785 - main - INFO - Starting app
+2026-09-29 15:18:36,788 - main - INFO - Redis connected: redis://192.168.50.200:6379/0 (prefix=wms)
+2026-09-29 15:18:36,788 - main - INFO - Websocket manager started
+2026-09-29 15:18:38,275 - main - INFO - Starting app
+2026-09-29 15:18:38,278 - main - INFO - Redis connected: redis://192.168.50.200:6379/0 (prefix=wms)
+2026-09-29 15:18:38,278 - main - INFO - Websocket manager started
+2026-09-29 15:18:54,998 - main - INFO - Stopping app
+2026-09-29 15:18:54,998 - main - INFO - Websocket manager stopped
+2026-09-29 15:18:56,492 - main - INFO - Starting app
+2026-09-29 15:18:56,495 - main - INFO - Redis connected: redis://192.168.50.200:6379/0 (prefix=wms)
+2026-09-29 15:18:56,496 - main - INFO - Websocket manager started
+2026-09-29 15:18:59,225 - main - INFO - Stopping app
+2026-09-29 15:18:59,225 - main - INFO - Websocket manager stopped
+2026-09-29 15:19:00,779 - main - INFO - Starting app
+2026-09-29 15:19:00,800 - main - INFO - Redis connected: redis://192.168.50.200:6379/0 (prefix=wms)
+2026-09-29 15:19:00,801 - main - INFO - Websocket manager started
+2026-09-29 15:19:22,774 - main - INFO - inbound.get_order_details order_code=IN-20260925-172404
+2026-09-29 15:22:26,439 - main - INFO - inbound.get_order_details order_code=IN-20260925-172404
+2026-09-29 15:23:45,546 - main - INFO - inbound.get_order_details order_code=IN-20260925-172404
+2026-09-29 15:25:03,733 - main - INFO - inbound.get_order_details order_code=IN-20260925-172404
+2026-09-29 15:26:05,298 - main - INFO - inbound.get_order_details order_code=IN-20260925-172404
+2026-09-29 15:56:57,502 - main - INFO - inbound.get_order_details order_code=IN-20260925-172404
+2026-09-29 16:00:07,243 - main - INFO - inbound.get_order_details order_code=IN-20260925-172404
+2026-09-29 16:09:31,918 - main - INFO - inbound.get_order_details order_code=IN-20260925-172404
+2026-09-29 16:10:46,148 - main - INFO - inbound.get_order_details order_code=IN-20260925-172404
+2026-09-29 16:10:47,654 - main - INFO - inbound.accept_task detail_id=1
+2026-09-29 16:10:48,485 - main - INFO - ICS addTask response: {'code': 2103, 'data': '', 'desc': '任务流程模板编号不存在'}
+2026-09-29 16:10:49,198 - main - INFO - inbound.get_order_details order_code=IN-20260925-172404
+2026-09-29 16:10:49,322 - main - INFO - inbound.get_order_details order_code=IN-20260925-172404
+2026-09-29 16:14:47,539 - main - INFO - inbound.get_order_details order_code=IN-20260925-172404
+2026-09-29 16:14:52,210 - main - INFO - Successfully logged in user admin
+2026-09-29 16:15:34,368 - main - INFO - Successfully logged in user cong
+2026-09-29 16:15:36,050 - main - INFO - inbound.get_order_details order_code=IN-20260925-172404
+2026-09-29 16:18:17,586 - main - INFO - Successfully logged in user cong
+2026-09-29 16:22:08,832 - main - INFO - Successfully logged in user admin
+2026-09-29 16:28:01,657 - main - INFO - inbound.get_order_details order_code=IN-20260925-172404
+2026-09-29 16:28:16,428 - main - INFO - inbound.get_order_details order_code=IN-20260925-172404
+2026-09-29 16:28:42,232 - main - INFO - inbound.get_order_details order_code=IN-20260925-172404
+2026-09-29 16:28:56,459 - main - INFO - inbound.get_order_details order_code=IN-20260925-172404
+2026-09-29 16:35:43,328 - main - INFO - inbound.get_order_details order_code=IN-20260925-172404
+2026-09-29 16:35:59,881 - main - INFO - inbound.get_order_details order_code=IN-20260925-172404
+2026-09-29 16:54:49,456 - main - INFO - inbound.get_order_details order_code=IN-20260925-172404
+2026-09-29 10:03:22,032 - main - INFO - Starting app
+2026-09-29 10:03:22,037 - main - INFO - Redis connected: redis://192.168.50.200:6379/0 (prefix=wms)
+2026-09-29 10:03:22,038 - main - INFO - Websocket manager started
+2026-09-29 10:06:54,483 - main - INFO - inbound.get_order_details order_code=IN-20260925-172404
+2026-09-29 10:07:11,086 - main - INFO - inbound.get_order_details order_code=IN-20260925-172404
+2026-09-29 10:07:22,975 - main - INFO - Successfully logged in user cong
+2026-09-29 10:07:24,537 - main - INFO - inbound.get_order_details order_code=IN-20260925-172404
+2026-09-29 10:07:33,930 - main - INFO - Successfully logged in user admin
+2026-09-29 10:08:37,169 - main - INFO - Successfully logged in user cong
+2026-09-29 10:08:38,777 - main - INFO - inbound.get_order_details order_code=IN-20260925-172404
+2026-09-29 10:08:50,473 - main - INFO - Successfully logged in user admin
+2026-09-29 10:08:54,985 - main - INFO - inbound.get_order_details order_code=IN-20260925-172404
+2026-09-29 10:09:24,653 - main - INFO - Assigning locations to zone 1: 504 location(s)
+2026-09-29 10:09:48,861 - main - INFO - Assigning locations to zone 3: 4 location(s)
+2026-09-29 10:10:02,129 - main - INFO - Assigning locations to zone 4: 12 location(s)
+2026-09-29 10:10:08,629 - main - INFO - Assigning locations to zone 5: 12 location(s)
+2026-09-29 10:10:15,473 - main - INFO - Successfully logged in user cong
+2026-09-29 10:10:16,917 - main - INFO - inbound.get_order_details order_code=IN-20260925-172404
+2026-09-29 10:10:38,847 - main - INFO - Successfully logged in user cong
+2026-09-29 10:10:41,198 - main - INFO - inbound.get_order_details order_code=IN-20260925-172404
+2026-09-29 10:11:00,883 - main - INFO - inbound.get_order_details order_code=IN-20260925-172404
+2026-09-29 10:13:07,039 - main - INFO - inbound.get_order_details order_code=IN-20260925-172404
+2026-09-29 10:13:11,871 - main - INFO - inbound.get_order_details order_code=IN-20260925-172404
+2026-09-29 10:14:36,458 - main - INFO - Successfully logged in user cong
+2026-09-29 10:14:38,208 - main - INFO - inbound.get_order_details order_code=IN-20260925-172404
+2026-09-29 10:15:02,834 - main - INFO - Successfully logged in user cong
+2026-09-29 10:15:04,922 - main - INFO - inbound.get_order_details order_code=IN-20260925-172404
+2026-09-29 10:16:03,030 - main - INFO - inbound.get_order_details order_code=IN-20260925-172404
+2026-09-29 10:16:04,171 - main - INFO - Stopping app
+2026-09-29 10:16:04,185 - main - INFO - Websocket manager stopped
+2026-09-29 17:18:51,927 - main - INFO - inbound.get_order_details order_code=IN-20260925-172404
+2026-09-29 17:19:30,090 - main - INFO - Successfully logged in user admin
+2026-09-29 17:20:31,518 - main - INFO - Successfully logged in user cong
+2026-09-29 17:20:33,633 - main - INFO - inbound.get_order_details order_code=IN-20260925-172404
+2026-09-29 17:21:03,997 - main - INFO - inbound.get_order_details order_code=IN-20260925-172404
+2026-09-29 17:32:51,438 - main - INFO - Stopping app
+2026-09-29 17:32:51,438 - main - INFO - Websocket manager stopped
+2026-09-29 17:32:53,122 - main - INFO - Starting app
+2026-09-29 17:32:53,126 - main - INFO - Redis connected: redis://192.168.50.200:6379/0 (prefix=wms)
+2026-09-29 17:32:53,126 - main - INFO - Websocket manager started
+2026-09-29 17:33:13,216 - main - INFO - Stopping app
+2026-09-29 17:33:13,217 - main - INFO - Websocket manager stopped
+2026-09-29 17:33:15,592 - main - INFO - Starting app
+2026-09-29 17:33:15,595 - main - INFO - Redis connected: redis://192.168.50.200:6379/0 (prefix=wms)
+2026-09-29 17:33:15,595 - main - INFO - Websocket manager started
+2026-09-29 17:36:26,598 - main - INFO - Processing task status for order_id=TDS_Inbound_df29dd63
+2026-09-29 17:36:26,662 - main - ERROR - Invalid task status payload (order_id=TDS_Inbound_df29dd63): Robot task not found
+2026-09-29 17:36:30,021 - main - INFO - Processing task status for order_id=TDS_Inbound_df29dd63
+2026-09-29 17:36:30,032 - main - ERROR - Invalid task status payload (order_id=TDS_Inbound_df29dd63): Robot task not found
+2026-09-29 17:36:33,062 - main - INFO - Processing task status for order_id=TDS_Inbound_df29dd63
+2026-09-29 17:36:33,077 - main - ERROR - Invalid task status payload (order_id=TDS_Inbound_df29dd63): Robot task not found
+2026-09-29 17:36:36,095 - main - INFO - Processing task status for order_id=TDS_Inbound_df29dd63
+2026-09-29 17:36:36,104 - main - ERROR - Invalid task status payload (order_id=TDS_Inbound_df29dd63): Robot task not found
+2026-09-29 17:36:39,120 - main - INFO - Processing task status for order_id=TDS_Inbound_df29dd63
+2026-09-29 17:36:39,135 - main - ERROR - Invalid task status payload (order_id=TDS_Inbound_df29dd63): Robot task not found
+2026-09-29 17:38:07,918 - main - INFO - Processing task status for order_id=TDS_Inbound_df29dd63
+2026-09-29 17:38:08,024 - main - ERROR - Invalid task status payload (order_id=TDS_Inbound_df29dd63): Robot task not found
+2026-09-29 17:38:08,318 - main - INFO - Processing task status for order_id=TDS_Inbound_df29dd63
+2026-09-29 17:38:08,327 - main - ERROR - Invalid task status payload (order_id=TDS_Inbound_df29dd63): Robot task not found
+2026-09-29 17:38:11,198 - main - INFO - Processing task status for order_id=TDS_Inbound_df29dd63
+2026-09-29 17:38:11,207 - main - ERROR - Invalid task status payload (order_id=TDS_Inbound_df29dd63): Robot task not found
+2026-09-29 17:38:12,228 - main - INFO - Processing task status for order_id=TDS_Inbound_df29dd63
+2026-09-29 17:38:12,247 - main - ERROR - Invalid task status payload (order_id=TDS_Inbound_df29dd63): Robot task not found
+2026-09-29 17:38:14,270 - main - INFO - Processing task status for order_id=TDS_Inbound_df29dd63
+2026-09-29 17:38:14,283 - main - ERROR - Invalid task status payload (order_id=TDS_Inbound_df29dd63): Robot task not found
+2026-09-29 17:38:15,298 - main - INFO - Processing task status for order_id=TDS_Inbound_df29dd63
+2026-09-29 17:38:15,306 - main - ERROR - Invalid task status payload (order_id=TDS_Inbound_df29dd63): Robot task not found
+2026-09-29 17:38:17,327 - main - INFO - Processing task status for order_id=TDS_Inbound_df29dd63
+2026-09-29 17:38:17,339 - main - ERROR - Invalid task status payload (order_id=TDS_Inbound_df29dd63): Robot task not found
+2026-09-29 17:38:18,357 - main - INFO - Processing task status for order_id=TDS_Inbound_df29dd63
+2026-09-29 17:38:18,372 - main - ERROR - Invalid task status payload (order_id=TDS_Inbound_df29dd63): Robot task not found
+2026-09-29 17:38:20,389 - main - INFO - Processing task status for order_id=TDS_Inbound_df29dd63
+2026-09-29 17:38:20,401 - main - ERROR - Invalid task status payload (order_id=TDS_Inbound_df29dd63): Robot task not found
+2026-09-29 17:38:21,416 - main - INFO - Processing task status for order_id=TDS_Inbound_df29dd63
+2026-09-29 17:38:21,425 - main - ERROR - Invalid task status payload (order_id=TDS_Inbound_df29dd63): Robot task not found
+2026-09-29 17:38:40,679 - main - INFO - Processing task status for order_id=TDS_Inbound_df29dd63
+2026-09-29 17:38:40,690 - main - ERROR - Invalid task status payload (order_id=TDS_Inbound_df29dd63): Robot task not found
+2026-09-29 17:38:40,722 - main - INFO - Processing task status for order_id=TDS_Inbound_df29dd63
+2026-09-29 17:38:40,730 - main - ERROR - Invalid task status payload (order_id=TDS_Inbound_df29dd63): Robot task not found
+2026-09-29 17:38:44,471 - main - INFO - Processing task status for order_id=TDS_Inbound_df29dd63
+2026-09-29 17:38:44,482 - main - ERROR - Invalid task status payload (order_id=TDS_Inbound_df29dd63): Robot task not found
+2026-09-29 17:38:45,502 - main - INFO - Processing task status for order_id=TDS_Inbound_df29dd63
+2026-09-29 17:38:45,516 - main - ERROR - Invalid task status payload (order_id=TDS_Inbound_df29dd63): Robot task not found
+2026-09-29 17:38:47,531 - main - INFO - Processing task status for order_id=TDS_Inbound_df29dd63
+2026-09-29 17:38:47,537 - main - ERROR - Invalid task status payload (order_id=TDS_Inbound_df29dd63): Robot task not found
+2026-09-29 17:38:48,556 - main - INFO - Processing task status for order_id=TDS_Inbound_df29dd63
+2026-09-29 17:38:48,565 - main - ERROR - Invalid task status payload (order_id=TDS_Inbound_df29dd63): Robot task not found
+2026-09-29 17:38:50,586 - main - INFO - Processing task status for order_id=TDS_Inbound_df29dd63
+2026-09-29 17:38:50,601 - main - ERROR - Invalid task status payload (order_id=TDS_Inbound_df29dd63): Robot task not found
+2026-09-29 17:38:51,622 - main - INFO - Processing task status for order_id=TDS_Inbound_df29dd63
+2026-09-29 17:38:51,640 - main - ERROR - Invalid task status payload (order_id=TDS_Inbound_df29dd63): Robot task not found
+2026-09-29 17:38:53,650 - main - INFO - Processing task status for order_id=TDS_Inbound_df29dd63
+2026-09-29 17:38:53,656 - main - ERROR - Invalid task status payload (order_id=TDS_Inbound_df29dd63): Robot task not found
+2026-09-29 17:38:54,675 - main - INFO - Processing task status for order_id=TDS_Inbound_df29dd63
+2026-09-29 17:38:54,692 - main - ERROR - Invalid task status payload (order_id=TDS_Inbound_df29dd63): Robot task not found
+2026-09-29 17:39:37,547 - main - INFO - Processing task status for order_id=TDS_Inbound_df29dd63
+2026-09-29 17:39:37,558 - main - ERROR - Invalid task status payload (order_id=TDS_Inbound_df29dd63): Robot task not found
+2026-09-29 17:39:37,772 - main - INFO - Processing task status for order_id=TDS_Inbound_df29dd63
+2026-09-29 17:39:37,782 - main - ERROR - Invalid task status payload (order_id=TDS_Inbound_df29dd63): Robot task not found
+2026-09-29 17:39:40,743 - main - INFO - Processing task status for order_id=TDS_Inbound_df29dd63
+2026-09-29 17:39:40,750 - main - ERROR - Invalid task status payload (order_id=TDS_Inbound_df29dd63): Robot task not found
+2026-09-29 17:39:41,762 - main - INFO - Processing task status for order_id=TDS_Inbound_df29dd63
+2026-09-29 17:39:41,772 - main - ERROR - Invalid task status payload (order_id=TDS_Inbound_df29dd63): Robot task not found
+2026-09-29 17:39:43,786 - main - INFO - Processing task status for order_id=TDS_Inbound_df29dd63
+2026-09-29 17:39:43,797 - main - ERROR - Invalid task status payload (order_id=TDS_Inbound_df29dd63): Robot task not found
+2026-09-29 17:39:44,810 - main - INFO - Processing task status for order_id=TDS_Inbound_df29dd63
+2026-09-29 17:39:44,817 - main - ERROR - Invalid task status payload (order_id=TDS_Inbound_df29dd63): Robot task not found
+2026-09-29 17:39:46,829 - main - INFO - Processing task status for order_id=TDS_Inbound_df29dd63
+2026-09-29 17:39:46,838 - main - ERROR - Invalid task status payload (order_id=TDS_Inbound_df29dd63): Robot task not found
+2026-09-29 17:39:47,849 - main - INFO - Processing task status for order_id=TDS_Inbound_df29dd63
+2026-09-29 17:39:47,857 - main - ERROR - Invalid task status payload (order_id=TDS_Inbound_df29dd63): Robot task not found
+2026-09-29 17:39:49,874 - main - INFO - Processing task status for order_id=TDS_Inbound_df29dd63
+2026-09-29 17:39:49,882 - main - ERROR - Invalid task status payload (order_id=TDS_Inbound_df29dd63): Robot task not found
+2026-09-29 17:39:50,892 - main - INFO - Processing task status for order_id=TDS_Inbound_df29dd63
+2026-09-29 17:39:50,899 - main - ERROR - Invalid task status payload (order_id=TDS_Inbound_df29dd63): Robot task not found
+2026-09-29 17:39:55,023 - main - INFO - Stopping app
+2026-09-29 17:39:55,023 - main - INFO - Websocket manager stopped
+2026-09-29 17:39:56,652 - main - INFO - Starting app
+2026-09-29 17:39:56,655 - main - INFO - Redis connected: redis://192.168.50.200:6379/0 (prefix=wms)
+2026-09-29 17:39:56,656 - main - INFO - Websocket manager started
+2026-09-29 17:39:58,151 - main - INFO - Starting app
+2026-09-29 17:39:58,155 - main - INFO - Redis connected: redis://192.168.50.200:6379/0 (prefix=wms)
+2026-09-29 17:39:58,155 - main - INFO - Websocket manager started
+2026-09-29 17:39:58,164 - main - INFO - Processing task status for order_id=TDS_Inbound_df29dd63
+2026-09-29 17:39:58,254 - main - ERROR - Invalid task status payload (order_id=TDS_Inbound_df29dd63): Robot task not found
+2026-09-29 17:39:58,269 - main - INFO - Status ignored for order_id=TDS_Inbound_df29dd63: Robot task not found
+2026-09-29 17:40:32,901 - main - INFO - Stopping app
+2026-09-29 17:40:32,902 - main - INFO - Websocket manager stopped
+2026-09-29 17:40:36,333 - main - INFO - Starting app
+2026-09-29 17:40:36,336 - main - INFO - Redis connected: redis://192.168.50.200:6379/0 (prefix=wms)
+2026-09-29 17:40:36,336 - main - INFO - Websocket manager started
+2026-09-29 17:41:17,088 - main - INFO - Starting app
+2026-09-29 17:41:17,091 - main - INFO - Redis connected: redis://192.168.50.200:6379/0 (prefix=wms)
+2026-09-29 17:41:17,091 - main - INFO - Websocket manager started
+2026-09-29 17:41:59,642 - main - INFO - Processing task status for order_id=TDS_Inbound_df29dd64
+2026-09-29 17:41:59,687 - main - ERROR - Invalid task status payload (order_id=TDS_Inbound_df29dd64): Robot task not found
+2026-09-29 17:41:59,703 - main - INFO - Status ignored for order_id=TDS_Inbound_df29dd64: Robot task not found
+2026-09-29 17:43:03,757 - main - INFO - Processing task status for order_id=TDS_Inbound_df29dd64
+2026-09-29 17:43:03,768 - main - ERROR - Invalid task status payload (order_id=TDS_Inbound_df29dd64): Robot task not found
+2026-09-29 17:43:03,770 - main - INFO - Status ignored for order_id=TDS_Inbound_df29dd64: Robot task not found
+2026-09-29 17:43:04,254 - main - INFO - Processing task status for order_id=TDS_Inbound_df29dd64
+2026-09-29 17:43:04,267 - main - ERROR - Invalid task status payload (order_id=TDS_Inbound_df29dd64): Robot task not found
+2026-09-29 17:43:04,274 - main - INFO - Status ignored for order_id=TDS_Inbound_df29dd64: Robot task not found
+2026-09-29 17:44:01,681 - main - INFO - Processing task status for order_id=TDS_Inbound_df29dd64
+2026-09-29 17:44:01,695 - main - ERROR - Invalid task status payload (order_id=TDS_Inbound_df29dd64): Robot task not found
+2026-09-29 17:44:01,699 - main - INFO - Status ignored for order_id=TDS_Inbound_df29dd64: Robot task not found
+2026-09-29 17:44:01,728 - main - INFO - Processing task status for order_id=TDS_Inbound_df29dd64
+2026-09-29 17:44:01,743 - main - ERROR - Invalid task status payload (order_id=TDS_Inbound_df29dd64): Robot task not found
+2026-09-29 17:44:01,747 - main - INFO - Status ignored for order_id=TDS_Inbound_df29dd64: Robot task not found
+2026-09-29 17:45:03,330 - main - INFO - Processing task status for order_id=TDS_Inbound_df29dd64
+2026-09-29 17:45:03,344 - main - ERROR - Invalid task status payload (order_id=TDS_Inbound_df29dd64): Robot task not found
+2026-09-29 17:45:03,345 - main - INFO - Status ignored for order_id=TDS_Inbound_df29dd64: Robot task not found
+2026-09-29 17:45:03,615 - main - INFO - Processing task status for order_id=TDS_Inbound_df29dd64
+2026-09-29 17:45:03,628 - main - ERROR - Invalid task status payload (order_id=TDS_Inbound_df29dd64): Robot task not found
+2026-09-29 17:45:03,631 - main - INFO - Status ignored for order_id=TDS_Inbound_df29dd64: Robot task not found
+2026-09-29 17:45:26,941 - main - INFO - Processing task status for order_id=TDS_Inbound_df29dd64
+2026-09-29 17:45:26,949 - main - ERROR - Invalid task status payload (order_id=TDS_Inbound_df29dd64): Robot task not found
+2026-09-29 17:45:26,950 - main - INFO - Status ignored for order_id=TDS_Inbound_df29dd64: Robot task not found
+2026-09-29 17:46:57,832 - main - INFO - Stopping app
+2026-09-29 17:46:57,832 - main - INFO - Websocket manager stopped
+2026-09-29 17:46:59,478 - main - INFO - Starting app
+2026-09-29 17:46:59,481 - main - INFO - Redis connected: redis://192.168.50.200:6379/0 (prefix=wms)
+2026-09-29 17:46:59,481 - main - INFO - Websocket manager started

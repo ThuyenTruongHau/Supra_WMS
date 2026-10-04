@@ -3,6 +3,7 @@ import { useLocationDetail } from '@/hooks/useWarehouseMap';
 import { Loading, Alert, Button } from '@/components/ui';
 import { cn } from '@/components/ui/utils/cn';
 import { formatQuantity } from '@/utils/formatQuantity';
+import { isShelfNodeType } from '@/utils/warehouseMapUtils';
 
 interface NodeInfo {
   x: number;
@@ -33,7 +34,7 @@ const WarehouseMapDrawer: React.FC<WarehouseMapDrawerProps> = ({
     isFetching,
     isError,
   } = useLocationDetail(
-    node?.type === 1 ? locationId : undefined,
+    isShelfNodeType(node?.type) ? locationId : undefined,
     refreshToken,
   );
 
@@ -56,7 +57,7 @@ const WarehouseMapDrawer: React.FC<WarehouseMapDrawerProps> = ({
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 bg-slate-50/80">
           <div>
             <h3 className="text-lg font-semibold text-slate-800">
-              {node?.type === 1 ? 'Thông tin Kệ hàng' : 'Thông tin Waypoint'}
+              {isShelfNodeType(node?.type) ? 'Thông tin Kệ hàng' : 'Thông tin Waypoint'}
             </h3>
             <p className="text-sm text-slate-500 font-medium">
               Node:{' '}

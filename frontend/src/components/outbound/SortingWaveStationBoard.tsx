@@ -76,6 +76,8 @@ export type SortingWaveStationBoardProps = {
   onBack?: () => void;
   /** Gộp mọi điểm chia chọn trong zone — không phân theo wave cụ thể. */
   unifyAllWaves?: boolean;
+  /** Zone vẽ trên canvas. Không truyền thì dùng đúng `zoneId`. */
+  mapZoneIds?: number[];
 };
 
 const EMPTY_SORTING_WAVES: SortingWave[] = [];
@@ -95,9 +97,12 @@ export default function SortingWaveStationBoard({
   hideWaveTabs = false,
   onBack,
   unifyAllWaves = false,
+  mapZoneIds,
 }: SortingWaveStationBoardProps) {
-  const { data: sortingWavesData, isLoading: wavesLoading } =
-    useSortingWaves(zoneId);
+  const { data: sortingWavesData, isLoading: wavesLoading } = useSortingWaves(
+    zoneId,
+    { enabled: !hideWaveTabs },
+  );
   const sortingWaves = sortingWavesData ?? EMPTY_SORTING_WAVES;
   const waveIdsKey = useMemo(
     () => sortingWaves.map((wave) => wave.id).join(","),
@@ -429,7 +434,7 @@ export default function SortingWaveStationBoard({
         {zoneId > 0 ? (
           <OperatorMapCanvas
             key={`wave-${fullscreen ? "fs" : "n"}-${selectedWaveId ?? "none"}-${waveStationIds.join(",")}`}
-            zoneId={zoneId}
+            zoneId={mapZoneIds && mapZoneIds.length > 0 ? mapZoneIds : zoneId}
             tuning={mapTuning}
             selectedCodes={selectedStationCode ? [selectedStationCode] : undefined}
             overlayLabelByCode={stationOverlayLabels}
@@ -452,7 +457,7 @@ export default function SortingWaveStationBoard({
     <div
       className={cn(
         "flex min-h-0 flex-col overflow-hidden bg-panel",
-        sideSlot ? "xl:col-span-3" : "flex-1",
+        sideSlot ? "@min-[1280px]:col-span-3" : "flex-1",
         fillHeight ? "min-h-0 flex-1" : "",
       )}
     >
@@ -549,7 +554,7 @@ export default function SortingWaveStationBoard({
           })}
       </div>
       {selectedWave && (
-        <div className="hidden shrink-0 items-center gap-3 border-l border-stripe-hairline px-4 py-2 sm:flex">
+        <div className="hidden shrink-0 items-center gap-3 border-l border-stripe-hairline px-4 py-2 @min-[640px]:flex">
           <span className="text-xs font-semibold text-slate-500">
             Wave #{selectedWave.id}
           </span>
@@ -572,10 +577,10 @@ export default function SortingWaveStationBoard({
     >
       {hideWaveTabs ? null : waveTabs}
 
-      {!wavesLoading && sortingWaves.length === 0 ? (
+      {!hideWaveTabs && !wavesLoading && sortingWaves.length === 0 ? (
         <div className={cn(
             sideSlot
-              ? "grid min-h-0 flex-1 grid-cols-1 items-stretch xl:grid-cols-5"
+              ? "grid min-h-0 flex-1 grid-cols-1 items-stretch @min-[1280px]:grid-cols-5"
               : "flex min-h-0 flex-1 flex-col",
             fillHeight && "min-h-0 flex-1",
           )}>
@@ -595,14 +600,14 @@ export default function SortingWaveStationBoard({
           key={selectedWaveId ?? "none"}
           className={cn(
             sideSlot
-              ? "grid min-h-0 flex-1 grid-cols-1 items-stretch xl:grid-cols-5"
+              ? "grid min-h-0 flex-1 grid-cols-1 items-stretch @min-[1280px]:grid-cols-5"
               : "flex min-h-0 flex-1 flex-col",
             fillHeight && "min-h-0 flex-1",
           )}
         >
           {mapPanel}
           {sideSlot ? (
-            <div className="flex min-h-0 flex-col overflow-hidden border-t border-stripe-hairline xl:col-span-2 xl:border-l xl:border-t-0">
+            <div className="flex min-h-0 flex-col overflow-hidden border-t border-stripe-hairline @min-[1280px]:col-span-2 @min-[1280px]:border-l @min-[1280px]:border-t-0">
               {sideSlot}
             </div>
           ) : null}

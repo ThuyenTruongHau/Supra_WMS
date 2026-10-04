@@ -222,7 +222,7 @@ export default function Sidebar() {
 
   return (
     <aside
-      className={`relative h-screen bg-slate-900 text-white flex flex-col border-r border-slate-800 transition-all duration-300 cursor-pointer ${collapsed ? "w-[72px]" : "w-64"}`}
+      className={`relative h-full bg-slate-900 text-white flex flex-col border-r border-slate-800 transition-all duration-300 cursor-pointer ${collapsed ? "w-[72px]" : "w-64"}`}
       onClick={handleSidebarClick}
     >
       <div

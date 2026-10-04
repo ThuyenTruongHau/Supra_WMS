@@ -1,14 +1,18 @@
 import httpx
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 import json
 
 from app.core.config import settings
+from app.socket.ws_events import publish_robot_task_completed
 from app.modules.warehouse.lot_number_utils import format_lot_number_display
 from app.modules.robot.robot_model import RobotTask, TaskStatus, MAPPING_STATUS
 from app.modules.warehouse.inbound_order.inbound_order_model import InboundOrderDetail
 from app.modules.warehouse.item_stock.item_stock_model import ItemStock
 from app.modules.warehouse.inbound_order.inbound_order_schema import InboundOrderDetailResponse
-from app.modules.warehouse.outbound_order.outbound_order_model import OutboundOrderAllocation
+from app.modules.warehouse.outbound_order.outbound_order_model import (
+    OutboundOrderAllocation,
+    OutboundOrderDetail,
+)
 from app.modules.warehouse.transaction_history.history_model import Transaction, History
 from app.modules.warehouse.notificcation.notification_service import check_and_create_notifications_under_over_min_max
 from app.core.logger import get_logger
@@ -43,6 +47,7 @@ class TaskStatusService:
     def create_robot_task(self, db: Session, task: RobotTask, not_inserted: bool = True) -> RobotTask:
         payload = {
             "orderId": task.order_id,
+            "priority": 4,
             "modelProcessCode": task.process_code,
             "fromSystem": task.system_code,
             "taskOrderDetail": json.loads(task.task_order_detail),
@@ -109,22 +114,39 @@ class TaskStatusService:
         if not order_id:
             raise ValueError("orderId is required")
 
-        robot_task = db.query(RobotTask).filter(RobotTask.order_id == order_id).first()
+        robot_task = (
+            db.query(RobotTask)
+            .options(
+                joinedload(RobotTask.inbound_order_detail).joinedload(
+                    InboundOrderDetail.inbound_order
+                ),
+                joinedload(RobotTask.outbound_order_allocations)
+                .joinedload(OutboundOrderAllocation.outbound_order_detail)
+                .joinedload(OutboundOrderDetail.outbound_order),
+            )
+            .filter(RobotTask.order_id == order_id)
+            .first()
+        )
         if not robot_task:
             raise ValueError("Robot task not found")
 
         if robot_task.status == "completed":
             return
 
+        notify_ws: tuple[int, str] | None = None
+
         if robot_task.inbound_order_detail_id is not None:
             detail = robot_task.inbound_order_detail
-        elif robot_task.outbound_order_allocations is not None:
+        elif robot_task.outbound_order_allocations:
             allocations = robot_task.outbound_order_allocations
-            
         else:
             raise ValueError("Order not found")
 
         ics_status = str(payload.get("status"))
+        logger.info(f"ICS status: {ics_status}, order_id: {order_id}")
+        mapped_status = MAPPING_STATUS.get(ics_status)
+        notify_completed = mapped_status == "completed"
+
         if ics_status in MAPPING_STATUS:
             if robot_task.inbound_order_detail_id is not None:
                 detail.status = MAPPING_STATUS[ics_status]
@@ -154,7 +176,17 @@ class TaskStatusService:
                     for stock in stocks:
                         stock.location_id = to_location.id
 
-                
+            if notify_completed:
+                if robot_task.inbound_order_detail_id is not None:
+                    wh_id = detail.inbound_order.warehouse_id
+                    notify_ws = (wh_id, "inbound")
+                else:
+                    wh_id = (
+                        allocations[0]
+                        .outbound_order_detail.outbound_order.warehouse_id
+                    )
+                    notify_ws = (wh_id, "outbound")
+
         record = TaskStatus(
             sub_task_status=payload.get("subTaskStatus"),
             order_id=str(order_id),
@@ -168,6 +200,12 @@ class TaskStatusService:
             db.add(record)
             db.commit()
             db.refresh(record)
+            if notify_ws is not None:
+                publish_robot_task_completed(
+                    notify_ws[0],
+                    str(order_id),
+                    notify_ws[1],
+                )
             return record
         except Exception:
             db.rollback()

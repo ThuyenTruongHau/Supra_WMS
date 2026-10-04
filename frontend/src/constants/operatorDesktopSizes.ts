@@ -83,9 +83,9 @@ export const OPERATOR_MAP_CANVAS_DEFAULTS = {
 export const OPERATOR_WAVE_MAP_TUNING = {
   fitPaddingRatio: 0.04,
   fitScaleFactor: 1.1,
-  shelfSizeFactor: 0.58,
+  shelfSizeFactor: 0.48,
   baseNodeSize: 800,
-  labelTextScale: 1.85,
+  labelTextScale: 1.70,
 } as const
 
 /**
@@ -127,6 +127,8 @@ export const operatorDesktopClass = {
 /** Độ rộng cột table — giữ đúng số đang hardcode trên UI operator. */
 export const operatorDesktopTableWidths = {
   inboundAssignedDetails: {
+    sku: 110,
+    lot: 90,
     qty: 56,
     date: 92,
     status: 78,
@@ -175,12 +177,18 @@ export const operatorDesktopTableWidths = {
 } as const
 
 /**
- * Scale tablet 8–10" cho UI operator (body.operator-ui + CSS zoom).
- * Desktop (>= wideMaxPx+1) giữ zoom 1. Không đổi layout — chỉ thu nhỏ object.
+ * Khung sân khấu operator — chỉ dùng khi viewport ≤ wideMaxPx (UserLayout scale).
+ * Desktop rộng render full viewport, không qua khung này.
  */
+export const OPERATOR_STAGE = {
+  width: 1920,
+  height: 1080,
+} as const
+
+/** Tablet / màn operator nhỏ — class body + ngưỡng bật stage scale. */
 export const OPERATOR_TABLET = {
   bodyClass: 'operator-ui',
-  /** max-width: wide → scaleWide; narrow → scaleNarrow */
+  /** viewport width ≤ giá trị này → stage 1920×1080 + scale */
   wideMaxPx: 1280,
   narrowMaxPx: 768,
   scaleWide: 0.9,
