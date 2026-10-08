@@ -52,3 +52,61 @@ def publish_robot_task_completed(
         )
     except Exception as exc:
         logger.error("Failed to publish WS event: %s", exc)
+
+
+# --- Masan sorting zone (CC) ---
+
+MasanSortingZoneEvent = Literal[
+    "masan.sorting.stock_ready",
+    "masan.sorting.allocation_confirmed",
+    "masan.cc.assign_updated",
+]
+
+EVENT_MASAN_SORTING_STOCK_READY = "masan.sorting.stock_ready"
+
+
+def normalize_masan_zone(zone: str) -> str:
+    return (zone or "").strip()
+
+
+def masan_zone_ws_channel(warehouse_id: int, zone: str) -> str:
+    prefix = settings.redis_key_prefix.strip(":")
+    z = normalize_masan_zone(zone)
+    return f"{prefix}:ws:masan-zone:{warehouse_id}:{z}"
+
+
+def masan_zone_ws_pubsub_pattern() -> str:
+    prefix = settings.redis_key_prefix.strip(":")
+    return f"{prefix}:ws:masan-zone:*"
+
+
+def publish_masan_sorting_zone(
+    warehouse_id: int,
+    zone: str,
+    *,
+    event_type: str,
+    data: dict | None = None,
+) -> None:
+    if warehouse_id <= 0:
+        return
+    z = normalize_masan_zone(zone)
+    if not z:
+        return
+    payload = {
+        "type": event_type,
+        "warehouse_id": warehouse_id,
+        "zone": z,
+        "data": data or {},
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
+    channel = masan_zone_ws_channel(warehouse_id, z)
+    try:
+        get_redis().publish(channel, json.dumps(payload, default=str))
+        logger.info(
+            "WS publish masan zone warehouse_id=%s zone=%s type=%s",
+            warehouse_id,
+            z,
+            event_type,
+        )
+    except Exception as exc:
+        logger.error("Failed to publish Masan zone WS event: %s", exc)

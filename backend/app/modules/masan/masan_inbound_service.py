@@ -7,7 +7,7 @@ from openpyxl import Workbook, load_workbook
 from sqlalchemy import or_
 from sqlalchemy.orm import Session, joinedload, selectinload
 from app.modules.warehouse.inbound_order.inbound_celery_task import accept_inbound_task_task
-
+from sqlalchemy import desc
 from app.core.config import settings
 
 from app.modules.masan.masan_inbound_excel import (
@@ -48,6 +48,10 @@ from app.modules.warehouse.item_stock.item_stock_model import ItemStock
 from app.modules.warehouse.location_map.location_model import Location
 from app.modules.warehouse.warehouse_zone.warehouse_model import Zone
 from app.modules.warehouse.warehouse_zone.warehouse_service import _ensure_warehouse_exists
+from app.core.logger import get_logger
+
+logger = get_logger("main")
+
 
 DELIVERY_PLACEHOLDERS = frozenset({"…", "...", ".", "-", "—"})
 
@@ -575,7 +579,9 @@ def get_masan_inbound_order_details(
     return [_build_detail_response(d) for d in details]
 
 
-def caller_masan_inbound_order(db: Session, location_ids: list[int]) -> dict[str, Any]:
+def caller_masan_inbound_order(
+    db: Session, location_ids: list[int], *, assign_robot_id: str | None = None
+) -> dict[str, Any]:
     list_details: list[InboundOrderDetail] = []
     for location_id in location_ids:
         detail = (
@@ -584,7 +590,7 @@ def caller_masan_inbound_order(db: Session, location_ids: list[int]) -> dict[str
                 InboundOrderDetail.from_location_id == location_id,
                 InboundOrderDetail.status == "initialize",
             )
-            .order_by(InboundOrderDetail.id)
+            .order_by(desc(InboundOrderDetail.id))
             .first()
         )
         if detail:
@@ -594,7 +600,10 @@ def caller_masan_inbound_order(db: Session, location_ids: list[int]) -> dict[str
 
     job_ids = [
         accept_inbound_task_task.apply_async(
-            kwargs={"detail_id": detail_id},
+            kwargs={
+                "detail_id": detail_id,
+                **({"assign_robot_id": assign_robot_id} if assign_robot_id else {}),
+            },
         ).id
         for detail_id in detail_ids
     ]
@@ -701,3 +710,29 @@ def list_inbound_details_awaiting_robot(
         order_ids=unique_order_ids,
         details=items,
     )
+
+
+def clear_zone_inbound(db: Session, warehouse_id: int) -> int:
+    list_zones = settings.zone_inbound
+    zone_filter = or_(
+        Zone.name.in_(list_zones),
+        Zone.code.in_(list_zones),
+    )
+
+    logger.info(f"Clearing zones {list_zones} for warehouse {warehouse_id}")
+    stocks = (
+        db.query(ItemStock)
+        .join(Location, Location.id == ItemStock.location_id)
+        .join(Zone, Zone.id == Location.zone_id)
+        .filter(
+            Location.warehouse_id == warehouse_id,
+            zone_filter,
+            ItemStock.is_active.is_(True),
+        )
+        .all()
+    )
+    logger.info(f"Found {len(stocks)} stocks to clear")
+    for stock in stocks:
+        stock.is_active = False
+    db.commit()
+    return len(stocks)

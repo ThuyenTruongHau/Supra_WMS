@@ -2,7 +2,7 @@ import asyncio
 import contextlib
 import json
 import re
-from typing import Dict, Optional, Set
+from typing import Dict, Optional, Set, Tuple
 
 from fastapi import WebSocket
 from sqlalchemy.orm import Session
@@ -10,11 +10,17 @@ from sqlalchemy.orm import Session
 from app.core.cache import get_redis
 from app.core.logger import get_logger
 from app.modules.warehouse.warehouse_zone.warehouse_model import Warehouse
-from app.socket.ws_events import warehouse_ws_pubsub_pattern
+from app.socket.ws_events import (
+    masan_zone_ws_pubsub_pattern,
+    normalize_masan_zone,
+    warehouse_ws_pubsub_pattern,
+)
 
 logger = get_logger("main")
 
+_MASAN_ZONE_CHANNEL_RE = re.compile(r":ws:masan-zone:(\d+):(.+)$")
 _WAREHOUSE_CHANNEL_RE = re.compile(r":ws:warehouse:(\d+)$")
+MasanZoneKey = Tuple[int, str]
 
 
 class WebsocketManager:
@@ -23,6 +29,8 @@ class WebsocketManager:
         self._heartbeat_task: Optional[asyncio.Task] = None
         self.active_connections: Set[WebSocket] = set()
         self.notification_by_warehouse: Dict[int, Set[WebSocket]] = {}
+        self.masan_zone_connections: Dict[MasanZoneKey, Set[WebSocket]] = {}
+        self._ws_masan_zone_key: Dict[WebSocket, MasanZoneKey] = {}
 
     async def start(self):
         if self._pubsub_task is None:
@@ -56,7 +64,8 @@ class WebsocketManager:
                     self.active_connections.discard(connection)
 
     async def _redis_pubsub_loop(self):
-        pattern = warehouse_ws_pubsub_pattern()
+        warehouse_pattern = warehouse_ws_pubsub_pattern()
+        masan_pattern = masan_zone_ws_pubsub_pattern()
 
         def listen_once(pubsub, timeout: float = 1.0):
             return pubsub.get_message(ignore_subscribe_messages=True, timeout=timeout)
@@ -64,8 +73,12 @@ class WebsocketManager:
         while True:
             pubsub = get_redis().pubsub()
             try:
-                pubsub.psubscribe(pattern)
-                logger.info("WS Redis pub/sub subscribed: %s", pattern)
+                pubsub.psubscribe(warehouse_pattern, masan_pattern)
+                logger.info(
+                    "WS Redis pub/sub subscribed: %s, %s",
+                    warehouse_pattern,
+                    masan_pattern,
+                )
                 while True:
                     message = await asyncio.to_thread(listen_once, pubsub, 1.0)
                     if not message or message.get("type") not in ("message", "pmessage"):
@@ -80,15 +93,30 @@ class WebsocketManager:
                     except json.JSONDecodeError:
                         logger.warning("WS pub/sub invalid JSON: %s", raw[:200])
                         continue
+
+                    channel = message.get("channel") or message.get("pattern")
+                    if isinstance(channel, bytes):
+                        channel = channel.decode("utf-8")
+                    channel_str = str(channel or "")
+
+                    if ":ws:masan-zone:" in channel_str:
+                        zone_match = _MASAN_ZONE_CHANNEL_RE.search(channel_str)
+                        wh = payload.get("warehouse_id")
+                        zone = payload.get("zone")
+                        if zone_match:
+                            wh = wh if wh is not None else int(zone_match.group(1))
+                            zone = zone or zone_match.group(2)
+                        if wh is not None and zone:
+                            await self.broadcast_to_masan_zone(
+                                int(wh), normalize_masan_zone(str(zone)), payload
+                            )
+                        continue
+
                     warehouse_id = payload.get("warehouse_id")
-                    if warehouse_id is None:
-                        channel = message.get("channel") or message.get("pattern")
-                        if isinstance(channel, bytes):
-                            channel = channel.decode("utf-8")
-                        if channel:
-                            match = _WAREHOUSE_CHANNEL_RE.search(str(channel))
-                            if match:
-                                warehouse_id = int(match.group(1))
+                    if warehouse_id is None and channel_str:
+                        match = _WAREHOUSE_CHANNEL_RE.search(channel_str)
+                        if match:
+                            warehouse_id = int(match.group(1))
                     if warehouse_id is not None:
                         await self.broadcast_to_warehouse(int(warehouse_id), payload)
             except asyncio.CancelledError:
@@ -120,8 +148,11 @@ class WebsocketManager:
         db: Session,
         websocket: WebSocket,
         warehouse_id: Optional[int] = None,
+        *,
+        already_accepted: bool = False,
     ) -> bool:
-        await websocket.accept()
+        if not already_accepted:
+            await websocket.accept()
         if warehouse_id is None:
             await websocket.close(code=4400)
             return False
@@ -144,5 +175,69 @@ class WebsocketManager:
                 del self.notification_by_warehouse[warehouse_id]
         logger.info("WS disconnected warehouse_id=%s", warehouse_id)
 
+    async def broadcast_to_masan_zone(
+        self, warehouse_id: int, zone: str, message: dict
+    ) -> None:
+        key: MasanZoneKey = (warehouse_id, normalize_masan_zone(zone))
+        connections = self.masan_zone_connections.get(key)
+        if not connections:
+            return
+        text = json.dumps(message)
+        dead: list[WebSocket] = []
+        for connection in list(connections):
+            try:
+                await connection.send_text(text)
+            except Exception as exc:
+                logger.error(
+                    "WS send failed masan zone warehouse_id=%s zone=%s: %s",
+                    warehouse_id,
+                    zone,
+                    exc,
+                )
+                dead.append(connection)
+        for connection in dead:
+            await self.disconnect_masan_zone(connection)
+
+    async def connect_masan_zone(
+        self,
+        db: Session,
+        websocket: WebSocket,
+        warehouse_id: int,
+        zone: str,
+        *,
+        already_accepted: bool = False,
+    ) -> bool:
+        if not already_accepted:
+            await websocket.accept()
+        z = normalize_masan_zone(zone)
+        if not z:
+            await websocket.close(code=4400, reason="Zone required")
+            return False
+        warehouse = db.query(Warehouse).filter(Warehouse.id == warehouse_id).first()
+        if not warehouse:
+            await websocket.close(code=4404, reason="Warehouse not found")
+            return False
+
+        key: MasanZoneKey = (warehouse_id, z)
+        self.active_connections.add(websocket)
+        self.masan_zone_connections.setdefault(key, set()).add(websocket)
+        self._ws_masan_zone_key[websocket] = key
+        logger.info("WS masan zone connected warehouse_id=%s zone=%s", warehouse_id, z)
+        return True
+
+    async def disconnect_masan_zone(self, websocket: WebSocket) -> None:
+        self.active_connections.discard(websocket)
+        key = self._ws_masan_zone_key.pop(websocket, None)
+        if key is not None:
+            bucket = self.masan_zone_connections.get(key)
+            if bucket:
+                bucket.discard(websocket)
+                if not bucket:
+                    del self.masan_zone_connections[key]
+            logger.info(
+                "WS masan zone disconnected warehouse_id=%s zone=%s",
+                key[0],
+                key[1],
+            )
 
 ws_manager = WebsocketManager()

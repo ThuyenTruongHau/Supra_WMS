@@ -17,8 +17,11 @@ import type { LocationStockLabel } from "@/types/warehouseLocation";
 import { type MapContentBounds } from "@/utils/warehouseMapRender";
 import { OPERATOR_MAP_CANVAS_DEFAULTS } from "@/constants/operatorDesktopSizes";
 import {
+  drawAssignedCcShelf,
+  drawPendingStockConfirmShelf,
   drawShelfStockLabel,
   drawStationOverlayLabel,
+  parseVehicleFromStationOverlay,
 } from "@/utils/warehouseMapShelfDraw";
 import { formatDisplayBin } from "@/utils/locationBin";
 import {
@@ -133,9 +136,14 @@ type Props = {
   className?: string;
   selectedCodes?: string[];
   onBufferCellClick?: (payload: BufferCellClickPayload) => void;
+  onBufferCellDoubleClick?: (payload: BufferCellClickPayload) => void;
   tuning?: BufferMapCanvasTuning;
   /** Label overlay theo mã ô (vd. biển số xe / tên KH trên sorting station). */
   overlayLabelByCode?: Record<string, string>;
+  /** Biển số hiển thị dưới tên vị trí (ngoặc, xanh) — vd. cache CC Masan. */
+  locationSubLabelByCode?: Record<string, string>;
+  /** Ô có hàng chờ xác nhận (WS) — vẽ nền cam + chữ tối. */
+  pendingConfirmOverlayCodes?: string[] | Set<string>;
   /**
    * Chỉ các mã location trong danh sách này mới nhận được click.
    * Nếu không truyền → tất cả ô đều có thể click.
@@ -232,8 +240,11 @@ export default function OperatorMapCanvas({
   className,
   selectedCodes,
   onBufferCellClick,
+  onBufferCellDoubleClick,
   tuning,
   overlayLabelByCode,
+  locationSubLabelByCode,
+  pendingConfirmOverlayCodes,
   interactiveCodes,
 }: Props) {
   // ── API data ────────────────────────────────────────────────────────────────
@@ -248,6 +259,8 @@ export default function OperatorMapCanvas({
 
   const layoutQuery = useZonesMapLayout(zoneIds);
   const statusQuery = useZonesMapStatus(zoneIds);
+  const refetchMapStatusRef = useRef(statusQuery.refetch);
+  refetchMapStatusRef.current = statusQuery.refetch;
   const layoutNodes = layoutQuery.items;
 
   const isLoading = layoutQuery.isLoading || statusQuery.isLoading;
@@ -292,6 +305,14 @@ export default function OperatorMapCanvas({
     return new Set(interactiveCodes);
   }, [interactiveCodes]);
 
+  const pendingConfirmCodeSet = useMemo(() => {
+    if (pendingConfirmOverlayCodes == null) return new Set<string>();
+    if (pendingConfirmOverlayCodes instanceof Set) {
+      return pendingConfirmOverlayCodes;
+    }
+    return new Set(pendingConfirmOverlayCodes);
+  }, [pendingConfirmOverlayCodes]);
+
   // ── Refs ────────────────────────────────────────────────────────────────────
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -300,10 +321,13 @@ export default function OperatorMapCanvas({
 
   const labelByCodeRef = useRef<Map<string, LocationStockLabel>>(new Map());
   const overlayLabelByCodeRef = useRef<Record<string, string>>({});
+  const locationSubLabelByCodeRef = useRef<Record<string, string>>({});
+  const pendingConfirmOverlayCodesRef = useRef<Set<string>>(new Set());
   const selectedCodesRef = useRef<Set<string>>(new Set());
   const interactiveCodesRef = useRef<Set<string> | null>(null);
 
   const onClickRef = useRef(onBufferCellClick);
+  const onDoubleClickRef = useRef(onBufferCellDoubleClick);
 
   const scaleRef = useRef(1);
   const offsetXRef = useRef(0);
@@ -368,8 +392,28 @@ export default function OperatorMapCanvas({
       const status = label?.display_status ?? "empty";
       const isFull = label != null && !label.is_empty;
 
-      // Vẽ ô kệ với màu theo trạng thái
-      drawShelfByStatus(ctx, status, isFull, node.x, node.y, shelfHalf, invScale);
+      const overlayForAssign =
+        overlayLabelByCodeRef.current[node.content]?.trim() ?? "";
+      const vehiclePlateForAssign =
+        locationSubLabelByCodeRef.current[node.content]?.trim() ||
+        parseVehicleFromStationOverlay(overlayForAssign);
+      const isPendingConfirm =
+        pendingConfirmOverlayCodesRef.current.has(node.content) &&
+        overlayForAssign.length > 0;
+      const showAssignedShelf =
+        !isPendingConfirm &&
+        Boolean(vehiclePlateForAssign) &&
+        !isFull &&
+        status !== "reserved" &&
+        status !== "in_transit";
+
+      if (isPendingConfirm) {
+        drawPendingStockConfirmShelf(ctx, node.x, node.y, shelfHalf, invScale);
+      } else if (showAssignedShelf) {
+        drawAssignedCcShelf(ctx, node.x, node.y, shelfHalf, invScale);
+      } else {
+        drawShelfByStatus(ctx, status, isFull, node.x, node.y, shelfHalf, invScale);
+      }
 
       // Viền nổi bật khi đang được chọn
       if (isSelected) {
@@ -380,9 +424,21 @@ export default function OperatorMapCanvas({
       if (showLabels) {
         const overlay = overlayLabelByCodeRef.current[node.content]?.trim();
         const displayBin = label ? formatDisplayBin(label.bin, label.location_type) : "";
+        const vehiclePlate = vehiclePlateForAssign || undefined;
 
         if (overlay) {
-          drawStationOverlayLabel(ctx, node.x, node.y, shelfHalf, overlay, isSelected, displayBin);
+          drawStationOverlayLabel(
+            ctx,
+            node.x,
+            node.y,
+            shelfHalf,
+            overlay,
+            isSelected,
+            displayBin,
+            opts.labelTextScale,
+            vehiclePlate,
+            isPendingConfirm ? "pendingConfirm" : "default",
+          );
         } else {
           drawShelfStockLabel(
             ctx,
@@ -392,7 +448,8 @@ export default function OperatorMapCanvas({
             label,
             opts.labelTextScale,
             isSelected,
-            false
+            false,
+            vehiclePlate,
           );
         }
       }
@@ -442,6 +499,9 @@ export default function OperatorMapCanvas({
 
   // Sync callback refs (không cần trigger redraw)
   useEffect(() => { onClickRef.current = onBufferCellClick; }, [onBufferCellClick]);
+  useEffect(() => {
+    onDoubleClickRef.current = onBufferCellDoubleClick;
+  }, [onBufferCellDoubleClick]);
 
   useEffect(() => {
     labelByCodeRef.current = labelByCode;
@@ -452,6 +512,16 @@ export default function OperatorMapCanvas({
     overlayLabelByCodeRef.current = overlayLabelByCode ?? {};
     draw();
   }, [overlayLabelByCode, draw]);
+
+  useEffect(() => {
+    locationSubLabelByCodeRef.current = locationSubLabelByCode ?? {};
+    draw();
+  }, [locationSubLabelByCode, draw]);
+
+  useEffect(() => {
+    pendingConfirmOverlayCodesRef.current = pendingConfirmCodeSet;
+    draw();
+  }, [pendingConfirmCodeSet, draw]);
 
   useEffect(() => {
     interactiveCodesRef.current = interactiveCodeSet;
@@ -538,10 +608,16 @@ export default function OperatorMapCanvas({
     return () => observer.disconnect();
   }, [resizeCanvas]);
 
-  // Tap / click (pointerup — ổn định trên tablet & TV; không dùng dblclick)
+  // Tap / click + double-tap (pointerup — tablet-friendly)
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
+
+    const DOUBLE_TAP_MS = 380;
+    const SINGLE_TAP_DELAY_MS = 320;
+    let lastTapCode: string | null = null;
+    let lastTapAt = 0;
+    let singleTapTimer: number | undefined;
 
     const resolveClickPayload = (
       clientX: number,
@@ -586,16 +662,51 @@ export default function OperatorMapCanvas({
     const onPointerUp = (e: PointerEvent) => {
       if (e.button !== 0) return;
       const payload = resolveClickPayload(e.clientX, e.clientY);
-      if (payload) onClickRef.current?.(payload);
+      if (!payload) return;
+
+      const now = Date.now();
+      const isDouble =
+        onDoubleClickRef.current != null &&
+        lastTapCode === payload.locationCode &&
+        now - lastTapAt <= DOUBLE_TAP_MS;
+
+      if (isDouble) {
+        if (singleTapTimer !== undefined) {
+          window.clearTimeout(singleTapTimer);
+          singleTapTimer = undefined;
+        }
+        lastTapCode = null;
+        lastTapAt = 0;
+        void refetchMapStatusRef.current();
+        onDoubleClickRef.current?.(payload);
+        return;
+      }
+
+      lastTapCode = payload.locationCode;
+      lastTapAt = now;
+
+      if (singleTapTimer !== undefined) {
+        window.clearTimeout(singleTapTimer);
+      }
+      singleTapTimer = window.setTimeout(() => {
+        singleTapTimer = undefined;
+        lastTapCode = null;
+        void refetchMapStatusRef.current();
+        onClickRef.current?.(payload);
+      }, SINGLE_TAP_DELAY_MS);
     };
 
     canvas.addEventListener("pointerup", onPointerUp);
-    canvas.style.cursor = onClickRef.current ? "pointer" : "default";
+    canvas.style.cursor =
+      onClickRef.current || onDoubleClickRef.current ? "pointer" : "default";
     canvas.style.touchAction = "none";
     return () => {
       canvas.removeEventListener("pointerup", onPointerUp);
+      if (singleTapTimer !== undefined) {
+        window.clearTimeout(singleTapTimer);
+      }
     };
-  }, [onBufferCellClick, isInteractiveCode]);
+  }, [onBufferCellClick, onBufferCellDoubleClick, isInteractiveCode]);
 
   // ── Render ───────────────────────────────────────────────────────────────────
   return (

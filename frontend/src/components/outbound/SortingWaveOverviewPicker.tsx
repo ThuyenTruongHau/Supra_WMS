@@ -1,7 +1,15 @@
-import React, { useRef, useState, useMemo, type ChangeEvent, useEffect } from "react";
-import { PartitionOutlined, UploadOutlined } from "@ant-design/icons";
+import React, {
+  useRef,
+  useState,
+  useMemo,
+  useCallback,
+  type ChangeEvent,
+} from "react";
+import { EyeOutlined, PartitionOutlined, UploadOutlined } from "@ant-design/icons";
+import WarehouseViewModal from "@/components/inbound/WarehouseViewModal";
 import type { ColumnsType } from "antd/es/table";
 import { Button, Modal, Table, Space, message, cn } from "@/components/ui";
+import SortingItemsNeededModal from "@/components/outbound/SortingItemsNeededModal";
 import {
   OPERATOR_DESKTOP,
   operatorDesktopClass,
@@ -22,59 +30,75 @@ import {
   OUTBOUND_DISPLAY_ZONES,
   type OutboundDisplayZone,
 } from "@/constants/outboundMapZones";
+import {
+  ccVehicleByCodeFromZoneLocations,
+  useMasanSortingZoneCcLocations,
+} from "@/hooks/useMasanSortingZoneCcLocations";
 
 type SortingWaveOverviewCellProps = {
-  zoneId: number;
   zoneIds: readonly number[];
   title: string;
-  onActivate: () => void;
+  onOpenSorting: () => void;
+  onOpenMapDetail: () => void;
+  locationSubLabelByCode?: Record<string, string>;
 };
 
 function SortingWaveOverviewCell({
   zoneIds,
   title,
-  onActivate,
+  onOpenSorting,
+  onOpenMapDetail,
+  locationSubLabelByCode,
 }: SortingWaveOverviewCellProps) {
   return (
-    <button
-      type="button"
-      title={`Nhấp đúp để mở ${title}`}
-      aria-label={`Nhấp đúp để mở vị trí chia chọn ${title}`}
-      onDoubleClick={onActivate}
-      onKeyDown={(event) => {
-        if (event.key === "Enter") onActivate();
-      }}
-      className="group relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-xl border border-stripe-hairline bg-panel text-left shadow-stripe-1 transition hover:border-brand-primary/35 hover:shadow-[0_8px_28px_rgba(37,99,235,0.12)] focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/40"
-    >
-      <div className="flex shrink-0 items-center justify-between gap-2 border-b border-stripe-hairline bg-panel-soft px-4 py-2.5">
+    <div className="group relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-xl border border-stripe-hairline bg-panel text-left shadow-stripe-1 transition hover:border-brand-primary/35 hover:shadow-[0_8px_28px_rgba(37,99,235,0.12)]">
+      <button
+        type="button"
+        title={`Nhấp để chọn mã hàng · ${title}`}
+        aria-label={`Chọn mã hàng xuất tại ${title}`}
+        onClick={onOpenSorting}
+        className="flex shrink-0 w-full items-center justify-between gap-2 border-b border-stripe-hairline bg-panel-soft px-4 py-2.5 text-left transition hover:bg-sky-50/80 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/40"
+      >
         <div className="flex min-w-0 items-center gap-2">
           <PartitionOutlined className="shrink-0 text-base text-brand-primary" />
           <div className="min-w-0">
             <p className="truncate text-3xl font-extrabold text-brand-dark">
               {title}
             </p>
+            <p className="mt-0.5 text-sm font-medium text-cyan-700">
+              Nhấp để chọn mã hàng xuất
+            </p>
           </div>
         </div>
-        <span className="shrink-0 rounded-full border border-cyan-300/30 bg-cyan-50 px-3 py-1 text-xs font-bold uppercase tracking-wider text-cyan-700 opacity-0 transition group-hover:opacity-100">
-          Nhấp đúp để mở
+        <span className="shrink-0 rounded-full border border-cyan-300/30 bg-cyan-50 px-3 py-1 text-xs font-bold uppercase tracking-wider text-cyan-700">
+          Chọn hàng
         </span>
-      </div>
+      </button>
       <div
         className={cn(
-          "relative min-h-0 flex-1 bg-industrial-pattern p-3",
+          "relative min-h-0 flex-1 cursor-default bg-industrial-pattern p-3",
           operatorDesktopClass.boardFill,
         )}
+        title={`Nhấp đúp để mở bản đồ ${title}`}
+        onDoubleClick={(event) => {
+          event.preventDefault();
+          onOpenMapDetail();
+        }}
       >
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(14,165,233,0.06),transparent_55%)]" />
         <div className="relative h-full min-h-0 overflow-hidden rounded-lg bg-panel">
           <OperatorMapCanvas
             zoneId={[...zoneIds]}
             tuning={OPERATOR_WAVE_MAP_TUNING}
+            locationSubLabelByCode={locationSubLabelByCode}
             className="pointer-events-none !h-full !min-h-0"
           />
         </div>
+        <span className="pointer-events-none absolute bottom-4 right-4 rounded-md bg-white/90 px-2 py-1 text-xs font-semibold text-slate-500 opacity-0 shadow-sm transition group-hover:opacity-100">
+          Nhấp đúp bản đồ để mở chi tiết
+        </span>
       </div>
-    </button>
+    </div>
   );
 }
 
@@ -95,6 +119,7 @@ export default React.memo(function SortingWaveOverviewPicker({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [isParsingExcel, setIsParsingExcel] = useState(false);
+  const [warehouseViewOpen, setWarehouseViewOpen] = useState(false);
   const [isImportPreviewOpen, setIsImportPreviewOpen] = useState(false);
   const [importLineItems, setImportLineItems] = useState<unknown[]>([]);
   const [importPreviewRows, setImportPreviewRows] = useState<
@@ -104,19 +129,50 @@ export default React.memo(function SortingWaveOverviewPicker({
     [],
   );
 
-  // If we don't have enough zones, fallback to the first available zone id or 0
-  const defaultImportZoneId = DISPLAY_ZONES[0]?.id ?? 0;
+  const [sortingZone, setSortingZone] = useState<OutboundDisplayZone | null>(
+    null,
+  );
+  const sortingModalOpen = sortingZone != null;
 
-  // Set initial selected import zone to the first available zone if not set or invalid
-  const [selectedImportZoneId, setSelectedImportZoneId] = useState<number>(defaultImportZoneId);
-
-  // Update selected zone if zones change
-  useEffect(() => {
-    if (DISPLAY_ZONES.length > 0 && !DISPLAY_ZONES.find(z => z.id === selectedImportZoneId)) {
-      setSelectedImportZoneId(DISPLAY_ZONES[0].id);
+  const ccPollEnabled = warehouseId > 0;
+  const ccZoneOne = useMasanSortingZoneCcLocations(
+    warehouseId,
+    DISPLAY_ZONES[0]?.ccBucketZoneCode ?? null,
+    ccPollEnabled && Boolean(DISPLAY_ZONES[0]),
+  );
+  const ccZoneTwo = useMasanSortingZoneCcLocations(
+    warehouseId,
+    DISPLAY_ZONES[1]?.ccBucketZoneCode ?? null,
+    ccPollEnabled && Boolean(DISPLAY_ZONES[1]),
+  );
+  const ccVehicleLabelsByDisplayZoneId = useMemo(() => {
+    const map: Record<number, Record<string, string>> = {};
+    const z0 = DISPLAY_ZONES[0];
+    const z1 = DISPLAY_ZONES[1];
+    if (z0) {
+      map[z0.id] = ccVehicleByCodeFromZoneLocations(
+        ccZoneOne.data?.locations ?? [],
+      );
     }
-  }, [selectedImportZoneId]);
+    if (z1) {
+      map[z1.id] = ccVehicleByCodeFromZoneLocations(
+        ccZoneTwo.data?.locations ?? [],
+      );
+    }
+    return map;
+  }, [ccZoneOne.data?.locations, ccZoneTwo.data?.locations]);
 
+  const openSortingModal = useCallback((zone: OutboundDisplayZone) => {
+    if (!warehouseId) {
+      message.warning("Vui lòng chọn kho trước");
+      return;
+    }
+    setSortingZone(zone);
+  }, [warehouseId]);
+
+  const closeSortingModal = useCallback(() => {
+    setSortingZone(null);
+  }, []);
 
   const resetImportState = () => {
     setImportLineItems([]);
@@ -140,21 +196,25 @@ export default React.memo(function SortingWaveOverviewPicker({
     event.target.value = "";
     if (!file) return;
 
-    setIsParsingExcel(true);
-    resetImportState();
-
     if (!warehouseId) {
       message.warning("Vui lòng chọn kho trước khi import");
       return;
     }
 
+    setIsParsingExcel(true);
+    resetImportState();
+
     try {
       const outboundType = resolveOutboundType(warehouseId);
-      const result = await parseMasanOutboundPreviewApi(file, warehouseId, outboundType);
+      const result = await parseMasanOutboundPreviewApi(
+        file,
+        warehouseId,
+        outboundType,
+      );
 
       setImportLineItems(result.line_items);
       setImportPreviewRows(result.preview_rows);
-      setImportWarnings(result.warnings.map(w => ({ message: w })));
+      setImportWarnings(result.warnings.map((w) => ({ message: w })));
       setIsImportPreviewOpen(true);
     } catch {
       message.error("Không thể đọc file Excel (Lỗi API Masan)");
@@ -239,7 +299,8 @@ export default React.memo(function SortingWaveOverviewPicker({
       {
         title: "Lỗi",
         dataIndex: "error",
-        render: (v: string | null) => (v ? <span className="text-red-500">{v}</span> : "—"),
+        render: (v: string | null) =>
+          v ? <span className="text-red-500">{v}</span> : "—",
       },
     ],
     [importTw],
@@ -265,40 +326,43 @@ export default React.memo(function SortingWaveOverviewPicker({
             Chọn vị trí chia chọn
           </h3>
           <p className="mt-1 text-base text-stripe-ink-mute">
-            Nhấp đúp vào khu vực để mở bản đồ chi tiết và danh sách xe
+            Nhấp khu vực để chọn mã hàng · nhấp đúp bản đồ để mở chi tiết
           </p>
         </div>
-        <div className="flex gap-2 items-center">
-          <select
-            className="h-10 px-3 rounded-lg border border-stripe-hairline bg-panel focus:outline-none focus:ring-2 focus:ring-brand-primary/40"
-            value={selectedImportZoneId}
-            onChange={(e) => setSelectedImportZoneId(Number(e.target.value))}
+        <Space wrap>
+          <Button
+            variant="secondary"
+            icon={<EyeOutlined />}
+            onClick={() => setWarehouseViewOpen(true)}
+            disabled={warehouseId <= 0}
+            className="!h-10 !px-4 !text-base"
           >
-            {DISPLAY_ZONES.map(z => (
-              <option key={z.id} value={z.id}>Import vào {z.name}</option>
-            ))}
-          </select>
+            Xem kho
+          </Button>
           <Button
             variant="primary"
             icon={<UploadOutlined />}
             onClick={handleImportClick}
             loading={isParsingExcel}
-            disabled={DISPLAY_ZONES.length === 0}
+            disabled={!warehouseId}
             className="!h-10 !px-4 !text-base"
           >
-            Nhập BM.04 (Masan)
+            Nhập phiên xuất
           </Button>
-        </div>
+        </Space>
       </div>
       <div className="grid min-h-0 flex-1 grid-cols-1 gap-2 p-2 @min-[1024px]:grid-cols-2 @min-[1024px]:gap-3 @min-[1024px]:p-3">
         {DISPLAY_ZONES.length > 0 ? (
           DISPLAY_ZONES.map((z) => (
             <SortingWaveOverviewCell
               key={z.id}
-              zoneId={z.id}
               zoneIds={z.zoneIds}
               title={z.name}
-              onActivate={() => onSelectZone(z.id)}
+              onOpenSorting={() => openSortingModal(z)}
+              onOpenMapDetail={() => onSelectZone(z.id)}
+              locationSubLabelByCode={
+                ccPollEnabled ? ccVehicleLabelsByDisplayZoneId[z.id] : undefined
+              }
             />
           ))
         ) : (
@@ -307,6 +371,29 @@ export default React.memo(function SortingWaveOverviewPicker({
           </div>
         )}
       </div>
+
+      {sortingZone && warehouseId > 0 ? (
+        <SortingItemsNeededModal
+          open={sortingModalOpen}
+          onClose={closeSortingModal}
+          warehouseId={warehouseId}
+          ccBucketZoneCode={sortingZone.ccBucketZoneCode}
+          title={`Chọn mã hàng — ${sortingZone.name}`}
+          onConfirmExport={async (picked) => {
+            console.info("[SortingExport]", {
+              displayZoneId: sortingZone.id,
+              ccZone: sortingZone.ccBucketZoneCode,
+              itemIds: picked.map((r) => r.item_id),
+              skus: picked.map((r) => r.sku),
+            });
+            message.success(
+              `Đã xác nhận xuất mã ${picked[0]?.sku ?? ""} tại ${sortingZone.name}`,
+            );
+            onSelectZone(sortingZone.id);
+          }}
+        />
+      ) : null}
+
       <Modal
         open={isImportPreviewOpen}
         onCancel={closeImportPreview}
@@ -346,6 +433,12 @@ export default React.memo(function SortingWaveOverviewPicker({
           size="small"
         />
       </Modal>
+
+      <WarehouseViewModal
+        open={warehouseViewOpen}
+        warehouseId={warehouseId}
+        onClose={() => setWarehouseViewOpen(false)}
+      />
     </div>
   );
 });

@@ -27,6 +27,11 @@ const REALTIME_ROOTS = new Set([
   "outboundOrderDetails",
   "outboundRobotTasks",
   "outboundIncompleteVehicles",
+  "outbound_operator_board_orders",
+  "outbound_operator_board_vehicles",
+  "outbound_operator_board_customers",
+  "outbound_operator_board_trips",
+  "outbound_operator_board_lines",
   "outbound_sorting_station_fills",
 ]);
 
@@ -51,6 +56,9 @@ function queryMatchesWarehouse(
     return false;
   }
   const root = queryKey[0];
+  if (root === "masan" && queryKey.length >= 4 && queryKey[3] === warehouseId) {
+    return true;
+  }
   if (!REALTIME_ROOTS.has(root)) {
     return false;
   }

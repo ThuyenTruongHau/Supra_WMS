@@ -28,6 +28,7 @@ celery_app = Celery(
         "app.modules.warehouse.item.item_celery_task",
         "app.modules.warehouse.notificcation.notification_celery_task",
         "app.modules.warehouse.dashboard.dashboard_celery_task",
+        "app.modules.masan.masan_celery_task",
     ],
 )
 
@@ -64,6 +65,7 @@ celery_app.conf.update(
         "item.*": {"queue": QUEUE_LOGIC},
         "notification.*": {"queue": QUEUE_LOGIC},
         "dashboard.*": {"queue": QUEUE_LOGIC},
+        "masan.*": {"queue": QUEUE_LOGIC},
     },
     beat_schedule={
         "check-long-holding-stock-daily": {
@@ -73,6 +75,11 @@ celery_app.conf.update(
         "snapshot-inventory-daily": {
             "task": "dashboard.snapshot_inventory_daily",
             "schedule": crontab(hour=11, minute=59),
+        },
+        "assign-cc-zone-every-5s": {
+            "task": "outbound.assign_cc_zone",
+            "schedule": 5.0,
+            "options": {"expires": 5},
         },
     },
 )

@@ -7,6 +7,7 @@
     "dev": "vite --host",
     "build": "vite build",
     "lint": "eslint .",
+    "test:robot": "node --test tests/robotStatus.test.mjs",
     "preview": "vite preview"
   },
   "dependencies": {

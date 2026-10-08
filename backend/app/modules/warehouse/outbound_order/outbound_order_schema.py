@@ -20,7 +20,7 @@ class DetailForCalculate(BaseModel):
     id: int = Field(..., gt=0)
     item_id: int = Field(..., gt=0)
     quantity: int = Field(..., gt=0)
-    unit_id: int = Field(..., gt=0)
+    unit_id: Optional[int] = Field(default=None, gt=0)
     details: Optional[dict[str, Any]] = None
     detail_type: str = Field(..., min_length=1, max_length=50)
 
@@ -242,3 +242,93 @@ class ExecuteQrManualResponse(BaseModel):
     qr_code: str
     to_location_id: Optional[int] = None
     message: str = "Manual outbound QR scan processed"
+
+
+class OperatorBoardProgressFields(BaseModel):
+    """Done = completed; pending = initialize, reserved, in_progress, ..."""
+
+    detail_count: int = 0
+    total_detail_count: int = 0
+    done_detail_count: int = 0
+    pending_detail_count: int = 0
+    total_quantity: int = 0
+    pending_quantity: int = 0
+    is_fully_done: bool = False
+    done_coverage: str = "none"
+
+
+class OperatorBoardOrderRow(OperatorBoardProgressFields):
+    id: int
+    order_code: str
+    status: str
+    created_at: Optional[datetime] = None
+    open_detail_count: int = 0
+    open_line_quantity: int = 0
+    vehicle_count: int = 0
+    total_vehicle_count: int = 0
+
+
+class OperatorBoardOrdersResponse(BaseModel):
+    warehouse_id: int
+    page: int
+    page_size: int
+    total: int
+    items: list[OperatorBoardOrderRow] = Field(default_factory=list)
+
+
+class OperatorBoardVehicleRow(OperatorBoardProgressFields):
+    vehicle_number: str
+    customer_count: int = 0
+    pending_customer_count: int = 0
+    statuses: list[str] = Field(default_factory=list)
+
+
+class OperatorBoardVehiclesResponse(BaseModel):
+    outbound_order_id: int
+    items: list[OperatorBoardVehicleRow] = Field(default_factory=list)
+
+
+class OperatorBoardCustomerRow(OperatorBoardProgressFields):
+    customer_name: str
+    trip_count: int = 0
+    pending_trip_count: int = 0
+
+
+class OperatorBoardCustomersResponse(BaseModel):
+    outbound_order_id: int
+    vehicle_number: str
+    items: list[OperatorBoardCustomerRow] = Field(default_factory=list)
+
+
+class OperatorBoardTripRow(OperatorBoardProgressFields):
+    trip: str = ""
+    nvts: list[str] = Field(default_factory=list)
+
+
+class OperatorBoardTripsResponse(BaseModel):
+    outbound_order_id: int
+    vehicle_number: str
+    customer_name: str
+    items: list[OperatorBoardTripRow] = Field(default_factory=list)
+
+
+class OperatorBoardLineRow(BaseModel):
+    detail_id: int
+    item_id: int
+    sku: Optional[str | int] = None
+    quantity: int = 0
+    unit: str
+    status: str
+    vehicle_no: str
+    customer_name: str
+    trip: str = ""
+    lot_number: Optional[str | int] = None
+    pallet_count: Optional[str | int | float] = None
+
+
+class OperatorBoardLinesResponse(OperatorBoardProgressFields):
+    outbound_order_id: int
+    vehicle_number: str
+    customer_name: str
+    trip: str = ""
+    items: list[OperatorBoardLineRow] = Field(default_factory=list)

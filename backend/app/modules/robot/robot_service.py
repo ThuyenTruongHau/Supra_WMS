@@ -17,6 +17,7 @@ from app.modules.warehouse.transaction_history.history_model import Transaction,
 from app.modules.warehouse.notificcation.notification_service import check_and_create_notifications_under_over_min_max
 from app.core.logger import get_logger
 from app.core.cache import cache_set
+
 logger = get_logger("main")
 
 ICS_ADD_TASK_PATH = f"{settings.ics_base_url.rstrip('/')}:7000/ics/taskOrder/addTask"
@@ -31,17 +32,31 @@ class TaskStatusService:
         self.current = None
 
     def add_task(self, payload: dict) -> dict:
+        order_id = payload.get("orderId")
+        logger.info(
+            "ICS addTask request order_id=%s url=%s payload=%s",
+            order_id,
+            ICS_ADD_TASK_PATH,
+            json.dumps(payload, ensure_ascii=False),
+        )
         try:
             with httpx.Client(timeout=httpx.Timeout(5.0)) as client:
                 response = client.post(ICS_ADD_TASK_PATH, json=payload)
                 response.raise_for_status()
                 data = response.json()
-            logger.info(f"ICS addTask response: {data}")
+            logger.info("ICS addTask response order_id=%s body=%s", order_id, data)
             return data
         except httpx.HTTPStatusError as e:
+            logger.error(
+                "ICS addTask HTTP error order_id=%s status=%s body=%s",
+                order_id,
+                e.response.status_code,
+                e.response.text[:2000],
+            )
             retryable = e.response.status_code >= 500
             raise IcsError("ICS server error", retryable=retryable) from e
         except httpx.RequestError as e:
+            logger.error("ICS addTask connection error order_id=%s error=%s", order_id, e)
             raise IcsError("Cannot reach ICS server", retryable=True) from e
 
     def create_robot_task(self, db: Session, task: RobotTask, not_inserted: bool = True) -> RobotTask:
@@ -175,6 +190,12 @@ class TaskStatusService:
                     stocks = db.query(ItemStock).filter(ItemStock.location_id == from_location.id, ItemStock.is_active.is_(True)).all()
                     for stock in stocks:
                         stock.location_id = to_location.id
+
+                    from app.modules.masan.masan_outbound_service import (
+                        _send_taking_stock,
+                    )
+                    
+                    _send_taking_stock(db, robot_task.id, allocations)
 
             if notify_completed:
                 if robot_task.inbound_order_detail_id is not None:

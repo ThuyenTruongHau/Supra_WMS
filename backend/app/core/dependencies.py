@@ -71,9 +71,15 @@ def require_role(*allowed_roles: str) -> Callable:
         return current_user
     return role_checker
 
+def _user_is_operator(user: User) -> bool:
+    return any(role.name == "operator" for role in (user.roles or []))
+
+
 def require_permission(*codes: str) -> Callable:
     def checker(current_user: Annotated[User, Depends(get_current_user)]) -> User:
         if any(role.name == "admin" for role in current_user.roles):
+            return current_user
+        if _user_is_operator(current_user):
             return current_user
         user_codes = {
             p.code

@@ -11,6 +11,9 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.dependencies import require_permission, get_current_user
 from app.modules.warehouse.location_map import location_service
+from app.modules.warehouse.location_map.location_access import (
+    require_warehouse_view_permission,
+)
 from app.modules.warehouse.location_map.location_schema import (
     LocationDetailResponse,
     LocationListResponse,
@@ -57,7 +60,7 @@ def list_locations(
 @router.get(
     "/locations/for-map",
     response_model=LocationsForMapResponse,
-    dependencies=[Depends(require_permission("location:read"))],
+    dependencies=[Depends(require_warehouse_view_permission("location:read"))],
 )
 def list_locations_for_map(
     db: DbSession,
@@ -263,7 +266,7 @@ async def import_warehouse_map(
     "/warehouse-maps/{warehouse_id}/map-data",
     response_model=MapDataResponse,
     response_model_by_alias=True,
-    dependencies=[Depends(require_permission("map:read"))],
+    dependencies=[Depends(require_warehouse_view_permission("map:read"))],
 )
 def get_map_data(warehouse_id: int, db: DbSession):
     try:
@@ -343,4 +346,4 @@ def print_location_qr_codes(body: LocationQrPrintRequest, db: DbSession):
             warehouse_id=body.warehouse_id,
         )
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e)) 
+        raise HTTPException(status_code=400, detail=str(e))

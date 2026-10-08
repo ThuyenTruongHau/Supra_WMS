@@ -15,9 +15,12 @@ function buildWarehouseWebSocketUrl(
   warehouseId: number,
   token: string,
 ): string {
+  const configured = import.meta.env.VITE_API_URL?.trim();
+  // Dev: luôn qua origin (Vite proxy ws:true) — tránh WS thẳng backend bị 403 handshake.
   const apiBase =
-    import.meta.env.VITE_API_URL?.trim() ||
-    `${window.location.protocol}//${window.location.host}`;
+    import.meta.env.DEV && !configured
+      ? `${window.location.protocol}//${window.location.host}`
+      : configured || `${window.location.protocol}//${window.location.host}`;
   const httpUrl = new URL(apiBase);
   const wsProtocol = httpUrl.protocol === "https:" ? "wss:" : "ws:";
   const path = `/api/v1/ws/warehouse/${warehouseId}`;

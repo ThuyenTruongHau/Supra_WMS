@@ -26,6 +26,7 @@ import {
 } from "@/hooks/useOutbound";
 import { useAppStore } from "@/store/useAppStore";
 import type {
+  DetailForCalculate,
   LackedDetail,
   OutboundOrderAllocation,
   OutboundOrderDetail,
@@ -615,14 +616,7 @@ export default function QrTabletOutboundDetailPage() {
   );
 
   const runCalculate = async (
-    lineItems: {
-      id: number;
-      item_id: number;
-      quantity: number;
-      unit_id: number;
-      detail_type: string;
-      details?: Record<string, unknown>;
-    }[],
+    lineItems: DetailForCalculate[],
     onSuccessClearSelection: () => void,
   ) => {
     if (!orderId || !order) return;
@@ -683,11 +677,6 @@ export default function QrTabletOutboundDetailPage() {
     }
 
     const selectedDetails = details.filter((d) => selectedDetailIds.has(d.id));
-    const missingUnit = selectedDetails.find((d) => !d.unit_id);
-    if (missingUnit) {
-      message.error(`Dòng #${missingUnit.id} thiếu đơn vị`);
-      return;
-    }
 
     Modal.confirm({
       title: "Xác nhận xuất",
@@ -700,7 +689,7 @@ export default function QrTabletOutboundDetailPage() {
             id: d.id,
             item_id: d.item_id,
             quantity: d.quantity,
-            unit_id: d.unit_id!,
+            ...(d.unit_id != null ? { unit_id: d.unit_id } : {}),
             detail_type: d.detail_type || outboundType,
             details: d.details,
           })),
@@ -731,7 +720,7 @@ export default function QrTabletOutboundDetailPage() {
             id: l.id,
             item_id: l.item_id,
             quantity: l.quantity,
-            unit_id: l.unit_id,
+            ...(l.unit_id != null ? { unit_id: l.unit_id } : {}),
             detail_type: l.detail_type || outboundType,
             details: l.details,
           })),

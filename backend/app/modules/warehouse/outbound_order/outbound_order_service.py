@@ -39,8 +39,9 @@ from app.modules.warehouse.unit.unit_model import Unit
 from app.modules.warehouse.location_map.location_model import Location
 from app.modules.warehouse.warehouse_zone.warehouse_model import Zone
 from app.modules.warehouse.item_stock.item_stock_model import ItemStock
-from app.modules.robot.robot_model import RobotTask
+from app.modules.robot.robot_model import RobotTask, TaskStatus
 from app.modules.robot.robot_service import task_status_service
+from app.core.cache import cache_delete, cache_delete_pattern, cache_get, cache_scan_keys, cache_set
 from app.modules.warehouse.transaction_history.history_model import History, Transaction
 from app.modules.warehouse.item.item_model import QR_Code
 from app.modules.warehouse.lot_number_utils import (
@@ -148,11 +149,6 @@ def _get_fixed_quantity(db: Session, outbound_order: OutboundOrder, item_id: int
     ).scalar()
     return int(total or 0)
 
-def _is_masan_import_outbound_create(body: OutboundOrderCreate) -> bool:
-    note = (body.note or "").strip()
-    return note == "Import BM.04" or note.startswith("Import BM.04")
-
-
 def create_outbound_order(db: Session, body: OutboundOrderCreate, user_id: int):
     try:
         outbound_order = OutboundOrder(
@@ -170,8 +166,6 @@ def create_outbound_order(db: Session, body: OutboundOrderCreate, user_id: int):
         logger.info(f"Type: {type}")
         if (body.details or {}).get("type") in ["Tuyển chọn", "tuyển chọn", "Lấy lỗi", "lấy lỗi", "Lấy lẻ", "lấy lẻ"]:
             flag = True
-
-        created_detail_rows: list[tuple[OutboundOrderDetail, OutboundOrderDetailCreate]] = []
 
         for line_item in body.line_items:
             unit = db.query(Unit).filter(Unit.id == line_item.unit_id).first()
@@ -196,7 +190,6 @@ def create_outbound_order(db: Session, body: OutboundOrderCreate, user_id: int):
             )
             db.add(detail)
             db.flush()
-            created_detail_rows.append((detail, line_item))
 
         _enforce_pick_split_manual_details(db, outbound_order)
 
@@ -215,30 +208,6 @@ def create_outbound_order(db: Session, body: OutboundOrderCreate, user_id: int):
 
         db.commit()
         db.refresh(outbound_order)
-
-        if _is_masan_import_outbound_create(body) and not flag:
-            calculate_lines = [
-                DetailForCalculate(
-                    id=detail.id,
-                    item_id=detail.item_id,
-                    quantity=detail.quantity,
-                    unit_id=line_item.unit_id,
-                    details=detail.details or line_item.details,
-                    detail_type=detail.detail_type,
-                )
-                for detail, line_item in created_detail_rows
-            ]
-            calculate_outbound_order(
-                db,
-                CalculateOutboundDetail(
-                    warehouse_id=body.warehouse_id,
-                    outbound_order_id=outbound_order.id,
-                    line_items=calculate_lines,
-                ),
-                strategy="fefo",
-            )
-            db.refresh(outbound_order)
-
         return OutboundOrderCreateResponse.model_validate(outbound_order)
 
     except Exception as e:
@@ -525,19 +494,87 @@ def _delete_outbound_order_history(db: Session, outbound_order_id: int) -> None:
     ).delete(synchronize_session=False)
 
 
-def _purge_outbound_detail(db: Session, detail: OutboundOrderDetail) -> None:
+def _delete_robot_task_and_statuses(db: Session, task: RobotTask) -> None:
+    db.query(TaskStatus).filter(TaskStatus.order_id == task.order_id).delete(
+        synchronize_session=False
+    )
+    db.delete(task)
+
+
+def _revert_completed_outbound_allocation_stock(
+    allocation: OutboundOrderAllocation,
+) -> None:
+    if allocation.allocation_type != "outbound" or allocation.status != "completed":
+        return
+    stock = allocation.item_stock
+    if stock is not None:
+        stock.quantity += int(allocation.quantity)
+
+
+def _purge_masan_cc_cache_for_detail(
+    db: Session, warehouse_id: int, detail_id: int
+) -> None:
+    cache_delete(f"outbound:assigned_cc_details:{warehouse_id}:{detail_id}")
+    keys = cache_scan_keys(f"outbound:assigned_cc_location:{warehouse_id}:*")
+    for key in keys:
+        suffix = key.rsplit(":", 1)[-1]
+        if not suffix.isdigit():
+            continue
+        bucket = cache_get(key)
+        if not bucket:
+            continue
+        lines = bucket.get("lines") or []
+        new_lines = [
+            line
+            for line in lines
+            if line.get("detail_id") is not None and int(line["detail_id"]) != detail_id
+        ]
+        if len(new_lines) == len(lines):
+            continue
+        if not new_lines:
+            cache_delete(key)
+        else:
+            bucket["lines"] = new_lines
+            cache_set(key, bucket, -1)
+
+
+def _purge_outbound_detail(
+    db: Session, detail: OutboundOrderDetail, *, warehouse_id: int
+) -> None:
     allocations = (
         db.query(OutboundOrderAllocation)
         .filter(OutboundOrderAllocation.outbound_order_detail_id == detail.id)
         .all()
     )
-    for allocation in allocations:
-        db.delete(allocation)
+    robot_task_ids = {a.robot_task_id for a in allocations if a.robot_task_id}
 
+    for allocation in allocations:
+        _revert_completed_outbound_allocation_stock(allocation)
+        db.delete(allocation)
+    db.flush()
+
+    for task_id in robot_task_ids:
+        still_linked = (
+            db.query(OutboundOrderAllocation.id)
+            .filter(OutboundOrderAllocation.robot_task_id == task_id)
+            .first()
+        )
+        if still_linked:
+            continue
+        task = db.query(RobotTask).filter(RobotTask.id == task_id).first()
+        if task:
+            _delete_robot_task_and_statuses(db, task)
+
+    _purge_masan_cc_cache_for_detail(db, warehouse_id, detail.id)
     db.delete(detail)
 
 
-def delete_outbound_order(db: Session, order_code: str) -> None:
+def delete_outbound_order(
+    db: Session,
+    order_code: str,
+    *,
+    allow_completed: bool = False,
+) -> None:
     order = (
         db.query(OutboundOrder)
         .filter(OutboundOrder.order_code == order_code)
@@ -546,8 +583,8 @@ def delete_outbound_order(db: Session, order_code: str) -> None:
     if not order:
         raise ValueError("Outbound order not found")
 
-    if order.status != "initialize":
-        raise ValueError("Only initialize order can be deleted")
+    if order.status == "completed" and not allow_completed:
+        raise ValueError("Completed outbound orders cannot be deleted")
 
     existing_details = (
         db.query(OutboundOrderDetail)
@@ -555,7 +592,7 @@ def delete_outbound_order(db: Session, order_code: str) -> None:
         .all()
     )
     for detail in existing_details:
-        _purge_outbound_detail(db, detail)
+        _purge_outbound_detail(db, detail, warehouse_id=order.warehouse_id)
 
     _delete_outbound_order_history(db, order.id)
     db.delete(order)
@@ -564,6 +601,88 @@ def delete_outbound_order(db: Session, order_code: str) -> None:
     except IntegrityError as e:
         db.rollback()
         raise ValueError(f"Database conflict: {e.orig}") from e
+
+
+def list_incomplete_outbound_order_codes(db: Session) -> list[str]:
+    rows = (
+        db.query(OutboundOrder.order_code)
+        .filter(OutboundOrder.status != "completed")
+        .order_by(OutboundOrder.order_code)
+        .all()
+    )
+    return [row[0] for row in rows]
+
+
+def delete_all_outbound_orders(db: Session) -> dict[str, object]:
+    """Xóa mọi đơn xuất (kể cả completed) — dùng script vận hành / reset."""
+    codes = [
+        row[0]
+        for row in db.query(OutboundOrder.order_code)
+        .order_by(OutboundOrder.order_code)
+        .all()
+    ]
+    deleted: list[str] = []
+    errors: list[dict[str, str]] = []
+    warehouse_ids: set[int] = set()
+    for code in codes:
+        order = (
+            db.query(OutboundOrder)
+            .filter(OutboundOrder.order_code == code)
+            .first()
+        )
+        if order:
+            warehouse_ids.add(order.warehouse_id)
+        try:
+            delete_outbound_order(db, code, allow_completed=True)
+            deleted.append(code)
+        except ValueError as exc:
+            db.rollback()
+            errors.append({"order_code": code, "error": str(exc)})
+        except IntegrityError as exc:
+            db.rollback()
+            errors.append({"order_code": code, "error": f"Database conflict: {exc.orig}"})
+    for warehouse_id in warehouse_ids:
+        cache_delete_pattern(f"outbound:masan:stock_ready:{warehouse_id}:*")
+    cache_delete_pattern("outbound:assigned_cc_*")
+    return {
+        "attempted": len(codes),
+        "deleted": deleted,
+        "deleted_count": len(deleted),
+        "errors": errors,
+    }
+
+
+def delete_all_incomplete_outbound_orders(db: Session) -> dict[str, object]:
+    codes = list_incomplete_outbound_order_codes(db)
+    deleted: list[str] = []
+    errors: list[dict[str, str]] = []
+    warehouse_ids: set[int] = set()
+    for code in codes:
+        order = (
+            db.query(OutboundOrder)
+            .filter(OutboundOrder.order_code == code)
+            .first()
+        )
+        if order:
+            warehouse_ids.add(order.warehouse_id)
+        try:
+            delete_outbound_order(db, code)
+            deleted.append(code)
+        except ValueError as exc:
+            db.rollback()
+            errors.append({"order_code": code, "error": str(exc)})
+        except IntegrityError as exc:
+            db.rollback()
+            errors.append({"order_code": code, "error": f"Database conflict: {exc.orig}"})
+    for warehouse_id in warehouse_ids:
+        cache_delete_pattern(f"outbound:masan:stock_ready:{warehouse_id}:*")
+    cache_delete_pattern("outbound:assigned_cc_*")
+    return {
+        "attempted": len(codes),
+        "deleted": deleted,
+        "deleted_count": len(deleted),
+        "errors": errors,
+    }
 
 
 def _lot_as_date(col):
@@ -655,7 +774,7 @@ def _check_stock_in_task(db: Session, from_location_id: int, outbound_order_id: 
         .join(OutboundOrderDetail, OutboundOrderDetail.id == OutboundOrderAllocation.outbound_order_detail_id)
         .filter(
             OutboundOrderAllocation.from_location_id == from_location_id,
-            OutboundOrderDetail.outbound_order_id == outbound_order_id,
+            # OutboundOrderDetail.outbound_order_id == outbound_order_id,
             OutboundOrderAllocation.status == "initialize",
         )
         .first()

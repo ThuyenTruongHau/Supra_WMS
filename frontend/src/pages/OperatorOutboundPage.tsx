@@ -15,7 +15,6 @@ export default function OperatorOutboundPage() {
   const warehouseName = warehousesData?.find((w) => w.id === selectedWarehouseId)?.name ?? "Kho được gán";
   const navigate = useNavigate();
   const [clock, setClock] = useState(() => new Date());
-
   useEffect(() => {
     setShellHeaderCollapsed(true);
     return () => setShellHeaderCollapsed(false);

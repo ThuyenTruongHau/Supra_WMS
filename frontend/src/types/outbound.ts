@@ -157,7 +157,7 @@ export interface DetailForCalculate {
   id: number;
   item_id: number;
   quantity: number;
-  unit_id: number;
+  unit_id?: number;
   detail_type: string;
   details?: Record<string, unknown>;
 }
@@ -253,6 +253,99 @@ export interface OutboundVehicleProductsResponse {
   vehicle_number: string
   status: string
   products: OutboundVehicleProductLine[]
+}
+
+/** Operator board drill-down (backend operator-board API). */
+export const OPERATOR_BOARD_TRIP_PATH_EMPTY = '_empty'
+
+export type OperatorBoardDoneCoverage = 'none' | 'partial' | 'full'
+
+export interface OperatorBoardProgressFields {
+  detail_count: number
+  total_detail_count: number
+  done_detail_count: number
+  pending_detail_count: number
+  total_quantity: number
+  pending_quantity: number
+  is_fully_done: boolean
+  done_coverage: OperatorBoardDoneCoverage | string
+}
+
+export interface OperatorBoardOrderRow extends OperatorBoardProgressFields {
+  id: number
+  order_code: string
+  status: string
+  created_at: string | null
+  open_detail_count: number
+  open_line_quantity: number
+  vehicle_count: number
+  total_vehicle_count: number
+}
+
+export interface OperatorBoardOrdersResponse {
+  warehouse_id: number
+  page: number
+  page_size: number
+  total: number
+  items: OperatorBoardOrderRow[]
+}
+
+export interface OperatorBoardVehicleRow extends OperatorBoardProgressFields {
+  vehicle_number: string
+  customer_count: number
+  pending_customer_count: number
+  statuses: string[]
+}
+
+export interface OperatorBoardVehiclesResponse {
+  outbound_order_id: number
+  items: OperatorBoardVehicleRow[]
+}
+
+export interface OperatorBoardCustomerRow extends OperatorBoardProgressFields {
+  customer_name: string
+  trip_count: number
+  pending_trip_count: number
+}
+
+export interface OperatorBoardCustomersResponse {
+  outbound_order_id: number
+  vehicle_number: string
+  items: OperatorBoardCustomerRow[]
+}
+
+export interface OperatorBoardTripRow extends OperatorBoardProgressFields {
+  trip: string
+  nvts: string[]
+}
+
+export interface OperatorBoardTripsResponse {
+  outbound_order_id: number
+  vehicle_number: string
+  customer_name: string
+  items: OperatorBoardTripRow[]
+}
+
+export interface OperatorBoardLineRow {
+  detail_id: number
+  item_id: number
+  sku: string | number | null
+  quantity: number
+  unit: string
+  status: string
+  vehicle_no: string
+  customer_name: string
+  trip: string
+  lot_number?: string | number | null
+  pallet_count?: string | number | null
+}
+
+export interface OperatorBoardLinesResponse extends OperatorBoardProgressFields {
+  outbound_order_id: number
+  vehicle_number: string
+  customer_name: string
+  trip: string
+  items: OperatorBoardLineRow[]
 }
 
 export interface AssignSortingPositionInput {

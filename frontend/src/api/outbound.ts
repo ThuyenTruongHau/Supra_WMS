@@ -7,6 +7,12 @@ import type {
   CreateOutboundInput,
   IncompleteVehiclesResponse,
   OutboundVehicleProductsResponse,
+  OperatorBoardOrdersResponse,
+  OperatorBoardVehiclesResponse,
+  OperatorBoardCustomersResponse,
+  OperatorBoardTripsResponse,
+  OperatorBoardLinesResponse,
+  OPERATOR_BOARD_TRIP_PATH_EMPTY,
   ItemOutbound,
   ItemOutboundPick,
   OutboundDailyReport,
@@ -86,6 +92,71 @@ export const listIncompleteVehiclesApi = async (
         ...(options?.availableForAssign ? { available_for_assign: true } : {}),
       },
     },
+  )
+  return response.data
+}
+
+export function operatorBoardTripPathKey(trip: string): string {
+  const trimmed = trip.trim()
+  return trimmed === '' ? OPERATOR_BOARD_TRIP_PATH_EMPTY : encodeURIComponent(trimmed)
+}
+
+export const listOperatorBoardOrdersApi = async (
+  warehouseId: number,
+  params?: { page?: number; page_size?: number; q?: string },
+): Promise<OperatorBoardOrdersResponse> => {
+  const response = await axiosInstance.get<OperatorBoardOrdersResponse>(
+    '/api/v1/outbound-orders/operator-board/orders',
+    {
+      params: {
+        warehouse_id: warehouseId,
+        page: params?.page ?? 1,
+        page_size: params?.page_size ?? 200,
+        ...(params?.q ? { q: params.q } : {}),
+      },
+    },
+  )
+  return response.data
+}
+
+export const listOperatorBoardVehiclesApi = async (
+  orderId: number,
+): Promise<OperatorBoardVehiclesResponse> => {
+  const response = await axiosInstance.get<OperatorBoardVehiclesResponse>(
+    `/api/v1/outbound-orders/${orderId}/operator-board/vehicles`,
+  )
+  return response.data
+}
+
+export const listOperatorBoardCustomersApi = async (
+  orderId: number,
+  vehicleKey: string,
+): Promise<OperatorBoardCustomersResponse> => {
+  const response = await axiosInstance.get<OperatorBoardCustomersResponse>(
+    `/api/v1/outbound-orders/${orderId}/operator-board/vehicles/${encodeURIComponent(vehicleKey)}/customers`,
+  )
+  return response.data
+}
+
+export const listOperatorBoardTripsApi = async (
+  orderId: number,
+  vehicleKey: string,
+  customerKey: string,
+): Promise<OperatorBoardTripsResponse> => {
+  const response = await axiosInstance.get<OperatorBoardTripsResponse>(
+    `/api/v1/outbound-orders/${orderId}/operator-board/vehicles/${encodeURIComponent(vehicleKey)}/customers/${encodeURIComponent(customerKey)}/trips`,
+  )
+  return response.data
+}
+
+export const listOperatorBoardLinesApi = async (
+  orderId: number,
+  vehicleKey: string,
+  customerKey: string,
+  tripKey: string,
+): Promise<OperatorBoardLinesResponse> => {
+  const response = await axiosInstance.get<OperatorBoardLinesResponse>(
+    `/api/v1/outbound-orders/${orderId}/operator-board/vehicles/${encodeURIComponent(vehicleKey)}/customers/${encodeURIComponent(customerKey)}/trips/${tripKey}/lines`,
   )
   return response.data
 }

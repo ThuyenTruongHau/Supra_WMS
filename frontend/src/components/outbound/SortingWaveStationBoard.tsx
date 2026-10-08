@@ -3,6 +3,7 @@
  * Dùng ở OperatorOutboundPage và OperatorSortingWavePage (user).
  */
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { ArrowLeftOutlined, PartitionOutlined } from "@ant-design/icons";
 import { Button, cn, message } from "@/components/ui";
 import { operatorDesktopClass } from "@/constants/operatorDesktopSizes";
@@ -12,13 +13,43 @@ import {
   useSortingStationFills,
 } from "@/hooks/useOutbound";
 import { getSortingStationAssignmentApi } from "@/api/outbound";
+import { getMasanCcLocationApi } from "@/api/masan";
 import type { SortingStationAssignment } from "@/types/outbound";
+import type {
+  MasanCcLocationResponse,
+  MasanSortingItemNeededRow,
+  MasanSortingZoneCcLocationRow,
+} from "@/types/masan";
+import {
+  ccVehicleByCodeFromZoneLocations,
+  masanSortingZoneCcLocationsQueryKey,
+  useMasanSortingZoneCcLocations,
+} from "@/hooks/useMasanSortingZoneCcLocations";
+import {
+  masanSortingZonePendingStockQueryKey,
+  useMasanSortingZonePendingStock,
+} from "@/hooks/useMasanSortingZonePendingStock";
+import { useMasanSortingZoneWebSocket } from "@/hooks/useMasanSortingZoneWebSocket";
+import {
+  buildPendingStockOverlays,
+  mergePendingStockOverlays,
+  pendingAllocationsByLocationId,
+  pendingConfirmOverlayCodes,
+} from "@/utils/masanPendingStockOverlay";
+import CcLocationLinesModal from "@/components/outbound/CcLocationLinesModal";
+import MasanCcPendingStockConfirmModal from "@/components/outbound/MasanCcPendingStockConfirmModal";
+import SortingItemsNeededModal from "@/components/outbound/SortingItemsNeededModal";
+import {
+  outboundCcBucketZoneCodeFor,
+  outboundVtClickableZoneIdsFor,
+} from "@/constants/outboundMapZones";
 import type { SortingWave } from "@/types/sortingWave";
 import AssignSortingStationModal from "@/components/outbound/AssignSortingStationModal";
 import AssignOutboundStationModal from "@/components/outbound/AssignOutboundStationModal";
 import SortingStationPickConfirmModal from "@/components/outbound/SortingStationPickConfirmModal";
 import UnassignSortingStationModal from "@/components/outbound/UnassignSortingStationModal";
 import { useLocationByCodeMap } from "@/hooks/useWarehouseLocation";
+import { useZonesMapStatus } from "@/hooks/useWarehouseMap";
 import OperatorMapCanvas from "@/components/warehouse/OperatorMapCanvas";
 import type { BufferMapCanvasTuning } from "@/components/warehouse/OperatorMapCanvas";
 import { OPERATOR_WAVE_MAP_TUNING } from "@/constants/operatorDesktopSizes";
@@ -78,9 +109,23 @@ export type SortingWaveStationBoardProps = {
   unifyAllWaves?: boolean;
   /** Zone vẽ trên canvas. Không truyền thì dùng đúng `zoneId`. */
   mapZoneIds?: number[];
+  /** Có giá trị thì click ô đọc hàng đã chia từ cache CC Masan thay cho luồng gán sorting station. */
+  warehouseId?: number;
+  /** Chỉ ô thuộc các zone này được click. Dùng cùng `warehouseId`. */
+  clickableZoneIds?: number[];
+  /** Operator xuất: gọi khi xác nhận tại modal VT (sorting-items-needed). */
+  onVtSortingExportConfirm?: (
+    picked: MasanSortingItemNeededRow[],
+    context: {
+      warehouseId: number;
+      ccBucketZoneCode: string;
+      toLocationId: number;
+    },
+  ) => void | Promise<void>;
 };
 
 const EMPTY_SORTING_WAVES: SortingWave[] = [];
+const EMPTY_ZONE_IDS: number[] = [];
 
 export default function SortingWaveStationBoard({
   zoneId,
@@ -98,6 +143,9 @@ export default function SortingWaveStationBoard({
   onBack,
   unifyAllWaves = false,
   mapZoneIds,
+  warehouseId,
+  clickableZoneIds = EMPTY_ZONE_IDS,
+  onVtSortingExportConfirm,
 }: SortingWaveStationBoardProps) {
   const { data: sortingWavesData, isLoading: wavesLoading } = useSortingWaves(
     zoneId,
@@ -181,6 +229,97 @@ export default function SortingWaveStationBoard({
   const { data: incompleteVehiclesData } = useIncompleteVehicles(zoneId);
   const incompleteVehicles = incompleteVehiclesData?.vehicles ?? [];
   const { locationByCode } = useLocationByCodeMap(zoneId);
+  const restrictToClickableZones = clickableZoneIds.length > 0;
+  const vtClickableZoneIds = useMemo(
+    () => outboundVtClickableZoneIdsFor(zoneId),
+    [zoneId],
+  );
+  const ccBucketZoneCode = outboundCcBucketZoneCodeFor(zoneId) ?? "";
+  const masanVtPickEnabled =
+    vtClickableZoneIds.length > 0 && ccBucketZoneCode.length > 0;
+  const queryClient = useQueryClient();
+  const masanCcZonePollEnabled =
+    Boolean(warehouseId) && ccBucketZoneCode.length > 0;
+  const ccZoneStatusQuery = useMasanSortingZoneCcLocations(
+    warehouseId ?? 0,
+    ccBucketZoneCode || null,
+    masanCcZonePollEnabled,
+  );
+  const ccZoneStatusData = ccZoneStatusQuery.data;
+  const ccVehicleByCode = useMemo(
+    () => ccVehicleByCodeFromZoneLocations(ccZoneStatusData?.locations ?? []),
+    [ccZoneStatusData?.locations],
+  );
+
+  const pendingStockQuery = useMasanSortingZonePendingStock(
+    warehouseId ?? 0,
+    ccBucketZoneCode || null,
+    masanCcZonePollEnabled,
+  );
+  const pendingStockData = pendingStockQuery.data;
+  useMasanSortingZoneWebSocket({
+    warehouseId: warehouseId ?? 0,
+    ccZoneCode: ccBucketZoneCode || null,
+    enabled: masanCcZonePollEnabled,
+  });
+
+  const { items: clickableLocations } = useZonesMapStatus(clickableZoneIds);
+  const { items: vtLocations } = useZonesMapStatus(
+    masanVtPickEnabled ? vtClickableZoneIds : EMPTY_ZONE_IDS,
+  );
+  const clickableLocationIdByCode = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const loc of clickableLocations) map.set(loc.location_code, loc.id);
+    return map;
+  }, [clickableLocations]);
+  const clickableLocationCodeById = useMemo(() => {
+    const map = new Map<number, string>();
+    for (const loc of clickableLocations) {
+      map.set(loc.id, loc.location_code);
+    }
+    return map;
+  }, [clickableLocations]);
+  const vtLocationIdByCode = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const loc of vtLocations) map.set(loc.location_code, loc.id);
+    return map;
+  }, [vtLocations]);
+  const clickableLocationNameByCode = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const loc of clickableLocations) {
+      const name = (loc.location_name ?? "").trim();
+      if (name) map.set(loc.location_code, name);
+    }
+    return map;
+  }, [clickableLocations]);
+
+  const resolveCcLocationName = (locationCode: string, locationId: number) => {
+    const fromClickable = clickableLocations.find(
+      (loc) => loc.id === locationId || loc.location_code === locationCode,
+    );
+    const fromClickableName = (fromClickable?.location_name ?? "").trim();
+    if (fromClickableName) return fromClickableName;
+    const fromZoneMap = (
+      locationByCode[locationCode]?.location_name ?? ""
+    ).trim();
+    if (fromZoneMap) return fromZoneMap;
+    const fromClickableMap = (
+      clickableLocationNameByCode.get(locationCode) ?? ""
+    ).trim();
+    if (fromClickableMap) return fromClickableMap;
+    return null;
+  };
+  const clickableCodes = useMemo(() => {
+    if (!restrictToClickableZones) return undefined;
+    const codes = new Set<string>();
+    for (const code of clickableLocationIdByCode.keys()) codes.add(code);
+    for (const code of vtLocationIdByCode.keys()) codes.add(code);
+    return codes.size > 0 ? codes : undefined;
+  }, [
+    restrictToClickableZones,
+    clickableLocationIdByCode,
+    vtLocationIdByCode,
+  ]);
   const { data: sortingFillsData } = useSortingStationFills(
     zoneId,
     selectedWaveId,
@@ -268,6 +407,34 @@ export default function SortingWaveStationBoard({
     sortingStationCodes,
   ]);
 
+  const pendingByLocationId = useMemo(
+    () => pendingAllocationsByLocationId(pendingStockData),
+    [pendingStockData],
+  );
+
+  const mapOverlayLabels = useMemo(() => {
+    if (!masanCcZonePollEnabled) return stationOverlayLabels;
+    const pendingOverlays = buildPendingStockOverlays(
+      pendingStockData,
+      clickableLocationCodeById,
+    );
+    return mergePendingStockOverlays(stationOverlayLabels, pendingOverlays);
+  }, [
+    masanCcZonePollEnabled,
+    stationOverlayLabels,
+    pendingStockData,
+    clickableLocationCodeById,
+  ]);
+
+  const mapPendingConfirmCodes = useMemo(() => {
+    if (!masanCcZonePollEnabled) return undefined;
+    const codes = pendingConfirmOverlayCodes(
+      pendingStockData,
+      clickableLocationCodeById,
+    );
+    return codes.size > 0 ? codes : undefined;
+  }, [masanCcZonePollEnabled, pendingStockData, clickableLocationCodeById]);
+
   const [assignSortingModalOpen, setAssignSortingModalOpen] = useState(false);
   const [assignOutboundModalOpen, setAssignOutboundModalOpen] = useState(false);
   const [pickConfirmModalOpen, setPickConfirmModalOpen] = useState(false);
@@ -281,9 +448,133 @@ export default function SortingWaveStationBoard({
   const [selectedStationLocationId, setSelectedStationLocationId] = useState<
     number | null
   >(null);
+  const [selectedStationLocationName, setSelectedStationLocationName] =
+    useState<string | null>(null);
   const [selectedStationKind, setSelectedStationKind] = useState<
     "sorting" | "outbound" | null
   >(null);
+  const [ccModalOpen, setCcModalOpen] = useState(false);
+  const [ccLocationData, setCcLocationData] =
+    useState<MasanCcLocationResponse | null>(null);
+  const [ccLoading, setCcLoading] = useState(false);
+  const ccRequestIdRef = useRef(0);
+  const [sortingItemsModalOpen, setSortingItemsModalOpen] = useState(false);
+  const [pendingConfirmOpen, setPendingConfirmOpen] = useState(false);
+  const [pendingConfirmLocationId, setPendingConfirmLocationId] = useState<
+    number | null
+  >(null);
+  const [pendingConfirmLocationCode, setPendingConfirmLocationCode] = useState<
+    string | null
+  >(null);
+  const [pendingConfirmLocationName, setPendingConfirmLocationName] = useState<
+    string | null
+  >(null);
+
+  const invalidateMasanCcCaches = () => {
+    if (!warehouseId || !ccBucketZoneCode) return;
+    void queryClient.invalidateQueries({
+      queryKey: masanSortingZoneCcLocationsQueryKey(
+        warehouseId,
+        ccBucketZoneCode,
+      ),
+    });
+    void queryClient.invalidateQueries({
+      queryKey: masanSortingZonePendingStockQueryKey(
+        warehouseId,
+        ccBucketZoneCode,
+      ),
+    });
+  };
+
+  /** Làm mới overlay CC + pending stock khi click ô map (giống admin refetch full-locations). */
+  const refreshMasanMapOverlays = async () => {
+    if (!warehouseId || !ccBucketZoneCode) return undefined;
+    const [ccResult] = await Promise.all([
+      ccZoneStatusQuery.refetch(),
+      pendingStockQuery.refetch(),
+    ]);
+    return ccResult.data?.locations;
+  };
+
+  const ccRowToLocationResponse = (
+    row: MasanSortingZoneCcLocationRow,
+  ): MasanCcLocationResponse => ({
+    warehouse_id: warehouseId ?? 0,
+    location_id: row.location_id,
+    assigned: row.assigned,
+    location_name: row.location_name,
+    zone: row.zone,
+    vehicle_number: row.vehicle_number,
+    lines: row.lines,
+  });
+
+  const openVtSortingItems = (locationCode: string, locationId: number) => {
+    if (!warehouseId) {
+      message.warning("Chọn kho để chọn mã hàng xuất");
+      return;
+    }
+    if (!ccBucketZoneCode) return;
+    setSelectedStationCode(locationCode);
+    setSelectedStationLocationId(locationId);
+    const vtLoc = vtLocations.find(
+      (loc) =>
+        loc.id === locationId || loc.location_code === locationCode,
+    );
+    const vtName = (vtLoc?.location_name ?? "").trim();
+    setSelectedStationLocationName(
+      vtName || resolveCcLocationName(locationCode, locationId),
+    );
+    setSelectedStationKind(null);
+    setCcModalOpen(false);
+    setSortingItemsModalOpen(true);
+  };
+
+  const openCcLocation = async (
+    locationCode: string,
+    locationId: number,
+    ccLocations?: MasanSortingZoneCcLocationRow[],
+  ) => {
+    if (!warehouseId) return;
+    const requestId = ++ccRequestIdRef.current;
+    setSelectedStationCode(locationCode);
+    setSelectedStationLocationId(locationId);
+    setSelectedStationLocationName(
+      resolveCcLocationName(locationCode, locationId),
+    );
+    setSelectedStationKind(null);
+    setCcLocationData(null);
+    setCcModalOpen(true);
+    const locationPool =
+      ccLocations ?? ccZoneStatusData?.locations ?? [];
+    const cachedRow = locationPool.find(
+      (row) =>
+        row.location_id === locationId || row.location_code === locationCode,
+    );
+    if (cachedRow) {
+      setCcLocationData(ccRowToLocationResponse(cachedRow));
+      const cachedName = (cachedRow.location_name ?? "").trim();
+      if (cachedName) setSelectedStationLocationName(cachedName);
+    }
+    setCcLoading(!cachedRow);
+    try {
+      const data = await getMasanCcLocationApi(warehouseId, locationId);
+      if (requestId === ccRequestIdRef.current) {
+        setCcLocationData(data);
+        const apiName = (data.location_name ?? "").trim();
+        if (apiName) setSelectedStationLocationName(apiName);
+      }
+    } catch (err) {
+      if (requestId !== ccRequestIdRef.current) return;
+      if (!cachedRow) {
+        const detail =
+          (err as { response?: { data?: { detail?: string } } })?.response
+            ?.data?.detail ?? "Không tải được hàng đã chia của ô";
+        message.error(detail);
+      }
+    } finally {
+      if (requestId === ccRequestIdRef.current) setCcLoading(false);
+    }
+  };
 
   const resolveStationKind = (
     locationId: number,
@@ -304,12 +595,65 @@ export default function SortingWaveStationBoard({
     return "sorting";
   };
 
+  const openPendingStockConfirm = (
+    locationCode: string,
+    locationId: number,
+  ) => {
+    const allocations = pendingByLocationId.get(locationId) ?? [];
+    if (allocations.length === 0) {
+      message.info("Không có hàng chờ xác nhận lấy tại ô này");
+      return;
+    }
+    setSelectedStationCode(locationCode);
+    setSelectedStationLocationId(locationId);
+    setPendingConfirmLocationCode(locationCode);
+    setPendingConfirmLocationId(locationId);
+    setPendingConfirmLocationName(
+      resolveCcLocationName(locationCode, locationId),
+    );
+    setPendingConfirmOpen(true);
+  };
+
+  const handleStationCellDoubleClick = async (payload: {
+    locationCode: string;
+  }) => {
+    if (!restrictToClickableZones || !warehouseId) return;
+    await refreshMasanMapOverlays();
+    const locationId = clickableLocationIdByCode.get(payload.locationCode);
+    if (locationId == null) return;
+    openPendingStockConfirm(payload.locationCode, locationId);
+  };
+
   const handleStationCellClick = async (payload: { locationCode: string }) => {
+    const freshCcLocations = await refreshMasanMapOverlays();
+    if (restrictToClickableZones) {
+      const vtLocationId = vtLocationIdByCode.get(payload.locationCode);
+      if (vtLocationId != null) {
+        openVtSortingItems(payload.locationCode, vtLocationId);
+        return;
+      }
+      const locationId = clickableLocationIdByCode.get(payload.locationCode);
+      if (locationId == null) return;
+      if (warehouseId) {
+        await openCcLocation(
+          payload.locationCode,
+          locationId,
+          freshCcLocations,
+        );
+      }
+      return;
+    }
+
     const location = locationByCode[payload.locationCode];
     if (!location) {
       message.error(
         `Không tìm thấy warehouse location cho mã ${payload.locationCode}`,
       );
+      return;
+    }
+
+    if (warehouseId) {
+      await openCcLocation(payload.locationCode, location.id, freshCcLocations);
       return;
     }
 
@@ -360,7 +704,18 @@ export default function SortingWaveStationBoard({
     setStationAssignment(null);
     setSelectedStationCode(null);
     setSelectedStationLocationId(null);
+    setSelectedStationLocationName(null);
     setSelectedStationKind(null);
+    ccRequestIdRef.current += 1;
+    setCcModalOpen(false);
+    setCcLocationData(null);
+    setCcLoading(false);
+    setSortingItemsModalOpen(false);
+    setPendingConfirmOpen(false);
+    setPendingConfirmLocationId(null);
+    setPendingConfirmLocationCode(null);
+    setPendingConfirmLocationName(null);
+    invalidateMasanCcCaches();
   };
 
   const selectedFillStation = useMemo(
@@ -437,8 +792,18 @@ export default function SortingWaveStationBoard({
             zoneId={mapZoneIds && mapZoneIds.length > 0 ? mapZoneIds : zoneId}
             tuning={mapTuning}
             selectedCodes={selectedStationCode ? [selectedStationCode] : undefined}
-            overlayLabelByCode={stationOverlayLabels}
+            overlayLabelByCode={mapOverlayLabels}
+            locationSubLabelByCode={
+              warehouseId ? ccVehicleByCode : undefined
+            }
+            pendingConfirmOverlayCodes={mapPendingConfirmCodes}
+            interactiveCodes={clickableCodes}
             onBufferCellClick={handleStationCellClick}
+            onBufferCellDoubleClick={
+              warehouseId && restrictToClickableZones
+                ? handleStationCellDoubleClick
+                : undefined
+            }
             className={cn(
               "!h-full",
               fullscreen ? "!min-h-0" : operatorDesktopClass.mapMinHeight,
@@ -665,6 +1030,78 @@ export default function SortingWaveStationBoard({
         onClose={clearStationSelection}
         zIndex={mapFullscreen ? 1200 : undefined}
       />
+
+      {warehouseId ? (
+        <CcLocationLinesModal
+          open={ccModalOpen}
+          locationCode={selectedStationCode}
+          locationName={selectedStationLocationName}
+          locationId={selectedStationLocationId}
+          warehouseId={warehouseId ?? 0}
+          data={ccLocationData}
+          loading={ccLoading}
+          onClose={clearStationSelection}
+          zIndex={mapFullscreen ? 1200 : undefined}
+        />
+      ) : null}
+
+      {warehouseId && ccBucketZoneCode && pendingConfirmLocationId != null ? (
+        <MasanCcPendingStockConfirmModal
+          open={pendingConfirmOpen}
+          onClose={() => {
+            setPendingConfirmOpen(false);
+            setPendingConfirmLocationId(null);
+            setPendingConfirmLocationCode(null);
+            setPendingConfirmLocationName(null);
+          }}
+          warehouseId={warehouseId}
+          ccBucketZoneCode={ccBucketZoneCode}
+          locationId={pendingConfirmLocationId}
+          locationCode={pendingConfirmLocationCode}
+          locationName={pendingConfirmLocationName}
+          vehiclePlate={
+            pendingConfirmLocationCode
+              ? ccVehicleByCode[pendingConfirmLocationCode]
+              : undefined
+          }
+          allocations={
+            pendingByLocationId.get(pendingConfirmLocationId) ?? []
+          }
+          onConfirmed={invalidateMasanCcCaches}
+          zIndex={mapFullscreen ? 1200 : undefined}
+        />
+      ) : null}
+
+      {warehouseId && ccBucketZoneCode ? (
+        <SortingItemsNeededModal
+          open={sortingItemsModalOpen}
+          onClose={clearStationSelection}
+          warehouseId={warehouseId}
+          ccBucketZoneCode={ccBucketZoneCode}
+          title={`Chọn mã hàng — ${selectedStationLocationName ?? selectedStationCode ?? "VT"}`}
+          subtitle={
+            selectedStationCode
+              ? `Vị trí VT: ${selectedStationCode}`
+              : null
+          }
+          zIndex={mapFullscreen ? 1200 : undefined}
+          onConfirmExport={
+            onVtSortingExportConfirm
+              ? async (picked) => {
+                  if (selectedStationLocationId == null) {
+                    message.error("Không xác định được vị trí VT");
+                    return;
+                  }
+                  await onVtSortingExportConfirm(picked, {
+                    warehouseId,
+                    ccBucketZoneCode,
+                    toLocationId: selectedStationLocationId,
+                  });
+                }
+              : undefined
+          }
+        />
+      ) : null}
     </div>
   );
 }

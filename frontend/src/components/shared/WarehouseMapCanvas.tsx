@@ -65,6 +65,8 @@ import {
 // ─── Props ──────────────────────────────────────────────────────────────────────
 
 interface WarehouseMapCanvasProps {
+  /** Chỉ xem map và thông tin ô; không import hoặc tải file map. */
+  readOnly?: boolean;
   /** Callback khi user click vào một node trên bản đồ. Trả về null nếu click vào khoảng trống. */
   onNodeClick?: (node: NodeInfo | null) => void;
   /** Ẩn thanh toolbar (dùng khi nhúng làm Picker) */
@@ -91,6 +93,7 @@ interface WarehouseMapCanvasProps {
 // ─── Component ─────────────────────────────────────────────────────────────────
 
 const WarehouseMapCanvas: React.FC<WarehouseMapCanvasProps> = ({
+  readOnly = false,
   onNodeClick,
   hideToolbar = false,
   hideDrawer = false,
@@ -747,14 +750,18 @@ const WarehouseMapCanvas: React.FC<WarehouseMapCanvasProps> = ({
       {!hideToolbar && (
         <WarehouseMapToolbar
           isAdmin={isAdmin}
+          readOnly={readOnly}
           hasData={hasData}
           isLoading={isLoading}
           errorMessage={errorMessage}
           nodesCount={nodesCount}
           linesCount={linesCount}
           downloadLoading={downloadMutation.isPending}
-          onImportClick={() => setImportDialogOpen(true)}
+          onImportClick={() => {
+            if (!readOnly) setImportDialogOpen(true);
+          }}
           onDownloadClick={() => {
+            if (readOnly) return;
             downloadMutation.mutate(
               { warehouseId: resolvedWarehouseId },
               {
@@ -779,7 +786,7 @@ const WarehouseMapCanvas: React.FC<WarehouseMapCanvasProps> = ({
           isError={isError}
           hasData={hasData}
           errorMessage={errorMessage}
-          isAdmin={isAdmin}
+          isAdmin={isAdmin && !readOnly}
         />
 
         {hasData && !isLoading && !isError && <WarehouseMapLegend />}
@@ -807,7 +814,7 @@ const WarehouseMapCanvas: React.FC<WarehouseMapCanvasProps> = ({
       </div>
 
       {/* Import Dialog — admin only */}
-      {!hideToolbar && isAdmin && (
+      {!hideToolbar && isAdmin && !readOnly && (
         <WarehouseMapImportDialog
           open={importDialogOpen}
           onClose={() => setImportDialogOpen(false)}

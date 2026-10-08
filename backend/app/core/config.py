@@ -1,7 +1,7 @@
 import json
 
 from pydantic_settings import BaseSettings
-from pydantic import field_validator
+from pydantic import Field, field_validator
 
 def _parse_int_id_list(raw: object) -> list[int]:
     if raw is None:
@@ -59,6 +59,7 @@ class Settings(BaseSettings):
     redis_url: str = "redis://192.168.50.200:6379/0"
     redis_cache_ttl: int = 300
     redis_key_prefix: str = "wms"
+    robot_data_ttl_seconds: int = Field(default=30, gt=0)
 
     # Redis Celery
     celery_broker_url: str = "redis://192.168.50.200:6379/1"

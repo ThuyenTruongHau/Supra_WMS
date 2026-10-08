@@ -35,6 +35,19 @@ export const OPERATOR_DESKTOP = {
       top: 24,
       bodyMaxHeight: 'calc(100vh - 220px)',
     },
+    /** Modal chi tiết hàng CC — tablet 8" / desktop / TV 43". */
+    ccLocationLines: {
+      bodyMaxHeight: 'calc(100vh - 160px)',
+      tableScrollY: {
+        narrow: 320,
+        medium: 440,
+        wide: 540,
+        tv: 620,
+      },
+    },
+    reAssignCcSplit: {
+      bodyMaxHeight: 'calc(100vh - 200px)',
+    },
   },
   listMax: {
     h420: 420,

@@ -9,6 +9,7 @@ import Sidebar from "./Sidebar";
 import Header from "./Header";
 import { cn } from "@/components/ui";
 import { OperatorShellProvider } from "./OperatorShellContext";
+import OperatorLayoutRealtimeBridge from "./OperatorLayoutRealtimeBridge";
 import { operatorStageEl } from "./operatorStage";
 
 /**
@@ -135,6 +136,7 @@ export default function UserLayout() {
 
   return (
     <OperatorShellProvider value={shellContextValue}>
+      <OperatorLayoutRealtimeBridge />
       {isQrTablet ? (
         shell
       ) : useOperatorStage && stageLayout ? (

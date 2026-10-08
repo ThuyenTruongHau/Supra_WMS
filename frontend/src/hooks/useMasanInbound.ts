@@ -6,6 +6,7 @@ import {
 } from "@/api/masan";
 import type { ApiErrorResponse } from "@/types/apiError";
 import type {
+  MasanInboundCallerRequest,
   MasanInboundCallerResponse,
   MasanInboundDetailFilter,
 } from "@/types/masan";
@@ -28,9 +29,9 @@ export const useCallerMasanInbound = () => {
   return useMutation<
     MasanInboundCallerResponse,
     AxiosError<ApiErrorResponse>,
-    number[]
+    MasanInboundCallerRequest
   >({
-    mutationFn: (locationIds) => callerMasanInboundApi(locationIds),
+    mutationFn: callerMasanInboundApi,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["masanInboundDetails"] });
       queryClient.invalidateQueries({ queryKey: ["inboundOrderDetails"] });

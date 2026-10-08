@@ -18,6 +18,7 @@ import {
 import type {
   CalculateOutboundRequest,
   GetOutboundOrdersParams,
+  LackedDetail,
   OutboundOrderCreateRequest,
   OutboundOrderDeleteResponse,
   OutboundOrderUpdateRequest,
@@ -63,6 +64,61 @@ export const useGetOutboundLackedDetails = (orderId: number | undefined) => {
     ...LIVE_QUERY_OPTIONS,
   });
 };
+
+export type OperatorRecentLackedBlock = {
+  order: {
+    id: number;
+    order_code: string;
+    status: string;
+    created_at: string | null;
+  };
+  lacked: LackedDetail[];
+};
+
+export const operatorRecentLackedQueryKey = (warehouseId: number) =>
+  ["operator_outbound_recent_lacked", warehouseId] as const;
+
+/** Ba đơn gần nhất (created_at desc, status != completed) — gọi lacked lần lượt. */
+export function useOperatorRecentLackedOrders(
+  warehouseId: number,
+  enabled: boolean,
+) {
+  return useQuery({
+    queryKey: operatorRecentLackedQueryKey(warehouseId),
+    enabled: enabled && warehouseId > 0,
+    staleTime: 20_000,
+    queryFn: async (): Promise<OperatorRecentLackedBlock[]> => {
+      const { items } = await getOutboundOrdersApi({
+        warehouse_id: warehouseId,
+        page: 1,
+        page_size: 100,
+      });
+      const recent = [...items]
+        .filter((o) => o.status !== "completed")
+        .sort((a, b) => {
+          const ta = a.created_at ? Date.parse(a.created_at) : 0;
+          const tb = b.created_at ? Date.parse(b.created_at) : 0;
+          return tb - ta;
+        })
+        .slice(0, 3);
+
+      const blocks: OperatorRecentLackedBlock[] = [];
+      for (const order of recent) {
+        const lacked = await getOutboundLackedDetailsApi(order.id);
+        blocks.push({
+          order: {
+            id: order.id,
+            order_code: order.order_code,
+            status: order.status,
+            created_at: order.created_at,
+          },
+          lacked,
+        });
+      }
+      return blocks;
+    },
+  });
+}
 
 export const useCalculateOutboundOrder = () => {
   const queryClient = useQueryClient();
@@ -297,6 +353,11 @@ import {
   getOutboundVehicleProductsApi,
   getSortingStationAssignmentApi,
   listIncompleteVehiclesApi,
+  listOperatorBoardOrdersApi,
+  listOperatorBoardVehiclesApi,
+  listOperatorBoardCustomersApi,
+  listOperatorBoardTripsApi,
+  listOperatorBoardLinesApi,
   listOutboundOrdersApi,
   listSortingStationFillsApi,
   pickOutboundItemApi,
@@ -311,6 +372,11 @@ import type {
   CreateOutboundInput,
   IncompleteVehiclesResponse,
   OutboundVehicleProductsResponse,
+  OperatorBoardOrdersResponse,
+  OperatorBoardVehiclesResponse,
+  OperatorBoardCustomersResponse,
+  OperatorBoardTripsResponse,
+  OperatorBoardLinesResponse,
   OutboundOrder,
   OutboundOrderSummary,
   PickOutboundItemInput,
@@ -339,6 +405,155 @@ export const outboundIncompleteVehiclesQueryKey = (
     zoneId,
     availableForAssign ? "assignable" : "all",
   ] as const;
+
+export const operatorBoardOrdersQueryKey = (
+  warehouseId: number,
+  q?: string,
+) => ["outbound_operator_board_orders", warehouseId, q ?? ""] as const;
+
+export const operatorBoardVehiclesQueryKey = (orderId: number) =>
+  ["outbound_operator_board_vehicles", orderId] as const;
+
+export const operatorBoardCustomersQueryKey = (
+  orderId: number,
+  vehicleKey: string,
+) => ["outbound_operator_board_customers", orderId, vehicleKey] as const;
+
+export const operatorBoardTripsQueryKey = (
+  orderId: number,
+  vehicleKey: string,
+  customerKey: string,
+) =>
+  [
+    "outbound_operator_board_trips",
+    orderId,
+    vehicleKey,
+    customerKey,
+  ] as const;
+
+export const operatorBoardLinesQueryKey = (
+  orderId: number,
+  vehicleKey: string,
+  customerKey: string,
+  tripKey: string,
+) =>
+  [
+    "outbound_operator_board_lines",
+    orderId,
+    vehicleKey,
+    customerKey,
+    tripKey,
+  ] as const;
+
+export const useOperatorBoardOrders = (
+  warehouseId: number,
+  options?: { q?: string; enabled?: boolean },
+) => {
+  return useQuery<OperatorBoardOrdersResponse, AxiosError<ApiErrorResponse>>({
+    queryKey: operatorBoardOrdersQueryKey(warehouseId, options?.q),
+    queryFn: () =>
+      listOperatorBoardOrdersApi(warehouseId, {
+        page: 1,
+        page_size: 200,
+        q: options?.q,
+      }),
+    enabled: (options?.enabled ?? true) && warehouseId > 0,
+    staleTime: 30 * 1000,
+    refetchOnMount: "always",
+  });
+};
+
+export const useOperatorBoardVehicles = (
+  orderId: number | null,
+  enabled = true,
+) => {
+  return useQuery<OperatorBoardVehiclesResponse, AxiosError<ApiErrorResponse>>({
+    queryKey: operatorBoardVehiclesQueryKey(orderId ?? 0),
+    queryFn: () => listOperatorBoardVehiclesApi(orderId!),
+    enabled: enabled && orderId != null && orderId > 0,
+    staleTime: 30 * 1000,
+  });
+};
+
+export const useOperatorBoardCustomers = (
+  orderId: number | null,
+  vehicleKey: string | null,
+  enabled = true,
+) => {
+  return useQuery<OperatorBoardCustomersResponse, AxiosError<ApiErrorResponse>>(
+    {
+      queryKey: operatorBoardCustomersQueryKey(
+        orderId ?? 0,
+        vehicleKey ?? "",
+      ),
+      queryFn: () =>
+        listOperatorBoardCustomersApi(orderId!, vehicleKey!),
+      enabled:
+        enabled &&
+        orderId != null &&
+        orderId > 0 &&
+        Boolean(vehicleKey?.trim()),
+      staleTime: 30 * 1000,
+    },
+  );
+};
+
+export const useOperatorBoardTrips = (
+  orderId: number | null,
+  vehicleKey: string | null,
+  customerKey: string | null,
+  enabled = true,
+) => {
+  return useQuery<OperatorBoardTripsResponse, AxiosError<ApiErrorResponse>>({
+    queryKey: operatorBoardTripsQueryKey(
+      orderId ?? 0,
+      vehicleKey ?? "",
+      customerKey ?? "",
+    ),
+    queryFn: () =>
+      listOperatorBoardTripsApi(orderId!, vehicleKey!, customerKey!),
+    enabled:
+      enabled &&
+      orderId != null &&
+      orderId > 0 &&
+      Boolean(vehicleKey?.trim()) &&
+      Boolean(customerKey?.trim()),
+    staleTime: 30 * 1000,
+  });
+};
+
+export const useOperatorBoardLines = (
+  orderId: number | null,
+  vehicleKey: string | null,
+  customerKey: string | null,
+  tripKey: string | null,
+  enabled = true,
+) => {
+  return useQuery<OperatorBoardLinesResponse, AxiosError<ApiErrorResponse>>({
+    queryKey: operatorBoardLinesQueryKey(
+      orderId ?? 0,
+      vehicleKey ?? "",
+      customerKey ?? "",
+      tripKey ?? "",
+    ),
+    queryFn: () =>
+      listOperatorBoardLinesApi(
+        orderId!,
+        vehicleKey!,
+        customerKey!,
+        tripKey!,
+      ),
+    enabled:
+      enabled &&
+      orderId != null &&
+      orderId > 0 &&
+      Boolean(vehicleKey?.trim()) &&
+      Boolean(customerKey?.trim()) &&
+      tripKey != null &&
+      tripKey !== "",
+    staleTime: 30 * 1000,
+  });
+};
 
 export const outboundDetailQueryKey = (id: number) =>
   ["outbound_order", id] as const;

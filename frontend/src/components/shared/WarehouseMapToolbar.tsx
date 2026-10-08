@@ -5,6 +5,7 @@ import { Button } from '@/components/ui';
 
 interface WarehouseMapToolbarProps {
   isAdmin: boolean;
+  readOnly?: boolean;
   hasData: boolean;
   isLoading: boolean;
   errorMessage: string | null;
@@ -19,6 +20,7 @@ interface WarehouseMapToolbarProps {
 
 const WarehouseMapToolbar: React.FC<WarehouseMapToolbarProps> = ({
   isAdmin,
+  readOnly = false,
   hasData,
   isLoading,
   errorMessage,
@@ -39,7 +41,7 @@ const WarehouseMapToolbar: React.FC<WarehouseMapToolbarProps> = ({
       </div>
 
       {/* Import button — admin only */}
-      {isAdmin && (
+      {isAdmin && !readOnly && (
         <Button
           variant="primary"
           onClick={onImportClick}
@@ -55,7 +57,7 @@ const WarehouseMapToolbar: React.FC<WarehouseMapToolbarProps> = ({
       )}
 
       {/* Download button — visible to all when map exists */}
-      {hasData && (
+      {hasData && !readOnly && (
         <Button
           variant="secondary"
           onClick={onDownloadClick}

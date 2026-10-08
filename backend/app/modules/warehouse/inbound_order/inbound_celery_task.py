@@ -71,11 +71,20 @@ def get_inbound_order_details_task(order_code: str) -> Optional[Any]:
 
 
 @celery_app.task(name="inbound.accept_task", bind=True, max_retries=3, acks_late=True)
-def accept_inbound_task_task(self, detail_id: int) -> Any:
-    logger.info("inbound.accept_task detail_id=%s", detail_id)
+def accept_inbound_task_task(
+    self, detail_id: int, assign_robot_id: str | None = None
+) -> Any:
+    logger.info(
+        "inbound.accept_task detail_id=%s assign_robot_id=%s job_id=%s",
+        detail_id,
+        assign_robot_id,
+        self.request.id,
+    )
     try:
         with db_session() as db:
-            result = inbound_order_service.execute_inbound_task(db, detail_id)
+            result = inbound_order_service.execute_inbound_task(
+                db, detail_id, assign_robot_id=assign_robot_id
+            )
             return _dump(result)
     except Exception as exc:
         from app.modules.robot.robot_service import IcsError

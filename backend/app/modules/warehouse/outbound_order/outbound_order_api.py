@@ -28,8 +28,19 @@ from app.modules.warehouse.outbound_order.outbound_order_schema import (
     OutboundConfirmNoQrResponse,
     ExecuteQrManualRequest,
     ExecuteQrManualResponse,
+    OperatorBoardOrdersResponse,
+    OperatorBoardOrderRow,
+    OperatorBoardVehiclesResponse,
+    OperatorBoardVehicleRow,
+    OperatorBoardCustomersResponse,
+    OperatorBoardCustomerRow,
+    OperatorBoardTripsResponse,
+    OperatorBoardTripRow,
+    OperatorBoardLinesResponse,
+    OperatorBoardLineRow,
 )
 from app.modules.warehouse.outbound_order import outbound_order_service
+from app.modules.warehouse.outbound_order import outbound_operator_board_service
 from app.modules.warehouse.outbound_order.outbound_celery_task import (
     calculate_outbound_order_task,
     create_outbound_order_task,
@@ -110,6 +121,129 @@ def list_outbound_orders(
         page=page,
         page_size=page_size,
         summary=summary,
+    )
+
+
+@router.get(
+    "/outbound-orders/operator-board/orders",
+    response_model=OperatorBoardOrdersResponse,
+    dependencies=[Depends(_OUTBOUND_READ)],
+)
+def list_operator_board_orders(
+    db: DbSession,
+    warehouse_id: int = Query(..., gt=0),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=200),
+    q: Optional[str] = Query(None),
+):
+    rows, total = outbound_operator_board_service.list_operator_board_orders(
+        db,
+        warehouse_id=warehouse_id,
+        page=page,
+        page_size=page_size,
+        q=q,
+    )
+    return OperatorBoardOrdersResponse(
+        warehouse_id=warehouse_id,
+        page=page,
+        page_size=page_size,
+        total=total,
+        items=[OperatorBoardOrderRow.model_validate(row) for row in rows],
+    )
+
+
+@router.get(
+    "/outbound-orders/{order_id}/operator-board/vehicles",
+    response_model=OperatorBoardVehiclesResponse,
+    dependencies=[Depends(_OUTBOUND_READ)],
+)
+def list_operator_board_vehicles(db: DbSession, order_id: int):
+    try:
+        rows = outbound_operator_board_service.list_operator_board_vehicles(
+            db, order_id
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return OperatorBoardVehiclesResponse(
+        outbound_order_id=order_id,
+        items=[OperatorBoardVehicleRow.model_validate(row) for row in rows],
+    )
+
+
+@router.get(
+    "/outbound-orders/{order_id}/operator-board/vehicles/{vehicle_key}/customers",
+    response_model=OperatorBoardCustomersResponse,
+    dependencies=[Depends(_OUTBOUND_READ)],
+)
+def list_operator_board_customers(
+    db: DbSession,
+    order_id: int,
+    vehicle_key: str,
+):
+    try:
+        rows = outbound_operator_board_service.list_operator_board_customers(
+            db, order_id, vehicle_key
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return OperatorBoardCustomersResponse(
+        outbound_order_id=order_id,
+        vehicle_number=vehicle_key,
+        items=[OperatorBoardCustomerRow.model_validate(row) for row in rows],
+    )
+
+
+@router.get(
+    "/outbound-orders/{order_id}/operator-board/vehicles/{vehicle_key}/customers/{customer_key}/trips",
+    response_model=OperatorBoardTripsResponse,
+    dependencies=[Depends(_OUTBOUND_READ)],
+)
+def list_operator_board_trips(
+    db: DbSession,
+    order_id: int,
+    vehicle_key: str,
+    customer_key: str,
+):
+    try:
+        rows = outbound_operator_board_service.list_operator_board_trips(
+            db, order_id, vehicle_key, customer_key
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return OperatorBoardTripsResponse(
+        outbound_order_id=order_id,
+        vehicle_number=vehicle_key,
+        customer_name=customer_key,
+        items=[OperatorBoardTripRow.model_validate(row) for row in rows],
+    )
+
+
+@router.get(
+    "/outbound-orders/{order_id}/operator-board/vehicles/{vehicle_key}/customers/{customer_key}/trips/{trip_key}/lines",
+    response_model=OperatorBoardLinesResponse,
+    dependencies=[Depends(_OUTBOUND_READ)],
+)
+def list_operator_board_lines(
+    db: DbSession,
+    order_id: int,
+    vehicle_key: str,
+    customer_key: str,
+    trip_key: str,
+):
+    trip = outbound_operator_board_service.trip_from_path_key(trip_key)
+    try:
+        rows, summary = outbound_operator_board_service.list_operator_board_lines(
+            db, order_id, vehicle_key, customer_key, trip
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return OperatorBoardLinesResponse(
+        outbound_order_id=order_id,
+        vehicle_number=vehicle_key,
+        customer_name=customer_key,
+        trip=trip,
+        items=[OperatorBoardLineRow.model_validate(row) for row in rows],
+        **summary,
     )
 
 

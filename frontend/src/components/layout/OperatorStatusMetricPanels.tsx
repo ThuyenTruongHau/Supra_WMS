@@ -4,7 +4,15 @@ import { cn } from "@/components/ui";
 export type AgvStatusRow = {
   id: string;
   status: string;
-  tone?: "active" | "standby" | "waiting";
+  tone?:
+    | "active"
+    | "standby"
+    | "waiting"
+    | "idle"
+    | "charging"
+    | "task"
+    | "offline"
+    | "unknown";
 };
 
 export type BufferSlotLegend = {
@@ -47,56 +55,78 @@ const AGV_TONE_DOT: Record<NonNullable<AgvStatusRow["tone"]>, string> = {
   active: "bg-success-500",
   waiting: "bg-success-500",
   standby: "bg-warning-500",
+  idle: "bg-success-500",
+  charging: "bg-warning-500",
+  task: "bg-info-500",
+  offline: "bg-slate-400",
+  unknown: "bg-slate-400",
 };
 
 const AGV_TONE_TEXT: Record<NonNullable<AgvStatusRow["tone"]>, string> = {
   active: "text-teal-700",
   waiting: "text-teal-700",
   standby: "text-warning-600",
+  idle: "text-success-600",
+  charging: "text-warning-600",
+  task: "text-info-700",
+  offline: "text-slate-500",
+  unknown: "text-slate-500",
 };
 
 export function RobotStatusPanel({
   rows,
   compact,
+  inline = false,
 }: {
   rows: AgvStatusRow[];
   compact?: boolean;
+  inline?: boolean;
 }) {
   return (
     <PanelShell title="Trạng thái robot" compact={compact}>
-      {rows.map((row) => {
-        const tone = row.tone ?? "active";
-        return (
-          <div
-            key={row.id}
-            className="flex min-w-0 items-center justify-between gap-2"
-          >
-            <span className="flex min-w-0 items-center gap-1.5">
-              <span
-                className={cn("h-2 w-2 shrink-0 rounded-full", AGV_TONE_DOT[tone])}
-                aria-hidden
-              />
-              <span
-                className={cn(
-                  "truncate font-bold text-brand-dark",
-                  compact ? "text-base" : "text-lg",
-                )}
-              >
-                {row.id}
-              </span>
-            </span>
-            <span
+      <div
+        className={
+          inline ? "flex flex-wrap items-center gap-x-6 gap-y-1" : "space-y-1"
+        }
+      >
+        {rows.map((row) => {
+          const tone = row.tone ?? "active";
+          return (
+            <div
+              key={row.id}
               className={cn(
-                "shrink-0 truncate font-bold",
-                compact ? "text-base" : "text-lg",
-                AGV_TONE_TEXT[tone],
+                "flex min-w-0 max-w-full items-center gap-2",
+                !inline && "justify-between",
               )}
             >
-              {row.status}
-            </span>
-          </div>
-        );
-      })}
+              <span className="flex min-w-0 items-center gap-1.5">
+                <span
+                  className={cn("h-2 w-2 shrink-0 rounded-full", AGV_TONE_DOT[tone])}
+                  aria-hidden
+                />
+                <span
+                  className={cn(
+                    "truncate font-bold text-brand-dark",
+                    compact ? "text-base" : "text-lg",
+                  )}
+                >
+                  {row.id}
+                </span>
+              </span>
+              <span
+                className={cn(
+                  "min-w-0 truncate font-bold",
+                  compact ? "text-base" : "text-lg",
+                  AGV_TONE_TEXT[tone],
+                )}
+                title={row.status}
+              >
+                {row.status}
+              </span>
+            </div>
+          );
+        })}
+      </div>
     </PanelShell>
   );
 }

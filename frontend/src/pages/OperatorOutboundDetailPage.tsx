@@ -1,21 +1,18 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, Navigate } from "react-router-dom";
 import {
-  ExportOutlined,
+  EyeOutlined,
   FileExcelOutlined,
   RobotOutlined,
 } from "@ant-design/icons";
-import { Button, Modal, message } from "@/components/ui";
+import WarehouseViewModal from "@/components/inbound/WarehouseViewModal";
+import { Button, Modal, cn, message } from "@/components/ui";
 import { OPERATOR_DESKTOP } from "@/constants/operatorDesktopSizes";
-import { useProduct } from "@/hooks/useProduct";
-import {
-  useIncompleteVehicles,
-  useOutboundList,
-  useCreateOutboundOrder,
-} from "@/hooks/useOutbound";
 import { getApiErrorDetail } from "@/types/apiError";
-import { exportOutboundOrderSOApi } from "@/api/masan";
-import { syncWaveAssignmentApi } from "@/api/outboundTask";
+import {
+  exportOutboundOrderSOApi,
+  masanSortingOutboundDispatchApi,
+} from "@/api/masan";
 import {
   useOutboundTasksByWave,
   useSendOutboundTaskCommands,
@@ -23,22 +20,29 @@ import {
 } from "@/hooks/useOutboundTask";
 import SortingWaveStationBoard from "@/components/outbound/SortingWaveStationBoard";
 import OperatorOutboundOrderBrowser from "@/components/outbound/OperatorOutboundOrderBrowser";
-import type { OutboundSelectedProductLine } from "@/components/outbound/OperatorOutboundVehicleCards";
-import { toDisplayInteger } from "@/utils/number";
+import OperatorOutboundLackedPanel from "@/components/outbound/OperatorOutboundLackedPanel";
 import {
-  buildQuickPalletDetailGroups,
-  pickQuickExportProduct,
-} from "@/utils/quickPalletOutbound";
+  operatorRecentLackedQueryKey,
+  useOperatorBoardOrders,
+} from "@/hooks/useOutbound";
+import type { OutboundSelectedProductLine } from "@/components/outbound/OperatorOutboundVehicleCards";
+import type { MasanSortingItemNeededRow } from "@/types/masan";
+import { toDisplayInteger } from "@/utils/number";
 import { useQueryClient } from "@tanstack/react-query";
+import { useAppStore } from "@/store/useAppStore";
 import {
   isOutboundDetailZoneId,
+  outboundClickableZoneIdsFor,
   outboundMapZoneIdsFor,
 } from "@/constants/outboundMapZones";
+import { masanSortingItemsNeededQueryKey } from "@/hooks/useMasanSortingItemsNeeded";
+import { masanSortingZoneCcLocationsQueryKey } from "@/hooks/useMasanSortingZoneCcLocations";
 
 export default function OperatorOutboundDetailPage() {
   const { zoneId: zoneIdStr } = useParams<{ zoneId: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const selectedWarehouseId = useAppStore((s) => s.selectedWarehouseId);
 
   const zoneId = Number(zoneIdStr);
 
@@ -46,14 +50,17 @@ export default function OperatorOutboundDetailPage() {
     return <Navigate to="/export" replace />;
   }
 
-  const { data: products = [] } = useProduct(zoneId);
-  const createOutboundOrderMutation = useCreateOutboundOrder();
+  const warehouseId = selectedWarehouseId ?? 0;
 
-  const [quickPalletExporting, setQuickPalletExporting] = useState<
-    1 | 2 | null
-  >(null);
+  const [sideExportTab, setSideExportTab] = useState<"session" | "lacked">(
+    "session",
+  );
   const [isExportingSO, setIsExportingSO] = useState(false);
   const [isExportingDailyExcel, setIsExportingDailyExcel] = useState(false);
+  const [warehouseViewOpen, setWarehouseViewOpen] = useState(false);
+
+  const ordersQuery = useOperatorBoardOrders(warehouseId);
+  const sessionOrderCount = ordersQuery.data?.items.length ?? 0;
 
   const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null);
   const [selectedVehicleNumber, setSelectedVehicleNumber] = useState<
@@ -69,21 +76,6 @@ export default function OperatorOutboundDetailPage() {
     setSelectedProductLines([]);
   }, [zoneId]);
 
-  const {
-    data: incompleteVehiclesData,
-    isLoading: vehiclesLoading,
-    isError: vehiclesError,
-  } = useIncompleteVehicles(zoneId);
-  const incompleteVehicles = incompleteVehiclesData?.vehicles ?? [];
-
-  const {
-    data: outboundOrders = [],
-    isLoading: outboundOrdersLoading,
-    isError: outboundOrdersError,
-  } = useOutboundList(zoneId);
-
-  // Still using the wave API hooks, but mapping them logically to zoneId for now, 
-  // as the wave concept is being removed. For now, waveId = zoneId.
   const { data: waveTasks = [] } = useOutboundTasksByWave(zoneId);
   const sendTaskCommandsMutation = useSendOutboundTaskCommands(zoneId, zoneId);
 
@@ -108,23 +100,65 @@ export default function OperatorOutboundDetailPage() {
     }
   };
 
-  const handleQuickPalletExport = async (palletCount: 1 | 2) => {
-    if (zoneId <= 0) {
-      message.warning("Vui lòng chọn kho trước");
-      return;
-    }
-    const product = pickQuickExportProduct(products);
-    if (!product) {
-      message.warning("Chưa có sản phẩm trong kho để tạo đơn demo");
-      return;
-    }
+  const handleVtSortingExportConfirm = useCallback(
+    async (
+      picked: MasanSortingItemNeededRow[],
+      context: {
+        warehouseId: number;
+        ccBucketZoneCode: string;
+        toLocationId: number;
+      },
+    ) => {
+      const row = picked[0];
+      if (!row) return;
 
-    // TODO: Tích hợp API tạo đơn demo ở đây
-    console.log(
-      `[Demo] Gọi API tạo đơn xuất ${palletCount} pallet cho sản phẩm ${product.id}`,
-    );
-    message.success(`Đã chạy giả lập log tạo đơn xuất ${palletCount} pallet`);
-  };
+      let result;
+      try {
+        result = await masanSortingOutboundDispatchApi({
+          warehouse_id: context.warehouseId,
+          zone: context.ccBucketZoneCode,
+          item_id: row.item_id,
+          to_location_id: context.toLocationId,
+        });
+      } catch (err: unknown) {
+        message.error(getApiErrorDetail(err, "Không gửi được lệnh xuất"));
+        throw err;
+      }
+
+      if (result.lacked.length > 0) {
+        message.warning(
+          `Đã gửi lệnh xuất ${row.sku}; còn thiếu ${result.lacked.length} dòng sau calculate`,
+        );
+      } else {
+        message.success(`Đã gửi lệnh xuất mã ${row.sku}`);
+      }
+
+      void queryClient.invalidateQueries({
+        queryKey: masanSortingItemsNeededQueryKey(
+          context.warehouseId,
+          context.ccBucketZoneCode,
+        ),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: masanSortingZoneCcLocationsQueryKey(
+          context.warehouseId,
+          context.ccBucketZoneCode,
+        ),
+      });
+      void queryClient.invalidateQueries({ queryKey: ["warehouseMap"] });
+      void queryClient.invalidateQueries({
+        queryKey: outboundTasksByWaveQueryKey(zoneId),
+      });
+      void queryClient.invalidateQueries({ queryKey: ["outboundOrders"] });
+      void queryClient.invalidateQueries({
+        queryKey: ["outbound_operator_board_orders"],
+      });
+      void queryClient.invalidateQueries({
+        queryKey: operatorRecentLackedQueryKey(context.warehouseId),
+      });
+    },
+    [queryClient, zoneId],
+  );
 
   const handleCallRobot = () => {
     if (pendingTaskIds.length === 0) {
@@ -147,7 +181,6 @@ export default function OperatorOutboundDetailPage() {
       okText: "Gửi lệnh",
       cancelText: "Hủy",
       onOk: () => {
-        // TODO: Backend chưa có API send-commands
         console.log(
           `[CallRobot] Cần gọi API gửi ${pendingTaskIds.length} task xuống robot. Danh sách task:`,
           pendingTaskIds,
@@ -161,8 +194,7 @@ export default function OperatorOutboundDetailPage() {
 
   const handleExportDailyExcel = async () => {
     setIsExportingDailyExcel(true);
-    // Giả lập delay
-    await new Promise(r => setTimeout(r, 1000));
+    await new Promise((r) => setTimeout(r, 1000));
     setIsExportingDailyExcel(false);
     message.success("Xuất báo cáo thành công (giả lập)");
   };
@@ -176,10 +208,13 @@ export default function OperatorOutboundDetailPage() {
       <SortingWaveStationBoard
         zoneId={zoneId}
         mapZoneIds={outboundMapZoneIdsFor(zoneId)}
+        warehouseId={selectedWarehouseId}
+        clickableZoneIds={outboundClickableZoneIdsFor(zoneId)}
+        onVtSortingExportConfirm={handleVtSortingExportConfirm}
         fillHeight
         className="min-h-0 flex-1"
         selectedWaveId={zoneId}
-        onSelectedWaveIdChange={() => { }}
+        onSelectedWaveIdChange={() => {}}
         hideWaveTabs
         onBack={handleBackToOverview}
         mapToolbarTitle={
@@ -188,50 +223,27 @@ export default function OperatorOutboundDetailPage() {
           </h3>
         }
         mapToolbar={
-          <>
-            <div className="flex w-full flex-wrap justify-between items-center gap-4">
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  variant="secondary"
-                  icon={<ExportOutlined />}
-                  onClick={() => void handleQuickPalletExport(1)}
-                  loading={quickPalletExporting === 1}
-                  disabled={
-                    zoneId <= 0 ||
-                    products.length === 0 ||
-                    quickPalletExporting != null
-                  }
-                  className="!h-10 !px-4 !text-base"
-                >
-                  Xuất 1 pallet
-                </Button>
-                <Button
-                  variant="secondary"
-                  icon={<ExportOutlined />}
-                  onClick={() => void handleQuickPalletExport(2)}
-                  loading={quickPalletExporting === 2}
-                  disabled={
-                    zoneId <= 0 ||
-                    products.length === 0 ||
-                    quickPalletExporting != null
-                  }
-                  className="!h-10 !px-4 !text-base"
-                >
-                  Xuất 2 pallet
-                </Button>
-              </div>
-              <Button
-                variant="secondary"
-                icon={<FileExcelOutlined />}
-                onClick={() => void handleExportMasanSO()}
-                loading={isExportingSO}
-                disabled={!selectedOrderId}
-                className="!h-10 !px-4 !text-base"
-              >
-                Xuất SO
-              </Button>
-            </div>
-          </>
+          <div className="flex w-full flex-wrap justify-end items-center gap-4">
+            <Button
+              variant="secondary"
+              icon={<EyeOutlined />}
+              onClick={() => setWarehouseViewOpen(true)}
+              disabled={warehouseId <= 0}
+              className="!h-10 !px-4 !text-base"
+            >
+              Xem kho
+            </Button>
+            <Button
+              variant="secondary"
+              icon={<FileExcelOutlined />}
+              onClick={() => void handleExportMasanSO()}
+              loading={isExportingSO}
+              disabled={!selectedOrderId}
+              className="!h-10 !px-4 !text-base"
+            >
+              Xuất SO
+            </Button>
+          </div>
         }
         emptyHint={
           <p className="text-sm text-slate-500">
@@ -244,76 +256,134 @@ export default function OperatorOutboundDetailPage() {
         }
         sideSlot={
           <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-            <div className="flex shrink-0 items-center justify-between gap-2 border-b border-stripe-hairline px-4 py-3">
-              <h3 className="text-3xl font-black text-brand-dark">
-                {selectedOrderId
-                  ? selectedVehicleNumber
-                    ? "Sản phẩm theo xe"
-                    : "Xe chờ xuất"
-                  : "Lệnh xuất"}
-              </h3>
+            <div className="flex shrink-0 items-stretch gap-0 overflow-x-auto border-b border-stripe-hairline bg-panel-soft">
+              {(
+                [
+                  {
+                    key: "session" as const,
+                    label: "Phiên",
+                    count: sessionOrderCount,
+                  },
+                  {
+                    key: "lacked" as const,
+                    label: "Hàng thiếu",
+                    count: null as number | null,
+                  },
+                ] as const
+              ).map((tab) => {
+                const active = sideExportTab === tab.key;
+                return (
+                  <button
+                    key={tab.key}
+                    type="button"
+                    aria-pressed={active}
+                    onClick={() => setSideExportTab(tab.key)}
+                    className={cn(
+                      "relative flex min-h-12 min-w-[140px] flex-1 items-center justify-center gap-2 px-4 py-2.5 font-bold transition-all",
+                      active
+                        ? "z-10 -mb-px border border-stripe-hairline border-b-white bg-white text-brand-primary shadow-[0_1px_0_0_#fff]"
+                        : "border border-transparent text-stripe-ink-mute hover:bg-white/50 hover:text-brand-dark",
+                    )}
+                  >
+                    <span className="truncate text-2xl">{tab.label}</span>
+                    {tab.key === "session" && tab.count != null ? (
+                      <span
+                        className={cn(
+                          "rounded-full px-1.5 py-0.5 text-[11px] font-bold tabular-nums",
+                          active
+                            ? "bg-brand-primary/15 text-brand-primary"
+                            : "bg-slate-200/80 text-slate-500",
+                        )}
+                      >
+                        {tab.count}
+                      </span>
+                    ) : null}
+                  </button>
+                );
+              })}
             </div>
-            <div className="min-h-0 flex-1 overflow-y-auto bg-slate-50/80">
-              <OperatorOutboundOrderBrowser
-                zoneId={zoneId}
-                orders={outboundOrders}
-                vehicles={incompleteVehicles}
-                loading={vehiclesLoading || outboundOrdersLoading}
-                error={vehiclesError || outboundOrdersError}
-                selectedOrderId={selectedOrderId}
-                onSelectedOrderIdChange={setSelectedOrderId}
-                selectedVehicleNumber={selectedVehicleNumber}
-                onSelectVehicle={(plate) => {
-                  setSelectedVehicleNumber(plate);
-                  if (!plate) setSelectedProductLines([]);
-                }}
-                onSelectedProductsChange={setSelectedProductLines}
+
+            {sideExportTab === "session" ? (
+              <>
+                <div className="flex shrink-0 items-center justify-between gap-2 border-b border-stripe-hairline px-4 py-2">
+                  <h3 className="text-xl font-black text-brand-dark">
+                    {selectedOrderId
+                      ? selectedVehicleNumber
+                        ? "Sản phẩm theo xe"
+                        : "Xe chờ xuất"
+                      : "Danh sách đơn"}
+                  </h3>
+                </div>
+                <div className="min-h-0 flex-1 overflow-y-auto bg-slate-50/80">
+                  <OperatorOutboundOrderBrowser
+                    warehouseId={warehouseId}
+                    selectedOrderId={selectedOrderId}
+                    onSelectedOrderIdChange={setSelectedOrderId}
+                    selectedVehicleNumber={selectedVehicleNumber}
+                    onSelectVehicle={(plate) => {
+                      setSelectedVehicleNumber(plate);
+                      if (!plate) setSelectedProductLines([]);
+                    }}
+                    onSelectedProductsChange={setSelectedProductLines}
+                  />
+                </div>
+                <div className="grid shrink-0 grid-cols-2 gap-2 border-t border-stripe-hairline p-3">
+                  <Button
+                    variant="secondary"
+                    icon={<FileExcelOutlined />}
+                    loading={isExportingDailyExcel}
+                    disabled={warehouseId <= 0}
+                    onClick={() => void handleExportDailyExcel()}
+                    className="!h-11 !w-full justify-center !text-base font-bold"
+                  >
+                    Xuất báo cáo
+                  </Button>
+                  <Button
+                    variant="primary"
+                    icon={<RobotOutlined />}
+                    disabled={pendingTaskIds.length === 0}
+                    loading={sendTaskCommandsMutation.isPending}
+                    onClick={handleCallRobot}
+                    className="!h-10 !w-full justify-center !text-sm disabled:!bg-brand-primary/45 disabled:!text-white disabled:!opacity-100"
+                  >
+                    Gọi robot xuất
+                    {pendingTaskIds.length > 0
+                      ? ` (${pendingTaskIds.length})`
+                      : ""}
+                  </Button>
+                </div>
+                {selectedVehicleNumber && selectedProductLines.length > 0 ? (
+                  <p className="shrink-0 border-t border-stripe-hairline bg-slate-50 px-3 py-2 text-sm text-slate-600">
+                    Đã chọn{" "}
+                    <span className="font-semibold text-brand-dark">
+                      {selectedProductLines.length}
+                    </span>{" "}
+                    loại hàng · SL{" "}
+                    <span className="font-semibold text-brand-dark">
+                      {toDisplayInteger(
+                        selectedProductLines.reduce(
+                          (sum, row) =>
+                            sum + (Number(row.total_quantity) || 0),
+                          0,
+                        ),
+                      )}
+                    </span>
+                  </p>
+                ) : null}
+              </>
+            ) : (
+              <OperatorOutboundLackedPanel
+                warehouseId={warehouseId}
+                enabled={sideExportTab === "lacked"}
               />
-            </div>
-            <div className="grid shrink-0 grid-cols-2 gap-2 border-t border-stripe-hairline p-3">
-              <Button
-                variant="secondary"
-                icon={<FileExcelOutlined />}
-                loading={isExportingDailyExcel}
-                disabled={zoneId <= 0}
-                onClick={() => void handleExportDailyExcel()}
-                className="!h-11 !w-full justify-center !text-base font-bold"
-              >
-                Xuất báo cáo
-              </Button>
-              <Button
-                variant="primary"
-                icon={<RobotOutlined />}
-                disabled={pendingTaskIds.length === 0}
-                loading={sendTaskCommandsMutation.isPending}
-                onClick={handleCallRobot}
-                className="!h-10 !w-full justify-center !text-sm disabled:!bg-brand-primary/45 disabled:!text-white disabled:!opacity-100"
-              >
-                Gọi robot xuất
-                {pendingTaskIds.length > 0
-                  ? ` (${pendingTaskIds.length})`
-                  : ""}
-              </Button>
-            </div>
-            {selectedVehicleNumber && selectedProductLines.length > 0 ? (
-              <p className="shrink-0 border-t border-stripe-hairline bg-slate-50 px-3 py-2 text-sm text-slate-600">
-                Đã chọn{" "}
-                <span className="font-semibold text-brand-dark">
-                  {selectedProductLines.length}
-                </span>{" "}
-                loại hàng · SL{" "}
-                <span className="font-semibold text-brand-dark">
-                  {toDisplayInteger(
-                    selectedProductLines.reduce(
-                      (sum, row) => sum + (Number(row.total_quantity) || 0),
-                      0,
-                    ),
-                  )}
-                </span>
-              </p>
-            ) : null}
+            )}
           </div>
         }
+      />
+      <WarehouseViewModal
+        open={warehouseViewOpen}
+        warehouseId={warehouseId}
+        onClose={() => setWarehouseViewOpen(false)}
       />
     </div>
   );

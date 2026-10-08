@@ -3,16 +3,30 @@ from __future__ import annotations
 from collections import defaultdict
 from io import BytesIO
 from typing import Any, Optional
+from sqlalchemy import func, Integer, cast
 
+from app.core.config import settings
 from openpyxl import Workbook, load_workbook
 from sqlalchemy.orm import Session, joinedload, selectinload
 
-from app.core.cache import cache_set, cache_get, cache_scan_keys
+from app.core.cache import cache_set, cache_get, cache_scan_keys, cache_delete
 from app.modules.masan.masan_outbound_excel import (
     COLUMN_ALIASES,
     DATA_START_ROW,
     HEADER_ROW,
     TRIP_PLACEHOLDERS,
+)
+from app.modules.robot.robot_model import RobotTask
+from app.modules.warehouse.outbound_order.outbound_order_schema import (
+     AllocationOutboundTaskExecute,
+    CalculateOutboundDetail,
+    DetailForCalculate,
+    OutboundRobotTaskCreate,
+)
+from app.modules.warehouse.outbound_order.outbound_order_service import (
+    calculate_outbound_order,
+    execute_outbound_task,
+    _settle_outbound_stock,
 )
 from app.modules.masan.masan_outbound_so_excel import (
     build_so_customer_sheet,
@@ -28,9 +42,19 @@ from app.modules.masan.masan_schema import (
     MasanOutboundParseResponse,
     MasanOutboundPreviewRow,
 )
+from app.modules.warehouse.location_map.location_model import Location
 from app.modules.warehouse.item.item_model import Item
+from app.modules.warehouse.item_stock.item_stock_model import ItemStock
 from app.modules.warehouse.lot_number_utils import parse_legacy_lot_number
+from app.modules.warehouse.warehouse_zone.warehouse_model import Zone
 from app.modules.warehouse.warehouse_zone.warehouse_service import _ensure_warehouse_exists
+from app.core.logger import get_logger
+from app.socket.ws_events import (
+    EVENT_MASAN_SORTING_STOCK_READY,
+    publish_masan_sorting_zone,
+)
+
+logger = get_logger("main")
 
 
 def _normalize_header(value: Any) -> str:
@@ -420,8 +444,164 @@ def export_outbound_order_so(db: Session, order_id: int) -> tuple[bytes, str]:
     filename = f"{order.order_code}_LayHangSO.xlsx"
     return buffer.getvalue(), filename
 
+def _resolve_line_sku(detail: OutboundOrderDetail, meta: dict[str, Any]) -> str | None:
+    raw = meta.get("sku")
+    if raw is not None and str(raw).strip() != "":
+        return str(raw).strip()
+    item = detail.item
+    if item is not None and item.sku:
+        return item.sku
+    return None
 
-def assign_cc_zone(db: Session, warehouse_id: int) -> None:
+
+def _sku_from_allocation(allocation: OutboundOrderAllocation) -> str | None:
+    detail = allocation.outbound_order_detail
+    if detail is not None:
+        meta = detail.details if isinstance(detail.details, dict) else {}
+        resolved = _resolve_line_sku(detail, meta)
+        if resolved:
+            return resolved
+    stock = allocation.item_stock
+    if stock is not None and stock.item is not None and stock.item.sku:
+        return str(stock.item.sku).strip() or None
+    return None
+
+
+def _enrich_stock_ready_payloads(
+    db: Session,
+    rows: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    if not rows:
+        return rows
+    missing_ids: list[int] = []
+    for row in rows:
+        sku = row.get("sku")
+        if sku is not None and str(sku).strip() != "":
+            continue
+        raw_id = row.get("id")
+        if raw_id is not None:
+            missing_ids.append(int(raw_id))
+    if not missing_ids:
+        return rows
+    allocations = (
+        db.query(OutboundOrderAllocation)
+        .options(
+            joinedload(OutboundOrderAllocation.outbound_order_detail).joinedload(
+                OutboundOrderDetail.item
+            ),
+            joinedload(OutboundOrderAllocation.item_stock).joinedload(ItemStock.item),
+        )
+        .filter(OutboundOrderAllocation.id.in_(missing_ids))
+        .all()
+    )
+    sku_by_id = {a.id: _sku_from_allocation(a) for a in allocations}
+    enriched: list[dict[str, Any]] = []
+    for row in rows:
+        copy = dict(row)
+        if not (copy.get("sku") and str(copy.get("sku")).strip()):
+            alloc_id = copy.get("id")
+            if alloc_id is not None:
+                sku = sku_by_id.get(int(alloc_id))
+                if sku:
+                    copy["sku"] = sku
+        enriched.append(copy)
+    return enriched
+
+
+def _enrich_cc_cache_lines_skus(
+    db: Session,
+    warehouse_id: int,
+    lines: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    if not lines:
+        return lines
+
+    missing_item_ids: list[int] = []
+    for line in lines:
+        sku = line.get("sku")
+        if sku is not None and str(sku).strip() != "":
+            continue
+        raw_id = line.get("item_id")
+        if raw_id is None:
+            continue
+        item_id = int(raw_id)
+        if item_id not in missing_item_ids:
+            missing_item_ids.append(item_id)
+
+    sku_by_item_id: dict[int, str] = {}
+    if missing_item_ids:
+        rows = (
+            db.query(Item.id, Item.sku)
+            .filter(
+                Item.id.in_(missing_item_ids),
+                Item.warehouse_id == warehouse_id,
+            )
+            .all()
+        )
+        sku_by_item_id = {row.id: row.sku for row in rows if row.sku}
+
+    enriched: list[dict[str, Any]] = []
+    for line in lines:
+        merged = dict(line)
+        sku = merged.get("sku")
+        if sku is None or str(sku).strip() == "":
+            raw_id = merged.get("item_id")
+            if raw_id is not None:
+                resolved = sku_by_item_id.get(int(raw_id))
+                if resolved:
+                    merged["sku"] = resolved
+        enriched.append(merged)
+    return enriched
+
+
+def _detail_to_cache_line(detail: OutboundOrderDetail) -> dict[str, Any]:
+    meta = detail.details if isinstance(detail.details, dict) else {}
+    return {
+        "detail_id": detail.id,
+        "outbound_order_id": detail.outbound_order_id,
+        "item_id": detail.item_id,
+        "quantity": detail.quantity,
+        "unit": detail.unit,
+        "detail_type": detail.detail_type,
+        # BM.04 / Masan thường nằm trong JSON cột details
+        "vehicle_no": meta.get("vehicle_no"),
+        "customer_name": meta.get("customer_name"),
+        "sku": _resolve_line_sku(detail, meta),
+        "trip": meta.get("trip"),
+        "nvt": meta.get("nvt"),
+        "lot_number": meta.get("lot_number"),
+        "pallet_count": meta.get("pallet_count"),
+    }
+
+def assign_cc_zone(db: Session, warehouse_id: int) -> None:                     
+    keys = cache_scan_keys(f"outbound:assigned_cc_location:{warehouse_id}:*")
+    existed_locations: list[str] = []
+    for key in keys:
+        suffix = key.rsplit(":", 1)[-1]
+        if suffix.isdigit():
+            existed_locations.append(int(suffix))
+
+    logger.info(f"Existed locations: {existed_locations}")
+
+    numeric_suffix = cast(func.right(Location.location_name, 3), Integer)
+    available_locations = (
+        db.query(Location)
+        .join(Zone, Zone.id == Location.zone_id)
+        .filter(
+            Location.warehouse_id == warehouse_id,
+            Location.is_active.is_(True),
+            Zone.code.in_(settings.zone_cc),
+            ~Location.id.in_(existed_locations),
+        )
+        .order_by(numeric_suffix.asc(), Location.location_name.asc())
+        .all()
+    )
+
+    logger.info(f"Available locations: {available_locations}")
+
+    if not available_locations:
+        return
+    
     _ensure_warehouse_exists(db, warehouse_id)
     available_orders = db.query(OutboundOrder).filter(
         OutboundOrder.status != "completed",
@@ -438,28 +618,591 @@ def assign_cc_zone(db: Session, warehouse_id: int) -> None:
         if suffix.isdigit():
             assigned_ids.append(int(suffix))
 
-    list_details = db.query(OutboundOrderDetail).filter(
-        OutboundOrderDetail.outbound_order_id.in_(order_ids),
-        ~OutboundOrderDetail.id.in_(assigned_ids)
-    ).all()
+    list_details = (
+        db.query(OutboundOrderDetail)
+        .options(joinedload(OutboundOrderDetail.item))
+        .filter(
+            OutboundOrderDetail.outbound_order_id.in_(order_ids),
+            OutboundOrderDetail.status == "initialize",
+            ~OutboundOrderDetail.id.in_(assigned_ids),
+        )
+        .all()
+    )
 
-    details_by_vehicle: dict[str, list[OutboundOrderDetail]] = defaultdict(list)
+    details_by_vehicle: dict[str, list] = defaultdict(list)
+    reversed_vehicles_list = []
     for detail in list_details:
         meta = detail.details if isinstance(detail.details, dict) else {}
         raw = meta.get("vehicle_no")
         vehicle_number = str(raw).strip() if raw is not None else ""
         if not vehicle_number:
             vehicle_number = "no_vehicle"
-        details_by_vehicle[vehicle_number].append(detail)
-        cache_set(f"outbound:assigned_cc_details:{warehouse_id}:{detail.id}", detail.id, -1)
+        line = _detail_to_cache_line(detail)
+        details_by_vehicle[vehicle_number].append(line)
+        if vehicle_number not in reversed_vehicles_list:
+            reversed_vehicles_list.append(vehicle_number)
+
+    i = 0
+    while i < len(available_locations) and i < len(reversed_vehicles_list):
+        key = f"outbound:assigned_cc_location:{warehouse_id}:{available_locations[i].id}"
+        lines = details_by_vehicle[reversed_vehicles_list[i]]
+        for line in lines:
+            cache_data = {
+                "zone": available_locations[i].zone.code,
+                "location_id": available_locations[i].id,
+            }
+            cache_set(f"outbound:assigned_cc_details:{warehouse_id}:{line['detail_id']}", cache_data, -1)
+        cache_set(key, {"zone": available_locations[i].zone.code, "vehicle_number": reversed_vehicles_list[i], "lines": lines}, -1)
+        i += 1
 
     
+def get_sorting_data_for_zone(
+    db: Session,
+    warehouse_id: int,
+    location_id: int,
+) -> Optional[dict[str, Any]]:
+    bucket = cache_get(f"outbound:assigned_cc_location:{warehouse_id}:{location_id}")
+    if not bucket:
+        return None
 
+    raw_lines = bucket.get("lines") or []
+    detail_ids = [
+        int(line["detail_id"])
+        for line in raw_lines
+        if line.get("detail_id") is not None
+    ]
 
+    status_by_id: dict[int, str] = {}
+    if detail_ids:
+        detail_rows = (
+            db.query(OutboundOrderDetail)
+            .filter(OutboundOrderDetail.id.in_(detail_ids))
+            .all()
+        )
+        status_by_id = {row.id: row.status for row in detail_rows}
 
+    enriched_lines: list[dict[str, Any]] = []
+    for line in raw_lines:
+        merged = dict(line)
+        detail_id = merged.get("detail_id")
+        if detail_id is not None:
+            merged["status"] = status_by_id.get(int(detail_id), "initialize")
+        else:
+            merged["status"] = None
+        enriched_lines.append(merged)
 
+    enriched_lines = _enrich_cc_cache_lines_skus(
+        db, warehouse_id, enriched_lines
+    )
 
+    return {
+        "zone": bucket.get("zone"),
+        "vehicle_number": bucket.get("vehicle_number"),
+        "lines": enriched_lines,
+    }
 
+def get_item_needed_to_sorting(
+    db: Session, warehouse_id: int, zone: str
+) -> dict[str, Any]:
+    keys = cache_scan_keys(f"outbound:assigned_cc_location:{warehouse_id}:*")
+    list_lines_raw: list[dict[str, Any]] = []
+    for key in keys:
+        suffix = key.rsplit(":", 1)[-1]
+        if suffix.isdigit():
+            location_id = int(suffix)
+            bucket = cache_get(f"outbound:assigned_cc_location:{warehouse_id}:{location_id}")
+            if bucket and bucket.get("zone") == zone:
+                lines = bucket.get("lines") or []
+                list_item_ids = [line.get("detail_id") for line in lines]
+                list_lines_raw.extend(list_item_ids)
+
+    list_lines_raw = db.query(OutboundOrderDetail).filter(
+        OutboundOrderDetail.id.in_(list_lines_raw),
+    ).all()
+
+    list_lines = [line for line in list_lines_raw if line.status == "initialize"]
+
+    qty_by_item_id: dict[int, int] = defaultdict(int)
+    item_ids: list[int] = []
+    for line in list_lines:
+        item_id = line.item_id
+        qty_by_item_id[item_id] += int(line.quantity or 0)
+        if item_id not in item_ids:
+            item_ids.append(item_id)
+
+    # logger.info(f"Item ids: {item_ids}")
+    detail_ids = [d.id for d in list_lines_raw]
+    if detail_ids:
+        allocations = (
+            db.query(OutboundOrderAllocation)
+            .filter(
+                OutboundOrderAllocation.outbound_order_detail_id.in_(detail_ids),
+                OutboundOrderAllocation.robot_task_id.isnot(None),
+            )
+            .all()
+        )
+        by_task: dict[int, list[OutboundOrderAllocation]] = defaultdict(list)
+        excluded_list = []
+        for alloc in allocations:
+            if alloc.robot_task_id in excluded_list:
+                continue
+            if alloc.allocation_type == "outbound" and alloc.status != "completed":
+                excluded_list.append(alloc.robot_task_id)
+                continue
+            if alloc.allocation_type == "return":
+                by_task[alloc.robot_task_id].append(alloc)
+    else:
+        by_task = {}
+
+    if not item_ids:
+        return {
+            "warehouse_id": warehouse_id,
+            "zone": zone,
+            "items": [],
+            "line_count": len(list_lines),
+            "return_tasks": by_task,
+        }
+
+    item_rows = (
+        db.query(Item)
+        .filter(Item.id.in_(item_ids), Item.warehouse_id == warehouse_id)
+        .all()
+    )
+    item_by_id = {row.id: row for row in item_rows}
+
+    items_payload: list[dict[str, Any]] = []
+    for item_id in item_ids:
+        item = item_by_id.get(item_id)
+        if not item:
+            continue
+        items_payload.append(
+            {
+                "item_id": item_id,
+                "sku": item.sku,
+                "item_name": item.name,
+                "total_quantity": qty_by_item_id[item_id],
+            }
+        )
+
+    logger.info(f"Items payload: {items_payload}")
+    return {
+        "warehouse_id": warehouse_id,
+        "zone": zone,
+        "items": items_payload,
+        "line_count": len(list_lines),
+        "return_tasks": by_task,
+    }
+
+def sending_masan_outbound_task(db: Session, warehouse_id: int, zone: str, item_id: int, to_location_id: int):
+    
+    # Need optimize
+    keys = cache_scan_keys(f"outbound:assigned_cc_location:{warehouse_id}:*")
+    list_lines: list[dict[str, Any]] = []
+    for key in keys:
+        suffix = key.rsplit(":", 1)[-1]
+        if suffix.isdigit():
+            location_id = int(suffix)
+            bucket = cache_get(f"outbound:assigned_cc_location:{warehouse_id}:{location_id}")
+            if bucket and bucket.get("zone") == zone:
+                lines = bucket.get("lines") or []
+                for line in lines:
+                    if line.get("item_id") == item_id:
+                        list_lines.append(line["detail_id"])
+
+    list_lines_db = db.query(OutboundOrderDetail).filter(
+        OutboundOrderDetail.id.in_(list_lines),
+        OutboundOrderDetail.status == "initialize"
+    ).all()
+
+    
+    if len(list_lines_db) > 0:
+        details_by_order: dict[int, list[OutboundOrderDetail]] = defaultdict(list)
+        for detail in list_lines_db:
+            details_by_order[detail.outbound_order_id].append(detail)
+        calculate_bodies: list[CalculateOutboundDetail] = []
+        for order_id, details in details_by_order.items():
+            line_items = [
+                DetailForCalculate(
+                    id=d.id,
+                    item_id=d.item_id,
+                    quantity=int(d.quantity),
+                    detail_type=d.detail_type,
+                    details=d.details if isinstance(d.details, dict) else {},
+                )
+                for d in details
+            ]
+            calculate_bodies.append(
+                CalculateOutboundDetail(
+                    warehouse_id=warehouse_id,
+                    outbound_order_id=order_id,
+                    line_items=line_items,
+                )
+            )
         
-        
-        
+        results: list[dict[str, Any]] = []
+        for body in calculate_bodies:
+            response_caculate = calculate_outbound_order(db, body, strategy="fefo")
+            results.append({
+                "outbound_order_id": response_caculate.outbound_order_id,
+                "is_fully_allocated": response_caculate.is_fully_allocated,
+                "lacked": [x.model_dump() for x in response_caculate.lacked],
+            })
+
+    # logger.info(f"Results: {list_lines}")
+
+    picked_allocation = (
+        db.query(OutboundOrderAllocation)
+        .options(joinedload(OutboundOrderAllocation.outbound_order_detail))
+        .filter(
+            OutboundOrderAllocation.outbound_order_detail_id.in_(list_lines),
+            OutboundOrderAllocation.status == "initialize",
+            OutboundOrderAllocation.allocation_type == "outbound",
+            OutboundOrderAllocation.robot_task_id.isnot(None),
+        )
+        .first()
+    )
+
+    # logger.info(f"Picked allocation: {picked_allocation.model_dump()}")
+
+    if not picked_allocation:
+        return
+
+    robot_task_id = picked_allocation.robot_task_id
+    _pack_and_execute_robot_task(db, robot_task_id, picked_allocation, to_location_id)
+    
+    if results:
+        all_lacked = [
+            row
+            for r in results
+            for row in r["lacked"]
+        ]
+    else:
+        all_lacked = []
+    return {
+        "warehouse_id": warehouse_id,
+        "zone": zone,
+        "item_id": item_id,
+        "lacked": all_lacked,
+    }
+
+def _pack_and_execute_robot_task(db: Session, robot_task_id: int, picked_allocation: OutboundOrderAllocation, to_location_id: int) -> None: 
+    robot_task = db.query(RobotTask).filter(RobotTask.id == robot_task_id).first()
+    if not robot_task:
+        return
+
+    task_allocations = (
+        db.query(OutboundOrderAllocation)
+        .filter(
+            OutboundOrderAllocation.robot_task_id == robot_task_id,
+            OutboundOrderAllocation.status == "initialize",
+            OutboundOrderAllocation.allocation_type == "outbound",
+        )
+        .order_by(OutboundOrderAllocation.id)
+        .all()
+    )
+    if not task_allocations:
+        return
+    
+    from_location_id = picked_allocation.from_location_id
+    if from_location_id is None:
+        stock = picked_allocation.item_stock
+        from_location_id = stock.location_id if stock else None
+    if not from_location_id or not to_location_id:
+        raise ValueError("From location or to location is not set")
+
+    execute_body = OutboundRobotTaskCreate(
+        order_id=robot_task.order_id,
+        from_location_id=from_location_id,
+        to_location_id=to_location_id,
+        allocations=[
+            AllocationOutboundTaskExecute(allocation_id=a.id)
+            for a in task_allocations
+        ],
+    )
+    execute_outbound_task(db, execute_body, detail_type="auto")
+
+def _apply_clear_outbound_masan_details(
+    db: Session,
+    warehouse_id: int,
+    zone: str,
+    location_id: int,
+    detail_id: int,
+) -> None:
+    detail_id = int(detail_id)
+    location_id = int(location_id)
+    zone = (zone or "").strip()
+
+    cache_delete(f"outbound:assigned_cc_details:{warehouse_id}:{detail_id}")
+
+    loc_key = f"outbound:assigned_cc_location:{warehouse_id}:{location_id}"
+    bucket = cache_get(loc_key)
+    if not bucket:
+        return
+
+    if (bucket.get("zone") or "").strip() != zone:
+        logger.warning(
+            "CC cache zone mismatch warehouse_id=%s location_id=%s expected=%r got=%r",
+            warehouse_id,
+            location_id,
+            zone,
+            bucket.get("zone"),
+        )
+
+    lines = bucket.get("lines") or []
+    new_lines = [
+        line
+        for line in lines
+        if line.get("detail_id") is not None and int(line["detail_id"]) != detail_id
+    ]
+    if len(new_lines) == len(lines):
+        return
+
+    if not new_lines:
+        cache_delete(loc_key)
+    else:
+        cache_set(loc_key, {**bucket, "lines": new_lines}, -1)
+
+def get_sorting_zone_pending_stock(
+    db: Session,
+    warehouse_id: int,
+    zone: str,
+    *,
+    republish: bool = False,
+) -> dict[str, Any]:
+    zone_norm = (zone or "").strip()
+    if not zone_norm:
+        raise ValueError("Zone is required")
+
+    by_location: dict[int, list[dict[str, Any]]] = defaultdict(list)
+    seen_keys: set[str] = set()
+    pattern = f"outbound:masan:stock_ready:{warehouse_id}:{zone_norm}:*"
+
+    for scanned in cache_scan_keys(pattern):
+        parts = scanned.rsplit(":", 2)
+        if len(parts) < 3:
+            continue
+        try:
+            allocation_id = int(parts[-2])
+            location_id = int(parts[-1])
+        except ValueError:
+            continue
+        logical_key = (
+            f"outbound:masan:stock_ready:{warehouse_id}:{zone_norm}:"
+            f"{allocation_id}:{location_id}"
+        )
+        if logical_key in seen_keys:
+            continue
+        seen_keys.add(logical_key)
+        payload = cache_get(logical_key)
+        if not isinstance(payload, dict):
+            continue
+        by_location[location_id].append(payload)
+
+    name_by_id: dict[int, str | None] = {}
+    if by_location:
+        for loc in (
+            db.query(Location)
+            .filter(
+                Location.id.in_(list(by_location.keys())),
+                Location.warehouse_id == warehouse_id,
+            )
+            .all()
+        ):
+            name_by_id[loc.id] = (loc.location_name or "").strip() or None
+
+    locations_payload: list[dict[str, Any]] = []
+    for loc_id in sorted(by_location.keys()):
+        locations_payload.append(
+            {
+                "location_id": loc_id,
+                "location_name": name_by_id.get(loc_id),
+                "allocations": _enrich_stock_ready_payloads(db, by_location[loc_id]),
+            }
+        )
+
+    published_events = 0
+    if republish:
+        detail_payloads: dict[int, list[dict[str, Any]]] = defaultdict(list)
+        detail_location: dict[int, int] = {}
+        for loc_id, rows in by_location.items():
+            for row in rows:
+                raw_detail = row.get("outbound_order_detail_id")
+                if raw_detail is None:
+                    continue
+                detail_id = int(raw_detail)
+                detail_payloads[detail_id].append(row)
+                detail_location[detail_id] = loc_id
+        for detail_id, payloads in detail_payloads.items():
+            publish_masan_sorting_zone(
+                warehouse_id,
+                zone_norm,
+                event_type=EVENT_MASAN_SORTING_STOCK_READY,
+                data={
+                    "location_id": detail_location[detail_id],
+                    "detail_id": detail_id,
+                    "details": payloads,
+                },
+            )
+            published_events += 1
+
+    return {
+        "warehouse_id": warehouse_id,
+        "zone": zone_norm,
+        "locations": locations_payload,
+        "published_events": published_events,
+    }
+
+
+def confirm_allocation_outbound(db: Session, warehouse_id: int, zone: str, location_id: int, allocation_id: int, quantity: int) -> None:
+
+    target_allocation = db.query(OutboundOrderAllocation).filter(
+        OutboundOrderAllocation.id == allocation_id,
+    ).first()
+
+    if not target_allocation:
+        raise ValueError(f"Allocation {allocation_id} not found")
+    
+    target_allocation.quantity = quantity
+    target_allocation.status = "confirmed"
+    cache_delete(
+        f"outbound:masan:stock_ready:{warehouse_id}:{zone}:{allocation_id}:{location_id}"
+    )
+    stock_id = target_allocation.item_stock_id
+
+    allocations = db.query(OutboundOrderAllocation).filter(
+        OutboundOrderAllocation.item_stock_id == stock_id,
+        OutboundOrderAllocation.allocation_type == "outbound",
+    ).all()
+
+    for allocation in allocations:
+        if allocation.status != "confirmed":
+            return
+
+    _settle_outbound_stock(db, allocations)
+
+    detail = target_allocation.outbound_order_detail
+    if not detail:
+        raise ValueError(f"Detail {detail.id} not found")
+    
+    db.refresh(detail)
+    
+    if detail.status == "completed":
+        _apply_clear_outbound_masan_details(db, warehouse_id, zone, location_id, detail.id)
+
+    
+def _send_taking_stock(db: Session, robot_task_id: int, allocations: list[OutboundOrderAllocation]) -> None:
+    logger.info(f"Sending taking stock for robot task {robot_task_id}")
+    
+    sending_payloads: dict[int, list[dict[str, Any]]] = defaultdict(list)
+    for allocation in allocations:
+        detail = allocation.outbound_order_detail
+        if not detail:
+            continue
+        warehouse_id = detail.outbound_order.warehouse_id
+        sending_payloads[detail.id].append({
+            "id": allocation.id,
+            "outbound_order_detail_id": allocation.outbound_order_detail_id,
+            "item_stock_id": allocation.item_stock_id,
+            "quantity": int(allocation.quantity),
+            "status": allocation.status,
+            "allocation_type": allocation.allocation_type,
+            "robot_task_id": allocation.robot_task_id,
+            "from_location_id": allocation.from_location_id,
+            "to_location_id": allocation.to_location_id,
+        })
+
+    for detail_id, payloads in sending_payloads.items():
+        payloads = _enrich_stock_ready_payloads(db, payloads)
+        sending_payloads[detail_id] = payloads
+        cache_data = cache_get(f"outbound:assigned_cc_details:{warehouse_id}:{detail_id}")
+        if cache_data:
+            location_id = cache_data.get("location_id")
+            zone = cache_data.get("zone")
+
+            publish_masan_sorting_zone(
+                warehouse_id,
+                zone,
+                event_type=EVENT_MASAN_SORTING_STOCK_READY,
+                data={
+                    "location_id": location_id,
+                    "details": payloads,
+                },
+            )
+
+            logger.info(f"Publishing sorting stock ready for warehouse_id={warehouse_id}, zone={zone}, location_id={location_id}, details={len(payloads)}")
+
+            for payload in payloads:
+                key = (
+                    f"outbound:masan:stock_ready:{warehouse_id}:{zone}:"
+                    f"{payload['id']}:{location_id}"
+                )
+                cache_set(key, payload, -1)
+
+
+def list_sorting_zone_cc_locations(
+    db: Session,
+    warehouse_id: int,
+    zone: str,
+) -> dict[str, Any]:
+    """Trạng thái gán CC theo mã zone (Zone.code) — mọi location trong zone DB."""
+    zone_norm = (zone or "").strip()
+    if not zone_norm:
+        raise ValueError("Zone is required")
+    _ensure_warehouse_exists(db, warehouse_id)
+
+    zone_row = (
+        db.query(Zone)
+        .filter(Zone.warehouse_id == warehouse_id, Zone.code == zone_norm)
+        .first()
+    )
+    if not zone_row:
+        return {
+            "warehouse_id": warehouse_id,
+            "zone": zone_norm,
+            "locations": [],
+        }
+
+    location_rows = (
+        db.query(Location)
+        .filter(
+            Location.warehouse_id == warehouse_id,
+            Location.zone_id == zone_row.id,
+        )
+        .order_by(Location.location_code)
+        .all()
+    )
+
+    items: list[dict[str, Any]] = []
+    for loc in location_rows:
+        location_name = (loc.location_name or "").strip() or None
+        bucket_data = get_sorting_data_for_zone(db, warehouse_id, loc.id)
+        if not bucket_data:
+            items.append(
+                {
+                    "location_id": loc.id,
+                    "location_code": loc.location_code,
+                    "location_name": location_name,
+                    "assigned": False,
+                    "zone": zone_norm,
+                    "vehicle_number": None,
+                    "lines": [],
+                }
+            )
+            continue
+        items.append(
+            {
+                "location_id": loc.id,
+                "location_code": loc.location_code,
+                "location_name": location_name,
+                "assigned": True,
+                "zone": bucket_data.get("zone"),
+                "vehicle_number": bucket_data.get("vehicle_number"),
+                "lines": bucket_data.get("lines") or [],
+            }
+        )
+
+    return {
+        "warehouse_id": warehouse_id,
+        "zone": zone_norm,
+        "locations": items,
+    }

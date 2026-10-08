@@ -294,6 +294,8 @@ export type MergedZoneQueries<TItem> = {
   isLoading: boolean;
   /** Các zone lỗi (kể cả lỗi khi polling lại mà vẫn còn data cũ). */
   failedZoneIds: number[];
+  /** Refetch mọi zone con (dùng khi click ô map — giống admin refetch full-locations). */
+  refetch: () => Promise<unknown[]>;
 };
 
 function mergeZoneResults<TData, TItem extends { location_code: string }>(
@@ -317,6 +319,7 @@ function mergeZoneResults<TData, TItem extends { location_code: string }>(
     items,
     isLoading: results.some((r) => r.isLoading),
     failedZoneIds,
+    refetch: () => Promise.all(results.map((r) => r.refetch())),
   };
 }
 

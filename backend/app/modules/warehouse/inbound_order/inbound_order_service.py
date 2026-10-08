@@ -41,7 +41,8 @@ from app.modules.warehouse.item.item_model import Item, QR_Code
 from app.modules.warehouse.unit.unit_model import ItemUnit, Unit
 from app.modules.warehouse.item_stock.item_stock_model import ItemStock
 from app.modules.robot.robot_service import task_status_service
-from app.modules.robot.robot_model import RobotTask
+from app.modules.robot.robot_model import RobotTask, TaskStatus
+from app.modules.warehouse.outbound_order.outbound_order_model import OutboundOrderAllocation
 from app.modules.warehouse.transaction_history.history_model import History, Transaction
 from app.core.config import settings
 from app.core.cache import cache_scan_keys, cache_set, cache_delete, cache_delete_pattern, cache_get, get_redis
@@ -139,7 +140,53 @@ def suggest_allocation_inbound(db: Session, body: InboundSuggestAllocation):
 
     return InboundSuggestAllocationResponse(line_items=line_items)
 
+def _delete_robot_task_and_statuses(db: Session, task: RobotTask) -> None:
+    db.query(TaskStatus).filter(TaskStatus.order_id == task.order_id).delete(
+        synchronize_session=False
+    )
+    db.delete(task)
+
+
+def _clear_initialize_outbound_allocations_for_stock(db: Session, stock_id: int) -> None:
+    allocs = (
+        db.query(OutboundOrderAllocation)
+        .filter(OutboundOrderAllocation.item_stock_id == stock_id)
+        .all()
+    )
+    for oa in allocs:
+        if oa.status != "initialize":
+            raise ValueError(
+                f"Stock {stock_id} is used by outbound allocation {oa.id} "
+                f"(status={oa.status}). Cancel or complete that outbound line first."
+            )
+        robot_task_id = oa.robot_task_id
+        db.delete(oa)
+        db.flush()
+        if not robot_task_id:
+            continue
+        still_linked = (
+            db.query(OutboundOrderAllocation.id)
+            .filter(OutboundOrderAllocation.robot_task_id == robot_task_id)
+            .first()
+        )
+        if still_linked:
+            continue
+        outbound_task = db.query(RobotTask).filter(RobotTask.id == robot_task_id).first()
+        if outbound_task:
+            _delete_robot_task_and_statuses(db, outbound_task)
+
+
 def _delete_item_stock(db: Session, stock: ItemStock) -> None:
+    _clear_initialize_outbound_allocations_for_stock(db, stock.id)
+    db.query(Transaction).filter(Transaction.item_stock_id == stock.id).delete(
+        synchronize_session=False
+    )
+    db.query(ItemStockRelation).filter(
+        or_(
+            ItemStockRelation.parent_stock_id == stock.id,
+            ItemStockRelation.child_stock_id == stock.id,
+        )
+    ).delete(synchronize_session=False)
     qrs = db.query(QR_Code).filter(QR_Code.item_stock_id == stock.id).all()
     for qr in qrs:
         db.delete(qr)
@@ -431,7 +478,7 @@ def _purge_detail(db: Session, detail: InboundOrderDetail) -> None:
         .all()
     )
     for task in robot_tasks:
-        db.delete(task)
+        _delete_robot_task_and_statuses(db, task)
 
     for allocation in list(detail.allocations):
         _delete_allocation(db, allocation)
@@ -465,8 +512,8 @@ def delete_inbound_order(db: Session, order_code: str) -> None:
     if not order:
         raise ValueError("Inbound order not found")
 
-    if order.status != "initialize":
-        raise ValueError("Only initialize and cancelled order can be deleted")
+    if order.status == "completed":
+        raise ValueError("Completed inbound orders cannot be deleted")
 
     existing_details = (
         db.query(InboundOrderDetail)
@@ -484,6 +531,41 @@ def delete_inbound_order(db: Session, order_code: str) -> None:
     except IntegrityError as e:
         db.rollback()
         raise ValueError(f"Database conflict: {e.orig}") from e
+
+
+def list_incomplete_inbound_order_codes(db: Session) -> list[str]:
+    rows = (
+        db.query(InboundOrder.order_code)
+        .join(InboundOrderDetail, InboundOrderDetail.inbound_order_id == InboundOrder.id)
+        .filter(InboundOrderDetail.status != "completed")
+        .distinct()
+        .order_by(InboundOrder.order_code)
+        .all()
+    )
+    return [row[0] for row in rows]
+
+
+def delete_all_incomplete_inbound_orders(db: Session) -> dict[str, object]:
+    codes = list_incomplete_inbound_order_codes(db)
+    deleted: list[str] = []
+    errors: list[dict[str, str]] = []
+    for code in codes:
+        try:
+            delete_inbound_order(db, code)
+            deleted.append(code)
+        except ValueError as exc:
+            db.rollback()
+            errors.append({"order_code": code, "error": str(exc)})
+        except IntegrityError as exc:
+            db.rollback()
+            errors.append({"order_code": code, "error": f"Database conflict: {exc.orig}"})
+    cache_delete_pattern("inbound:*")
+    return {
+        "attempted": len(codes),
+        "deleted": deleted,
+        "deleted_count": len(deleted),
+        "errors": errors,
+    }
 
 
 def update_inbound_order(db: Session, order_code: str, body: InboundOrderUpdate, inbound_type: str, user_id: int) -> InboundOrder:
@@ -750,7 +832,9 @@ def get_inbound_order_detail(db: Session, order_code: str) -> Optional[list[Inbo
     return [_build_detail_response(d) for d in details]
 
 
-def execute_inbound_task(db: Session, detail_id: int) -> InboundExecuteDetailResult:
+def execute_inbound_task(
+    db: Session, detail_id: int, *, assign_robot_id: Optional[str] = None
+) -> InboundExecuteDetailResult:
     detail = (
         db.query(InboundOrderDetail)
         .options(
@@ -772,7 +856,7 @@ def execute_inbound_task(db: Session, detail_id: int) -> InboundExecuteDetailRes
 
     robot_task: RobotTask | None = None
 
-    if detail.detail_type == "manual":
+    if detail.detail_type == "manual" and not assign_robot_id:
         detail.status = "completed"
 
         stocks = (
@@ -808,6 +892,9 @@ def execute_inbound_task(db: Session, detail_id: int) -> InboundExecuteDetailRes
 
         start = detail.from_location.location_code
         target = detail.to_location.location_code
+        task_order_detail = {"taskPath": f"{start},{target}"}
+        if assign_robot_id:
+            task_order_detail["assignRobotIds"] = assign_robot_id
         order_id = f"TDS_Inbound_{uuid.uuid4().hex[:8]}"
         robot_task = RobotTask(
             inbound_order_detail_id=detail.id,
@@ -815,7 +902,7 @@ def execute_inbound_task(db: Session, detail_id: int) -> InboundExecuteDetailRes
             quantity=sum(int(a.quantity) for a in detail.allocations),
             process_code=settings.inbound_process_code,
             system_code="Thadosoft",
-            task_order_detail=json.dumps([{"taskPath": f"{start},{target}"}]),
+            task_order_detail=json.dumps([task_order_detail]),
         )
 
         db.add(History(

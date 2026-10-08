@@ -1,6 +1,7 @@
 export interface WarehouseLocation {
   id: number;
   location_code: string;
+  location_name?: string | null;
   node_name: string | null;
   zone_id: number | null;
   row: string | null;

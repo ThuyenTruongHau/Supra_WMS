@@ -52,6 +52,7 @@ export const useLocationByCodeMap = (warehouseId: number) => {
       map[loc.location_code] = {
         id: loc.id,
         location_code: loc.location_code,
+        location_name: loc.location_name ?? null,
         node_name: null,
         zone_id: warehouseId,
         row: loc.row ?? null,

@@ -239,10 +239,141 @@ export function drawTechTakingCell(
   ctx.stroke()
 }
 
+/** Ô CC / sorting đã gán xe — đồng bộ với palette cam outbound, tách khỏi xám trống / teal có hàng. */
+export const SHELF_ASSIGNED_TECH = {
+  fill: '#ffedd5',
+  stroke: '#ea580c',
+  plate: '#c2410c',
+  plateHighlighted: '#fb923c',
+} as const
+
+/** Vẽ ô trống đã gán biển số (CC Masan, sorting có VEH). */
+export function drawAssignedCcShelf(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  half: number,
+  invScale: number,
+) {
+  const size = half * 2
+  const radius = Math.max(4, half * 0.15)
+  ctx.beginPath()
+  ctx.roundRect(x - half, y - half, size, size, radius)
+  ctx.fillStyle = SHELF_ASSIGNED_TECH.fill
+  ctx.fill()
+  ctx.strokeStyle = SHELF_ASSIGNED_TECH.stroke
+  ctx.lineWidth = invScale * 1.1
+  ctx.stroke()
+}
+
+/** Ô CC có hàng chờ operator xác nhận lấy (WS pending-stock). */
+export const SHELF_PENDING_CONFIRM_TECH = {
+  fill: '#ffedd5',
+  stroke: '#ea580c',
+  labelPrimary: '#7c2d12',
+  labelQty: '#9a3412',
+  divider: 'rgba(234, 88, 12, 0.55)',
+} as const
+
+export function drawPendingStockConfirmShelf(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  half: number,
+  invScale: number,
+) {
+  const size = half * 2
+  const radius = Math.max(4, half * 0.15)
+  ctx.beginPath()
+  ctx.roundRect(x - half, y - half, size, size, radius)
+  ctx.fillStyle = SHELF_PENDING_CONFIRM_TECH.fill
+  ctx.fill()
+  ctx.strokeStyle = SHELF_PENDING_CONFIRM_TECH.stroke
+  ctx.lineWidth = invScale * 1.35
+  ctx.stroke()
+}
+
+/** Biển số từ overlay sorting (`VEH::…`). */
+export function parseVehicleFromStationOverlay(overlay: string): string {
+  for (const line of overlay.split('\n')) {
+    const trimmed = line.trim()
+    if (trimmed.toUpperCase().startsWith('VEH::')) {
+      return trimmed.replace(/^VEH::/i, '').trim()
+    }
+  }
+  return ''
+}
+
+function drawLocationTitleAboveShelf(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  half: number,
+  locationName: string,
+  options: {
+    scale: number
+    highlighted: boolean
+    nameColor?: string
+    nameColorHighlighted?: string
+  },
+) {
+  const { scale, highlighted, nameColor, nameColorHighlighted } = options
+  const sans = '"Plus Jakarta Sans", system-ui, sans-serif'
+  const maxW = half * 1.85
+  const nameSize = Math.max(6, half * 0.26 * scale)
+  const margin = nameSize * 0.4
+
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+  ctx.font = `700 ${nameSize}px ${sans}`
+  ctx.fillStyle =
+    highlighted && nameColorHighlighted
+      ? nameColorHighlighted
+      : highlighted
+        ? '#FFFFFF'
+        : (nameColor ?? '#64748b')
+  ctx.fillText(fitLabelText(ctx, locationName, maxW), x, y - half - margin)
+}
+
+/** Biển số trong ngoặc — dưới viền dưới ô, chữ nhỏ, co để vừa chiều ngang. */
+function drawVehiclePlateBelowShelf(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  half: number,
+  vehiclePlate: string,
+  options: { scale: number; highlighted: boolean },
+) {
+  const plateRaw = vehiclePlate.trim()
+  if (!plateRaw) return
+
+  const { scale, highlighted } = options
+  const sans = '"Plus Jakarta Sans", system-ui, sans-serif'
+  const plateText = `(${plateRaw})`
+  const maxW = half * 2.35
+  const preferred = Math.max(4, half * 0.14 * scale)
+  const minSize = 3.5
+  const plateSize = fitFontSize(ctx, plateText, maxW, preferred, minSize, '700', sans)
+  const bottomEdge = y + half
+  const gapBelowShelf = Math.max(plateSize * 0.35, half * 0.1 * scale)
+  const plateY = bottomEdge + gapBelowShelf + plateSize * 0.5
+
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+  ctx.font = `700 ${plateSize}px ${sans}`
+  ctx.fillStyle = highlighted
+    ? SHELF_ASSIGNED_TECH.plateHighlighted
+    : SHELF_ASSIGNED_TECH.plate
+  const text =
+    ctx.measureText(plateText).width <= maxW
+      ? plateText
+      : fitLabelText(ctx, plateText, maxW)
+  ctx.fillText(text, x, plateY)
+}
+
 /**
  * Overlay sorting station:
- * Nếu là VTC (fallbackLocationCode có chứa VTC/CX): dòng 1 = SKU (đã cắt), dòng 2 = SL, dòng 3 = Số xe.
- * Nếu là điểm khác: dòng 1 = số xe, dòng sau = SL.
+ * Tên vị trí phía trên ô; biển số trong ngoặc dưới ô; trong ô: SKU / SL.
  */
 export function drawStationOverlayLabel(
   ctx: CanvasRenderingContext2D,
@@ -253,6 +384,8 @@ export function drawStationOverlayLabel(
   highlighted = false,
   fallbackLocationCode?: string,
   textScale = 1,
+  externalVehiclePlate?: string,
+  overlayVariant: 'default' | 'pendingConfirm' = 'default',
 ) {
   // Giảm scale xuống một chút so với Inbound để vừa với các ô xếp khít nhau của Outbound
   const scale = (Number.isFinite(textScale) && textScale > 0 ? textScale : 1) * 0.85
@@ -261,47 +394,10 @@ export function drawStationOverlayLabel(
   const mono = '"Plus Jakarta Sans", system-ui, sans-serif'
   const sans = '"Plus Jakarta Sans", system-ui, sans-serif'
 
-
-  if (fallbackLocationCode) {
-    ctx.save()
-    if (highlighted) {
-      ctx.shadowColor = '#3AAFA9'
-      ctx.shadowBlur = Math.max(5, half * 0.1)
-    }
-    ctx.textAlign = 'center'
-    ctx.textBaseline = 'middle'
-    const emptySize = Math.max(6, half * 0.26 * scale)
-    ctx.font = `700 ${emptySize}px ${sans}`
-    ctx.fillStyle = highlighted ? '#FFFFFF' : '#64748b'
-    // Giảm margin để tên ô bám sát viền trên hơn, tránh đè vào ô ở trên
-    const margin = emptySize * 0.4
-    ctx.fillText(fitLabelText(ctx, fallbackLocationCode, half * 1.85), x, y - half - margin)
-    ctx.restore()
-  }
-
   const rawLines = overlay
     .split('\n')
     .map((s) => s.trim())
     .filter(Boolean)
-  if (rawLines.length === 0) return
-
-  ctx.save()
-  if (highlighted) {
-    ctx.shadowColor = '#3AAFA9'
-    ctx.shadowBlur = Math.max(5, half * 0.1)
-  }
-  ctx.textAlign = 'center'
-  ctx.textBaseline = 'middle'
-
-  const drawDivider = (yPos: number) => {
-    ctx.beginPath()
-    ctx.moveTo(x - half * 0.8, yPos)
-    ctx.lineTo(x + half * 0.8, yPos)
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.95)'
-    ctx.lineWidth = Math.max(4, half * 0.07)
-    ctx.stroke()
-  }
-
 
   let sku = ''
   let qty = ''
@@ -325,6 +421,59 @@ export function drawStationOverlayLabel(
     }
   }
 
+  const vehiclePlate =
+    (externalVehiclePlate || '').trim() ||
+    vehicle ||
+    parseVehicleFromStationOverlay(overlay)
+
+  if (fallbackLocationCode) {
+    ctx.save()
+    if (highlighted) {
+      ctx.shadowColor = '#3AAFA9'
+      ctx.shadowBlur = Math.max(5, half * 0.1)
+    }
+    drawLocationTitleAboveShelf(ctx, x, y, half, fallbackLocationCode, {
+      scale,
+      highlighted,
+    })
+    ctx.restore()
+  }
+
+  if (vehiclePlate) {
+    ctx.save()
+    if (highlighted) {
+      ctx.shadowColor = '#3AAFA9'
+      ctx.shadowBlur = Math.max(5, half * 0.1)
+    }
+    drawVehiclePlateBelowShelf(ctx, x, y, half, vehiclePlate, {
+      scale,
+      highlighted,
+    })
+    ctx.restore()
+  }
+
+  if (rawLines.length === 0) return
+
+  ctx.save()
+  if (highlighted) {
+    ctx.shadowColor = '#3AAFA9'
+    ctx.shadowBlur = Math.max(5, half * 0.1)
+  }
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+
+  const pendingConfirm = overlayVariant === 'pendingConfirm'
+  const drawDivider = (yPos: number) => {
+    ctx.beginPath()
+    ctx.moveTo(x - half * 0.8, yPos)
+    ctx.lineTo(x + half * 0.8, yPos)
+    ctx.strokeStyle = pendingConfirm
+      ? SHELF_PENDING_CONFIRM_TECH.divider
+      : 'rgba(255, 255, 255, 0.95)'
+    ctx.lineWidth = Math.max(4, half * 0.07)
+    ctx.stroke()
+  }
+
 
   const preferredSku = half * 0.27 * scale
   const minSku = Math.max(5, half * 0.13 * scale)
@@ -336,26 +485,27 @@ export function drawStationOverlayLabel(
   const baseQtySize = qty ? fitFontSize(ctx, qty, maxW, preferredQty, minQty, '800', sans) : 0
   const qtySize = qty ? Math.max(6, Math.min(baseQtySize, half * 0.35 * scale)) : 0
 
-  const metaSize = vehicle ? (skuSize || Math.max(4.5, Math.min(fitFontSize(ctx, vehicle, maxW, preferredSku, minSku, '700', mono) * 0.86, half * 0.2 * scale))) : 0
-
   const skuStep = sku ? skuSize * 1.2 : 0
   const qtyStep = qty ? qtySize * 1.2 : 0
-  const metaStep = vehicle ? metaSize * 1.2 : 0
   const lineGap = half * 0.12 * scale
 
-  const partsCount = (sku ? 1 : 0) + (qty ? 1 : 0) + (vehicle ? 1 : 0)
+  const partsCount = (sku ? 1 : 0) + (qty ? 1 : 0)
   const numDividers = Math.max(0, partsCount - 1)
 
-  const blockHeight = skuStep + qtyStep + metaStep + numDividers * lineGap
+  const blockHeight = skuStep + qtyStep + numDividers * lineGap
   let cursorY = y - blockHeight / 2
 
   if (sku) {
     cursorY += skuStep / 2
     ctx.font = `700 ${skuSize}px ${mono}`
-    ctx.fillStyle = highlighted ? '#FFFFFF' : SHELF_TECH.labelPrimary
+    ctx.fillStyle = pendingConfirm
+      ? SHELF_PENDING_CONFIRM_TECH.labelPrimary
+      : highlighted
+        ? '#FFFFFF'
+        : SHELF_TECH.labelPrimary
     ctx.fillText(fitLabelText(ctx, sku, maxW), x, cursorY)
 
-    if (qty || vehicle) {
+    if (qty) {
       let dividerY = cursorY + skuStep / 2 + lineGap / 2
       drawDivider(dividerY)
       cursorY += skuStep / 2 + lineGap
@@ -367,23 +517,13 @@ export function drawStationOverlayLabel(
   if (qty) {
     cursorY += qtyStep / 2
     ctx.font = `800 ${qtySize}px ${sans}`
-    ctx.fillStyle = highlighted ? '#D7ECEB' : '#FFFFFF'
+    ctx.fillStyle = pendingConfirm
+      ? SHELF_PENDING_CONFIRM_TECH.labelQty
+      : highlighted
+        ? '#D7ECEB'
+        : '#FFFFFF'
     ctx.fillText(fitLabelText(ctx, qty, maxW), x, cursorY)
-
-    if (vehicle) {
-      let dividerY = cursorY + qtyStep / 2 + lineGap / 2
-      drawDivider(dividerY)
-      cursorY += qtyStep / 2 + lineGap
-    } else {
-      cursorY += qtyStep / 2
-    }
-  }
-
-  if (vehicle) {
-    cursorY += metaStep / 2
-    ctx.font = `600 ${metaSize}px ${mono}`
-    ctx.fillStyle = highlighted ? '#D7ECEB' : SHELF_TECH.labelMuted
-    ctx.fillText(fitLabelText(ctx, vehicle, maxW), x, cursorY)
+    cursorY += qtyStep / 2
   }
 
   ctx.restore()
@@ -402,6 +542,7 @@ export function drawShelfStockLabel(
   textScale = 1,
   highlighted = false,
   highlightOutbound = false,
+  externalVehiclePlate?: string,
 ) {
   if (!label) return
 
@@ -426,20 +567,24 @@ export function drawShelfStockLabel(
       ctx.restore()
       return
     }
-    const binLabelSize = Math.max(6, half * 0.26 * scale)
     const isBypass = (label.bin || '').toUpperCase().startsWith('BP')
-
-    ctx.font = `700 ${binLabelSize}px ${sans}`
-    ctx.fillStyle = highlighted
-      ? '#FFFFFF'
-      : isBypass
-        ? '#dc2626' // Red 600
+    drawLocationTitleAboveShelf(ctx, x, y, half, emptyLabel, {
+      scale,
+      highlighted,
+      nameColor: isBypass
+        ? '#dc2626'
         : highlightOutbound
           ? OUTBOUND_STATION_TECH.emptyLabel
-          : SHELF_TECH.labelEmpty
-    // Vẽ tên ô ra BÊN NGOÀI, PHÍA TRÊN ô (cách viền trên 1 chút)
-    const margin = binLabelSize * 0.6
-    ctx.fillText(fitLabelText(ctx, emptyLabel, maxW), x, y - half - margin)
+          : SHELF_TECH.labelEmpty,
+      nameColorHighlighted: '#FFFFFF',
+    })
+    const emptyPlate = (externalVehiclePlate || '').trim()
+    if (emptyPlate) {
+      drawVehiclePlateBelowShelf(ctx, x, y, half, emptyPlate, {
+        scale,
+        highlighted,
+      })
+    }
     ctx.restore()
     return
   }
@@ -462,14 +607,22 @@ export function drawShelfStockLabel(
   const skuSize = metaSize
   const qtySize = Math.max(6, Math.min(baseSkuSize * 1.2, half * 0.3 * scale)) // Smaller count
 
-  // Vẽ tên vị trí (bin) BÊN NGOÀI, PHÍA TRÊN ô
   if (locationText) {
     const isBypass = (label.bin || '').toUpperCase().startsWith('BP')
-    const binLabelSize = Math.max(6, half * 0.26 * scale)
-    ctx.font = `700 ${binLabelSize}px ${sans}`
-    ctx.fillStyle = isBypass ? '#dc2626' : '#64748b' // Tên kệ bên ngoài dùng màu xám cố định cho dễ nhìn trên nền xám của canvas, hoặc màu Đỏ nếu là Bypass
-    const margin = binLabelSize * 0.8
-    ctx.fillText(locationText, x, y - half - margin)
+    drawLocationTitleAboveShelf(ctx, x, y, half, locationText, {
+      scale,
+      highlighted,
+      nameColor: isBypass ? '#dc2626' : '#64748b',
+      nameColorHighlighted: '#FFFFFF',
+    })
+  }
+
+  const stockPlate = (externalVehiclePlate || '').trim()
+  if (stockPlate) {
+    drawVehiclePlateBelowShelf(ctx, x, y, half, stockPlate, {
+      scale,
+      highlighted,
+    })
   }
 
   const skuStep = skuSize * 1.12

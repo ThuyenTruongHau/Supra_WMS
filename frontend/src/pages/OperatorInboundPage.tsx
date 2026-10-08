@@ -9,6 +9,8 @@ import type { ColumnsType } from "antd/es/table";
 import {
   ContainerOutlined,
   ExportOutlined,
+  EyeOutlined,
+  ClearOutlined,
   FileExcelOutlined,
   RobotOutlined,
   ScanOutlined,
@@ -31,7 +33,6 @@ import {
   operatorDesktopClass,
   operatorDesktopTableWidths,
 } from "@/constants/operatorDesktopSizes";
-import OperatorInboundRealtimeBridge from "@/components/inbound/OperatorInboundRealtimeBridge";
 import AssignInboundBufferModal from "@/components/inbound/AssignInboundBufferModal";
 import UnassignInboundBufferModal from "@/components/inbound/UnassignInboundBufferModal";
 import OperatorMapCanvas, {
@@ -40,7 +41,12 @@ import OperatorMapCanvas, {
 import OperatorInboundOrderBrowser from "@/components/inbound/OperatorInboundOrderBrowser";
 import DirectOutboundFromInboundBoard from "@/components/inbound/DirectOutboundFromInboundBoard";
 import InboundLocationInfoModal from "@/components/inbound/InboundLocationInfoModal";
-import { exportInboundOrderMasanApi } from "@/api/masan";
+import WarehouseViewModal from "@/components/inbound/WarehouseViewModal";
+import AssignedRobotCallButton from "@/components/inbound/AssignedRobotCallButton";
+import { RobotStatusPanel } from "@/components/layout/OperatorStatusMetricPanels";
+import { useRobotData } from "@/hooks/useRobotData";
+import { buildRobotStatusRows, type InboundRobot } from "@/utils/robotStatus";
+import { clearMasanInboundZoneApi, exportInboundOrderMasanApi } from "@/api/masan";
 import { useCallerMasanInbound } from "@/hooks/useMasanInbound";
 import {
   useInboundBufferLocations,
@@ -116,12 +122,7 @@ const SOURCE_TAB_META: Record<
 export default function OperatorInboundPage() {
   const warehouseId = useAppStore((s) => s.selectedWarehouseId);
 
-  return (
-    <>
-      <OperatorInboundRealtimeBridge />
-      <OperatorInboundPageContent warehouseId={warehouseId} />
-    </>
-  );
+  return <OperatorInboundPageContent warehouseId={warehouseId} />;
 }
 
 function OperatorInboundPageContent({ warehouseId }: { warehouseId: number }) {
@@ -143,6 +144,12 @@ function OperatorInboundPageContent({ warehouseId }: { warehouseId: number }) {
   const mapLastTapRef = useRef<{ key: string; time: number } | null>(null);
 
   const [sourceTab, setSourceTab] = useState<SourceTabKey>("cont");
+  const [warehouseViewOpen, setWarehouseViewOpen] = useState(false);
+  const robotData = useRobotData(sourceTab === "cont");
+  const robotRows = buildRobotStatusRows(robotData.data, {
+    isLoading: robotData.isLoading,
+    isError: robotData.isError,
+  });
   const [sideListTab, setSideListTab] = useState<SideListTab>("orders");
   const { data: assignedPayload, isLoading: assignedLoading } =
     useInboundAssignedDetails(
@@ -182,6 +189,7 @@ function OperatorInboundPageContent({ warehouseId }: { warehouseId: number }) {
 
   const [isExportingDailyExcel, setIsExportingDailyExcel] = useState(false);
   const [isExportingDetailReport, setIsExportingDetailReport] = useState(false);
+  const [isClearingStation, setIsClearingStation] = useState(false);
   const [focusedInboundOrderId, setFocusedInboundOrderId] = useState<
     number | null
   >(null);
@@ -507,6 +515,38 @@ function OperatorInboundPageContent({ warehouseId }: { warehouseId: number }) {
     }
   };
 
+  const handleClearStation = () => {
+    if (warehouseId <= 0) {
+      message.warning("Vui lòng chọn kho trước khi clear station");
+      return;
+    }
+    Modal.confirm({
+      title: "Clear station (zone inbound)",
+      content:
+        "Tắt toàn bộ tồn active tại các zone inbound (buffer nhập) để bắt đầu phiên mới. Thao tác không xóa đơn nhập. Tiếp tục?",
+      okText: "Clear",
+      cancelText: "Hủy",
+      okButtonProps: { danger: true },
+      onOk: async () => {
+        setIsClearingStation(true);
+        try {
+          const res = await clearMasanInboundZoneApi({ warehouse_id: warehouseId });
+          message.success(
+            res.deactivated_count > 0
+              ? `Đã clear station (${res.zones.join(", ")}): ${res.deactivated_count} dòng tồn`
+              : "Không còn tồn active nào trong zone inbound",
+          );
+          void queryClient.invalidateQueries({ queryKey: ["warehouseMap"] });
+        } catch (err: unknown) {
+          message.error(getApiErrorDetail(err, "Không clear được station"));
+          throw err;
+        } finally {
+          setIsClearingStation(false);
+        }
+      },
+    });
+  };
+
   const handleExportDailyExcel = async () => {
     if (warehouseId <= 0) {
       message.warning("Vui lòng chọn kho trước khi xuất");
@@ -618,20 +658,30 @@ function OperatorInboundPageContent({ warehouseId }: { warehouseId: number }) {
       : [payload.locationCode];
 
   const invokeCallerLocations = useCallback(
-    (locationIds: number[]) => {
+    (locationIds: number[], robot?: InboundRobot) => {
       if (locationIds.length === 0) return;
-      callerMutation.mutate(locationIds, {
-        onSuccess: (result) => {
-          if (result.queued > 0) {
-            message.success(`Đã gửi ${result.queued} lệnh xuống robot.`);
-          } else {
-            message.warning("Không có dòng nào đang chờ ở ô đã chọn.");
-          }
+      callerMutation.mutate(
+        {
+          location_ids: locationIds,
+          ...(robot ? { assign_robot_id: robot.deviceCode } : {}),
         },
-        onError: (err) => {
-          message.error(getApiErrorDetail(err, "Không thể gọi robot nhập"));
+        {
+          onSuccess: (result) => {
+            if (result.queued > 0) {
+              message.success(
+                robot
+                  ? `Đã tiếp nhận ${result.queued} lệnh cho ${robot.name}.`
+                  : `Đã tiếp nhận ${result.queued} lệnh gọi robot.`,
+              );
+            } else {
+              message.warning("Không có dòng nào đang chờ ở ô đã chọn.");
+            }
+          },
+          onError: (err) => {
+            message.error(getApiErrorDetail(err, "Không thể gọi robot nhập"));
+          },
         },
-      });
+      );
     },
     [callerMutation],
   );
@@ -678,7 +728,6 @@ function OperatorInboundPageContent({ warehouseId }: { warehouseId: number }) {
     setSelectedAutoColumnCodes([]);
     setSelectedBufferCode(code);
     setSelectedBufferLocationId(locationId);
-    invokeCallerLocations([locationId]);
   };
 
   /**
@@ -741,7 +790,8 @@ function OperatorInboundPageContent({ warehouseId }: { warehouseId: number }) {
     setSelectedBufferLocationId(null);
   };
 
-  const handleCallRobot = () => {
+  const handleCallRobot = (robot?: InboundRobot) => {
+    if (callerMutation.isPending) return;
     if (callerLocationIds.length === 0) {
       message.warning("Không có ô buffer nhập nào để gọi robot.");
       return;
@@ -756,22 +806,23 @@ function OperatorInboundPageContent({ warehouseId }: { warehouseId: number }) {
           : `tất cả ${locationIds.length} ô buffer nhập`;
 
     Modal.confirm({
-      title: "Xác nhận gọi robot nhập",
+      title: robot ? `Xác nhận gọi ${robot.name}` : "Xác nhận gọi robot nhập",
       width: OPERATOR_DESKTOP.modal.default,
       content: (
         <div className="mt-2 space-y-1 text-sm text-slate-600">
           <p>
             Gọi robot cho <strong>{scopeLabel}</strong>.
           </p>
+          {robot && <p>Robot thực hiện: <strong>{robot.name}</strong>.</p>}
           <p>
-            Mỗi ô sẽ lấy dòng nhập đang chờ (Khởi tạo) cũ nhất; ô không có
+            Mỗi ô sẽ lấy một dòng nhập đang chờ (Khởi tạo); ô không có
             dòng chờ sẽ được bỏ qua.
           </p>
         </div>
       ),
       okText: "Gọi robot",
       cancelText: "Hủy",
-      onOk: () => invokeCallerLocations(locationIds),
+      onOk: () => invokeCallerLocations(locationIds, robot),
     });
   };
 
@@ -863,6 +914,15 @@ function OperatorInboundPageContent({ warehouseId }: { warehouseId: number }) {
               className="hidden"
               onChange={handleImportFileChange}
             />
+            <Button
+              variant="secondary"
+              icon={<EyeOutlined />}
+              onClick={() => setWarehouseViewOpen(true)}
+              disabled={warehouseId <= 0}
+              className="!h-10 !px-4 !text-base"
+            >
+              Xem kho
+            </Button>
             <div className="flex rounded-full border border-stripe-hairline bg-panel-soft p-1">
               <button
                 type="button"
@@ -930,7 +990,7 @@ function OperatorInboundPageContent({ warehouseId }: { warehouseId: number }) {
                     disabled={warehouseId <= 0}
                     className="!h-10 !px-4 !text-base"
                   >
-                    Nhập dữ liệu đơn
+                    Nhập phiên nhập
                   </Button>
                   <Button
                     variant="secondary"
@@ -942,7 +1002,25 @@ function OperatorInboundPageContent({ warehouseId }: { warehouseId: number }) {
                   >
                     Xuất Excel nhập hàng
                   </Button>
+                  <Button
+                    variant="secondary"
+                    icon={<ClearOutlined />}
+                    onClick={handleClearStation}
+                    loading={isClearingStation}
+                    disabled={warehouseId <= 0}
+                    className="!h-10 !px-4 !text-base !border-amber-500 !text-amber-800 hover:!border-amber-600 hover:!text-amber-900"
+                  >
+                    Clear station
+                  </Button>
                 </div>
+              </div>
+              <div
+                className="shrink-0 border-b border-stripe-hairline bg-panel-soft px-4 py-2"
+                role="status"
+                aria-live="polite"
+                aria-label="Trạng thái robot nhập kho"
+              >
+                <RobotStatusPanel rows={robotRows} compact inline />
               </div>
               <div
                 className={`relative flex ${operatorDesktopClass.boardFill} flex-col bg-industrial-pattern`}
@@ -1058,9 +1136,9 @@ function OperatorInboundPageContent({ warehouseId }: { warehouseId: number }) {
                 <Button
                   variant="primary"
                   icon={<RobotOutlined />}
-                  disabled={callerLocationIds.length === 0}
+                  disabled={callerLocationIds.length === 0 || callerMutation.isPending}
                   loading={callerMutation.isPending}
-                  onClick={handleCallRobot}
+                  onClick={() => handleCallRobot()}
                   className="!h-10 !w-full justify-center !text-sm disabled:!bg-brand-primary/45 disabled:!text-white disabled:!opacity-100"
                 >
                   Gọi robot nhập
@@ -1072,11 +1150,22 @@ function OperatorInboundPageContent({ warehouseId }: { warehouseId: number }) {
                         ? " (tất cả)"
                         : ""}
                 </Button>
+                <AssignedRobotCallButton
+                  disabled={callerLocationIds.length === 0}
+                  loading={callerMutation.isPending}
+                  onSelect={handleCallRobot}
+                />
               </div>
             </div>
           </div>
         )}
       </div>
+
+      <WarehouseViewModal
+        open={warehouseViewOpen}
+        warehouseId={warehouseId}
+        onClose={() => setWarehouseViewOpen(false)}
+      />
 
       <InboundLocationInfoModal
         open={locationInfoOpen}
