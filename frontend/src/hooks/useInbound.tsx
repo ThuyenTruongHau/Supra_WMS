@@ -50,8 +50,21 @@ import type {
 } from '@/types/inbound'
 import { ApiErrorResponse } from '@/types/apiError'
 
-export const inboundListQueryKey = (warehouseId: number, status?: string, search?: string) =>
-  ['inbound_orders', warehouseId, status ?? '', search ?? ''] as const
+export const inboundListQueryKey = (
+  warehouseId: number,
+  status?: string,
+  search?: string,
+  createdFrom?: string,
+  createdTo?: string,
+) =>
+  [
+    'inbound_orders',
+    warehouseId,
+    status ?? '',
+    search ?? '',
+    createdFrom ?? '',
+    createdTo ?? '',
+  ] as const
 
 export const inboundSummaryQueryKey = (warehouseId: number) =>
   ['inbound_summary', warehouseId] as const
@@ -78,14 +91,27 @@ export const oldestIncompleteInboundQueryKey = (warehouseId: number) =>
 
 export const useInboundList = (
   warehouseId: number,
-  options?: { status?: string; search?: string },
+  options?: {
+    status?: string;
+    search?: string;
+    created_from?: string;
+    created_to?: string;
+  },
 ) => {
   return useQuery<InboundOrder[], AxiosError<ApiErrorResponse>>({
-    queryKey: inboundListQueryKey(warehouseId, options?.status, options?.search),
+    queryKey: inboundListQueryKey(
+      warehouseId,
+      options?.status,
+      options?.search,
+      options?.created_from,
+      options?.created_to,
+    ),
     queryFn: () =>
       listInboundOrdersApi(warehouseId, {
         status: options?.status,
         q: options?.search,
+        created_from: options?.created_from,
+        created_to: options?.created_to,
         page: 1,
         page_size: 100,
       }),

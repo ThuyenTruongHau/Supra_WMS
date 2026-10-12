@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from datetime import datetime
 from typing import Any, Optional
 
 from sqlalchemy.orm import Session, joinedload
 
+from app.modules.warehouse.outbound_order import outbound_order_service
 from app.modules.warehouse.outbound_order.outbound_order_model import (
     OutboundOrder,
     OutboundOrderDetail,
@@ -171,12 +173,21 @@ def list_operator_board_orders(
     page: int = 1,
     page_size: int = 20,
     q: Optional[str] = None,
+    created_from: Optional[datetime] = None,
+    created_to: Optional[datetime] = None,
+    item_id: Optional[int] = None,
 ) -> tuple[list[dict[str, Any]], int]:
     base = db.query(OutboundOrder).filter(
         OutboundOrder.warehouse_id == warehouse_id,
     )
-    if q:
-        base = base.filter(OutboundOrder.order_code.ilike(f"%{q.strip()}%"))
+    base = outbound_order_service.apply_outbound_list_filters(
+        base,
+        db,
+        q=q,
+        created_from=created_from,
+        created_to=created_to,
+        item_id=item_id,
+    )
 
     total = base.count()
     orders = (

@@ -230,7 +230,7 @@ const ITEM_IMPORT_ACCEPT = ".csv";
 const ITEM_IMPORT_REQUIRED_COLUMNS = [
   "Item No",
   "Item Name",
-  "UOM1",
+  "UOM2",
   "UOM Conversion / Pallet",
 ];
 

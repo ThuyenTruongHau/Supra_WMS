@@ -16,25 +16,25 @@ export type OutboundDisplayZone = {
 };
 
 /**
- * Cặp khu operator: VT (8|9) trên map + CC (10|11) cho cache Masan.
- * Click VT → API `zone` = ccBucketZoneCode của CC tương ứng (không gửi zone id 8/9).
+ * Cặp khu operator: VT 8 + CC 11, VT 9 + CC 10 (không ghép 8–10 / 9–11).
+ * Click VT → API `zone` = ccBucketZoneCode của CC cùng cặp (không gửi zone id 8/9).
  */
 export const OUTBOUND_DISPLAY_ZONES: OutboundDisplayZone[] = [
   {
     id: 8,
-    name: "Khu vực chia chọn 1",
-    zoneIds: [8, 10],
+    name: "Khu vực chia chọn 2",
+    zoneIds: [8, 11],
     vtZoneId: 8,
-    ccZoneId: 10,
-    ccBucketZoneCode: "Zone_CC_01",
+    ccZoneId: 11,
+    ccBucketZoneCode: "Zone_CC_02",
   },
   {
     id: 9,
-    name: "Khu vực chia chọn 2",
-    zoneIds: [9, 11],
+    name: "Khu vực chia chọn 1",
+    zoneIds: [9, 10],
     vtZoneId: 9,
-    ccZoneId: 11,
-    ccBucketZoneCode: "Zone_CC_02",
+    ccZoneId: 10,
+    ccBucketZoneCode: "Zone_CC_01",
   },
 ];
 

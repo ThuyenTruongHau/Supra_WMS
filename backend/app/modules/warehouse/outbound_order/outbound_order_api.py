@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Annotated, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -99,6 +100,21 @@ def create_outbound_order(
     response_model=OutboundOrderListResponse,
     dependencies=[Depends(_OUTBOUND_READ)],
 )
+def _validate_created_range(
+    created_from: Optional[datetime],
+    created_to: Optional[datetime],
+) -> None:
+    if (
+        created_from is not None
+        and created_to is not None
+        and created_from > created_to
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="created_from phải nhỏ hơn hoặc bằng created_to",
+        )
+
+
 def list_outbound_orders(
     db: DbSession,
     warehouse_id: int = Query(...),
@@ -106,7 +122,11 @@ def list_outbound_orders(
     page_size: int = Query(10, ge=1, le=100),
     q: Optional[str] = Query(None),
     status: Optional[str] = Query(None),
+    created_from: Optional[datetime] = Query(None),
+    created_to: Optional[datetime] = Query(None),
+    item_id: Optional[int] = Query(None, gt=0),
 ):
+    _validate_created_range(created_from, created_to)
     orders, total, summary = outbound_order_service.get_outbound_order(
         db,
         warehouse_id=warehouse_id,
@@ -114,6 +134,9 @@ def list_outbound_orders(
         page_size=page_size,
         q=q,
         status=status,
+        created_from=created_from,
+        created_to=created_to,
+        item_id=item_id,
     )
     return OutboundOrderListResponse(
         items=[OutboundOrderCreateResponse.model_validate(o) for o in orders],
@@ -135,13 +158,20 @@ def list_operator_board_orders(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=200),
     q: Optional[str] = Query(None),
+    created_from: Optional[datetime] = Query(None),
+    created_to: Optional[datetime] = Query(None),
+    item_id: Optional[int] = Query(None, gt=0),
 ):
+    _validate_created_range(created_from, created_to)
     rows, total = outbound_operator_board_service.list_operator_board_orders(
         db,
         warehouse_id=warehouse_id,
         page=page,
         page_size=page_size,
         q=q,
+        created_from=created_from,
+        created_to=created_to,
+        item_id=item_id,
     )
     return OperatorBoardOrdersResponse(
         warehouse_id=warehouse_id,

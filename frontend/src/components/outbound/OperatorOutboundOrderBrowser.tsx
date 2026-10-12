@@ -25,6 +25,12 @@ import type {
 import { translateStatus } from "@/i18n/statusLabels.vi";
 import { toDisplayInteger } from "@/utils/number";
 import type { OutboundSelectedProductLine } from "@/components/outbound/OperatorOutboundVehicleCards";
+import OrderCreatedAtRangeFilter from "@/components/shared/OrderCreatedAtRangeFilter";
+import { SkuSearchSelect } from "@/components/shared/SkuSearchSelect";
+import {
+  orderCreatedAtQueryParams,
+  type OrderCreatedAtRange,
+} from "@/utils/orderCreatedAtRangeParams";
 
 const EMPTY_SELECTED_LINES: OutboundSelectedProductLine[] = [];
 
@@ -153,6 +159,13 @@ export default function OperatorOutboundOrderBrowser({
   >(null);
   const [selectedTripKey, setSelectedTripKey] = useState<string | null>(null);
   const [selectedRowKeys, setSelectedRowKeys] = useState<Key[]>([]);
+  const [createdRange, setCreatedRange] = useState<OrderCreatedAtRange>(null);
+  const [itemIdFilter, setItemIdFilter] = useState<number | null>(null);
+  const [skuLabel, setSkuLabel] = useState<string | null>(null);
+  const createdAtParams = useMemo(
+    () => orderCreatedAtQueryParams(createdRange),
+    [createdRange],
+  );
 
   useEffect(() => {
     setSelectedCustomerName(null);
@@ -167,11 +180,35 @@ export default function OperatorOutboundOrderBrowser({
     onSelectedProductsChange?.(EMPTY_SELECTED_LINES);
   }, [selectedCustomerName, onSelectedProductsChange]);
 
-  const ordersQuery = useOperatorBoardOrders(warehouseId);
+  const atOrderCardList = selectedOrderId == null;
+
+  const ordersQuery = useOperatorBoardOrders(warehouseId, {
+    ...(atOrderCardList ? createdAtParams : {}),
+    item_id: atOrderCardList ? (itemIdFilter ?? undefined) : undefined,
+  });
   const orders = ordersQuery.data?.items ?? [];
 
   const selectedOrder =
     orders.find((order) => order.id === selectedOrderId) ?? null;
+
+  useEffect(() => {
+    if (selectedOrderId == null) return;
+    if (ordersQuery.isLoading) return;
+    if (orders.some((order) => order.id === selectedOrderId)) return;
+    onSelectedOrderIdChange(null);
+    onSelectVehicle(null);
+    setSelectedCustomerName(null);
+    setSelectedTripKey(null);
+    setSelectedRowKeys([]);
+    onSelectedProductsChange?.(EMPTY_SELECTED_LINES);
+  }, [
+    selectedOrderId,
+    orders,
+    ordersQuery.isLoading,
+    onSelectedOrderIdChange,
+    onSelectVehicle,
+    onSelectedProductsChange,
+  ]);
 
   const vehiclesQuery = useOperatorBoardVehicles(
     selectedOrderId,
@@ -482,27 +519,64 @@ export default function OperatorOutboundOrderBrowser({
     );
   }
 
+  const listFilteredBySku = itemIdFilter != null;
+
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-y-auto p-2.5">
-      {ordersQuery.isLoading ? (
-        <div className="px-2 py-6 text-center text-sm text-slate-500">
-          Đang tải đơn xuất...
-        </div>
-      ) : orders.length === 0 ? (
-        <div className="px-2 py-6 text-center text-sm text-slate-500">
-          Chưa có đơn xuất nào
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
-          {orders.map((order) => (
-            <OrderCard
-              key={order.id}
-              order={order}
-              onOpen={() => onSelectedOrderIdChange(order.id)}
-            />
-          ))}
-        </div>
-      )}
+    <div className="flex h-full min-h-0 flex-col bg-panel">
+      <div className="flex shrink-0 flex-col gap-1.5 border-b border-stripe-hairline px-2 py-1.5">
+        <OrderCreatedAtRangeFilter
+          value={createdRange}
+          onChange={setCreatedRange}
+          className="w-full"
+        />
+        <SkuSearchSelect
+          warehouseId={warehouseId}
+          placeholder="Lọc đơn xuất theo mã hàng (SKU)..."
+          onSelectOption={(option) => {
+            const rawId = option?.item_id;
+            const parsedId =
+              rawId != null && Number.isFinite(Number(rawId))
+                ? Math.trunc(Number(rawId))
+                : null;
+            if (parsedId != null && parsedId > 0) {
+              setItemIdFilter(parsedId);
+              setSkuLabel(option?.value ?? null);
+            } else {
+              setItemIdFilter(null);
+              setSkuLabel(null);
+            }
+          }}
+        />
+        {skuLabel ? (
+          <p className="text-xs text-stripe-ink-mute">
+            Mã hàng{" "}
+            <strong className="text-brand-dark">{skuLabel}</strong>
+          </p>
+        ) : null}
+      </div>
+      <div className="min-h-0 flex-1 overflow-y-auto p-2.5">
+        {ordersQuery.isLoading ? (
+          <div className="px-2 py-6 text-center text-sm text-slate-500">
+            Đang tải đơn xuất...
+          </div>
+        ) : orders.length === 0 ? (
+          <div className="px-2 py-6 text-center text-sm text-slate-500">
+            {listFilteredBySku || createdRange
+              ? "Không có đơn khớp bộ lọc"
+              : "Chưa có đơn xuất nào"}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+            {orders.map((order) => (
+              <OrderCard
+                key={order.id}
+                order={order}
+                onOpen={() => onSelectedOrderIdChange(order.id)}
+              />
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

@@ -438,6 +438,7 @@ def get_location_detail(db: Session, location_id: int) -> LocationDetailResponse
                 id=stock.id,
                 item_id=stock.item_id,
                 sku=stock.item.sku if stock.item else "",
+                item_name=(stock.item.name if stock.item else None) or None,
                 lot_number_from=stock.lot_number_from,
                 lot_number_to=stock.lot_number_to,
                 lot_number=format_lot_number_display(
@@ -461,6 +462,7 @@ def get_location_detail(db: Session, location_id: int) -> LocationDetailResponse
                 id=-qr_id,
                 item_id=int(assigned["item_id"]),
                 sku=assigned.get("item_sku") or "",
+                item_name=(assigned.get("item_name") or None),
                 lot_number_from=lot,
                 lot_number_to=lot,
                 lot_number=lot,

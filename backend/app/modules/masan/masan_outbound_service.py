@@ -4,6 +4,8 @@ from collections import defaultdict
 from io import BytesIO
 from typing import Any, Optional
 from sqlalchemy import func, Integer, cast
+import uuid
+import json
 
 from app.core.config import settings
 from openpyxl import Workbook, load_workbook
@@ -720,18 +722,18 @@ def get_item_needed_to_sorting(
         OutboundOrderDetail.id.in_(list_lines_raw),
     ).all()
 
-    list_lines = [line for line in list_lines_raw if line.status == "initialize"]
+    detail_ids = [d.id for d in list_lines_raw]
 
-    qty_by_item_id: dict[int, int] = defaultdict(int)
+    list_lines = [line for line in list_lines_raw if line.status != "completed"]
     item_ids: list[int] = []
+    qty_by_item_id: dict[int, int] = defaultdict(int)
     for line in list_lines:
         item_id = line.item_id
         qty_by_item_id[item_id] += int(line.quantity or 0)
         if item_id not in item_ids:
             item_ids.append(item_id)
 
-    # logger.info(f"Item ids: {item_ids}")
-    detail_ids = [d.id for d in list_lines_raw]
+
     if detail_ids:
         allocations = (
             db.query(OutboundOrderAllocation)
@@ -739,18 +741,20 @@ def get_item_needed_to_sorting(
                 OutboundOrderAllocation.outbound_order_detail_id.in_(detail_ids),
                 OutboundOrderAllocation.robot_task_id.isnot(None),
             )
+            .order_by(OutboundOrderAllocation.id)
             .all()
         )
+    
         by_task: dict[int, list[OutboundOrderAllocation]] = defaultdict(list)
         excluded_list = []
         for alloc in allocations:
-            if alloc.robot_task_id in excluded_list:
+            if alloc.outbound_order_detail_id in excluded_list:
                 continue
             if alloc.allocation_type == "outbound" and alloc.status != "completed":
-                excluded_list.append(alloc.robot_task_id)
+                excluded_list.append(alloc.outbound_order_detail_id)
                 continue
             if alloc.allocation_type == "return":
-                by_task[alloc.robot_task_id].append(alloc)
+                by_task[alloc.outbound_order_detail_id].append(alloc)
     else:
         by_task = {}
 
@@ -814,7 +818,7 @@ def sending_masan_outbound_task(db: Session, warehouse_id: int, zone: str, item_
         OutboundOrderDetail.status == "initialize"
     ).all()
 
-    
+    results: list[dict[str, Any]] = []
     if len(list_lines_db) > 0:
         details_by_order: dict[int, list[OutboundOrderDetail]] = defaultdict(list)
         for detail in list_lines_db:
@@ -839,7 +843,6 @@ def sending_masan_outbound_task(db: Session, warehouse_id: int, zone: str, item_
                 )
             )
         
-        results: list[dict[str, Any]] = []
         for body in calculate_bodies:
             response_caculate = calculate_outbound_order(db, body, strategy="fefo")
             results.append({
@@ -859,6 +862,7 @@ def sending_masan_outbound_task(db: Session, warehouse_id: int, zone: str, item_
             OutboundOrderAllocation.allocation_type == "outbound",
             OutboundOrderAllocation.robot_task_id.isnot(None),
         )
+        .order_by(OutboundOrderAllocation.id)
         .first()
     )
 
@@ -1053,41 +1057,109 @@ def get_sorting_zone_pending_stock(
     }
 
 
-def confirm_allocation_outbound(db: Session, warehouse_id: int, zone: str, location_id: int, allocation_id: int, quantity: int) -> None:
-
-    target_allocation = db.query(OutboundOrderAllocation).filter(
-        OutboundOrderAllocation.id == allocation_id,
-    ).first()
-
-    if not target_allocation:
-        raise ValueError(f"Allocation {allocation_id} not found")
-    
-    target_allocation.quantity = quantity
-    target_allocation.status = "confirmed"
-    cache_delete(
-        f"outbound:masan:stock_ready:{warehouse_id}:{zone}:{allocation_id}:{location_id}"
+def _delete_stock_ready_cache_for_allocation(
+    warehouse_id: int,
+    zone: str,
+    allocation_id: int,
+) -> None:
+    zone_norm = (zone or "").strip()
+    prefix = (
+        f"outbound:masan:stock_ready:{warehouse_id}:{zone_norm}:{allocation_id}:"
     )
-    stock_id = target_allocation.item_stock_id
+    for key in cache_scan_keys(f"{prefix}*"):
+        cache_delete(key)
 
-    allocations = db.query(OutboundOrderAllocation).filter(
-        OutboundOrderAllocation.item_stock_id == stock_id,
-        OutboundOrderAllocation.allocation_type == "outbound",
-    ).all()
 
-    for allocation in allocations:
-        if allocation.status != "confirmed":
-            return
+def confirm_allocation_outbound(
+    db: Session,
+    warehouse_id: int,
+    zone: str,
+    quantities: dict[int, int],
+) -> None:
+    allocation_ids = list(quantities.keys())
+    if not allocation_ids:
+        raise ValueError("quantities must contain at least one allocation")
 
-    _settle_outbound_stock(db, allocations)
+    target_allocations = (
+        db.query(OutboundOrderAllocation)
+        .filter(OutboundOrderAllocation.id.in_(allocation_ids))
+        .all()
+    )
 
-    detail = target_allocation.outbound_order_detail
-    if not detail:
-        raise ValueError(f"Detail {detail.id} not found")
-    
-    db.refresh(detail)
-    
-    if detail.status == "completed":
-        _apply_clear_outbound_masan_details(db, warehouse_id, zone, location_id, detail.id)
+    if len(target_allocations) != len(allocation_ids):
+        found = {a.id for a in target_allocations}
+        missing = sorted(set(allocation_ids) - found)
+        raise ValueError(f"Allocations not found: {missing}")
+
+    stocks: list[ItemStock] = []
+    details: list[OutboundOrderDetail] = []
+    for allocation in target_allocations:
+        allocation.status = "confirmed"
+        _delete_stock_ready_cache_for_allocation(
+                warehouse_id, zone, allocation.id
+            )
+        if allocation.outbound_order_detail not in details:
+            details.append(allocation.outbound_order_detail)
+        if quantities[allocation.id] != allocation.quantity:
+            allocation.quantity = quantities[allocation.id]
+            allocation.outbound_order_detail.quantity = allocation.outbound_order_detail.quantity - quantities[allocation.id]
+            if allocation.item_stock not in stocks:
+                stocks.append(allocation.item_stock)
+
+        db.commit()
+        db.refresh(allocation.outbound_order_detail)
+            
+    _settle_outbound_stock(db, target_allocations)
+
+    for stock in stocks:
+        return_allocation = db.query(OutboundOrderAllocation).filter(
+            OutboundOrderAllocation.item_stock_id == stock.id,
+            OutboundOrderAllocation.allocation_type == "return",
+        ).first()
+
+        if not return_allocation:
+            reverse_allocation = db.query(OutboundOrderAllocation).filter(
+                OutboundOrderAllocation.item_stock_id == stock.id,
+                OutboundOrderAllocation.allocation_type == "outbound",
+            ).first()
+            order_id = f"TDS_Return_{uuid.uuid4().hex[:8]}"
+            return_task = RobotTask(
+                order_id=order_id,
+                quantity=stock.quantity,
+                process_code=settings.inbound_process_code,
+                system_code="Thadosoft",
+                task_order_detail=json.dumps([{"taskPath": f"{reverse_allocation.to_location.location_code},{reverse_allocation.from_location.location_code}"}])
+            )
+            db.add(return_task)
+            db.flush()
+            return_allocation = OutboundOrderAllocation(
+                outbound_order_detail_id=reverse_allocation.outbound_order_detail_id,
+                item_stock_id=stock.id,
+                quantity=stock.quantity,
+                status="initialize",
+                from_location_id=reverse_allocation.to_location_id,
+                to_location_id=reverse_allocation.from_location_id,
+                robot_task_id=return_task.id,
+                allocation_type="return",
+            )
+            db.add(return_allocation)
+            
+
+        else:
+            return_allocation.quantity = stock.quantity
+            
+        db.flush()
+
+    for detail in details:
+        if detail.status == "completed":
+            cc_meta = cache_get(
+                f"outbound:assigned_cc_details:{warehouse_id}:{detail.id}"
+            )
+            if isinstance(cc_meta, dict) and cc_meta.get("location_id") is not None:
+                cc_location_id = int(cc_meta["location_id"])
+            _apply_clear_outbound_masan_details(
+                db, warehouse_id, zone, cc_location_id, detail.id
+            )
 
     
 def _send_taking_stock(db: Session, robot_task_id: int, allocations: list[OutboundOrderAllocation]) -> None:
@@ -1095,6 +1167,8 @@ def _send_taking_stock(db: Session, robot_task_id: int, allocations: list[Outbou
     
     sending_payloads: dict[int, list[dict[str, Any]]] = defaultdict(list)
     for allocation in allocations:
+        if allocation.allocation_type != "outbound":
+            return
         detail = allocation.outbound_order_detail
         if not detail:
             continue
@@ -1206,3 +1280,11 @@ def list_sorting_zone_cc_locations(
         "zone": zone_norm,
         "locations": items,
     }
+
+
+#Fix bấm vị trí gọi lệnh vẫn ra chỗ đã được chọn
+#Fix gọi khi click confirm 1 click cho tất cả tại vị trí VT - OK
+#Fix update detail để hoàn thành được lệnh nếu user gửi số lượng lấy ít hơn số có - OK
+#Add lệnh return nếu sửa đổi số lượng lấy ra trong đơn
+#Fix gọi robot tự động.
+#Fix không cho gửi nếu vị trí đó có hàng.

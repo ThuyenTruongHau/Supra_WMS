@@ -24,7 +24,12 @@ export default function UserLayout() {
     width: window.innerWidth,
     height: window.innerHeight,
   }));
-  const lockPageScroll = pathname === "/import" || pathname === "/export";
+  const lockPageScroll =
+    pathname === "/import" ||
+    pathname === "/export" ||
+    pathname === "/monitor" ||
+    pathname.startsWith("/monitor/") ||
+    pathname === "/control-tower";
   const isQrTablet = pathname.startsWith("/qrtablet");
   /** Chỉ tablet / TV nhỏ — desktop rộng không bọc stage (tránh viền 2 bên). */
   const useOperatorStage =
@@ -101,7 +106,9 @@ export default function UserLayout() {
   }, []);
 
   useEffect(() => {
-    setShellHeaderCollapsed(false);
+    const collapseShellOnRoute =
+      pathname === "/monitor" || pathname.startsWith("/monitor/zone/");
+    setShellHeaderCollapsed(collapseShellOnRoute);
   }, [pathname]);
 
   const shell = (

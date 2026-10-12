@@ -296,16 +296,14 @@ def masan_confirm_allocation_outbound(
     db: DbSession,
     body: MasanConfirmAllocationOutboundRequest,
 ):
-    """Xác nhận allocation tại ô CC (Masan); settle khi đủ confirm trên cùng pallet."""
+    """Xác nhận allocation tại VT (Masan); batch quantities theo allocation_id."""
     zone = body.zone.strip()
     try:
         masan_outbound_service.confirm_allocation_outbound(
             db,
             body.warehouse_id,
             zone,
-            body.location_id,
-            body.allocation_id,
-            body.quantity,
+            body.quantities,
         )
     except ValueError as exc:
         message = str(exc)
@@ -325,34 +323,41 @@ def masan_confirm_allocation_outbound(
         db.rollback()
         raise
 
-    allocation = (
+    allocation_ids = list(body.quantities.keys())
+    allocations = (
         db.query(OutboundOrderAllocation)
-        .filter(OutboundOrderAllocation.id == body.allocation_id)
-        .first()
+        .filter(OutboundOrderAllocation.id.in_(allocation_ids))
+        .all()
     )
-    detail_status: str | None = None
-    detail_id: int | None = None
-    if allocation and allocation.outbound_order_detail_id is not None:
-        detail_id = allocation.outbound_order_detail_id
-        detail = (
+    allocation_statuses = {a.id: a.status for a in allocations}
+    detail_ids = {
+        a.outbound_order_detail_id
+        for a in allocations
+        if a.outbound_order_detail_id is not None
+    }
+    detail_statuses: dict[int, str] = {}
+    if detail_ids:
+        for detail in (
             db.query(OutboundOrderDetail)
-            .filter(OutboundOrderDetail.id == detail_id)
-            .first()
-        )
-        if detail is not None:
-            detail_status = detail.status
+            .filter(OutboundOrderDetail.id.in_(detail_ids))
+            .all()
+        ):
+            detail_statuses[detail.id] = detail.status
 
-    allocation_status = allocation.status if allocation else "unknown"
+    first_detail_id: int | None = None
+    first_detail_status: str | None = None
+    if allocations and allocations[0].outbound_order_detail_id is not None:
+        first_detail_id = allocations[0].outbound_order_detail_id
+        first_detail_status = detail_statuses.get(first_detail_id)
 
     return MasanConfirmAllocationOutboundResponse(
         warehouse_id=body.warehouse_id,
         zone=zone,
-        location_id=body.location_id,
-        allocation_id=body.allocation_id,
-        quantity=body.quantity,
-        allocation_status=allocation_status,
-        outbound_order_detail_id=detail_id,
-        detail_status=detail_status,
+        quantities=body.quantities,
+        allocation_statuses=allocation_statuses,
+        detail_statuses=detail_statuses,
+        outbound_order_detail_id=first_detail_id,
+        detail_status=first_detail_status,
     )
 
 
@@ -387,6 +392,37 @@ def caller_masan_inbound_order(db: DbSession, body: MasanInboundCallerRequest):
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(exc),
         ) from exc
+
+
+@router.get(
+    "/masan/inbound-orders/daily-capacity-export",
+    dependencies=[Depends(require_permission("inbound:read"))],
+)
+def export_masan_inbound_daily_capacity(
+    db: DbSession,
+    warehouse_id: int = Query(..., ge=1),
+):
+    try:
+        content, filename = masan_inbound_service.export_daily_capacity_excel(
+            db, warehouse_id
+        )
+    except ValueError as exc:
+        message = str(exc)
+        if "not found" in message.lower():
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail=message
+            ) from exc
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=message
+        ) from exc
+
+    return Response(
+        content=content,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+        },
+    )
 
 
 @router.get(

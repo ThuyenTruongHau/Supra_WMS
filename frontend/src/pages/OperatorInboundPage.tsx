@@ -28,6 +28,10 @@ import { Select, Spin } from "antd";
 import { useQueryClient } from "@tanstack/react-query";
 import dayjs from "dayjs";
 import {
+  orderCreatedAtQueryParams,
+  type OrderCreatedAtRange,
+} from "@/utils/orderCreatedAtRangeParams";
+import {
   OPERATOR_DESKTOP,
   OPERATOR_INBOUND_MAP_TUNING,
   operatorDesktopClass,
@@ -58,11 +62,11 @@ import { useAppStore } from "@/store/useAppStore";
 
 import {
   getInboundBufferAssignmentApi,
-  getInboundDailyReportApi,
   parseMasanInboundExcelApi,
   suggestMasanAllocationApi,
   createMasanInboundOrderApi,
 } from "@/api/inboundOperator";
+import { exportInboundDailyCapacityApi } from "@/api/masan";
 import {
   useInboundAssignedDetails,
   useInboundList,
@@ -77,11 +81,7 @@ import type {
 import { getApiErrorDetail } from "@/types/apiError";
 import { SOURCE_TABS, type SourceTabKey } from "@/data/mockOperatorInbound";
 import { toDisplayInteger } from "@/utils/number";
-import {
-  MAP_TAP_DOUBLE_WINDOW_MS,
-  columnCodesEqual,
-  mapTapSelectionKey,
-} from "@/utils/mapTapGesture";
+import { columnCodesEqual } from "@/utils/mapTapGesture";
 
 type SideListTab = "orders" | "commands";
 
@@ -126,12 +126,18 @@ export default function OperatorInboundPage() {
 }
 
 function OperatorInboundPageContent({ warehouseId }: { warehouseId: number }) {
+  const [orderCreatedRange, setOrderCreatedRange] =
+    useState<OrderCreatedAtRange>(null);
+  const orderCreatedAtParams = useMemo(
+    () => orderCreatedAtQueryParams(orderCreatedRange),
+    [orderCreatedRange],
+  );
 
   const { data } = useOldestIncompleteInbound(warehouseId);
   const { data: inboundOrders = [],
     isLoading: inboundOrdersLoading,
     isError: inboundOrdersError,
-  } = useInboundList(warehouseId);
+  } = useInboundList(warehouseId, orderCreatedAtParams);
   const incompleteOrderIds = useMemo(
     () =>
       inboundOrders
@@ -141,8 +147,6 @@ function OperatorInboundPageContent({ warehouseId }: { warehouseId: number }) {
   );
   const { locationByCode } = useLocationByCodeMap(warehouseId);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const mapLastTapRef = useRef<{ key: string; time: number } | null>(null);
-
   const [sourceTab, setSourceTab] = useState<SourceTabKey>("cont");
   const [warehouseViewOpen, setWarehouseViewOpen] = useState(false);
   const robotData = useRobotData(sourceTab === "cont");
@@ -555,19 +559,10 @@ function OperatorInboundPageContent({ warehouseId }: { warehouseId: number }) {
 
     setIsExportingDailyExcel(true);
     try {
-      const report = await getInboundDailyReportApi(warehouseId);
-      if (report.lines.length === 0) {
-        message.warning("Không có đơn nhập nào được tạo hôm nay để xuất");
-        return;
-      }
-      const { downloadInboundDailyReportExcel } =
-        await import("@/utils/inboundDetailExport");
-      downloadInboundDailyReportExcel(report);
-      message.success(
-        `Đã xuất báo cáo nhập theo ngày (${report.lines.length} dòng)`,
-      );
+      await exportInboundDailyCapacityApi(warehouseId);
+      message.success("Đã xuất Export Daily (capacity cuối ngày)");
     } catch (err: unknown) {
-      message.error(getApiErrorDetail(err, "Không thể xuất báo cáo Excel"));
+      message.error(getApiErrorDetail(err, "Không thể xuất Export Daily"));
     } finally {
       setIsExportingDailyExcel(false);
     }
@@ -648,10 +643,6 @@ function OperatorInboundPageContent({ warehouseId }: { warehouseId: number }) {
     setLocationInfoOpen(true);
   };
 
-  const clearMapTapGesture = () => {
-    mapLastTapRef.current = null;
-  };
-
   const columnCodesFromPayload = (payload: BufferCellClickPayload) =>
     payload.columnLocationCodes?.length
       ? payload.columnLocationCodes
@@ -730,30 +721,9 @@ function OperatorInboundPageContent({ warehouseId }: { warehouseId: number }) {
     setSelectedBufferLocationId(locationId);
   };
 
-  /**
-   * 1 tap / 2 tap (trong MAP_TAP_DOUBLE_WINDOW_MS) — không dùng sự kiện dblclick.
-   * Single xử lý ngay (không delay). Auto: 1 tap = cột · Manual: 1 tap = một ô.
-   * 2 tap (cùng key): modal thông tin vị trí (cả hai chế độ).
-   */
+  /** Single tap (sau debounce canvas): Auto = cột · Manual = một ô. Double tap → canvas gọi openLocationInfo. */
   const handleBufferCellClick = (payload: BufferCellClickPayload) => {
-    const currentMode = modeRef.current;
-    const key = mapTapSelectionKey(payload, currentMode);
-    const now = Date.now();
-    const last = mapLastTapRef.current;
-
-    if (
-      last &&
-      last.key === key &&
-      now - last.time <= MAP_TAP_DOUBLE_WINDOW_MS
-    ) {
-      mapLastTapRef.current = null;
-      openLocationInfo(payload);
-      return;
-    }
-
-    mapLastTapRef.current = { key, time: now };
-
-    if (currentMode === "manual") {
+    if (modeRef.current === "manual") {
       applyManualCellSelection(payload, true);
     } else {
       applyAutoColumnSelection(payload, true);
@@ -774,7 +744,6 @@ function OperatorInboundPageContent({ warehouseId }: { warehouseId: number }) {
   };
 
   const resetMapModeState = (nextMode: "auto" | "manual") => {
-    clearMapTapGesture();
     setLocationInfoOpen(false);
     setInfoLocationId(null);
     setSelectedAutoColumnCodes([]);
@@ -1000,7 +969,7 @@ function OperatorInboundPageContent({ warehouseId }: { warehouseId: number }) {
                     disabled={warehouseId <= 0}
                     className="!h-10 !px-4 !text-base"
                   >
-                    Xuất Excel nhập hàng
+                    Export Daily
                   </Button>
                   <Button
                     variant="secondary"
@@ -1036,6 +1005,7 @@ function OperatorInboundPageContent({ warehouseId }: { warehouseId: number }) {
                         mode === "auto" ? selectedAutoColumnCodes : undefined
                     }
                     onBufferCellClick={handleBufferCellClick}
+                    onBufferCellDoubleClick={openLocationInfo}
                   />
                 </div>
               </div>
@@ -1097,6 +1067,8 @@ function OperatorInboundPageContent({ warehouseId }: { warehouseId: number }) {
                       loading={inboundOrdersLoading}
                       error={inboundOrdersError}
                       onFocusedOrderIdChange={setFocusedInboundOrderId}
+                      createdRange={orderCreatedRange}
+                      onCreatedRangeChange={setOrderCreatedRange}
                     />
                   </div>
                 ) : (

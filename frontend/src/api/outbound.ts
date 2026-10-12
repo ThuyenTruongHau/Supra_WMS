@@ -103,7 +103,14 @@ export function operatorBoardTripPathKey(trip: string): string {
 
 export const listOperatorBoardOrdersApi = async (
   warehouseId: number,
-  params?: { page?: number; page_size?: number; q?: string },
+  params?: {
+    page?: number;
+    page_size?: number;
+    q?: string;
+    created_from?: string;
+    created_to?: string;
+    item_id?: number;
+  },
 ): Promise<OperatorBoardOrdersResponse> => {
   const response = await axiosInstance.get<OperatorBoardOrdersResponse>(
     '/api/v1/outbound-orders/operator-board/orders',
@@ -113,6 +120,9 @@ export const listOperatorBoardOrdersApi = async (
         page: params?.page ?? 1,
         page_size: params?.page_size ?? 200,
         ...(params?.q ? { q: params.q } : {}),
+        ...(params?.created_from ? { created_from: params.created_from } : {}),
+        ...(params?.created_to ? { created_to: params.created_to } : {}),
+        ...(params?.item_id ? { item_id: params.item_id } : {}),
       },
     },
   )

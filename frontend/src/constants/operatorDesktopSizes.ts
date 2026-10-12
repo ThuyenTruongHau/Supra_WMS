@@ -48,6 +48,12 @@ export const OPERATOR_DESKTOP = {
     reAssignCcSplit: {
       bodyMaxHeight: 'calc(100vh - 200px)',
     },
+    /** Card đơn nhập operator — tablet 8" / desktop / TV 43". */
+    inboundOrderBrowser: {
+      cardMinHeightPx: { narrow: 72, medium: 80, wide: 88, tv: 96 },
+      orderCodeFontPx: { narrow: 13, medium: 14, wide: 15, tv: 18 },
+      metaFontPx: { narrow: 11, medium: 12, wide: 12, tv: 14 },
+    },
   },
   listMax: {
     h420: 420,
@@ -63,11 +69,17 @@ export const OPERATOR_DESKTOP = {
 /**
  * Tuning map operator **Đơn nhập** — fit quanh các điểm buffer trong khung board.
  */
+/*
+ * Kích thước ô map operator tự tính theo pitch thực của từng layout:
+ *   cellW ≈ pitchX × fillRatio, cellH ≈ pitchY × fillRatio − dải tên (titleBandRatio × pitchY),
+ * luôn chừa khe ≥ minGapRatio × pitch để ô không đè nhau.
+ */
 export const OPERATOR_INBOUND_MAP_TUNING = {
   fitPaddingRatio: 0.02,
   fitScaleFactor: 1,
-  shelfSizeFactor: 1.1,
-  baseNodeSize: 400,
+  fillRatio: 0.88,
+  minGapRatio: 0.08,
+  titleBandRatio: 0.22,
   /** Phóng chữ label trong ô map operator (chỉ trang user). */
   labelTextScale: 1.88,
 } as const;
@@ -75,29 +87,34 @@ export const OPERATOR_INBOUND_MAP_TUNING = {
 export const OPERATOR_MAP_TUNING = {
   fitPaddingRatio: 0.02,
   fitScaleFactor: 1,
-  shelfSizeFactor: 1,
-  baseNodeSize: 400,
+  fillRatio: 0.86,
+  minGapRatio: 0.1,
+  titleBandRatio: 0.22,
   /** Phóng chữ label trong ô map operator (chỉ trang user). */
   labelTextScale: 1.85,
 } as const;
 
 export const OPERATOR_MAP_CANVAS_DEFAULTS = {
-  fitScaleFactor: 0.75,
-  fitPaddingRatio: 0.08,
-  baseNodeSize: 800,
-  shelfSizeFactor: 0.7,
+  fitScaleFactor: 1,
+  fitPaddingRatio: 0.04,
+  fillRatio: 0.86,
+  minGapRatio: 0.1,
+  titleBandRatio: 0.22,
   labelTextScale: 1.8,
+  /** Kích thước ô (world) khi layout chỉ có 1 ô. */
+  baseNodeSize: 800,
 } as const;
 
 /**
- * Tuning map operator **Đơn xuất / chia chọn** — giữ tọa độ thật từ map fetch
- * (không uniformGridFit), fit quanh station của wave, size theo khoảng cách focus.
+ * Tuning map operator **Đơn xuất / chia chọn / monitor** — giữ tọa độ thật từ map fetch,
+ * fit quanh station của wave. Chừa dải tên + biển số rộng hơn vì ô CC có biển số dưới ô.
  */
 export const OPERATOR_WAVE_MAP_TUNING = {
-  fitPaddingRatio: 0.04,
-  fitScaleFactor: 1.1,
-  shelfSizeFactor: 0.48,
-  baseNodeSize: 800,
+  fitPaddingRatio: 0.03,
+  fitScaleFactor: 1,
+  fillRatio: 0.86,
+  minGapRatio: 0.1,
+  titleBandRatio: 0.26,
   labelTextScale: 1.70,
 } as const
 
@@ -107,8 +124,9 @@ export const OPERATOR_WAVE_MAP_TUNING = {
 export const OPERATOR_DIRECT_OUTBOUND_MAP_TUNING = {
   fitPaddingRatio: 0.02,
   fitScaleFactor: 1,
-  shelfSizeFactor: 1.1,
-  baseNodeSize: 420,
+  fillRatio: 0.88,
+  minGapRatio: 0.08,
+  titleBandRatio: 0.22,
   labelTextScale: 1.88,
 } as const
 

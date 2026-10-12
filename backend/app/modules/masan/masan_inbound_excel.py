@@ -130,6 +130,69 @@ def style_masan_export_worksheet(ws: Worksheet, *, last_data_row: int) -> None:
     ws.freeze_panes = ws.cell(row=DATA_START_ROW, column=1)
 
 
+_DAILY_CAPACITY_COLS = 2
+_DAILY_SUMMARY_LABEL_FILL = PatternFill("solid", fgColor="E2EFDA")
+_DAILY_TABLE_HEADER_FILL = PatternFill("solid", fgColor="D9E1F2")
+
+
+def style_daily_capacity_worksheet(
+    ws: Worksheet,
+    *,
+    summary_header_row: int,
+    summary_last_row: int,
+    table_header_row: int,
+    last_data_row: int,
+) -> None:
+    """Two-column layout: summary block (label | value) then locator table."""
+    for col_idx in range(1, _DAILY_CAPACITY_COLS + 1):
+        letter = get_column_letter(col_idx)
+        ws.column_dimensions[letter].width = 22.0 if col_idx == 1 else 16.0
+
+    ws.merge_cells(
+        start_row=1,
+        start_column=1,
+        end_row=1,
+        end_column=_DAILY_CAPACITY_COLS,
+    )
+    title_cell = ws.cell(row=1, column=1)
+    title_cell.fill = _TITLE_FILL
+    title_cell.font = _TITLE_FONT
+    title_cell.alignment = _CENTER_WRAP
+    ws.row_dimensions[1].height = 36.0
+
+    for row_idx in range(summary_header_row, summary_last_row + 1):
+        ws.row_dimensions[row_idx].height = 22.0
+        for col_idx in range(1, _DAILY_CAPACITY_COLS + 1):
+            cell = ws.cell(row=row_idx, column=col_idx)
+            cell.border = _THIN_BORDER
+            cell.font = _HEADER_FONT if row_idx == summary_header_row else _DATA_FONT
+            cell.alignment = _CENTER_WRAP if col_idx == 2 else _LEFT_WRAP
+            if row_idx == summary_header_row:
+                cell.fill = _DAILY_SUMMARY_LABEL_FILL
+            elif col_idx == 1:
+                cell.fill = _DAILY_SUMMARY_LABEL_FILL
+
+    ws.row_dimensions[table_header_row].height = 24.0
+    for col_idx in range(1, _DAILY_CAPACITY_COLS + 1):
+        cell = ws.cell(row=table_header_row, column=col_idx)
+        cell.font = _HEADER_FONT
+        cell.alignment = _CENTER_WRAP
+        cell.border = _THIN_BORDER
+        cell.fill = _DAILY_TABLE_HEADER_FILL
+
+    for row_idx in range(table_header_row + 1, last_data_row + 1):
+        ws.row_dimensions[row_idx].height = 18.0
+        for col_idx in range(1, _DAILY_CAPACITY_COLS + 1):
+            cell = ws.cell(row=row_idx, column=col_idx)
+            cell.font = _DATA_FONT
+            cell.border = _THIN_BORDER
+            cell.alignment = (
+                _CENTER_WRAP if col_idx == 2 else _LEFT_WRAP
+            )
+
+    ws.freeze_panes = ws.cell(row=table_header_row + 1, column=1)
+
+
 COLUMN_ALIASES: dict[str, list[str]] = {
     "inbound_datetime": ["ngày/ giờ chi tiết", "ngày/giờ chi tiết"],
     "vehicle_no": ["số xe"],

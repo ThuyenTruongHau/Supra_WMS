@@ -31,13 +31,15 @@ import {
 } from "@/hooks/useMasanSortingZonePendingStock";
 import { useMasanSortingZoneWebSocket } from "@/hooks/useMasanSortingZoneWebSocket";
 import {
-  buildPendingStockOverlays,
+  buildPendingStockMapOverlays,
   mergePendingStockOverlays,
-  pendingAllocationsByLocationId,
+  pendingAllocationsByToLocationId,
+  pendingAllocationsForCcLocationId,
   pendingConfirmOverlayCodes,
 } from "@/utils/masanPendingStockOverlay";
 import CcLocationLinesModal from "@/components/outbound/CcLocationLinesModal";
 import MasanCcPendingStockConfirmModal from "@/components/outbound/MasanCcPendingStockConfirmModal";
+import MasanCcPendingStockViewModal from "@/components/outbound/MasanCcPendingStockViewModal";
 import SortingItemsNeededModal from "@/components/outbound/SortingItemsNeededModal";
 import {
   outboundCcBucketZoneCodeFor,
@@ -284,6 +286,11 @@ export default function SortingWaveStationBoard({
     for (const loc of vtLocations) map.set(loc.location_code, loc.id);
     return map;
   }, [vtLocations]);
+  const vtLocationCodeById = useMemo(() => {
+    const map = new Map<number, string>();
+    for (const loc of vtLocations) map.set(loc.id, loc.location_code);
+    return map;
+  }, [vtLocations]);
   const clickableLocationNameByCode = useMemo(() => {
     const map = new Map<string, string>();
     for (const loc of clickableLocations) {
@@ -407,15 +414,20 @@ export default function SortingWaveStationBoard({
     sortingStationCodes,
   ]);
 
-  const pendingByLocationId = useMemo(
-    () => pendingAllocationsByLocationId(pendingStockData),
-    [pendingStockData],
+  const pendingByToLocationId = useMemo(
+    () =>
+      pendingAllocationsByToLocationId(
+        pendingStockData,
+        clickableLocationCodeById,
+      ),
+    [pendingStockData, clickableLocationCodeById],
   );
 
   const mapOverlayLabels = useMemo(() => {
     if (!masanCcZonePollEnabled) return stationOverlayLabels;
-    const pendingOverlays = buildPendingStockOverlays(
+    const pendingOverlays = buildPendingStockMapOverlays(
       pendingStockData,
+      vtLocationCodeById,
       clickableLocationCodeById,
     );
     return mergePendingStockOverlays(stationOverlayLabels, pendingOverlays);
@@ -423,6 +435,7 @@ export default function SortingWaveStationBoard({
     masanCcZonePollEnabled,
     stationOverlayLabels,
     pendingStockData,
+    vtLocationCodeById,
     clickableLocationCodeById,
   ]);
 
@@ -430,10 +443,16 @@ export default function SortingWaveStationBoard({
     if (!masanCcZonePollEnabled) return undefined;
     const codes = pendingConfirmOverlayCodes(
       pendingStockData,
+      vtLocationCodeById,
       clickableLocationCodeById,
     );
     return codes.size > 0 ? codes : undefined;
-  }, [masanCcZonePollEnabled, pendingStockData, clickableLocationCodeById]);
+  }, [
+    masanCcZonePollEnabled,
+    pendingStockData,
+    vtLocationCodeById,
+    clickableLocationCodeById,
+  ]);
 
   const [assignSortingModalOpen, setAssignSortingModalOpen] = useState(false);
   const [assignOutboundModalOpen, setAssignOutboundModalOpen] = useState(false);
@@ -467,6 +486,16 @@ export default function SortingWaveStationBoard({
     string | null
   >(null);
   const [pendingConfirmLocationName, setPendingConfirmLocationName] = useState<
+    string | null
+  >(null);
+  const [ccPendingViewOpen, setCcPendingViewOpen] = useState(false);
+  const [ccPendingViewLocationId, setCcPendingViewLocationId] = useState<
+    number | null
+  >(null);
+  const [ccPendingViewLocationCode, setCcPendingViewLocationCode] = useState<
+    string | null
+  >(null);
+  const [ccPendingViewLocationName, setCcPendingViewLocationName] = useState<
     string | null
   >(null);
 
@@ -595,21 +624,51 @@ export default function SortingWaveStationBoard({
     return "sorting";
   };
 
+  const resolveVtLocationName = (locationCode: string, locationId: number) => {
+    const vtLoc = vtLocations.find(
+      (loc) => loc.id === locationId || loc.location_code === locationCode,
+    );
+    const name = (vtLoc?.location_name ?? "").trim();
+    if (name) return name;
+    return locationCode;
+  };
+
+  const openCcPendingStockView = (
+    locationCode: string,
+    ccLocationId: number,
+  ) => {
+    const lines = pendingAllocationsForCcLocationId(
+      pendingStockData,
+      ccLocationId,
+      clickableLocationCodeById,
+    );
+    if (lines.length === 0) {
+      message.info("Không có hàng stock_ready tại ô CC này");
+      return;
+    }
+    setCcPendingViewLocationId(ccLocationId);
+    setCcPendingViewLocationCode(locationCode);
+    setCcPendingViewLocationName(
+      resolveCcLocationName(locationCode, ccLocationId),
+    );
+    setCcPendingViewOpen(true);
+  };
+
   const openPendingStockConfirm = (
     locationCode: string,
-    locationId: number,
+    vtLocationId: number,
   ) => {
-    const allocations = pendingByLocationId.get(locationId) ?? [];
-    if (allocations.length === 0) {
-      message.info("Không có hàng chờ xác nhận lấy tại ô này");
+    const lines = pendingByToLocationId.get(vtLocationId) ?? [];
+    if (lines.length === 0) {
+      message.info("Không có hàng chờ xác nhận lấy tại VT này");
       return;
     }
     setSelectedStationCode(locationCode);
-    setSelectedStationLocationId(locationId);
+    setSelectedStationLocationId(vtLocationId);
     setPendingConfirmLocationCode(locationCode);
-    setPendingConfirmLocationId(locationId);
+    setPendingConfirmLocationId(vtLocationId);
     setPendingConfirmLocationName(
-      resolveCcLocationName(locationCode, locationId),
+      resolveVtLocationName(locationCode, vtLocationId),
     );
     setPendingConfirmOpen(true);
   };
@@ -619,9 +678,15 @@ export default function SortingWaveStationBoard({
   }) => {
     if (!restrictToClickableZones || !warehouseId) return;
     await refreshMasanMapOverlays();
-    const locationId = clickableLocationIdByCode.get(payload.locationCode);
-    if (locationId == null) return;
-    openPendingStockConfirm(payload.locationCode, locationId);
+    const vtLocationId = vtLocationIdByCode.get(payload.locationCode);
+    if (vtLocationId != null) {
+      openPendingStockConfirm(payload.locationCode, vtLocationId);
+      return;
+    }
+    const ccLocationId = clickableLocationIdByCode.get(payload.locationCode);
+    if (ccLocationId != null) {
+      openCcPendingStockView(payload.locationCode, ccLocationId);
+    }
   };
 
   const handleStationCellClick = async (payload: { locationCode: string }) => {
@@ -1045,6 +1110,27 @@ export default function SortingWaveStationBoard({
         />
       ) : null}
 
+      {warehouseId && ccPendingViewLocationId != null ? (
+        <MasanCcPendingStockViewModal
+          open={ccPendingViewOpen}
+          onClose={() => {
+            setCcPendingViewOpen(false);
+            setCcPendingViewLocationId(null);
+            setCcPendingViewLocationCode(null);
+            setCcPendingViewLocationName(null);
+          }}
+          ccLocationCode={ccPendingViewLocationCode}
+          ccLocationName={ccPendingViewLocationName}
+          lines={pendingAllocationsForCcLocationId(
+            pendingStockData,
+            ccPendingViewLocationId,
+            clickableLocationCodeById,
+          )}
+          vtLocationCodeById={vtLocationCodeById}
+          zIndex={mapFullscreen ? 1200 : undefined}
+        />
+      ) : null}
+
       {warehouseId && ccBucketZoneCode && pendingConfirmLocationId != null ? (
         <MasanCcPendingStockConfirmModal
           open={pendingConfirmOpen}
@@ -1056,17 +1142,10 @@ export default function SortingWaveStationBoard({
           }}
           warehouseId={warehouseId}
           ccBucketZoneCode={ccBucketZoneCode}
-          locationId={pendingConfirmLocationId}
-          locationCode={pendingConfirmLocationCode}
-          locationName={pendingConfirmLocationName}
-          vehiclePlate={
-            pendingConfirmLocationCode
-              ? ccVehicleByCode[pendingConfirmLocationCode]
-              : undefined
-          }
-          allocations={
-            pendingByLocationId.get(pendingConfirmLocationId) ?? []
-          }
+          vtLocationId={pendingConfirmLocationId}
+          vtLocationCode={pendingConfirmLocationCode}
+          vtLocationName={pendingConfirmLocationName}
+          lines={pendingByToLocationId.get(pendingConfirmLocationId) ?? []}
           onConfirmed={invalidateMasanCcCaches}
           zIndex={mapFullscreen ? 1200 : undefined}
         />

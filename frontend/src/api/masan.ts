@@ -83,6 +83,23 @@ export const exportInboundOrderMasanApi = async (
   );
 };
 
+export const exportInboundDailyCapacityApi = async (
+  warehouseId: number,
+): Promise<void> => {
+  const response = await axiosInstance.get(
+    "/api/v1/masan/inbound-orders/daily-capacity-export",
+    {
+      params: { warehouse_id: warehouseId },
+      responseType: "blob",
+    },
+  );
+  downloadBlobFromResponse(
+    response.data as Blob,
+    response.headers["content-disposition"] as string | undefined,
+    `Daily_Capacity_${warehouseId}.xlsx`,
+  );
+};
+
 export const parseMasanOutboundPreviewApi = async (
   file: File,
   warehouseId: number,

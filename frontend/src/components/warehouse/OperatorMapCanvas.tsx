@@ -5,7 +5,8 @@
  * rồi vẽ chung (các zone cùng hệ toạ độ map_x/map_y của warehouse).
  *
  * Thay đổi so với phiên bản cũ (theo quyết định đã chốt):
- * - Kích thước ô cố định: `baseNodeSize * shelfSizeFactor` (không còn computeMinShelfSpacing).
+ * - Kích thước ô tự tính theo pitch thực của từng layout (mapCellMetrics), không đè nhau.
+ * - Canvas theo devicePixelRatio để chữ và viền luôn nét.
  * - Màu sắc theo chuẩn WarehouseMapCanvas (import từ warehouseMapUtils).
  * - Bỏ khái niệm bufferCodes làm mờ kệ — tất cả node trong zone đều có status.
  * - Không có pan, zoom, virtual grid hay responsive zoom.
@@ -14,10 +15,26 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useZonesMapLayout, useZonesMapStatus } from "@/hooks/useWarehouseMap";
 import type { LocationStockLabel } from "@/types/warehouseLocation";
-import { type MapContentBounds } from "@/utils/warehouseMapRender";
 import { OPERATOR_MAP_CANVAS_DEFAULTS } from "@/constants/operatorDesktopSizes";
 import {
+  computeCellBounds,
+  computeCellLayout,
+  estimateAxisPitch,
+  findCellAt,
+  layoutGroupKey,
+  type CellBounds,
+  type CellSize,
+} from "@/utils/mapCellMetrics";
+import {
+  applyCameraTransform,
+  clearCanvas,
+  clientToCanvasCss,
+  resizeCanvasToContainer,
+  type CanvasCssSize,
+} from "@/utils/canvasDpr";
+import {
   drawAssignedCcShelf,
+  drawCcAssignedShelfCaption,
   drawPendingStockConfirmShelf,
   drawShelfStockLabel,
   drawStationOverlayLabel,
@@ -49,7 +66,8 @@ function drawShelfByStatus(
   isFull: boolean,
   x: number,
   y: number,
-  half: number,
+  halfW: number,
+  halfH: number,
   invScale: number,
 ) {
   if (status === "reserved") {
@@ -61,13 +79,12 @@ function drawShelfByStatus(
   } else {
     ctx.fillStyle = SHELF_EMPTY_COLOR;
   }
-  const size = half * 2;
-  const radius = Math.max(4, half * 0.15);
+  const radius = Math.max(4, Math.min(halfW, halfH) * 0.15);
   ctx.beginPath();
-  ctx.roundRect(x - half, y - half, size, size, radius);
+  ctx.roundRect(x - halfW, y - halfH, halfW * 2, halfH * 2, radius);
   ctx.fill();
   ctx.strokeStyle = SHELF_STROKE_COLOR;
-  ctx.lineWidth = invScale * 0.8;
+  ctx.lineWidth = invScale;
   ctx.stroke();
 }
 
@@ -78,14 +95,14 @@ function drawSelectedHighlight(
   ctx: CanvasRenderingContext2D,
   x: number,
   y: number,
-  half: number,
+  halfW: number,
+  halfH: number,
   invScale: number,
 ) {
-  const size = half * 2;
-  const radius = Math.max(4, half * 0.15);
+  const radius = Math.max(4, Math.min(halfW, halfH) * 0.15);
   ctx.save();
   ctx.beginPath();
-  ctx.roundRect(x - half, y - half, size, size, radius);
+  ctx.roundRect(x - halfW, y - halfH, halfW * 2, halfH * 2, radius);
   ctx.fillStyle = `${SHELF_SELECTED_COLOR}55`; // 33% opacity overlay
   ctx.fill();
   ctx.shadowColor = SHELF_SELECTED_COLOR;
@@ -98,20 +115,49 @@ function drawSelectedHighlight(
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 export type BufferMapCanvasTuning = {
-  /** Hệ số zoom sau khi fit (mặc định 0.75). */
+  /** Hệ số zoom sau khi fit, tối đa 1 (lớn hơn sẽ cắt mất ô ở mép). */
   fitScaleFactor?: number;
-  /** Padding khi fit, tính theo tỉ lệ cạnh ngắn nhất (mặc định 0.08 = 8%). */
+  /** Padding khi fit, tính theo tỉ lệ cạnh ngắn nhất. */
   fitPaddingRatio?: number;
-  /** Kích thước world-space cơ sở của ô (mặc định 800). */
-  baseNodeSize?: number;
-  /**
-   * Hệ số kích thước ô: half = baseNodeSize * shelfSizeFactor (mặc định 0.7).
-   * Tăng lên để ô to hơn, giảm xuống nếu các kệ quá gần nhau.
-   */
-  shelfSizeFactor?: number;
+  /** Tỉ lệ ô chiếm trong một bước lưới (pitch) của layout. */
+  fillRatio?: number;
+  /** Khe hở tối thiểu giữa hai ô, theo tỉ lệ pitch. */
+  minGapRatio?: number;
+  /** Dải chừa phía trên ô cho tên vị trí (và dưới ô cho biển số), theo tỉ lệ pitch dọc. */
+  titleBandRatio?: number;
   /** Hệ số phóng chữ label trong ô. */
   labelTextScale?: number;
+  /** @deprecated Kích thước ô tự tính theo pitch; chỉ còn dùng khi layout chỉ có 1 ô. */
+  baseNodeSize?: number;
+  /** @deprecated Không còn tác dụng — dùng fillRatio. */
+  shelfSizeFactor?: number;
 };
+
+type ResolvedTuning = Required<
+  Pick<
+    BufferMapCanvasTuning,
+    | "fitScaleFactor"
+    | "fitPaddingRatio"
+    | "fillRatio"
+    | "minGapRatio"
+    | "titleBandRatio"
+    | "labelTextScale"
+    | "baseNodeSize"
+  >
+>;
+
+function resolveTuning(tuning: BufferMapCanvasTuning | undefined): ResolvedTuning {
+  const d = OPERATOR_MAP_CANVAS_DEFAULTS;
+  return {
+    fitScaleFactor: Math.min(1, tuning?.fitScaleFactor ?? d.fitScaleFactor),
+    fitPaddingRatio: tuning?.fitPaddingRatio ?? d.fitPaddingRatio,
+    fillRatio: tuning?.fillRatio ?? d.fillRatio,
+    minGapRatio: tuning?.minGapRatio ?? d.minGapRatio,
+    titleBandRatio: tuning?.titleBandRatio ?? d.titleBandRatio,
+    labelTextScale: tuning?.labelTextScale ?? d.labelTextScale,
+    baseNodeSize: tuning?.baseNodeSize ?? d.baseNodeSize,
+  };
+}
 
 export type BufferCellClickPayload = {
   locationCode: string;
@@ -127,7 +173,15 @@ type MapNode = {
   x: number;
   y: number;
   content: string;
+  group: string;
 };
+
+/** Khoảng trống giữa các cụm lớn hơn (pitch × hệ số này) sẽ bị thu lại. */
+const GAP_COLLAPSE_PITCHES = 3;
+const COLLAPSED_GAP_PITCHES = 1.5;
+/** Giới hạn rộng/cao để layout thưa (vd. BP cách nhau rất xa) không ra ô dẹt bất thường. */
+const OPERATOR_CELL_MIN_ASPECT = 0.6;
+const OPERATOR_CELL_MAX_ASPECT = 1.6;
 
 type Props = {
   /** 1 zone hoặc danh sách zone cần vẽ chung trên cùng canvas. */
@@ -153,54 +207,40 @@ type Props = {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 /**
- * Tính vùng bao (bounding box) bao quanh toàn bộ nodes.
- * Chiến lược: min/max của map_x, map_y + padding tỉ lệ để tạo khoảng trống xung quanh.
- * Kết quả dùng để tính toán scale và offset trong fitToCanvas().
+ * Thu hẹp khoảng trống khổng lồ giữa các cụm node trên một trục
+ * (ví dụ kho 12 và 13 bị cách nhau bởi kho 10).
  */
-function computeMapSizeFromNodes(
-  nodes: Array<{ x: number; y: number }>,
-  baseNodeSize: number,
-): MapContentBounds {
-  let minX = Number.POSITIVE_INFINITY;
-  let minY = Number.POSITIVE_INFINITY;
-  let maxX = Number.NEGATIVE_INFINITY;
-  let maxY = Number.NEGATIVE_INFINITY;
-  for (const node of nodes) {
-    minX = Math.min(minX, node.x);
-    minY = Math.min(minY, node.y);
-    maxX = Math.max(maxX, node.x);
-    maxY = Math.max(maxY, node.y);
+function collapseAxisGaps(nodes: MapNode[], axis: "x" | "y", pitch: number) {
+  const threshold = pitch * GAP_COLLAPSE_PITCHES;
+  const collapsed = pitch * COLLAPSED_GAP_PITCHES;
+  const uniqueVals = Array.from(new Set(nodes.map((n) => n[axis]))).sort((a, b) => a - b);
+  if (uniqueVals.length === 0) return;
+
+  const mapping = new Map<number, number>();
+  let currentVal = uniqueVals[0];
+  mapping.set(uniqueVals[0], currentVal);
+  for (let i = 1; i < uniqueVals.length; i++) {
+    const diff = uniqueVals[i] - uniqueVals[i - 1];
+    currentVal += diff > threshold ? collapsed : diff;
+    mapping.set(uniqueVals[i], currentVal);
   }
-
-  // Margin cố định = 2 lần kích thước 1 ô kệ 
-  const margin = baseNodeSize * 1.1;
-
-  minX -= margin;
-  minY -= margin;
-  maxX += margin;
-  maxY += margin;
-
-  return {
-    minX,
-    minY,
-    maxX,
-    maxY,
-    width: Math.max(maxX - minX, 1),
-    height: Math.max(maxY - minY, 1),
-  };
+  for (const node of nodes) {
+    node[axis] = mapping.get(node[axis])!;
+  }
 }
 
 function drawInboundSeparator(
   ctx: CanvasRenderingContext2D,
   nodes: MapNode[],
   labelByCode: Map<string, LocationStockLabel>,
-  shelfHalf: number,
+  shelfHalfW: number,
+  shelfHalfH: number,
   invScale: number
 ) {
   const sortedNodes = [...nodes].sort((a, b) => a.y - b.y);
   const rows: { y: number; isBP: boolean; isCN: boolean }[] = [];
   for (const node of sortedNodes) {
-    if (rows.length === 0 || node.y - rows[rows.length - 1].y > shelfHalf) {
+    if (rows.length === 0 || node.y - rows[rows.length - 1].y > shelfHalfH) {
       rows.push({ y: node.y, isBP: false, isCN: false });
     }
     const currentRow = rows[rows.length - 1];
@@ -210,8 +250,8 @@ function drawInboundSeparator(
   }
 
   const allX = nodes.map((n) => n.x);
-  const minX = Math.min(...allX) - shelfHalf;
-  const maxX = Math.max(...allX) + shelfHalf;
+  const minX = Math.min(...allX) - shelfHalfW;
+  const maxX = Math.max(...allX) + shelfHalfW;
 
   ctx.save();
   ctx.beginPath();
@@ -317,7 +357,10 @@ export default function OperatorMapCanvas({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const nodesRef = useRef<MapNode[]>([]);
-  const contentBoundsRef = useRef<MapContentBounds | null>(null);
+  const nodeSizesRef = useRef<CellSize[]>([]);
+  const medianHalfRef = useRef({ w: 0, h: 0 });
+  const contentBoundsRef = useRef<CellBounds | null>(null);
+  const cssSizeRef = useRef<CanvasCssSize>({ width: 1, height: 1, dpr: 1 });
 
   const labelByCodeRef = useRef<Map<string, LocationStockLabel>>(new Map());
   const overlayLabelByCodeRef = useRef<Record<string, string>>({});
@@ -333,16 +376,10 @@ export default function OperatorMapCanvas({
   const offsetXRef = useRef(0);
   const offsetYRef = useRef(0);
 
-  const tuningRef = useRef<Required<BufferMapCanvasTuning>>({ ...OPERATOR_MAP_CANVAS_DEFAULTS });
+  const tuningRef = useRef<ResolvedTuning>(resolveTuning(tuning));
 
   // Sync tuningRef với prop tuning mỗi render (không cần useEffect)
-  tuningRef.current = {
-    fitScaleFactor: tuning?.fitScaleFactor ?? OPERATOR_MAP_CANVAS_DEFAULTS.fitScaleFactor,
-    fitPaddingRatio: tuning?.fitPaddingRatio ?? OPERATOR_MAP_CANVAS_DEFAULTS.fitPaddingRatio,
-    baseNodeSize: tuning?.baseNodeSize ?? OPERATOR_MAP_CANVAS_DEFAULTS.baseNodeSize,
-    shelfSizeFactor: tuning?.shelfSizeFactor ?? OPERATOR_MAP_CANVAS_DEFAULTS.shelfSizeFactor,
-    labelTextScale: tuning?.labelTextScale ?? OPERATOR_MAP_CANVAS_DEFAULTS.labelTextScale,
-  };
+  tuningRef.current = resolveTuning(tuning);
 
   const [hasData, setHasData] = useState(false);
 
@@ -363,28 +400,34 @@ export default function OperatorMapCanvas({
     const opts = tuningRef.current;
     const labels = labelByCodeRef.current;
     const selectedCodes = selectedCodesRef.current;
-    const invScale = 1 / scaleRef.current;
+    const scale = scaleRef.current;
+    const invScale = 1 / scale;
 
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    clearCanvas(ctx, canvas);
 
     ctx.save();
-    ctx.setTransform(
-      scaleRef.current, 0,
-      0, scaleRef.current,
-      offsetXRef.current, offsetYRef.current,
-    );
-
-    // Kích thước ô kệ = baseNodeSize * shelfSizeFactor (cố định, tunable)
-    const shelfHalf = opts.baseNodeSize * opts.shelfSizeFactor;
-    const showLabels = shelfHalf * 2 * scaleRef.current >= LABEL_MIN_SCREEN_PX;
+    applyCameraTransform(ctx, cssSizeRef.current.dpr, scale, offsetXRef.current, offsetYRef.current);
 
     // Vẽ đường phân cách BP / CN nếu showInboundSeparator
     if (showInboundSeparator && nodesRef.current.length > 0) {
-      drawInboundSeparator(ctx, nodesRef.current, labels, shelfHalf, invScale);
+      drawInboundSeparator(
+        ctx,
+        nodesRef.current,
+        labels,
+        medianHalfRef.current.w,
+        medianHalfRef.current.h,
+        invScale,
+      );
     }
 
     // Vẽ từng node
-    for (const node of nodesRef.current) {
+    const sizes = nodeSizesRef.current;
+    for (let i = 0; i < nodesRef.current.length; i++) {
+      const node = nodesRef.current[i];
+      const halfW = sizes[i].w / 2;
+      const halfH = sizes[i].h / 2;
+      const shelfHalf = { w: halfW, h: halfH };
+      const showLabels = Math.min(halfW, halfH) * 2 * scale >= LABEL_MIN_SCREEN_PX;
 
       const interactive = isInteractiveCode(node.content);
       const isSelected = interactive && selectedCodes.has(node.content);
@@ -412,12 +455,12 @@ export default function OperatorMapCanvas({
       } else if (showAssignedShelf) {
         drawAssignedCcShelf(ctx, node.x, node.y, shelfHalf, invScale);
       } else {
-        drawShelfByStatus(ctx, status, isFull, node.x, node.y, shelfHalf, invScale);
+        drawShelfByStatus(ctx, status, isFull, node.x, node.y, halfW, halfH, invScale);
       }
 
       // Viền nổi bật khi đang được chọn
       if (isSelected) {
-        drawSelectedHighlight(ctx, node.x, node.y, shelfHalf, invScale);
+        drawSelectedHighlight(ctx, node.x, node.y, halfW, halfH, invScale);
       }
 
       // Text label (SKU, số lượng, bin code)
@@ -438,6 +481,17 @@ export default function OperatorMapCanvas({
             opts.labelTextScale,
             vehiclePlate,
             isPendingConfirm ? "pendingConfirm" : "default",
+          );
+        } else if (showAssignedShelf && vehiclePlate) {
+          drawCcAssignedShelfCaption(
+            ctx,
+            node.x,
+            node.y,
+            shelfHalf,
+            displayBin,
+            vehiclePlate,
+            opts.labelTextScale,
+            isSelected,
           );
         } else {
           drawShelfStockLabel(
@@ -474,10 +528,11 @@ export default function OperatorMapCanvas({
     const bounds = contentBoundsRef.current;
     if (!canvas || !bounds) return;
     const opts = tuningRef.current;
+    const { width: cssW, height: cssH } = cssSizeRef.current;
 
-    const pad = Math.min(canvas.width, canvas.height) * opts.fitPaddingRatio;
-    const availW = canvas.width - pad * 2;
-    const availH = canvas.height - pad * 2;
+    const pad = Math.min(cssW, cssH) * opts.fitPaddingRatio;
+    const availW = Math.max(cssW - pad * 2, 1);
+    const availH = Math.max(cssH - pad * 2, 1);
     const scale = Math.min(availW / bounds.width, availH / bounds.height);
     const lockedScale = scale * opts.fitScaleFactor;
     scaleRef.current = lockedScale;
@@ -489,8 +544,7 @@ export default function OperatorMapCanvas({
     const canvas = canvasRef.current;
     const container = containerRef.current;
     if (!canvas || !container) return;
-    canvas.width = Math.max(container.clientWidth, 1);
-    canvas.height = Math.max(container.clientHeight, 1);
+    cssSizeRef.current = resizeCanvasToContainer(canvas, container);
     fitToCanvas();
     draw();
   }, [draw, fitToCanvas]);
@@ -542,47 +596,26 @@ export default function OperatorMapCanvas({
     if (layoutQuery.isLoading) return;
     if (layoutNodes.length === 0) {
       nodesRef.current = [];
+      nodeSizesRef.current = [];
       contentBoundsRef.current = null;
       setHasData(false);
       draw();
       return;
     }
 
+    const opts = tuningRef.current;
     const nodes: MapNode[] = layoutNodes.map((n) => ({
       x: n.map_x,
-      y: -(n.map_y) * 1.2, // Lật ngược trục Y (Flip Y)
+      y: -n.map_y, // Lật ngược trục Y (Flip Y)
       content: n.location_code,
+      group: layoutGroupKey(n.bin_code || n.location_name || n.location_code),
     }));
 
-    // Thu hẹp khoảng trống khổng lồ (gap) giữa các cụm node (ví dụ kho 12 và 13 bị cách nhau bởi kho 10)
-    const GAP_THRESHOLD = tuningRef.current.baseNodeSize * 9;
-    const COLLAPSED_GAP = tuningRef.current.baseNodeSize * 2.4;
-
-    const collapseAxis = (axis: "x" | "y") => {
-      const uniqueVals = Array.from(new Set(nodes.map((n) => n[axis]))).sort((a, b) => a - b);
-      if (uniqueVals.length === 0) return;
-
-      const mapping = new Map<number, number>();
-      let currentVal = uniqueVals[0];
-      mapping.set(uniqueVals[0], currentVal);
-
-      for (let i = 1; i < uniqueVals.length; i++) {
-        const diff = uniqueVals[i] - uniqueVals[i - 1];
-        // Nếu khoảng cách giữa 2 node lớn hơn ngưỡng cho phép -> Kéo chúng lại gần nhau
-        if (diff > GAP_THRESHOLD) {
-          currentVal += COLLAPSED_GAP;
-        } else {
-          currentVal += diff;
-        }
-        mapping.set(uniqueVals[i], currentVal);
-      }
-      for (const node of nodes) {
-        node[axis] = mapping.get(node[axis])!;
-      }
-    };
-
-    collapseAxis("x");
-    collapseAxis("y");
+    const rawPitch = estimateAxisPitch(nodes);
+    const pitchX = rawPitch.pitchX ?? rawPitch.pitchY;
+    const pitchY = rawPitch.pitchY ?? rawPitch.pitchX;
+    if (pitchX != null) collapseAxisGaps(nodes, "x", pitchX);
+    if (pitchY != null) collapseAxisGaps(nodes, "y", pitchY);
 
     // Quay layout đã parse 90° sang phải: (x, y) -> (y, -x). Chữ label vẫn nằm ngang.
     for (const node of nodes) {
@@ -591,8 +624,23 @@ export default function OperatorMapCanvas({
       node.x = nextX;
     }
 
+    const layout = computeCellLayout(nodes, {
+      fillRatio: opts.fillRatio,
+      minGapRatio: opts.minGapRatio,
+      titleBandRatio: opts.titleBandRatio,
+      minAspect: OPERATOR_CELL_MIN_ASPECT,
+      maxAspect: OPERATOR_CELL_MAX_ASPECT,
+      fallbackSize: opts.baseNodeSize,
+    });
+    const halfWs = layout.sizes.map((s) => s.w / 2).sort((a, b) => a - b);
+    const halfHs = layout.sizes.map((s) => s.h / 2).sort((a, b) => a - b);
+    const mid = Math.floor(layout.sizes.length / 2);
+
     nodesRef.current = nodes;
-    contentBoundsRef.current = computeMapSizeFromNodes(nodes, tuningRef.current.baseNodeSize);
+    nodeSizesRef.current = layout.sizes;
+    medianHalfRef.current = { w: halfWs[mid] ?? 0, h: halfHs[mid] ?? 0 };
+    // Dải dưới ô (biển số) ≈ dải tên phía trên.
+    contentBoundsRef.current = computeCellBounds(nodes, layout.sizes, 1);
 
     setHasData(true);
     resizeCanvas();
@@ -623,32 +671,20 @@ export default function OperatorMapCanvas({
       clientX: number,
       clientY: number,
     ): BufferCellClickPayload | null => {
-      const rect = canvas.getBoundingClientRect();
-      const scaleX = canvas.width / Math.max(rect.width, 1);
-      const scaleY = canvas.height / Math.max(rect.height, 1);
-      const sx = (clientX - rect.left) * scaleX;
-      const sy = (clientY - rect.top) * scaleY;
-      const wx = (sx - offsetXRef.current) / scaleRef.current;
-      const wy = (sy - offsetYRef.current) / scaleRef.current;
+      const pos = clientToCanvasCss(canvas, clientX, clientY, cssSizeRef.current);
+      const wx = (pos.x - offsetXRef.current) / scaleRef.current;
+      const wy = (pos.y - offsetYRef.current) / scaleRef.current;
 
-      const opts = tuningRef.current;
-      const shelfHalf = opts.baseNodeSize * opts.shelfSizeFactor;
-      const hitRadius = shelfHalf * 0.55;
-      let closest: MapNode | null = null;
-      let closestDist = Infinity;
-
-      for (const node of nodesRef.current) {
-        if (!isInteractiveCode(node.content)) continue;
-        const dist = Math.hypot(wx - node.x, wy - node.y);
-        if (dist <= hitRadius && dist < closestDist) {
-          closestDist = dist;
-          closest = node;
-        }
-      }
-      if (!closest) return null;
+      const sizes = nodeSizesRef.current;
+      const hitIndex = findCellAt(nodesRef.current, sizes, wx, wy, (node) =>
+        isInteractiveCode(node.content),
+      );
+      if (hitIndex < 0) return null;
+      const closest = nodesRef.current[hitIndex];
+      const columnTolerance = sizes[hitIndex].w * 0.5;
 
       const columnLocationCodes = nodesRef.current
-        .filter((n) => Math.abs(n.x - closest!.x) < shelfHalf * 0.5)
+        .filter((n) => Math.abs(n.x - closest.x) < columnTolerance)
         .map((n) => n.content);
 
       return {

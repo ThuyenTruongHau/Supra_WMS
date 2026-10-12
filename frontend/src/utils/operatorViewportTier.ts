@@ -135,6 +135,61 @@ export function operatorPickModalTitleClass(tier: OperatorViewportTier): string 
   }
 }
 
+/** Lưới card đơn nhập operator (danh sách đơn / xe). */
+export function operatorInboundOrderGridClass(tier: OperatorViewportTier): string {
+  switch (tier) {
+    case "narrow":
+      return "grid auto-rows-min grid-cols-1 gap-2 p-2";
+    case "medium":
+      return "grid auto-rows-min grid-cols-1 gap-2 p-2 sm:grid-cols-2";
+    case "tv":
+      return "grid auto-rows-min grid-cols-2 gap-3 p-3 lg:grid-cols-3 xl:grid-cols-4";
+    default:
+      return "grid auto-rows-min grid-cols-1 gap-2.5 p-2.5 sm:grid-cols-2 lg:grid-cols-3";
+  }
+}
+
+export function operatorInboundOrderCardShellClass(
+  tier: OperatorViewportTier,
+): string {
+  switch (tier) {
+    case "narrow":
+      return "min-h-[4.5rem] rounded-lg border p-2 pl-2.5";
+    case "medium":
+      return "min-h-[5rem] rounded-lg border p-2 pl-2.5";
+    case "tv":
+      return "min-h-[6rem] rounded-xl border p-3 pl-3.5";
+    default:
+      return "min-h-[5.5rem] rounded-lg border p-2.5 pl-3";
+  }
+}
+
+export function operatorInboundOrderCodeClass(tier: OperatorViewportTier): string {
+  switch (tier) {
+    case "narrow":
+      return "truncate font-mono text-[13px] font-bold leading-tight text-brand-dark";
+    case "medium":
+      return "truncate font-mono text-sm font-bold leading-tight text-brand-dark";
+    case "tv":
+      return "truncate font-mono text-lg font-extrabold leading-tight text-brand-dark";
+    default:
+      return "truncate font-mono text-[15px] font-bold leading-tight text-brand-dark";
+  }
+}
+
+export function operatorInboundOrderMetaClass(tier: OperatorViewportTier): string {
+  switch (tier) {
+    case "narrow":
+      return "text-[11px] text-stripe-ink-mute";
+    case "medium":
+      return "text-xs text-stripe-ink-mute";
+    case "tv":
+      return "text-sm text-stripe-ink-mute";
+    default:
+      return "text-xs text-stripe-ink-mute";
+  }
+}
+
 export function operatorPickFooterButtonClass(tier: OperatorViewportTier): string {
   switch (tier) {
     case "narrow":

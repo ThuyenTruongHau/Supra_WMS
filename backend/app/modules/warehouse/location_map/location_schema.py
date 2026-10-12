@@ -210,6 +210,7 @@ class LocationDetailStockItem(BaseModel):
     id: int
     item_id: int
     sku: str
+    item_name: Optional[str] = None
     lot_number_from: Optional[str] = None
     lot_number_to: Optional[str] = None
     lot_number: Optional[str] = None

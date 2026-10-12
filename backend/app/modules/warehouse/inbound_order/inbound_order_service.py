@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Optional
 import uuid
 import json
@@ -92,13 +93,23 @@ def suggest_allocation_inbound(db: Session, body: InboundSuggestAllocation):
     if reversed_location_ids:
         query = query.filter(Location.id.notin_(reversed_location_ids))
 
+    # empty_locations = (
+    #     query
+    #     .order_by(
+    #         cast(Location.row, Integer).nulls_last(),
+    #         cast(Location.column, Integer).nulls_last(),
+    #         cast(Location.level, Integer).nulls_last(),
+    #         Location.id,
+    #     )
+    #     .limit(needed)
+    #     .all()
+    # )
+
     empty_locations = (
         query
         .order_by(
-            cast(Location.row, Integer).nulls_last(),
-            cast(Location.column, Integer).nulls_last(),
-            cast(Location.level, Integer).nulls_last(),
-            Location.id,
+            Location.location_name.desc().nulls_last(),
+            Location.id.desc(),  # tie-break ổn định
         )
         .limit(needed)
         .all()
@@ -949,6 +960,28 @@ def _build_inbound_list_summary(query) -> InboundOrderListSummary:
     )
 
 
+def _apply_inbound_list_filters(
+    query,
+    *,
+    q: Optional[str] = None,
+    created_from: Optional[datetime] = None,
+    created_to: Optional[datetime] = None,
+):
+    if q and q.strip():
+        term = f"%{q.strip()}%"
+        query = query.join(InboundOrder.created_by).filter(
+            or_(
+                InboundOrder.order_code.ilike(term),
+                User.username.ilike(term),
+            )
+        )
+    if created_from is not None:
+        query = query.filter(InboundOrder.created_at >= created_from)
+    if created_to is not None:
+        query = query.filter(InboundOrder.created_at <= created_to)
+    return query
+
+
 def get_inbound_order(
     db: Session,
     warehouse_id: int,
@@ -956,19 +989,19 @@ def get_inbound_order(
     page_size: int = 10,
     q: Optional[str] = None,
     status: Optional[str] = None,
+    created_from: Optional[datetime] = None,
+    created_to: Optional[datetime] = None,
 ):
     base_query = db.query(InboundOrder).filter(
         InboundOrder.warehouse_id == warehouse_id
     )
 
-    if q and q.strip():
-        term = f"%{q.strip()}%"
-        base_query = base_query.join(InboundOrder.created_by).filter(
-            or_(
-                InboundOrder.order_code.ilike(term),
-                User.username.ilike(term),
-            )
-        )
+    base_query = _apply_inbound_list_filters(
+        base_query,
+        q=q,
+        created_from=created_from,
+        created_to=created_to,
+    )
 
     summary = _build_inbound_list_summary(base_query)
 

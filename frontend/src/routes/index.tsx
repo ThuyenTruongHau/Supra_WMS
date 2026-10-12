@@ -33,6 +33,9 @@ import OperatorInboundPage from "@/pages/OperatorInboundPage";
 import OperatorOutboundPage from "@/pages/OperatorOutboundPage";
 import OperatorSortingWavePage from "@/pages/OperatorSortingWavePage";
 import OperatorOutboundDetailPage from "@/pages/OperatorOutboundDetailPage";
+import OperatorMonitorPage from "@/pages/OperatorMonitorPage";
+import OperatorMonitorDetailPage from "@/pages/OperatorMonitorDetailPage";
+import OperatorControlTowerPage from "@/pages/OperatorControlTowerPage";
 
 
 export default function AppRoutes() {
@@ -91,6 +94,25 @@ export default function AppRoutes() {
         <Route path="export" element={<RoleGatePage admin={<OutboundPage />} operator={<OperatorOutboundPage />} />} />
         <Route path="export/zone/:zoneId" element={<OperatorOutboundDetailPage />} />
         <Route path="export/sorting-waves" element={<RoleGatePage admin={<div>Tính năng chia chọn của Admin chưa hoàn thiện</div>} operator={<OperatorSortingWavePage />} />} />
+        <Route
+          path="monitor"
+          element={
+            <RoleGatePage
+              admin={<Navigate to="/report" replace />}
+              operator={<OperatorMonitorPage />}
+            />
+          }
+        />
+        <Route path="monitor/zone/:zoneId" element={<OperatorMonitorDetailPage />} />
+        <Route
+          path="control-tower"
+          element={
+            <RoleGatePage
+              admin={<Navigate to="/report" replace />}
+              operator={<OperatorControlTowerPage />}
+            />
+          }
+        />
         <Route path="export/:orderId" element={<OutboundDetailPage />} />
         <Route path="inventory" element={<StocktakePage />} />
         <Route path="inventory/:id" element={<StocktakeDetailPage />} />

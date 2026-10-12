@@ -406,10 +406,26 @@ export const outboundIncompleteVehiclesQueryKey = (
     availableForAssign ? "assignable" : "all",
   ] as const;
 
+export type OperatorBoardOrdersFilterOptions = {
+  q?: string;
+  created_from?: string;
+  created_to?: string;
+  item_id?: number;
+  enabled?: boolean;
+};
+
 export const operatorBoardOrdersQueryKey = (
   warehouseId: number,
-  q?: string,
-) => ["outbound_operator_board_orders", warehouseId, q ?? ""] as const;
+  filters?: OperatorBoardOrdersFilterOptions,
+) =>
+  [
+    "outbound_operator_board_orders",
+    warehouseId,
+    filters?.q ?? "",
+    filters?.created_from ?? "",
+    filters?.created_to ?? "",
+    filters?.item_id ?? "",
+  ] as const;
 
 export const operatorBoardVehiclesQueryKey = (orderId: number) =>
   ["outbound_operator_board_vehicles", orderId] as const;
@@ -447,15 +463,18 @@ export const operatorBoardLinesQueryKey = (
 
 export const useOperatorBoardOrders = (
   warehouseId: number,
-  options?: { q?: string; enabled?: boolean },
+  options?: OperatorBoardOrdersFilterOptions,
 ) => {
   return useQuery<OperatorBoardOrdersResponse, AxiosError<ApiErrorResponse>>({
-    queryKey: operatorBoardOrdersQueryKey(warehouseId, options?.q),
+    queryKey: operatorBoardOrdersQueryKey(warehouseId, options),
     queryFn: () =>
       listOperatorBoardOrdersApi(warehouseId, {
         page: 1,
         page_size: 200,
         q: options?.q,
+        created_from: options?.created_from,
+        created_to: options?.created_to,
+        item_id: options?.item_id,
       }),
     enabled: (options?.enabled ?? true) && warehouseId > 0,
     staleTime: 30 * 1000,

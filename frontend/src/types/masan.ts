@@ -199,18 +199,24 @@ export interface MasanSortingZonePendingStockResponse {
 export interface MasanConfirmAllocationOutboundRequest {
   warehouse_id: number;
   zone: string;
-  location_id: number;
-  allocation_id: number;
-  quantity: number;
+  quantities: Record<number, number>;
 }
 
 export interface MasanConfirmAllocationOutboundResponse {
   warehouse_id: number;
   zone: string;
-  location_id: number;
-  allocation_id: number;
-  quantity: number;
-  allocation_status: string;
+  quantities: Record<number, number>;
+  allocation_statuses: Record<number, string>;
+  detail_statuses: Record<number, string>;
+  /** Detail đầu tiên trong batch (tương thích) */
   outbound_order_detail_id: number | null;
   detail_status: string | null;
 }
+
+/** Allocation pending-stock kèm ô CC nguồn (Redis bucket). */
+export type MasanPendingAllocationWithCc =
+  MasanSortingZonePendingAllocationRow & {
+    ccLocationId: number;
+    ccLocationName: string | null;
+    ccLocationCode?: string | null;
+  };

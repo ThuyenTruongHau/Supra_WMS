@@ -36,7 +36,7 @@ IMPORT_JOB_REDIS_TTL = 3600
 HEADER_MASAN_CSV = {
     "Item No": "sku",
     "Item Name": "name",
-    "UOM1": "base_unit",
+    "UOM2": "base_unit",
     "UOM Conversion / Pallet": "base_quantity",
 }
 
@@ -68,6 +68,21 @@ def normalize_base_quantity(value: str) -> str:
     if normalized == "0":
         return "1"
     return normalized
+
+
+def _decode_import_csv_bytes(raw: bytes) -> str:
+    """Masan/Excel CSV: UTF-8, UTF-16 BOM, or Windows Vietnamese/Western ANSI."""
+    if raw.startswith(b"\xff\xfe") or raw.startswith(b"\xfe\xff"):
+        return raw.decode("utf-16")
+    if raw.startswith(b"\xef\xbb\xbf"):
+        return raw.decode("utf-8-sig")
+    for encoding in ("utf-8", "cp1258", "cp1252"):
+        try:
+            return raw.decode(encoding)
+        except UnicodeDecodeError:
+            continue
+    return raw.decode("latin-1")
+
 
 _STAGING_VALIDATION_SQL = text("""
     WITH staging AS (
@@ -201,51 +216,52 @@ async def save_import_item_file(file: UploadFile, warehouse_id: int) -> tuple[st
 
 
 def iter_csv_chunks(path: Path, chunk_size: int = CHUNK_SIZE) -> Iterator[list[dict[str, Any]]]:
-    with path.open(newline="", encoding="utf-8-sig") as handle:
-        next(handle, None)
-        reader = csv.DictReader(handle)
+    text_content = _decode_import_csv_bytes(path.read_bytes())
+    handle = io.StringIO(text_content, newline="")
+    next(handle, None)
+    reader = csv.DictReader(handle)
 
-        if not reader.fieldnames:
-            raise ValueError("CSV không có header")
+    if not reader.fieldnames:
+        raise ValueError("CSV không có header")
 
-        normalized_headers = {
-            (name or "").strip(): name for name in reader.fieldnames
-        }
+    normalized_headers = {
+        (name or "").strip(): name for name in reader.fieldnames
+    }
 
-        missing = [src for src in HEADER_MASAN_CSV if src not in normalized_headers]
-        if missing:
-            raise ValueError(f"Thiếu cột bắt buộc: {', '.join(missing)}")
+    missing = [src for src in HEADER_MASAN_CSV if src not in normalized_headers]
+    if missing:
+        raise ValueError(f"Thiếu cột bắt buộc: {', '.join(missing)}")
 
-        chunk: list[dict[str, Any]] = []
+    chunk: list[dict[str, Any]] = []
 
-        for row_no, raw in enumerate(reader, start=3):
-            row: dict[str, Any] = {"row_no": row_no}
+    for row_no, raw in enumerate(reader, start=3):
+        row: dict[str, Any] = {"row_no": row_no}
 
-            for src, dst in HEADER_MASAN_CSV.items():
-                original_key = normalized_headers[src]
-                value = raw.get(original_key)
-                row[dst] = "" if value is None else str(value).strip()
+        for src, dst in HEADER_MASAN_CSV.items():
+            original_key = normalized_headers[src]
+            value = raw.get(original_key)
+            row[dst] = "" if value is None else str(value).strip()
 
-            for field in STAGING_FIELDS:
-                row.setdefault(field, "")
+        for field in STAGING_FIELDS:
+            row.setdefault(field, "")
 
-            for field in _INTEGER_IMPORT_FIELDS:
-                if field == "base_quantity":
-                    row[field] = normalize_base_quantity(row[field])
-                else:
-                    row[field] = normalize_import_integer(row[field])
+        for field in _INTEGER_IMPORT_FIELDS:
+            if field == "base_quantity":
+                row[field] = normalize_base_quantity(row[field])
+            else:
+                row[field] = normalize_import_integer(row[field])
 
-            if not row["sku"] and not row["name"]:
-                continue
+        if not row["sku"] and not row["name"]:
+            continue
 
-            chunk.append(row)
+        chunk.append(row)
 
-            if len(chunk) >= chunk_size:
-                yield chunk
-                chunk = []
-
-        if chunk:
+        if len(chunk) >= chunk_size:
             yield chunk
+            chunk = []
+
+    if chunk:
+        yield chunk
 
 
 def _copy_chunk(cur, job_id: str, rows: list[dict[str, Any]]) -> None:
@@ -486,8 +502,7 @@ def run_import_item_staging_phase(
     )
     processed = staging["processed"]
     
-    # Auto-create any missing units from the staging data before validation
-    auto_create_missing_units(db, job_id)
+    ensure_units_from_staging(db, job_id)
 
     update_import_job(
         job_id,

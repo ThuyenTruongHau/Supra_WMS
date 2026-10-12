@@ -76,6 +76,8 @@ export interface GetInboundOrdersParams {
   page_size?: number;
   q?: string;
   status?: string;
+  created_from?: string;
+  created_to?: string;
 }
 
 /** --- Suggest allocation --- */

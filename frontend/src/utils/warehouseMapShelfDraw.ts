@@ -37,6 +37,23 @@ export const OUTBOUND_STATION_TECH = {
   takingCorner: '#fcd34d',
 } as const
 
+/** Nửa kích thước ô: số (ô vuông, tương thích cũ) hoặc { w, h } cho ô chữ nhật. */
+export type ShelfHalf = number | { w: number; h: number }
+
+/** hw/hh: nửa rộng/cao; base: cạnh ngắn — dùng cho cỡ chữ để không tràn ô. */
+export function resolveShelfHalf(half: ShelfHalf): { hw: number; hh: number; base: number } {
+  if (typeof half === 'number') return { hw: half, hh: half, base: half }
+  return { hw: half.w, hh: half.h, base: Math.min(half.w, half.h) }
+}
+
+/** Hệ số phóng biển số dưới ô CC (gán xe / sorting). */
+export const CC_VEHICLE_PLATE_SCALE = 1.72
+
+function isCcLocationLabel(label: string | null | undefined): boolean {
+  const value = (label ?? '').trim().toUpperCase()
+  return value.startsWith('CC')
+}
+
 function drawTechCornerAccents(
   ctx: CanvasRenderingContext2D,
   left: number,
@@ -252,13 +269,13 @@ export function drawAssignedCcShelf(
   ctx: CanvasRenderingContext2D,
   x: number,
   y: number,
-  half: number,
+  half: ShelfHalf,
   invScale: number,
 ) {
-  const size = half * 2
-  const radius = Math.max(4, half * 0.15)
+  const { hw, hh, base } = resolveShelfHalf(half)
+  const radius = Math.max(4, base * 0.15)
   ctx.beginPath()
-  ctx.roundRect(x - half, y - half, size, size, radius)
+  ctx.roundRect(x - hw, y - hh, hw * 2, hh * 2, radius)
   ctx.fillStyle = SHELF_ASSIGNED_TECH.fill
   ctx.fill()
   ctx.strokeStyle = SHELF_ASSIGNED_TECH.stroke
@@ -279,13 +296,13 @@ export function drawPendingStockConfirmShelf(
   ctx: CanvasRenderingContext2D,
   x: number,
   y: number,
-  half: number,
+  half: ShelfHalf,
   invScale: number,
 ) {
-  const size = half * 2
-  const radius = Math.max(4, half * 0.15)
+  const { hw, hh, base } = resolveShelfHalf(half)
+  const radius = Math.max(4, base * 0.15)
   ctx.beginPath()
-  ctx.roundRect(x - half, y - half, size, size, radius)
+  ctx.roundRect(x - hw, y - hh, hw * 2, hh * 2, radius)
   ctx.fillStyle = SHELF_PENDING_CONFIRM_TECH.fill
   ctx.fill()
   ctx.strokeStyle = SHELF_PENDING_CONFIRM_TECH.stroke
@@ -308,7 +325,7 @@ function drawLocationTitleAboveShelf(
   ctx: CanvasRenderingContext2D,
   x: number,
   y: number,
-  half: number,
+  half: ShelfHalf,
   locationName: string,
   options: {
     scale: number
@@ -318,9 +335,10 @@ function drawLocationTitleAboveShelf(
   },
 ) {
   const { scale, highlighted, nameColor, nameColorHighlighted } = options
+  const { hw, hh, base } = resolveShelfHalf(half)
   const sans = '"Plus Jakarta Sans", system-ui, sans-serif'
-  const maxW = half * 1.85
-  const nameSize = Math.max(6, half * 0.26 * scale)
+  const maxW = hw * 1.85
+  const nameSize = Math.max(6, base * 0.26 * scale)
   const margin = nameSize * 0.4
 
   ctx.textAlign = 'center'
@@ -332,7 +350,7 @@ function drawLocationTitleAboveShelf(
       : highlighted
         ? '#FFFFFF'
         : (nameColor ?? '#64748b')
-  ctx.fillText(fitLabelText(ctx, locationName, maxW), x, y - half - margin)
+  ctx.fillText(fitLabelText(ctx, locationName, maxW), x, y - hh - margin)
 }
 
 /** Biển số trong ngoặc — dưới viền dưới ô, chữ nhỏ, co để vừa chiều ngang. */
@@ -340,22 +358,23 @@ function drawVehiclePlateBelowShelf(
   ctx: CanvasRenderingContext2D,
   x: number,
   y: number,
-  half: number,
+  half: ShelfHalf,
   vehiclePlate: string,
-  options: { scale: number; highlighted: boolean },
+  options: { scale: number; highlighted: boolean; plateScale?: number },
 ) {
   const plateRaw = vehiclePlate.trim()
   if (!plateRaw) return
 
-  const { scale, highlighted } = options
+  const { scale, highlighted, plateScale = 1 } = options
+  const { hw, hh, base } = resolveShelfHalf(half)
   const sans = '"Plus Jakarta Sans", system-ui, sans-serif'
   const plateText = `(${plateRaw})`
-  const maxW = half * 2.35
-  const preferred = Math.max(4, half * 0.14 * scale)
-  const minSize = 3.5
+  const maxW = hw * (plateScale > 1 ? 2.6 : 2.35)
+  const preferred = Math.max(5, base * 0.14 * scale * plateScale)
+  const minSize = Math.max(4, 3.5 * plateScale)
   const plateSize = fitFontSize(ctx, plateText, maxW, preferred, minSize, '700', sans)
-  const bottomEdge = y + half
-  const gapBelowShelf = Math.max(plateSize * 0.35, half * 0.1 * scale)
+  const bottomEdge = y + hh
+  const gapBelowShelf = Math.max(plateSize * 0.35, base * 0.1 * scale)
   const plateY = bottomEdge + gapBelowShelf + plateSize * 0.5
 
   ctx.textAlign = 'center'
@@ -371,6 +390,32 @@ function drawVehiclePlateBelowShelf(
   ctx.fillText(text, x, plateY)
 }
 
+/** Ô CC trống đã gán biển số — tên vị trí trên, biển số dưới (chữ to hơn mặc định). */
+export function drawCcAssignedShelfCaption(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  shelfHalf: ShelfHalf,
+  locationLabel: string,
+  vehiclePlate: string,
+  textScale = 1,
+  highlighted = false,
+) {
+  const scale = Number.isFinite(textScale) && textScale > 0 ? textScale : 1
+  const loc = locationLabel.trim()
+  if (loc) {
+    drawLocationTitleAboveShelf(ctx, x, y, shelfHalf, loc, {
+      scale,
+      highlighted,
+    })
+  }
+  drawVehiclePlateBelowShelf(ctx, x, y, shelfHalf, vehiclePlate, {
+    scale,
+    highlighted,
+    plateScale: CC_VEHICLE_PLATE_SCALE,
+  })
+}
+
 /**
  * Overlay sorting station:
  * Tên vị trí phía trên ô; biển số trong ngoặc dưới ô; trong ô: SKU / SL.
@@ -379,7 +424,7 @@ export function drawStationOverlayLabel(
   ctx: CanvasRenderingContext2D,
   x: number,
   y: number,
-  half: number,
+  shelfHalf: ShelfHalf,
   overlay: string,
   highlighted = false,
   fallbackLocationCode?: string,
@@ -390,7 +435,8 @@ export function drawStationOverlayLabel(
   // Giảm scale xuống một chút so với Inbound để vừa với các ô xếp khít nhau của Outbound
   const scale = (Number.isFinite(textScale) && textScale > 0 ? textScale : 1) * 0.85
 
-  const maxW = half * 1.72
+  const { hw, base: half } = resolveShelfHalf(shelfHalf)
+  const maxW = hw * 1.72
   const mono = '"Plus Jakarta Sans", system-ui, sans-serif'
   const sans = '"Plus Jakarta Sans", system-ui, sans-serif'
 
@@ -402,6 +448,7 @@ export function drawStationOverlayLabel(
   let sku = ''
   let qty = ''
   let vehicle = ''
+  let moreLabel = ''
 
   for (let i = 0; i < rawLines.length; i++) {
     const line = rawLines[i]
@@ -409,6 +456,8 @@ export function drawStationOverlayLabel(
       qty = line.replace(/^SL::?/i, '').trim()
     } else if (line.toUpperCase().startsWith('SKU::')) {
       sku = line.replace(/^SKU::/i, '').trim()
+    } else if (line.toUpperCase().startsWith('MORE::')) {
+      moreLabel = line.replace(/^MORE::/i, '').trim()
     } else if (line.toUpperCase().startsWith('VEH::')) {
       vehicle = line.replace(/^VEH::/i, '').trim()
     } else {
@@ -432,12 +481,16 @@ export function drawStationOverlayLabel(
       ctx.shadowColor = '#3AAFA9'
       ctx.shadowBlur = Math.max(5, half * 0.1)
     }
-    drawLocationTitleAboveShelf(ctx, x, y, half, fallbackLocationCode, {
+    drawLocationTitleAboveShelf(ctx, x, y, shelfHalf, fallbackLocationCode, {
       scale,
       highlighted,
     })
     ctx.restore()
   }
+
+  const ccPlateScale = isCcLocationLabel(fallbackLocationCode)
+    ? CC_VEHICLE_PLATE_SCALE
+    : 1
 
   if (vehiclePlate) {
     ctx.save()
@@ -445,9 +498,10 @@ export function drawStationOverlayLabel(
       ctx.shadowColor = '#3AAFA9'
       ctx.shadowBlur = Math.max(5, half * 0.1)
     }
-    drawVehiclePlateBelowShelf(ctx, x, y, half, vehiclePlate, {
+    drawVehiclePlateBelowShelf(ctx, x, y, shelfHalf, vehiclePlate, {
       scale,
       highlighted,
+      plateScale: ccPlateScale,
     })
     ctx.restore()
   }
@@ -465,8 +519,8 @@ export function drawStationOverlayLabel(
   const pendingConfirm = overlayVariant === 'pendingConfirm'
   const drawDivider = (yPos: number) => {
     ctx.beginPath()
-    ctx.moveTo(x - half * 0.8, yPos)
-    ctx.lineTo(x + half * 0.8, yPos)
+    ctx.moveTo(x - hw * 0.8, yPos)
+    ctx.lineTo(x + hw * 0.8, yPos)
     ctx.strokeStyle = pendingConfirm
       ? SHELF_PENDING_CONFIRM_TECH.divider
       : 'rgba(255, 255, 255, 0.95)'
@@ -485,14 +539,25 @@ export function drawStationOverlayLabel(
   const baseQtySize = qty ? fitFontSize(ctx, qty, maxW, preferredQty, minQty, '800', sans) : 0
   const qtySize = qty ? Math.max(6, Math.min(baseQtySize, half * 0.35 * scale)) : 0
 
+  const preferredMore = half * 0.22 * scale
+  const minMore = Math.max(5, half * 0.11 * scale)
+  const baseMoreSize = moreLabel
+    ? fitFontSize(ctx, moreLabel, maxW, preferredMore, minMore, '700', sans)
+    : 0
+  const moreSize = moreLabel
+    ? Math.max(5, Math.min(baseMoreSize, half * 0.22 * scale))
+    : 0
+
   const skuStep = sku ? skuSize * 1.2 : 0
   const qtyStep = qty ? qtySize * 1.2 : 0
+  const moreStep = moreLabel ? moreSize * 1.15 : 0
   const lineGap = half * 0.12 * scale
 
-  const partsCount = (sku ? 1 : 0) + (qty ? 1 : 0)
+  const partsCount =
+    (sku ? 1 : 0) + (qty ? 1 : 0) + (moreLabel ? 1 : 0)
   const numDividers = Math.max(0, partsCount - 1)
 
-  const blockHeight = skuStep + qtyStep + numDividers * lineGap
+  const blockHeight = skuStep + qtyStep + moreStep + numDividers * lineGap
   let cursorY = y - blockHeight / 2
 
   if (sku) {
@@ -524,6 +589,23 @@ export function drawStationOverlayLabel(
         : '#FFFFFF'
     ctx.fillText(fitLabelText(ctx, qty, maxW), x, cursorY)
     cursorY += qtyStep / 2
+
+    if (moreLabel) {
+      drawDivider(cursorY + lineGap / 2)
+      cursorY += lineGap
+    }
+  }
+
+  if (moreLabel) {
+    cursorY += moreStep / 2
+    ctx.font = `700 ${moreSize}px ${sans}`
+    ctx.fillStyle = pendingConfirm
+      ? SHELF_PENDING_CONFIRM_TECH.labelQty
+      : highlighted
+        ? '#D7ECEB'
+        : 'rgba(255,255,255,0.92)'
+    ctx.fillText(fitLabelText(ctx, moreLabel, maxW), x, cursorY)
+    cursorY += moreStep / 2
   }
 
   ctx.restore()
@@ -537,7 +619,7 @@ export function drawShelfStockLabel(
   ctx: CanvasRenderingContext2D,
   x: number,
   y: number,
-  half: number,
+  shelfHalf: ShelfHalf,
   label: LocationStockLabel | undefined,
   textScale = 1,
   highlighted = false,
@@ -546,17 +628,22 @@ export function drawShelfStockLabel(
 ) {
   if (!label) return
 
+  const { hw, base: half } = resolveShelfHalf(shelfHalf)
   ctx.save()
   if (highlighted) {
     ctx.shadowColor = '#3AAFA9'
     ctx.shadowBlur = Math.max(5, half * 0.1)
   }
   const scale = Number.isFinite(textScale) && textScale > 0 ? textScale : 1
-  const maxW = half * 1.85
+  const maxW = hw * 1.85
   const mono = '"Plus Jakarta Sans", system-ui, sans-serif'
   const sans = '"Plus Jakarta Sans", system-ui, sans-serif'
   ctx.textAlign = 'center'
   ctx.textBaseline = 'middle'
+  const ccPlateScale =
+    isCcLocationLabel(label.bin) || isCcLocationLabel(label.location_code)
+      ? CC_VEHICLE_PLATE_SCALE
+      : 1
 
   if (label.is_empty) {
     const emptyLabel =
@@ -568,7 +655,7 @@ export function drawShelfStockLabel(
       return
     }
     const isBypass = (label.bin || '').toUpperCase().startsWith('BP')
-    drawLocationTitleAboveShelf(ctx, x, y, half, emptyLabel, {
+    drawLocationTitleAboveShelf(ctx, x, y, shelfHalf, emptyLabel, {
       scale,
       highlighted,
       nameColor: isBypass
@@ -580,9 +667,10 @@ export function drawShelfStockLabel(
     })
     const emptyPlate = (externalVehiclePlate || '').trim()
     if (emptyPlate) {
-      drawVehiclePlateBelowShelf(ctx, x, y, half, emptyPlate, {
+      drawVehiclePlateBelowShelf(ctx, x, y, shelfHalf, emptyPlate, {
         scale,
         highlighted,
+        plateScale: ccPlateScale,
       })
     }
     ctx.restore()
@@ -609,7 +697,7 @@ export function drawShelfStockLabel(
 
   if (locationText) {
     const isBypass = (label.bin || '').toUpperCase().startsWith('BP')
-    drawLocationTitleAboveShelf(ctx, x, y, half, locationText, {
+    drawLocationTitleAboveShelf(ctx, x, y, shelfHalf, locationText, {
       scale,
       highlighted,
       nameColor: isBypass ? '#dc2626' : '#64748b',
@@ -619,9 +707,10 @@ export function drawShelfStockLabel(
 
   const stockPlate = (externalVehiclePlate || '').trim()
   if (stockPlate) {
-    drawVehiclePlateBelowShelf(ctx, x, y, half, stockPlate, {
+    drawVehiclePlateBelowShelf(ctx, x, y, shelfHalf, stockPlate, {
       scale,
       highlighted,
+      plateScale: ccPlateScale,
     })
   }
 
@@ -637,8 +726,8 @@ export function drawShelfStockLabel(
 
   const drawDivider = (yPos: number) => {
     ctx.beginPath()
-    ctx.moveTo(x - half * 0.8, yPos)
-    ctx.lineTo(x + half * 0.8, yPos)
+    ctx.moveTo(x - hw * 0.8, yPos)
+    ctx.lineTo(x + hw * 0.8, yPos)
     ctx.strokeStyle = highlighted ? '#ffffff' : 'rgba(255, 255, 255, 0.92)'
     ctx.lineWidth = Math.max(4, half * 0.07)
     ctx.stroke()

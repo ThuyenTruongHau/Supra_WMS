@@ -1,5 +1,6 @@
 import json
 import uuid
+from datetime import datetime
 from typing import Optional
 from decimal import Decimal
 from collections import defaultdict
@@ -233,6 +234,31 @@ def _build_outbound_list_summary(query) -> OutboundOrderListSummary:
     )
 
 
+def apply_outbound_list_filters(
+    query,
+    db: Session,
+    *,
+    q: Optional[str] = None,
+    created_from: Optional[datetime] = None,
+    created_to: Optional[datetime] = None,
+    item_id: Optional[int] = None,
+):
+    if q and q.strip():
+        query = query.filter(OutboundOrder.order_code.ilike(f"%{q.strip()}%"))
+    if created_from is not None:
+        query = query.filter(OutboundOrder.created_at >= created_from)
+    if created_to is not None:
+        query = query.filter(OutboundOrder.created_at <= created_to)
+    if item_id is not None:
+        detail_order_ids = (
+            db.query(OutboundOrderDetail.outbound_order_id)
+            .filter(OutboundOrderDetail.item_id == item_id)
+            .distinct()
+        )
+        query = query.filter(OutboundOrder.id.in_(detail_order_ids))
+    return query
+
+
 def get_outbound_order(
     db: Session,
     warehouse_id: int,
@@ -240,12 +266,21 @@ def get_outbound_order(
     page_size: int = 10,
     q: Optional[str] = None,
     status: Optional[str] = None,
+    created_from: Optional[datetime] = None,
+    created_to: Optional[datetime] = None,
+    item_id: Optional[int] = None,
 ):
     base_query = db.query(OutboundOrder).filter(
         OutboundOrder.warehouse_id == warehouse_id
     )
-    if q:
-        base_query = base_query.filter(OutboundOrder.order_code.ilike(f"%{q}%"))
+    base_query = apply_outbound_list_filters(
+        base_query,
+        db,
+        q=q,
+        created_from=created_from,
+        created_to=created_to,
+        item_id=item_id,
+    )
 
     summary = _build_outbound_list_summary(base_query)
 

@@ -127,6 +127,7 @@ export interface NodeInfo {
 
 export interface MapLocationItemStock {
   sku: string;
+  item_name?: string | null;
   lot_number: string | null;
   quantity: string;
 }
@@ -174,6 +175,7 @@ export interface ItemStockDetail {
   id: number;
   item_id: number;
   sku: string;
+  item_name?: string | null;
   location_id?: number;
   lot_number: string | null;
   expiry_date: string | null;

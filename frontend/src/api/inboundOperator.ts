@@ -31,7 +31,14 @@ import type { InboundOrderListResponse } from '@/types/inboundOrder'
 
 export const listInboundOrdersApi = async (
   warehouseId: number,
-  params?: { status?: string; q?: string; page?: number; page_size?: number },
+  params?: {
+    status?: string;
+    q?: string;
+    page?: number;
+    page_size?: number;
+    created_from?: string;
+    created_to?: string;
+  },
 ): Promise<InboundOrder[]> => {
   const response = await axiosInstance.get<InboundOrderListResponse>('/api/v1/inbound-orders', {
     params: { warehouse_id: warehouseId, ...params },

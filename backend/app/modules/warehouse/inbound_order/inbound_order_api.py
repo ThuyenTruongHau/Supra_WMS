@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Annotated, Literal, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -126,7 +127,22 @@ def list_inbound_orders(
     page_size: int = Query(10, ge=1, le=100),
     q: Optional[str] = Query(None, description="Tìm theo mã đơn hoặc người tạo"),
     status: Optional[str] = Query(None, description="Lọc trạng thái đơn"),
+    created_from: Optional[datetime] = Query(
+        None, description="Lọc created_at từ (ISO 8601, inclusive)"
+    ),
+    created_to: Optional[datetime] = Query(
+        None, description="Lọc created_at đến (ISO 8601, inclusive)"
+    ),
 ):
+    if (
+        created_from is not None
+        and created_to is not None
+        and created_from > created_to
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="created_from phải nhỏ hơn hoặc bằng created_to",
+        )
     orders, total, summary = inbound_order_service.get_inbound_order(
         db,
         warehouse_id=warehouse_id,
@@ -134,6 +150,8 @@ def list_inbound_orders(
         page_size=page_size,
         q=q,
         status=status,
+        created_from=created_from,
+        created_to=created_to,
     )
     return InboundOrderListResponse(
         items=[InboundOrderResponse.model_validate(o) for o in orders],

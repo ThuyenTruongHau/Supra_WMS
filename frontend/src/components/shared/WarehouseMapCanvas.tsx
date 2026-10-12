@@ -10,10 +10,11 @@
  *  - Zoom centred on cursor (mousewheel) with configurable min/max
  *  - Smooth pan (left-button drag)
  *  - Lines drawn exclusively from the `path` array (index 6 of lineArr)
- *  - Nodes: type=0 → small grey circle | type=1 or 12 → hatched square (shelf)
- *  - Node sizes are screen-constant (baseSize / scale) — never blow up on zoom
- *  - Click detection via inverse-transform → Euclidean distance (hitRadius)
- *  - Diagonal hatch pattern for shelves is generated once and cached
+ *  - Nodes: type=0 → small grey circle | type=1 or 12 → shelf rectangle
+ *  - Shelf size follows each layout's real pitch (mapCellMetrics) — cells never overlap
+ *  - Labels drawn in screen px with level-of-detail by on-screen cell size
+ *  - DPR-aware backing store so the map stays sharp at any zoom
+ *  - Click detection via inverse-transform → rectangle hit-test on the cell
  *  - Admin can import new map ZIP via import dialog
  */
 
@@ -30,6 +31,7 @@ import WarehouseMapToolbar from './WarehouseMapToolbar';
 import WarehouseMapOverlays from './WarehouseMapOverlays';
 import WarehouseMapLegend from './WarehouseMapLegend';
 import WarehouseMapZoomControls from './WarehouseMapZoomControls';
+import WarehouseMapLocationSearch from './WarehouseMapLocationSearch';
 import { useAppStore } from '@/store/useAppStore';
 import { useAuthStore } from '@/store/useAuthStore';
 
@@ -39,9 +41,25 @@ import type { MapData, NodeInfo, FullLocationDetail } from '@/types/warehouseMap
 import { formatQuantity } from '@/utils/formatQuantity';
 import { getApiErrorMessage } from '@/utils/apiErrorMessage';
 import {
+  computeCellBounds,
+  computeCellLayout,
+  findCellAt,
+  layoutGroupKey,
+  type CellBounds,
+  type CellMetricsOptions,
+  type CellSize,
+} from '@/utils/mapCellMetrics';
+import {
+  applyCameraTransform,
+  applyScreenTransform,
+  clearCanvas,
+  clientToCanvasCss,
+  resizeCanvasToContainer,
+  type CanvasCssSize,
+} from '@/utils/canvasDpr';
+import {
   ZOOM_MAX,
   ZOOM_FACTOR,
-  HIT_RADIUS,
   BASE_NODE_SIZE,
   LINE_COLOR,
   NODE_NORMAL_COLOR,
@@ -52,7 +70,6 @@ import {
   SHELF_SELECTED_COLOR,
   SHELF_STROKE_COLOR,
   SHELF_SELECTED_STROKE_COLOR,
-  PADDING,
   BOX_SELECT_DRAG_THRESHOLD,
   BOX_SELECT_FILL,
   BOX_SELECT_STROKE,
@@ -61,6 +78,86 @@ import {
   parseNode,
   toCanvasPoint,
 } from '@/utils/warehouseMapUtils';
+import { resolveLocationSearchBatch } from '@/utils/warehouseMapLocationSearch';
+
+// ─── Layout / zoom tuning ───────────────────────────────────────────────────────
+
+const ADMIN_CELL_OPTIONS: CellMetricsOptions = {
+  fillRatio: 0.86,
+  minGapRatio: 0.1,
+  titleBandRatio: 0,
+  minAspect: 0.6,
+  maxAspect: 2.2,
+};
+const FIT_PADDING_RATIO = 0.04;
+const ZOOM_MIN_OF_FIT = 0.6;
+/** Zoom tối đa sao cho ô nhỏ nhất to cỡ này trên màn hình. */
+const MAX_CELL_SCREEN_PX = 480;
+const CLICK_DRAG_THRESHOLD_PX = 4;
+const WAYPOINT_RADIUS = BASE_NODE_SIZE * 0.3;
+
+/**
+ * Preview hàng trong ô có tồn (world space, phóng theo zoom): SKU, Lot, Qty mỗi thứ
+ * một dòng, chữ to hết mức vừa ô; thêm "+N more..." nếu có nhiều mặt hàng.
+ */
+function drawShelfStockPreview(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  cellW: number,
+  cellH: number,
+  loc: FullLocationDetail,
+) {
+  const stock = loc.item_stock[0];
+  const extraCount = loc.item_stock.length - 1;
+  const lines = [
+    stock.sku,
+    stock.lot_number || 'N/A',
+    `Qty: ${formatQuantity(stock.quantity, '0')}`,
+  ];
+  const moreText = extraCount > 0 ? `+${extraCount} more...` : '';
+
+  const maxTextWidth = cellW * 0.9;
+  const lineGap = 1.2;
+  const moreRatio = 0.7;
+  const lineUnits = lines.length + (moreText ? moreRatio : 0);
+  let fontSize = (cellH * 0.9) / (lineUnits * lineGap);
+
+  ctx.save();
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+
+  // Thu nhỏ đến khi dòng dài nhất vừa chiều ngang ô.
+  ctx.font = `600 ${fontSize}px sans-serif`;
+  const widest = Math.max(...lines.map((line) => ctx.measureText(line).width));
+  if (widest > maxTextWidth) {
+    fontSize *= maxTextWidth / widest;
+  }
+  const moreFontSize = fontSize * moreRatio;
+  const lineHeight = fontSize * lineGap;
+  const totalHeight = lineHeight * lines.length + (moreText ? moreFontSize * lineGap : 0);
+  let currentY = y - totalHeight / 2 + lineHeight / 2;
+
+  ctx.shadowColor = 'rgba(0, 0, 0, 0.35)';
+  ctx.shadowBlur = fontSize * 0.15;
+  ctx.shadowOffsetY = fontSize * 0.06;
+  ctx.font = `600 ${fontSize}px sans-serif`;
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.97)';
+  for (const line of lines) {
+    ctx.fillText(line, x, currentY, maxTextWidth);
+    currentY += lineHeight;
+  }
+
+  if (moreText) {
+    currentY += (moreFontSize * lineGap - lineHeight) / 2;
+    ctx.font = `italic 400 ${moreFontSize}px sans-serif`;
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+    ctx.shadowColor = 'transparent';
+    ctx.fillText(moreText, x, currentY, maxTextWidth);
+  }
+
+  ctx.restore();
+}
 
 // ─── Props ──────────────────────────────────────────────────────────────────────
 
@@ -87,6 +184,8 @@ interface WarehouseMapCanvasProps {
   boxSelectActive?: boolean;
   /** Callback khi hoàn tất kéo vùng — trả về các shelf node trong vùng. */
   onBoxSelect?: (nodes: NodeInfo[]) => void;
+  /** Thanh tìm vị trí theo location_name trên map. */
+  enableLocationSearch?: boolean;
 }
 
 
@@ -104,6 +203,7 @@ const WarehouseMapCanvas: React.FC<WarehouseMapCanvasProps> = ({
   enableBoxSelect = false,
   boxSelectActive = false,
   onBoxSelect,
+  enableLocationSearch = true,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -148,9 +248,19 @@ const WarehouseMapCanvas: React.FC<WarehouseMapCanvasProps> = ({
   // Map data (parsed once per API response, never mutated)
   const mapDataRef = useRef<MapData | null>(null);
   const nodesRef = useRef<NodeInfo[]>([]);
+  const shelfNodesRef = useRef<NodeInfo[]>([]);
+  const shelfSizesRef = useRef<CellSize[]>([]);
+  const shelfBoundsRef = useRef<CellBounds | null>(null);
+  /** Cạnh ngắn nhỏ nhất của ô (world) — dùng tính zoom tối đa. */
+  const smallestCellMinRef = useRef(0);
+  const cssSizeRef = useRef<CanvasCssSize>({ width: 1, height: 1, dpr: 1 });
   const fullCodesRef = useRef<Set<string>>(new Set());
   const fullLocationsMapRef = useRef<Map<string, FullLocationDetail>>(new Map());
   const selectedCodesRef = useRef<Set<string>>(new Set());
+  const searchHighlightCodesRef = useRef<Set<string>>(new Set());
+  const searchPulseRef = useRef(0);
+  const searchPulseRafRef = useRef<number | null>(null);
+  const searchPulseStartRef = useRef(0);
 
   const selectedCodesKey = useMemo(
     () => selectedLocationCodes.join('\u0000'),
@@ -192,10 +302,13 @@ const WarehouseMapCanvas: React.FC<WarehouseMapCanvasProps> = ({
   // Dynamic zoom floor — updated after each fitToCanvas() call so the user
   // can always scroll back to the initial overview, even for huge maps.
   const zoomMinRef = useRef(0.001);
+  const zoomMaxRef = useRef(ZOOM_MAX);
 
   // Pan state
   const isPanningRef = useRef(false);
   const lastMouseRef = useRef({ x: 0, y: 0 });
+  const panStartRef = useRef({ x: 0, y: 0 });
+  const panMovedRef = useRef(false);
 
   // Box-select state
   const isBoxSelectingRef = useRef(false);
@@ -233,19 +346,22 @@ const WarehouseMapCanvas: React.FC<WarehouseMapCanvasProps> = ({
     const mapData = mapDataRef.current;
     if (!mapData) return;
 
-    const { width: W, height: H } = canvas;
-    ctx.clearRect(0, 0, W, H);
+    const { width: cssW, height: cssH, dpr } = cssSizeRef.current;
+    const scale = scaleRef.current;
+    const offX = offsetXRef.current;
+    const offY = offsetYRef.current;
+    clearCanvas(ctx, canvas);
 
     // Apply camera transform
     ctx.save();
-    ctx.setTransform(scaleRef.current, 0, 0, scaleRef.current, offsetXRef.current, offsetYRef.current);
+    applyCameraTransform(ctx, dpr, scale, offX, offY);
 
-    const invScale = 1 / scaleRef.current;
+    const invScale = 1 / scale;
 
     // ── Draw Lines ────────────────────────────────────────────────────────────
     ctx.beginPath();
     ctx.strokeStyle = LINE_COLOR;
-    ctx.lineWidth = invScale * 2; // screen-constant 2px line
+    ctx.lineWidth = invScale * 1.5; // screen-constant line
 
     for (const lineRow of mapData.lineArr) {
       // path is always at index 6 per lineKeys spec
@@ -297,97 +413,89 @@ const WarehouseMapCanvas: React.FC<WarehouseMapCanvasProps> = ({
     }
     ctx.stroke();
 
-    // ── Draw Nodes ────────────────────────────────────────────────────────────
-    const baseSize = BASE_NODE_SIZE;
+    // ── Visible world rect (culling) ─────────────────────────────────────────
+    const viewMinX = -offX * invScale;
+    const viewMaxX = (cssW - offX) * invScale;
+    const viewMinY = -offY * invScale;
+    const viewMaxY = (cssH - offY) * invScale;
 
+    // ── Draw Waypoints (small grey circles) ──────────────────────────────────
+    ctx.fillStyle = NODE_NORMAL_COLOR;
+    ctx.beginPath();
     for (const node of nodesRef.current) {
-      const { x, y, type } = node;
+      if (node.type !== 0) continue;
+      if (node.x < viewMinX || node.x > viewMaxX || node.y < viewMinY || node.y > viewMaxY) {
+        continue;
+      }
+      ctx.moveTo(node.x + WAYPOINT_RADIUS, node.y);
+      ctx.arc(node.x, node.y, WAYPOINT_RADIUS, 0, Math.PI * 2);
+    }
+    ctx.fill();
 
-      if (type === 0) {
-        // Normal waypoint: small grey circle
-        ctx.beginPath();
-        ctx.arc(x, y, baseSize * 0.3, 0, Math.PI * 2);
-        ctx.fillStyle = NODE_NORMAL_COLOR;
-        ctx.fill();
-      } else if (isShelfNodeType(type)) {
-        const half = baseSize * 0.7;
-        const isSelected = selectedCodesRef.current.has(String(node.content));
-        const isFull = fullCodesRef.current.has(node.content);
-        const locDetail = fullLocationsMapRef.current.get(node.content);
-        const locationStatus = locDetail?.status;
+    // ── Draw Shelves ─────────────────────────────────────────────────────────
+    const shelves = shelfNodesRef.current;
+    const sizes = shelfSizesRef.current;
 
-        if (isSelected) {
-          ctx.fillStyle = SHELF_SELECTED_COLOR;
-        } else if (locationStatus === 'reserved') {
-          ctx.fillStyle = SHELF_RESERVED_COLOR;
-        } else if (locationStatus === 'in_transit') {
-          ctx.fillStyle = SHELF_IN_TRANSIT_COLOR;
-        } else if (isFull || locationStatus === 'has_stock') {
-          ctx.fillStyle = SHELF_FULL_COLOR;
-        } else {
-          ctx.fillStyle = SHELF_EMPTY_COLOR;
-        }
-        ctx.fillRect(x - half * 1.5, y - half, half * 3, half * 2);
+    for (let i = 0; i < shelves.length; i++) {
+      const node = shelves[i];
+      const size = sizes[i];
+      const { x, y } = node;
+      const halfW = size.w / 2;
+      const halfH = size.h / 2;
+      if (
+        x + halfW < viewMinX ||
+        x - halfW > viewMaxX ||
+        y + halfH < viewMinY ||
+        y - halfH > viewMaxY
+      ) {
+        continue;
+      }
 
-        ctx.strokeStyle = isSelected ? SHELF_SELECTED_STROKE_COLOR : SHELF_STROKE_COLOR;
-        ctx.lineWidth = invScale * (isSelected ? 1.2 : 0.8);
-        ctx.strokeRect(x - half * 1.5, y - half, half * 3, half * 2);
+      const isSelected = selectedCodesRef.current.has(String(node.content));
+      const isFull = fullCodesRef.current.has(node.content);
+      const locDetail = fullLocationsMapRef.current.get(node.content);
+      const locationStatus = locDetail?.status;
 
-        // Draw item stock text (skip overlay when selected for clearer highlight)
-        if (isFull && !isSelected) {
-          const locDetailForText = fullLocationsMapRef.current.get(node.content);
-          if (locDetailForText && locDetailForText.item_stock && locDetailForText.item_stock.length > 0) {
-            ctx.save();
-            ctx.fillStyle = '#ffffff';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            const maxTextWidth = half * 2.8; 
-            // Display only 1 item to make it prominent, show "+N more" if others exist
-            const stock = locDetailForText.item_stock[0];
-            const hasMore = locDetailForText.item_stock.length > 1;
+      if (isSelected) {
+        ctx.fillStyle = SHELF_SELECTED_COLOR;
+      } else if (locationStatus === 'reserved') {
+        ctx.fillStyle = SHELF_RESERVED_COLOR;
+      } else if (locationStatus === 'in_transit') {
+        ctx.fillStyle = SHELF_IN_TRANSIT_COLOR;
+      } else if (isFull || locationStatus === 'has_stock') {
+        ctx.fillStyle = SHELF_FULL_COLOR;
+      } else {
+        ctx.fillStyle = SHELF_EMPTY_COLOR;
+      }
+      ctx.fillRect(x - halfW, y - halfH, size.w, size.h);
 
-            // Uniform large font size for both lines
-            const fontSize = half * 0.32;
-            const moreFontSize = half * 0.22;
-            
-            const lineHeight = fontSize * 1.5;
-            const moreLineHeight = moreFontSize * 1.5;
-            
-            // Total height is 2 main lines + optional "more" line
-            const totalHeight = lineHeight * 2 + (hasMore ? moreLineHeight : 0);
-            
-            let currentY = y - totalHeight / 2 + lineHeight / 2;
-            
-            // Add subtle shadow for premium look
-            ctx.shadowColor = 'rgba(0, 0, 0, 0.35)';
-            ctx.shadowBlur = half * 0.08;
-            ctx.shadowOffsetY = half * 0.04;
-            
-            ctx.font = `500 ${fontSize}px sans-serif`;
-            
-            // 1. Draw SKU & Lot with a nice bullet separator
-            const textTop = `${stock.sku}  •  ${stock.lot_number || 'N/A'}`;
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
-            ctx.fillText(textTop, x, currentY, maxTextWidth);
-            
-            // 2. Draw Qty
-            currentY += lineHeight;
-            const qtyText = `Qty: ${formatQuantity(stock.quantity, "0")}`;
-            
-            ctx.fillText(qtyText, x, currentY, maxTextWidth);
-            
-            // 3. Draw More
-            if (hasMore) {
-               currentY += (lineHeight / 2 + moreLineHeight / 2);
-               ctx.font = `italic 400 ${moreFontSize}px sans-serif`;
-               ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
-               ctx.shadowColor = 'transparent';
-               ctx.fillText(`+${locDetailForText.item_stock.length - 1} more...`, x, currentY, maxTextWidth);
-            }
+      ctx.strokeStyle = isSelected ? SHELF_SELECTED_STROKE_COLOR : SHELF_STROKE_COLOR;
+      ctx.lineWidth = invScale * (isSelected ? 2 : 1);
+      ctx.strokeRect(x - halfW, y - halfH, size.w, size.h);
 
-            ctx.restore();
-          }
-        }
+      // Item stock preview (skip when selected for clearer highlight)
+      if (isFull && !isSelected && locDetail && locDetail.item_stock?.length > 0) {
+        drawShelfStockPreview(ctx, x, y, size.w, size.h, locDetail);
+      }
+
+      const isSearchHit = searchHighlightCodesRef.current.has(String(node.content));
+      if (isSearchHit) {
+        const pulse = searchPulseRef.current;
+        const glowPad = Math.max(size.w, size.h) * (0.1 + pulse * 0.08);
+        ctx.save();
+        ctx.strokeStyle = `rgba(250, 204, 21, ${0.7 + pulse * 0.3})`;
+        ctx.lineWidth = invScale * (3 + pulse * 2.5);
+        ctx.shadowColor = 'rgba(251, 191, 36, 0.95)';
+        ctx.shadowBlur = invScale * (10 + pulse * 22);
+        ctx.strokeRect(
+          x - halfW - glowPad,
+          y - halfH - glowPad,
+          size.w + glowPad * 2,
+          size.h + glowPad * 2,
+        );
+        ctx.fillStyle = `rgba(250, 204, 21, ${0.22 + pulse * 0.28})`;
+        ctx.fillRect(x - halfW, y - halfH, size.w, size.h);
+        ctx.restore();
       }
     }
 
@@ -401,7 +509,7 @@ const WarehouseMapCanvas: React.FC<WarehouseMapCanvasProps> = ({
       const h = Math.abs(boxEndScreenRef.current.y - boxStartScreenRef.current.y);
 
       ctx.save();
-      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      applyScreenTransform(ctx, dpr);
       ctx.fillStyle = BOX_SELECT_FILL;
       ctx.strokeStyle = BOX_SELECT_STROKE;
       ctx.lineWidth = 1.5;
@@ -419,24 +527,31 @@ const WarehouseMapCanvas: React.FC<WarehouseMapCanvasProps> = ({
     const mapData = mapDataRef.current;
     if (!canvas || !mapData) return;
 
-    const { width: mapW, height: mapH } = mapData;
-    const cW = canvas.width;
-    const cH = canvas.height;
+    // Fit the area that actually contains shelves, not the whole map frame.
+    const bounds = shelfBoundsRef.current ?? {
+      minX: 0,
+      minY: 0,
+      width: mapData.width,
+      height: mapData.height,
+    };
+    const { width: cW, height: cH } = cssSizeRef.current;
 
-    const pad = Math.min(cW, cH) * PADDING;
-    const availW = cW - pad * 2;
-    const availH = cH - pad * 2;
+    const pad = Math.min(cW, cH) * FIT_PADDING_RATIO;
+    const availW = Math.max(cW - pad * 2, 1);
+    const availH = Math.max(cH - pad * 2, 1);
 
-    const scaleX = availW / mapW;
-    const scaleY = availH / mapH;
-    const scale = Math.min(scaleX, scaleY); // maintain aspect ratio
+    const scale = Math.min(availW / bounds.width, availH / bounds.height);
 
     scaleRef.current = scale;
-    offsetXRef.current = pad + (availW - mapW * scale) / 2;
-    offsetYRef.current = pad + (availH - mapH * scale) / 2;
+    offsetXRef.current = pad + (availW - bounds.width * scale) / 2 - bounds.minX * scale;
+    offsetYRef.current = pad + (availH - bounds.height * scale) / 2 - bounds.minY * scale;
 
-    // Allow zooming back out to exactly the fit view (scale * 0.8 gives a tiny margin)
-    zoomMinRef.current = scale * 0.8;
+    zoomMinRef.current = scale * ZOOM_MIN_OF_FIT;
+    const smallestCell = smallestCellMinRef.current;
+    zoomMaxRef.current =
+      smallestCell > 0
+        ? Math.max(scale * 2, MAX_CELL_SCREEN_PX / smallestCell)
+        : Math.max(scale * 2, ZOOM_MAX);
   }, []);
 
   // ─── Resize Observer ────────────────────────────────────────────────────────
@@ -447,9 +562,7 @@ const WarehouseMapCanvas: React.FC<WarehouseMapCanvasProps> = ({
     if (!canvas || !container) return;
 
     const ro = new ResizeObserver(() => {
-      const rect = container.getBoundingClientRect();
-      canvas.width = rect.width;
-      canvas.height = rect.height;
+      cssSizeRef.current = resizeCanvasToContainer(canvas, container);
 
       if (mapDataRef.current) {
         fitToCanvas();
@@ -474,6 +587,26 @@ const WarehouseMapCanvas: React.FC<WarehouseMapCanvasProps> = ({
       );
       nodesRef.current = parsedNodes;
 
+      const shelves = parsedNodes.filter((node) => isShelfNodeType(node.type));
+      const layout = computeCellLayout(
+        shelves.map((node) => ({
+          x: node.x,
+          y: node.y,
+          group: layoutGroupKey(node.name || node.content),
+        })),
+        ADMIN_CELL_OPTIONS,
+      );
+      shelfNodesRef.current = shelves;
+      shelfSizesRef.current = layout.sizes;
+      shelfBoundsRef.current = computeCellBounds(shelves, layout.sizes);
+
+      smallestCellMinRef.current = layout.sizes.length
+        ? Math.min(...layout.sizes.map((size) => Math.min(size.w, size.h)))
+        : 0;
+
+      if (canvasRef.current && containerRef.current) {
+        cssSizeRef.current = resizeCanvasToContainer(canvasRef.current, containerRef.current);
+      }
       fitToCanvas();
       draw();
     },
@@ -499,9 +632,8 @@ const WarehouseMapCanvas: React.FC<WarehouseMapCanvasProps> = ({
   // ─── Canvas rect helper ──────────────────────────────────────────────────────
 
   const getCanvasPos = useCallback((e: MouseEvent | WheelEvent) => {
-    const canvas = canvasRef.current!;
-    const rect = canvas.getBoundingClientRect();
-    return { cx: e.clientX - rect.left, cy: e.clientY - rect.top };
+    const pos = clientToCanvasCss(canvasRef.current!, e.clientX, e.clientY, cssSizeRef.current);
+    return { cx: pos.x, cy: pos.y };
   }, []);
 
   const getShelfNodesInScreenRect = useCallback(
@@ -524,17 +656,17 @@ const WarehouseMapCanvas: React.FC<WarehouseMapCanvasProps> = ({
 
   const applyZoom = useCallback(
     (zoomIn: boolean, pivotCx?: number, pivotCy?: number) => {
-      const canvas = canvasRef.current;
-      if (!canvas) return;
+      if (!canvasRef.current) return;
 
-      const cx = pivotCx ?? canvas.width / 2;
-      const cy = pivotCy ?? canvas.height / 2;
+      const cx = pivotCx ?? cssSizeRef.current.width / 2;
+      const cy = pivotCy ?? cssSizeRef.current.height / 2;
 
       const factor = zoomIn ? ZOOM_FACTOR : 1 / ZOOM_FACTOR;
       const newScale = Math.min(
-        ZOOM_MAX,
+        zoomMaxRef.current,
         Math.max(zoomMinRef.current, scaleRef.current * factor),
       );
+      if (newScale === scaleRef.current) return;
 
       const { wx, wy } = screenToWorld(cx, cy);
       scaleRef.current = newScale;
@@ -553,6 +685,88 @@ const WarehouseMapCanvas: React.FC<WarehouseMapCanvasProps> = ({
   const handleZoomOut = useCallback(() => {
     applyZoom(false);
   }, [applyZoom]);
+
+  const handleFitView = useCallback(() => {
+    fitToCanvas();
+    draw();
+  }, [draw, fitToCanvas]);
+
+  const stopSearchPulse = useCallback(() => {
+    if (searchPulseRafRef.current != null) {
+      cancelAnimationFrame(searchPulseRafRef.current);
+      searchPulseRafRef.current = null;
+    }
+  }, []);
+
+  const syncSearchPulse = useCallback(() => {
+    if (searchHighlightCodesRef.current.size === 0) {
+      searchPulseRef.current = 0;
+      stopSearchPulse();
+      draw();
+      return;
+    }
+
+    if (searchPulseRafRef.current != null) return;
+
+    searchPulseStartRef.current = performance.now();
+
+    const tick = (now: number) => {
+      if (searchHighlightCodesRef.current.size === 0) {
+        searchPulseRef.current = 0;
+        searchPulseRafRef.current = null;
+        draw();
+        return;
+      }
+      const elapsed = now - searchPulseStartRef.current;
+      searchPulseRef.current = (Math.sin(elapsed / 160) + 1) / 2;
+      draw();
+      searchPulseRafRef.current = requestAnimationFrame(tick);
+    };
+
+    searchPulseRafRef.current = requestAnimationFrame(tick);
+  }, [draw, stopSearchPulse]);
+
+  useEffect(() => () => stopSearchPulse(), [stopSearchPulse]);
+
+  const handleLocationSearchQuery = useCallback(
+    (rawQuery: string) => {
+      const query = rawQuery.trim();
+      if (!query) {
+        searchHighlightCodesRef.current = new Set();
+        syncSearchPulse();
+        return;
+      }
+
+      const batch = resolveLocationSearchBatch(
+        query,
+        effectiveLocations.locations,
+        shelfNodesRef.current,
+      );
+
+      searchHighlightCodesRef.current = new Set(batch.highlightedCodes);
+      syncSearchPulse();
+
+      if (batch.foundLabels.length > 0) {
+        const preview =
+          batch.foundLabels.length <= 4
+            ? batch.foundLabels.join(', ')
+            : `${batch.foundLabels.slice(0, 4).join(', ')} (+${batch.foundLabels.length - 4})`;
+        message.success(`Đã highlight ${batch.foundLabels.length} vị trí: ${preview}`);
+      }
+
+      if (batch.notFoundTerms.length > 0) {
+        message.warning(`Không tìm thấy: ${batch.notFoundTerms.join(', ')}`);
+      }
+
+      if (batch.notOnMapLabels.length > 0) {
+        message.warning(
+          `Chưa có trên bản đồ: ${batch.notOnMapLabels.join(', ')}`,
+        );
+      }
+
+    },
+    [effectiveLocations.locations, syncSearchPulse],
+  );
 
   const handleWheel = useCallback(
     (e: WheelEvent) => {
@@ -582,8 +796,11 @@ const WarehouseMapCanvas: React.FC<WarehouseMapCanvasProps> = ({
         return;
       }
 
+      const { cx, cy } = getCanvasPos(e);
       isPanningRef.current = true;
-      lastMouseRef.current = { x: e.clientX, y: e.clientY };
+      panMovedRef.current = false;
+      panStartRef.current = { x: cx, y: cy };
+      lastMouseRef.current = { x: cx, y: cy };
       if (canvasRef.current) canvasRef.current.style.cursor = 'grabbing';
     },
     [getCanvasPos],
@@ -599,17 +816,23 @@ const WarehouseMapCanvas: React.FC<WarehouseMapCanvasProps> = ({
       }
 
       if (!isPanningRef.current) return;
-      const dx = e.clientX - lastMouseRef.current.x;
-      const dy = e.clientY - lastMouseRef.current.y;
-      offsetXRef.current += dx;
-      offsetYRef.current += dy;
-      lastMouseRef.current = { x: e.clientX, y: e.clientY };
+      const { cx, cy } = getCanvasPos(e);
+      if (
+        !panMovedRef.current &&
+        Math.hypot(cx - panStartRef.current.x, cy - panStartRef.current.y) >
+          CLICK_DRAG_THRESHOLD_PX
+      ) {
+        panMovedRef.current = true;
+      }
+      offsetXRef.current += cx - lastMouseRef.current.x;
+      offsetYRef.current += cy - lastMouseRef.current.y;
+      lastMouseRef.current = { x: cx, y: cy };
       draw();
     },
     [draw, getCanvasPos],
   );
 
-  const handleMouseUp = useCallback(() => {
+  const handleMouseUp = useCallback((e: MouseEvent) => {
     if (isBoxSelectingRef.current) {
       const { x: sx1, y: sy1 } = boxStartScreenRef.current;
       const { x: sx2, y: sy2 } = boxEndScreenRef.current;
@@ -636,7 +859,11 @@ const WarehouseMapCanvas: React.FC<WarehouseMapCanvasProps> = ({
       return;
     }
 
+    if (e.type === 'mouseup' && isPanningRef.current && panMovedRef.current) {
+      suppressNextClickRef.current = true;
+    }
     isPanningRef.current = false;
+    panMovedRef.current = false;
     if (canvasRef.current) {
       canvasRef.current.style.cursor = boxSelectActiveRef.current
         ? 'crosshair'
@@ -658,22 +885,8 @@ const WarehouseMapCanvas: React.FC<WarehouseMapCanvasProps> = ({
       const { cx, cy } = getCanvasPos(e);
       const { wx, wy } = screenToWorld(cx, cy);
 
-      // hitRadius is in world coordinates — stays constant regardless of zoom
-      // (a constant screen-space radius would be HIT_RADIUS / scaleRef.current)
-      const hitRadiusWorld = HIT_RADIUS / scaleRef.current;
-
-      let closest: NodeInfo | null = null;
-      let closestDist = Infinity;
-
-      for (const node of nodesRef.current) {
-        const dx = wx - node.x;
-        const dy = wy - node.y;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-        if (dist < hitRadiusWorld && dist < closestDist && isShelfNodeType(node.type)) {
-          closestDist = dist;
-          closest = node;
-        }
-      }
+      const hitIndex = findCellAt(shelfNodesRef.current, shelfSizesRef.current, wx, wy);
+      const closest: NodeInfo | null = hitIndex >= 0 ? shelfNodesRef.current[hitIndex] : null;
 
       if (closest) {
         setSelectedNode(closest);
@@ -791,10 +1004,15 @@ const WarehouseMapCanvas: React.FC<WarehouseMapCanvasProps> = ({
 
         {hasData && !isLoading && !isError && <WarehouseMapLegend />}
 
-        {!hideToolbar && hasData && !isLoading && !isError && (
+        {enableLocationSearch && hasData && !isLoading && !isError && (
+          <WarehouseMapLocationSearch onQueryChange={handleLocationSearchQuery} />
+        )}
+
+        {hasData && !isLoading && !isError && (
           <WarehouseMapZoomControls
             onZoomIn={handleZoomIn}
             onZoomOut={handleZoomOut}
+            onFit={handleFitView}
           />
         )}
 

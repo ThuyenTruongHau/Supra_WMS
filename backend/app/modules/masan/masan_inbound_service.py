@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+from datetime import date
 from io import BytesIO
+from pathlib import Path
 from typing import Any, Optional
 
 from openpyxl import Workbook, load_workbook
-from sqlalchemy import or_
+from sqlalchemy import Integer, cast, func, or_
 from sqlalchemy.orm import Session, joinedload, selectinload
 from app.modules.warehouse.inbound_order.inbound_celery_task import accept_inbound_task_task
 from sqlalchemy import desc
@@ -16,6 +18,7 @@ from app.modules.masan.masan_inbound_excel import (
     EXPORT_HEADERS,
     HEADER_ROW,
     normalize_export_cell_value,
+    style_daily_capacity_worksheet,
     style_masan_export_worksheet,
 )
 from app.modules.masan.masan_schema import (
@@ -46,7 +49,11 @@ from app.modules.warehouse.inbound_order.inbound_order_service import (
 from app.modules.warehouse.item.item_model import Item
 from app.modules.warehouse.item_stock.item_stock_model import ItemStock
 from app.modules.warehouse.location_map.location_model import Location
-from app.modules.warehouse.warehouse_zone.warehouse_model import Zone
+from app.modules.warehouse.location_map.location_service import (
+    location_ids_with_assigned_qr,
+    overlay_status_with_assign_cache,
+)
+from app.modules.warehouse.warehouse_zone.warehouse_model import Warehouse, Zone
 from app.modules.warehouse.warehouse_zone.warehouse_service import _ensure_warehouse_exists
 from app.core.logger import get_logger
 
@@ -488,12 +495,17 @@ def export_inbound_order_masan(db: Session, order_id: int) -> tuple[bytes, str]:
             joinedload(InboundOrderDetail.to_location),
             joinedload(InboundOrderDetail.from_location),
         )
-        .filter(InboundOrderDetail.inbound_order_id == order.id)
+        .filter(
+            InboundOrderDetail.inbound_order_id == order.id,
+            InboundOrderDetail.status == "completed",
+        )
         .order_by(InboundOrderDetail.id)
         .all()
     )
     if not details:
-        raise ValueError("Inbound order has no details to export")
+        raise ValueError(
+            "Inbound order has no completed details to export"
+        )
 
     export_rows: list[list[Any]] = []
     for detail in details:
@@ -504,10 +516,163 @@ def export_inbound_order_masan(db: Session, order_id: int) -> tuple[bytes, str]:
             export_rows.append(_build_export_row(order, detail, allocation))
 
     if not export_rows:
-        raise ValueError("Inbound order has no allocations to export")
+        raise ValueError(
+            "Inbound order has no completed allocations to export"
+        )
 
     content = _build_export_workbook(export_rows)
     filename = f"{order.order_code}_BaoCaoNhap.xlsx"
+    return content, filename
+
+
+_DAILY_CAPACITY_TEMPLATE = (
+    Path(__file__).resolve().parents[2]
+    / "static"
+    / "templates"
+    / "daily_capacity_template.xlsx"
+)
+_DAILY_CAPACITY_SUMMARY_HEADER_ROW = 2
+_DAILY_CAPACITY_SUMMARY_START_ROW = 3
+_DAILY_CAPACITY_SUMMARY_LAST_ROW = 5
+_DAILY_CAPACITY_TABLE_HEADER_ROW = 6
+_DAILY_CAPACITY_DATA_START_ROW = 7
+
+
+def _daily_capacity_template_path() -> Path:
+    if _DAILY_CAPACITY_TEMPLATE.is_file():
+        return _DAILY_CAPACITY_TEMPLATE
+    docs_dir = Path(__file__).resolve().parents[3] / "docs"
+    for candidate in docs_dir.glob("*.xlsx"):
+        if candidate.stat().st_size == 9601:
+            return candidate
+    raise ValueError("Daily capacity Excel template not found")
+
+
+def _location_name_sort_key():
+    # Locator labels: G001..G420 (numeric suffix after single-letter prefix).
+    return cast(func.substring(Location.location_name, 2), Integer)
+
+
+def _excel_location_status(db_status: str | None) -> str:
+    status = (db_status or "empty").strip()
+    return "Trống" if status == "empty" else "Có hàng"
+
+
+def _list_storage_locations_for_daily_capacity(
+    db: Session, warehouse_id: int
+) -> list[tuple[Location, str]]:
+    zone_codes = [c.strip() for c in settings.zone_storage if c and str(c).strip()]
+    if not zone_codes:
+        raise ValueError("zone_storage is not configured")
+
+    locations = (
+        db.query(Location)
+        .join(Zone, Zone.id == Location.zone_id)
+        .filter(
+            Location.warehouse_id == warehouse_id,
+            Location.is_active.is_(True),
+            Zone.code.in_(zone_codes),
+        )
+        .order_by(
+            _location_name_sort_key().asc().nulls_last(),
+            Location.location_name.asc(),
+            Location.id.asc(),
+        )
+        .all()
+    )
+    if not locations:
+        raise ValueError(
+            "No active locations in storage zones for this warehouse"
+        )
+
+    assigned_ids = location_ids_with_assigned_qr()
+    rows: list[tuple[Location, str]] = []
+    for loc in locations:
+        status = overlay_status_with_assign_cache(loc.status, loc.id, assigned_ids)
+        rows.append((loc, status))
+    return rows
+
+
+def _build_daily_capacity_workbook(location_rows: list[tuple[Location, str]]) -> bytes:
+    template_path = _daily_capacity_template_path()
+    wb = load_workbook(template_path)
+    ws = wb.active
+
+    total = len(location_rows)
+    empty_count = sum(1 for _, status in location_rows if status == "empty")
+    occupied_count = total - empty_count
+    occupancy_pct = round((occupied_count / total) * 100, 2) if total else 0.0
+
+    title = ws.cell(row=1, column=1).value
+    if not title:
+        title = "BIỂU MẪU CAPACITY CUỐI NGÀY"
+    ws.cell(
+        row=1,
+        column=1,
+        value=f"{title}\n(Ngày xuất: {date.today().strftime('%d/%m/%Y')})",
+    )
+
+    last_template_row = ws.max_row
+    for row_idx in range(_DAILY_CAPACITY_SUMMARY_HEADER_ROW, last_template_row + 1):
+        for col_idx in range(1, 4):
+            ws.cell(row=row_idx, column=col_idx).value = None
+
+    ws.cell(row=_DAILY_CAPACITY_SUMMARY_HEADER_ROW, column=1, value="Chỉ số")
+    ws.cell(row=_DAILY_CAPACITY_SUMMARY_HEADER_ROW, column=2, value="Giá trị")
+
+    ws.cell(row=_DAILY_CAPACITY_SUMMARY_START_ROW, column=1, value="Số lượng trống")
+    ws.cell(row=_DAILY_CAPACITY_SUMMARY_START_ROW, column=2, value=empty_count)
+    ws.cell(row=_DAILY_CAPACITY_SUMMARY_START_ROW + 1, column=1, value="Số lượng có hàng")
+    ws.cell(
+        row=_DAILY_CAPACITY_SUMMARY_START_ROW + 1,
+        column=2,
+        value=occupied_count,
+    )
+    ws.cell(
+        row=_DAILY_CAPACITY_SUMMARY_LAST_ROW,
+        column=1,
+        value="Tỷ lệ % tồn kho",
+    )
+    ws.cell(
+        row=_DAILY_CAPACITY_SUMMARY_LAST_ROW,
+        column=2,
+        value=f"{occupancy_pct}%",
+    )
+
+    ws.cell(row=_DAILY_CAPACITY_TABLE_HEADER_ROW, column=1, value="Locator")
+    ws.cell(row=_DAILY_CAPACITY_TABLE_HEADER_ROW, column=2, value="Trạng thái")
+
+    last_data_row = _DAILY_CAPACITY_DATA_START_ROW - 1
+    for offset, (loc, status) in enumerate(location_rows):
+        row_idx = _DAILY_CAPACITY_DATA_START_ROW + offset
+        last_data_row = row_idx
+        ws.cell(row=row_idx, column=1, value=loc.location_name or "")
+        ws.cell(row=row_idx, column=2, value=_excel_location_status(status))
+
+    style_daily_capacity_worksheet(
+        ws,
+        summary_header_row=_DAILY_CAPACITY_SUMMARY_HEADER_ROW,
+        summary_last_row=_DAILY_CAPACITY_SUMMARY_LAST_ROW,
+        table_header_row=_DAILY_CAPACITY_TABLE_HEADER_ROW,
+        last_data_row=last_data_row,
+    )
+
+    buffer = BytesIO()
+    wb.save(buffer)
+    return buffer.getvalue()
+
+
+def export_daily_capacity_excel(db: Session, warehouse_id: int) -> tuple[bytes, str]:
+    _ensure_warehouse_exists(db, warehouse_id)
+    warehouse = (
+        db.query(Warehouse).filter(Warehouse.id == warehouse_id).first()
+    )
+    location_rows = _list_storage_locations_for_daily_capacity(db, warehouse_id)
+    content = _build_daily_capacity_workbook(location_rows)
+    warehouse_label = (warehouse.code if warehouse and warehouse.code else None) or str(
+        warehouse_id
+    )
+    filename = f"Daily_Capacity_{warehouse_label}_{date.today().isoformat()}.xlsx"
     return content, filename
 
 
@@ -579,6 +744,12 @@ def get_masan_inbound_order_details(
     return [_build_detail_response(d) for d in details]
 
 
+def _location_name_sort_key(location_name: str | None) -> tuple[int, str]:
+    name = (location_name or "").strip()
+    digits = "".join(ch for ch in name if ch.isdigit())
+    return (int(digits) if digits else -1, name)
+
+
 def caller_masan_inbound_order(
     db: Session, location_ids: list[int], *, assign_robot_id: str | None = None
 ) -> dict[str, Any]:
@@ -595,6 +766,13 @@ def caller_masan_inbound_order(
         )
         if detail:
             list_details.append(detail)
+
+    list_details.sort(
+        key=lambda d: _location_name_sort_key(
+            getattr(getattr(d, "from_location", None), "location_name", None)
+        ),
+        reverse=True,
+    )
 
     detail_ids = [d.id for d in list_details]
 

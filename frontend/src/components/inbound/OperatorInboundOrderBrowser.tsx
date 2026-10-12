@@ -13,6 +13,13 @@ import { useGetInboundOrderDetails } from "@/hooks/useInboundOrder";
 import { useMasanInboundDetails } from "@/hooks/useMasanInbound";
 import type { InboundOrder, InboundOrderDetail } from "@/types/inboundOrder";
 import { toDisplayInteger } from "@/utils/number";
+import {
+  operatorInboundOrderCodeClass,
+  operatorInboundOrderMetaClass,
+  useOperatorViewportTier,
+} from "@/utils/operatorViewportTier";
+import OrderCreatedAtRangeFilter from "@/components/shared/OrderCreatedAtRangeFilter";
+import type { OrderCreatedAtRange } from "@/utils/orderCreatedAtRangeParams";
 
 type VehicleNode = {
   key: string;
@@ -104,8 +111,12 @@ function groupDetailsByVehicle(details: InboundOrderDetail[]): VehicleNode[] {
     .sort((a, b) => a.vehicleNumber.localeCompare(b.vehicleNumber));
 }
 
+function detailAllocations(detail: InboundOrderDetail): InboundOrderDetail["allocations"] {
+  return detail.allocations ?? [];
+}
+
 function detailQuantity(detail: InboundOrderDetail): number {
-  return detail.allocations.reduce(
+  return detailAllocations(detail).reduce(
     (sum, allocation) => sum + (Number(allocation.quantity) || 0),
     0,
   );
@@ -118,7 +129,7 @@ function sumQuantity(details: InboundOrderDetail[]): number {
 function countProducts(details: InboundOrderDetail[]): number {
   const ids = new Set<number>();
   for (const detail of details) {
-    for (const allocation of detail.allocations) {
+    for (const allocation of detailAllocations(detail)) {
       if (allocation.item_id != null) ids.add(allocation.item_id);
     }
   }
@@ -140,9 +151,11 @@ function formatDateTime(value: string | null): string {
 function StatusBadge({
   status,
   detail = false,
+  compact = false,
 }: {
   status: string;
   detail?: boolean;
+  compact?: boolean;
 }) {
   const label = detail
     ? (DETAIL_STATUS_LABEL[status] ?? status)
@@ -150,7 +163,8 @@ function StatusBadge({
   return (
     <span
       className={cn(
-        "inline-flex whitespace-nowrap rounded px-2 py-0.5 text-xs font-bold uppercase",
+        "inline-flex shrink-0 whitespace-nowrap rounded font-bold uppercase",
+        compact ? "px-1.5 py-0 text-[10px]" : "px-2 py-0.5 text-xs",
         toneOf(status).badge,
       )}
     >
@@ -159,13 +173,21 @@ function StatusBadge({
   );
 }
 
+function detailHasItemId(
+  detail: InboundOrderDetail,
+  itemId: number,
+): boolean {
+  return detailAllocations(detail).some((a) => a.item_id === itemId);
+}
+
 const detailColumns: ColumnsType<InboundOrderDetail> = [
   {
     title: "Sản phẩm",
     key: "product",
     render: (_: unknown, row) => {
-      const first = row.allocations[0];
-      const extra = row.allocations.length - 1;
+      const allocations = detailAllocations(row);
+      const first = allocations[0];
+      const extra = allocations.length - 1;
       return (
         <div className="min-w-0">
           <p className="truncate font-mono text-base font-bold text-brand-dark">
@@ -188,7 +210,8 @@ const detailColumns: ColumnsType<InboundOrderDetail> = [
     key: "lot",
     width: 110,
     ellipsis: true,
-    render: (_: unknown, row) => row.allocations[0]?.lot_number?.trim() || "—",
+    render: (_: unknown, row) =>
+      detailAllocations(row)[0]?.lot_number?.trim() || "—",
   },
   {
     title: "SL",
@@ -233,6 +256,8 @@ type OperatorInboundOrderBrowserProps = {
   error?: boolean;
   /** Đơn operator đang mở (double-click); dùng cho xuất Excel Masan ở panel cha. */
   onFocusedOrderIdChange?: (orderId: number | null) => void;
+  createdRange?: OrderCreatedAtRange;
+  onCreatedRangeChange?: (value: OrderCreatedAtRange) => void;
 };
 
 export default function OperatorInboundOrderBrowser({
@@ -241,7 +266,10 @@ export default function OperatorInboundOrderBrowser({
   loading = false,
   error = false,
   onFocusedOrderIdChange,
+  createdRange = null,
+  onCreatedRangeChange,
 }: OperatorInboundOrderBrowserProps) {
+  const tier = useOperatorViewportTier();
   const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null);
   const [selectedVehicleKey, setSelectedVehicleKey] = useState<string | null>(
     null,
@@ -278,6 +306,28 @@ export default function OperatorInboundOrderBrowser({
     return map;
   }, [listAtRoot, listDetailQueries, orders]);
 
+  const skuFilterLoading =
+    listAtRoot &&
+    skuFilter != null &&
+    listDetailQueries.some((q) => q.isLoading);
+
+  const visibleOrders = useMemo(() => {
+    if (!listAtRoot || !skuFilter) return orders;
+    return orders.filter((order, index) => {
+      const details = listDetailQueries[index]?.data;
+      if (!details) return false;
+      return details.some((detail) =>
+        detailHasItemId(detail, skuFilter.itemId),
+      );
+    });
+  }, [listAtRoot, skuFilter, listDetailQueries, orders]);
+
+  const orderIndexById = useMemo(() => {
+    const map = new Map<number, number>();
+    orders.forEach((order, index) => map.set(order.id, index));
+    return map;
+  }, [orders]);
+
   const orderDetailsQuery = useGetInboundOrderDetails(
     selectedOrder?.order_code,
   );
@@ -292,12 +342,9 @@ export default function OperatorInboundOrderBrowser({
   const selectedVehicle =
     vehicles.find((vehicle) => vehicle.key === selectedVehicleKey) ?? null;
 
-  const masanFilter = selectedVehicle
-    ? selectedVehicle.vehicleNumber === NO_VEHICLE_LABEL
-      ? null
-      : { vehicle_no: selectedVehicle.vehicleNumber }
-    : skuFilter
-      ? { item_id: skuFilter.itemId }
+  const masanFilter =
+    selectedVehicle && selectedVehicle.vehicleNumber !== NO_VEHICLE_LABEL
+      ? { vehicle_no: selectedVehicle.vehicleNumber }
       : null;
   const masanDetailsQuery = useMasanInboundDetails(
     selectedOrder?.id,
@@ -307,13 +354,11 @@ export default function OperatorInboundOrderBrowser({
   const openOrder = (orderId: number) => {
     setSelectedOrderId(orderId);
     setSelectedVehicleKey(null);
-    setSkuFilter(null);
   };
 
   const closeOrder = () => {
     setSelectedOrderId(null);
     setSelectedVehicleKey(null);
-    setSkuFilter(null);
   };
 
   if (selectedOrder && selectedVehicle) {
@@ -365,7 +410,6 @@ export default function OperatorInboundOrderBrowser({
   }
 
   if (selectedOrder) {
-    const skuRows = masanDetailsQuery.data ?? [];
     return (
       <div className="flex h-full min-h-0 flex-col bg-panel">
         <div className="flex shrink-0 items-center gap-3 border-b border-stripe-hairline px-3 py-2.5">
@@ -379,64 +423,28 @@ export default function OperatorInboundOrderBrowser({
             Đơn nhập
           </Button>
           <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <p className="truncate font-mono text-base font-bold text-brand-dark">
-                {selectedOrder.order_code}
-              </p>
-              <StatusBadge status={selectedOrder.status} />
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-xs font-bold uppercase tracking-[0.16em] text-stripe-ink-mute">
+                Mã đơn
+              </span>
+              <StatusBadge status={selectedOrder.status} compact />
             </div>
-            <p className="text-sm text-slate-500">
+            <p
+              className={cn(
+                "mt-0.5 break-all font-mono font-extrabold leading-snug tracking-wide text-brand-dark",
+                operatorInboundOrderCodeClass(tier),
+              )}
+            >
+              {selectedOrder.order_code}
+            </p>
+            <p className={cn("mt-1", operatorInboundOrderMetaClass(tier))}>
               {vehicles.length} xe · {countProducts(orderDetails)} sản phẩm · SL{" "}
               {toDisplayInteger(sumQuantity(orderDetails))}
             </p>
           </div>
         </div>
-        <div className="shrink-0 border-b border-stripe-hairline px-3 py-2">
-          <SkuSearchSelect
-            warehouseId={warehouseId}
-            placeholder="Lọc theo mã hàng (SKU)..."
-            onSelectOption={(option) =>
-              setSkuFilter(
-                option?.item_id != null
-                  ? { itemId: option.item_id, sku: option.value }
-                  : null,
-              )
-            }
-          />
-        </div>
 
-        {skuFilter ? (
-          <div className="operator-panel-scroll min-h-0 flex-1 p-2">
-            <Table<InboundOrderDetail>
-              columns={[
-                {
-                  title: "Biển số",
-                  key: "vehicle",
-                  width: 120,
-                  ellipsis: true,
-                  render: (_: unknown, row) => (
-                    <span className="font-mono text-base font-semibold text-brand-dark">
-                      {vehicleOf(row)}
-                    </span>
-                  ),
-                },
-                ...detailColumns,
-              ]}
-              dataSource={skuRows}
-              rowKey="id"
-              pagination={false}
-              size="middle"
-              tableLayout="fixed"
-              loading={masanDetailsQuery.isLoading}
-              locale={{
-                emptyText: masanDetailsQuery.isError
-                  ? "Không tải được chi tiết theo mã hàng"
-                  : `Đơn không có mã hàng ${skuFilter.sku}`,
-              }}
-              className={DETAIL_TABLE_CLASS}
-            />
-          </div>
-        ) : orderDetailsQuery.isLoading ? (
+        {orderDetailsQuery.isLoading ? (
           <div className="flex flex-1 items-center justify-center text-sm text-slate-500">
             Đang tải danh sách xe...
           </div>
@@ -485,10 +493,17 @@ export default function OperatorInboundOrderBrowser({
                     <span className="block text-xs font-bold uppercase tracking-[0.14em] text-stripe-ink-mute">
                       Số xe
                     </span>
-                    <span className="mt-0.5 block truncate font-mono text-lg font-extrabold tracking-wide text-brand-dark">
+                    <span
+                      className={cn(
+                        "mt-0.5 block break-all font-mono font-extrabold tracking-wide text-brand-dark",
+                        operatorInboundOrderCodeClass(tier),
+                      )}
+                    >
                       {vehicle.vehicleNumber}
                     </span>
-                    <span className="mt-1 block text-sm text-stripe-ink-mute">
+                    <span
+                      className={cn("mt-1 block", operatorInboundOrderMetaClass(tier))}
+                    >
                       {countProducts(vehicle.details)} sản phẩm · SL{" "}
                       <strong className="tabular-nums text-brand-dark">
                         {toDisplayInteger(sumQuantity(vehicle.details))}
@@ -522,82 +537,152 @@ export default function OperatorInboundOrderBrowser({
   }
 
   return (
-    <div className="operator-panel-scroll grid h-full min-h-0 auto-rows-min grid-cols-1 gap-3 bg-panel p-3 sm:grid-cols-2">
-      {orders.length === 0 ? (
-        <div className="col-span-full py-10 text-center text-sm text-slate-500">
-          Không có lệnh nhập
-        </div>
-      ) : (
-        orders.map((order, index) => {
-          const tone = toneOf(order.status);
-          const vehicleCount = vehicleCountByOrderId.get(order.id);
-          const vehiclesLoading = listDetailQueries[index]?.isLoading;
-          return (
-            <button
-              key={order.id}
-              type="button"
-              title="Nhấp đúp để xem danh sách xe"
-              aria-label={`Nhấp đúp để xem danh sách xe của đơn ${order.order_code}`}
-              onDoubleClick={() => openOrder(order.id)}
-              onKeyDown={(event) => {
-                if (event.key === "Enter") openOrder(order.id);
-              }}
-              className={cn(
-                "group relative flex min-h-28 w-full overflow-hidden rounded-xl border p-3 pl-4 text-left shadow-stripe-1 transition duration-200 hover:-translate-y-0.5",
-                tone.shell,
-              )}
-            >
-              <span
-                className={cn("absolute inset-y-0 left-0 w-1.5", tone.rail)}
-                aria-hidden
-              />
-              <span
-                className="pointer-events-none absolute -right-8 -top-10 h-28 w-28 rounded-full border border-cyan-300/15 shadow-[0_0_32px_rgba(34,211,238,0.12)]"
-                aria-hidden
-              />
-              <span
-                className="pointer-events-none absolute bottom-0 right-0 h-px w-24 bg-brand-primary/20"
-                aria-hidden
-              />
-              <span className="relative z-10 flex min-w-0 flex-1 flex-col gap-2">
-                <span className="flex items-start justify-between gap-2">
-                  <span className="min-w-0">
-                    <span className="block text-xs font-bold uppercase tracking-[0.16em] text-stripe-ink-mute">
-                      Mã đơn
+    <div className="flex h-full min-h-0 flex-col bg-panel">
+      <div className="flex shrink-0 flex-col gap-1.5 border-b border-stripe-hairline px-2 py-1.5">
+        {onCreatedRangeChange ? (
+          <OrderCreatedAtRangeFilter
+            value={createdRange}
+            onChange={onCreatedRangeChange}
+            className="w-full"
+          />
+        ) : null}
+        <SkuSearchSelect
+          warehouseId={warehouseId}
+          placeholder="Tìm đơn nhập theo mã hàng (SKU)..."
+          onSelectOption={(option) =>
+            setSkuFilter(
+              option?.item_id != null
+                ? { itemId: option.item_id, sku: option.value }
+                : null,
+            )
+          }
+        />
+      </div>
+
+      <div className="operator-panel-scroll grid min-h-0 flex-1 auto-rows-min grid-cols-1 gap-3 p-3 sm:grid-cols-2">
+        {skuFilter ? (
+          <p className="col-span-full text-xs text-stripe-ink-mute">
+            Mã hàng <strong className="text-brand-dark">{skuFilter.sku}</strong>
+            {" · "}
+            {skuFilterLoading
+              ? "Đang lọc đơn..."
+              : `${visibleOrders.length} đơn khớp`}
+          </p>
+        ) : null}
+        {skuFilterLoading && visibleOrders.length === 0 ? (
+          <div className="col-span-full py-10 text-center text-sm text-slate-500">
+            Đang lọc theo mã hàng...
+          </div>
+        ) : visibleOrders.length === 0 ? (
+          <div className="col-span-full py-10 text-center text-sm text-slate-500">
+            {skuFilter
+              ? `Không có đơn nào chứa mã ${skuFilter.sku}`
+              : "Không có lệnh nhập"}
+          </div>
+        ) : (
+          visibleOrders.map((order) => {
+              const index = orderIndexById.get(order.id) ?? 0;
+              const tone = toneOf(order.status);
+              const vehicleCount = vehicleCountByOrderId.get(order.id);
+              const vehiclesLoading = listDetailQueries[index]?.isLoading;
+              return (
+                <button
+                  key={order.id}
+                  type="button"
+                  title="Nhấp đúp để xem danh sách xe"
+                  aria-label={`Nhấp đúp để xem danh sách xe của đơn ${order.order_code}`}
+                  onDoubleClick={() => openOrder(order.id)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") openOrder(order.id);
+                  }}
+                  className={cn(
+                    "group relative flex min-h-28 w-full overflow-hidden rounded-xl border p-3 pl-4 text-left shadow-stripe-1 transition duration-200 hover:-translate-y-0.5",
+                    tone.shell,
+                  )}
+                >
+                  <span
+                    className={cn("absolute inset-y-0 left-0 w-1.5", tone.rail)}
+                    aria-hidden
+                  />
+                  <span
+                    className="pointer-events-none absolute -right-8 -top-10 h-28 w-28 rounded-full border border-cyan-300/15 shadow-[0_0_32px_rgba(34,211,238,0.12)]"
+                    aria-hidden
+                  />
+                  <span
+                    className="pointer-events-none absolute bottom-0 right-0 h-px w-24 bg-brand-primary/20"
+                    aria-hidden
+                  />
+                  <span className="relative z-10 flex min-w-0 flex-1 flex-col gap-2">
+                    <span className="flex items-center justify-between gap-2">
+                      <span className="text-xs font-bold uppercase tracking-[0.16em] text-stripe-ink-mute">
+                        Mã đơn
+                      </span>
+                      <StatusBadge status={order.status} compact />
                     </span>
-                    <span className="mt-0.5 block truncate font-mono text-xl font-extrabold tracking-wide text-brand-dark">
+                    <span
+                      className={cn(
+                        "block break-all font-mono font-extrabold leading-snug tracking-wide text-brand-dark",
+                        operatorInboundOrderCodeClass(tier),
+                      )}
+                    >
                       {order.order_code}
                     </span>
-                  </span>
-                  <StatusBadge status={order.status} />
-                </span>
-                <span className="mt-auto grid grid-cols-2 gap-3 border-t border-stripe-hairline pt-2 text-sm">
-                  <span className="border-r border-stripe-hairline">
-                    <span className="block text-xs font-bold uppercase tracking-wider text-stripe-ink-mute">
-                      Số xe
+                    <span className="mt-auto grid grid-cols-2 gap-3 border-t border-stripe-hairline pt-2">
+                      <span className="border-r border-stripe-hairline">
+                        <span
+                          className={cn(
+                            "block text-xs font-bold uppercase tracking-wider text-stripe-ink-mute",
+                            operatorInboundOrderMetaClass(tier),
+                          )}
+                        >
+                          Số xe
+                        </span>
+                        <strong
+                          className={cn(
+                            "mt-0.5 block font-black tabular-nums text-brand-dark",
+                            tier === "tv"
+                              ? "text-lg"
+                              : tier === "narrow"
+                                ? "text-base"
+                                : "text-lg",
+                          )}
+                        >
+                          {vehiclesLoading
+                            ? "…"
+                            : vehicleCount != null
+                              ? toDisplayInteger(vehicleCount)
+                              : "—"}
+                        </strong>
+                      </span>
+                      <span>
+                        <span
+                          className={cn(
+                            "block text-xs font-bold uppercase tracking-wider text-stripe-ink-mute",
+                            operatorInboundOrderMetaClass(tier),
+                          )}
+                        >
+                          Tạo lúc
+                        </span>
+                        <strong
+                          className={cn(
+                            "mt-0.5 block font-black tabular-nums text-brand-dark",
+                            tier === "tv"
+                              ? "text-lg"
+                              : tier === "narrow"
+                                ? "text-sm"
+                                : "text-base",
+                          )}
+                        >
+                          {formatDateTime(order.created_at)}
+                        </strong>
+                      </span>
                     </span>
-                    <strong className="mt-0.5 block text-lg font-black tabular-nums text-brand-dark">
-                      {vehiclesLoading
-                        ? "…"
-                        : vehicleCount != null
-                          ? toDisplayInteger(vehicleCount)
-                          : "—"}
-                    </strong>
                   </span>
-                  <span>
-                    <span className="block text-xs font-bold uppercase tracking-wider text-stripe-ink-mute">
-                      Tạo lúc
-                    </span>
-                    <strong className="mt-0.5 block text-lg font-black tabular-nums text-brand-dark">
-                      {formatDateTime(order.created_at)}
-                    </strong>
-                  </span>
-                </span>
-              </span>
-            </button>
-          );
-        })
-      )}
+                </button>
+              );
+            })
+        )}
+      </div>
     </div>
   );
 }

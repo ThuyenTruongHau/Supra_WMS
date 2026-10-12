@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any, Literal, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from app.modules.warehouse.inbound_order.inbound_order_schema import InboundSuggestAllocation
 
@@ -215,29 +215,46 @@ class MasanConfirmAllocationOutboundRequest(BaseModel):
         max_length=50,
         description="Mã zone CC trong cache (vd. Zone_CC_01)",
     )
-    location_id: int = Field(
+    quantities: dict[int, int] = Field(
         ...,
-        gt=0,
-        description="Ô CC (location) đang hiển thị / confirm",
+        min_length=1,
+        description="allocation_id -> số lượng xác nhận",
     )
-    allocation_id: int = Field(..., gt=0)
-    quantity: int = Field(..., gt=0, description="Số lượng xác nhận tại CC")
+
+    @field_validator("quantities", mode="before")
+    @classmethod
+    def coerce_quantities(cls, value: Any) -> dict[int, int]:
+        if not isinstance(value, dict):
+            raise ValueError("quantities must be an object")
+        out: dict[int, int] = {}
+        for key, qty in value.items():
+            alloc_id = int(key)
+            quantity = int(qty)
+            if quantity <= 0:
+                raise ValueError(f"quantity for allocation {alloc_id} must be > 0")
+            out[alloc_id] = quantity
+        return out
 
 
 class MasanConfirmAllocationOutboundResponse(BaseModel):
     warehouse_id: int
     zone: str
-    location_id: int
-    allocation_id: int
-    quantity: int
-    allocation_status: str = Field(
-        ...,
+    quantities: dict[int, int]
+    allocation_statuses: dict[int, str] = Field(
+        default_factory=dict,
         description="Trạng thái allocation sau confirm (confirmed / completed)",
     )
-    outbound_order_detail_id: Optional[int] = None
+    detail_statuses: dict[int, str] = Field(
+        default_factory=dict,
+        description="Trạng thái từng dòng SO (detail_id -> status) sau xử lý",
+    )
+    outbound_order_detail_id: Optional[int] = Field(
+        None,
+        description="Detail đầu tiên trong batch (tương thích cũ)",
+    )
     detail_status: Optional[str] = Field(
         None,
-        description="Trạng thái dòng SO (column_property) sau xử lý",
+        description="Trạng thái detail đầu tiên trong batch (tương thích cũ)",
     )
 
 

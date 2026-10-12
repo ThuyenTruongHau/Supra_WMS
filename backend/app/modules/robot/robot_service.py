@@ -190,6 +190,7 @@ class TaskStatusService:
                     stocks = db.query(ItemStock).filter(ItemStock.location_id == from_location.id, ItemStock.is_active.is_(True)).all()
                     for stock in stocks:
                         stock.location_id = to_location.id
+                        
 
                     from app.modules.masan.masan_outbound_service import (
                         _send_taking_stock,

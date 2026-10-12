@@ -160,7 +160,10 @@ export default function InboundLocationInfoModal({
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
                             <p className="truncate text-lg font-semibold text-slate-800">
-                              {product?.name || stock.sku || `Sản phẩm #${stock.item_id}`}
+                              {stock.item_name?.trim() ||
+                                product?.name ||
+                                stock.sku ||
+                                `Sản phẩm #${stock.item_id}`}
                             </p>
                             <p className="mt-1 font-mono text-base text-slate-500">
                               {stock.sku || product?.sku || `#${stock.item_id}`}

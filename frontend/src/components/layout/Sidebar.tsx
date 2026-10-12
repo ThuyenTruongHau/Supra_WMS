@@ -22,6 +22,8 @@ import {
   HomeOutlined,
   QrcodeOutlined,
   UnorderedListOutlined,
+  DesktopOutlined,
+  ControlOutlined,
 } from "@ant-design/icons";
 
 interface SidebarLinkProps {
@@ -327,6 +329,18 @@ export default function Sidebar() {
               to="/export"
               icon={<ExportOutlined className="text-lg" />}
               label="Xuất kho"
+              collapsed={collapsed}
+            />
+            <SidebarLink
+              to="/monitor"
+              icon={<DesktopOutlined className="text-lg" />}
+              label="Monitor"
+              collapsed={collapsed}
+            />
+            <SidebarLink
+              to="/control-tower"
+              icon={<ControlOutlined className="text-lg" />}
+              label="Control Tower"
               collapsed={collapsed}
             />
             <SidebarLink

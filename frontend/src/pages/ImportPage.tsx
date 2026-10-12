@@ -27,6 +27,11 @@ import { getApiErrorMessage } from "@/utils/apiErrorMessage";
 import { buildMasanInboundCreateRequest } from "@/utils/masanInboundImport";
 import dayjs from "dayjs";
 import { useUser } from "@/hooks/useAuth";
+import OrderCreatedAtRangeFilter from "@/components/shared/OrderCreatedAtRangeFilter";
+import {
+  orderCreatedAtQueryParams,
+  type OrderCreatedAtRange,
+} from "@/utils/orderCreatedAtRangeParams";
 
 const PAGE_SIZE = 20;
 const STATUS_FILTER_WIDTH = 180;
@@ -43,6 +48,11 @@ export default function ImportPage() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [searchInput, setSearchInput] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+  const [createdRange, setCreatedRange] = useState<OrderCreatedAtRange>(null);
+  const createdAtParams = useMemo(
+    () => orderCreatedAtQueryParams(createdRange),
+    [createdRange],
+  );
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [importGroups, setImportGroups] = useState<
     ImportGroupDraft[] | undefined
@@ -64,6 +74,7 @@ export default function ImportPage() {
     page_size: PAGE_SIZE,
     q: searchQuery || undefined,
     status: statusFilter === "all" ? undefined : statusFilter,
+    ...createdAtParams,
   });
   const orders = ordersData?.items ?? [];
 
@@ -271,6 +282,14 @@ export default function ImportPage() {
               }}
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
+            />
+            <OrderCreatedAtRangeFilter
+              value={createdRange}
+              onChange={(next) => {
+                setCreatedRange(next);
+                setPage(1);
+              }}
+              className="shrink-0 !h-11 min-w-[320px]"
             />
           </div>
 
