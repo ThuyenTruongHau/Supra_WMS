@@ -23,10 +23,6 @@ function MonitorZoneCell({
   onOpen,
 }: MonitorZoneCellProps) {
   const masan = useOperatorDisplayZoneMasanMap(warehouseId, displayZone.id);
-  const pendingCodes =
-    masan.pendingConfirmOverlayCodes.size > 0
-      ? masan.pendingConfirmOverlayCodes
-      : undefined;
 
   return (
     <button
@@ -53,7 +49,6 @@ function MonitorZoneCell({
             tuning={OPERATOR_WAVE_MAP_TUNING}
             overlayLabelByCode={masan.overlayLabelByCode}
             locationSubLabelByCode={masan.locationSubLabelByCode}
-            pendingConfirmOverlayCodes={pendingCodes}
             className="pointer-events-none !h-full !min-h-0"
           />
         </div>

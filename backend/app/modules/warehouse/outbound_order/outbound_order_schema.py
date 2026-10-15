@@ -266,6 +266,8 @@ class OperatorBoardOrderRow(OperatorBoardProgressFields):
     open_line_quantity: int = 0
     vehicle_count: int = 0
     total_vehicle_count: int = 0
+    sample_vehicle_no: Optional[str] = None
+    has_more_vehicles: bool = False
 
 
 class OperatorBoardOrdersResponse(BaseModel):

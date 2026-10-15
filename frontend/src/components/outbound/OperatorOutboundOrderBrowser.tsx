@@ -23,9 +23,12 @@ import type {
   OperatorBoardVehicleRow,
 } from "@/types/outbound";
 import { translateStatus } from "@/i18n/statusLabels.vi";
+import { formatOperatorSampleVehicle } from "@/utils/operatorOrderVehicleDisplay";
 import { toDisplayInteger } from "@/utils/number";
 import type { OutboundSelectedProductLine } from "@/components/outbound/OperatorOutboundVehicleCards";
+import OutboundStatusTag from "@/components/shared/OutboundStatusTag";
 import OrderCreatedAtRangeFilter from "@/components/shared/OrderCreatedAtRangeFilter";
+import { formatLotValueForDisplay } from "@/utils/legacyLotNumber";
 import { SkuSearchSelect } from "@/components/shared/SkuSearchSelect";
 import {
   orderCreatedAtQueryParams,
@@ -268,11 +271,16 @@ export default function OperatorOutboundOrderBrowser({
       dataIndex: "lot_number",
       width: 120,
       ellipsis: true,
-      render: (lot: OperatorBoardLineRow["lot_number"]) => (
-        <span className="font-mono text-base font-semibold text-slate-700">
-          {lot != null && String(lot).trim() !== "" ? String(lot) : "—"}
-        </span>
-      ),
+      render: (lot: OperatorBoardLineRow["lot_number"]) => {
+        const raw =
+          lot != null && String(lot).trim() !== "" ? String(lot).trim() : null;
+        const label = raw ? formatLotValueForDisplay(raw) ?? raw : null;
+        return (
+          <span className="font-mono text-base font-semibold text-slate-700">
+            {label ?? "—"}
+          </span>
+        );
+      },
     },
     {
       title: "SL",
@@ -299,9 +307,7 @@ export default function OperatorOutboundOrderBrowser({
       dataIndex: "status",
       width: 120,
       render: (status: string) => (
-        <span className="text-base font-semibold text-slate-700">
-          {translateStatus(status)}
-        </span>
+        <OutboundStatusTag status={status} size="sm" className="!text-sm" />
       ),
     },
   ];
@@ -367,13 +373,20 @@ export default function OperatorOutboundOrderBrowser({
               rowKey={lineRowKey}
               pagination={false}
               size="large"
-              locale={{ emptyText: "Không còn dòng chưa hoàn tất" }}
+              locale={{ emptyText: "Không có dòng hàng trong trip này" }}
               rowSelection={{
                 selectedRowKeys,
                 columnWidth: 52,
+                getCheckboxProps: (record) => ({
+                  disabled: record.status === "completed",
+                }),
                 onChange: (keys, rows) => {
                   setSelectedRowKeys(keys);
-                  onSelectedProductsChange?.(linesToSelectedProducts(rows));
+                  onSelectedProductsChange?.(
+                    linesToSelectedProducts(
+                      rows.filter((row) => row.status !== "completed"),
+                    ),
+                  );
                 },
               }}
               className={lineTableClassName}
@@ -636,10 +649,14 @@ function OrderCard({
           </span>
           <span>
             <span className="block text-xs font-bold uppercase tracking-wider text-stripe-ink-mute">
-              SL mở
+              Biển số
             </span>
-            <strong className="mt-0.5 block text-lg font-black tabular-nums text-brand-dark">
-              {toDisplayInteger(order.open_line_quantity)}
+            <strong className="mt-0.5 block truncate text-lg font-black text-brand-dark">
+              {formatOperatorSampleVehicle(
+                order.sample_vehicle_no,
+                Boolean(order.has_more_vehicles),
+                NO_VEHICLE_LABEL,
+              )}
             </strong>
           </span>
         </span>

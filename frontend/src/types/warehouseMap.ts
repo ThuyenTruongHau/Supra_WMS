@@ -129,6 +129,8 @@ export interface MapLocationItemStock {
   sku: string;
   item_name?: string | null;
   lot_number: string | null;
+  lot_number_from?: string | null;
+  lot_number_to?: string | null;
   quantity: string;
 }
 

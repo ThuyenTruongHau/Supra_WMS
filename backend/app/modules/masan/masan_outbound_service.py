@@ -3,15 +3,17 @@ from __future__ import annotations
 from collections import defaultdict
 from io import BytesIO
 from typing import Any, Optional
-from sqlalchemy import func, Integer, cast
+from sqlalchemy import func, Integer, cast, or_
 import uuid
 import json
 
 from app.core.config import settings
-from openpyxl import Workbook, load_workbook
+from openpyxl import Workbook
+
+from app.modules.masan.masan_excel_io import load_masan_workbook
 from sqlalchemy.orm import Session, joinedload, selectinload
 
-from app.core.cache import cache_set, cache_get, cache_scan_keys, cache_delete
+from app.core.cache import cache_set, cache_get, cache_scan_keys, cache_delete, cache_delete_pattern
 from app.modules.masan.masan_outbound_excel import (
     COLUMN_ALIASES,
     DATA_START_ROW,
@@ -20,7 +22,7 @@ from app.modules.masan.masan_outbound_excel import (
 )
 from app.modules.robot.robot_model import RobotTask
 from app.modules.warehouse.outbound_order.outbound_order_schema import (
-     AllocationOutboundTaskExecute,
+    AllocationOutboundTaskExecute,
     CalculateOutboundDetail,
     DetailForCalculate,
     OutboundRobotTaskCreate,
@@ -47,7 +49,13 @@ from app.modules.masan.masan_schema import (
 from app.modules.warehouse.location_map.location_model import Location
 from app.modules.warehouse.item.item_model import Item
 from app.modules.warehouse.item_stock.item_stock_model import ItemStock
-from app.modules.warehouse.lot_number_utils import parse_legacy_lot_number
+from app.modules.warehouse.lot_number_utils import (
+    coerce_masan_lot_cell,
+    format_lot_for_masan_excel,
+    format_lot_value_for_display,
+    normalize_masan_lot_cell,
+    parse_legacy_lot_number,
+)
 from app.modules.warehouse.warehouse_zone.warehouse_model import Zone
 from app.modules.warehouse.warehouse_zone.warehouse_service import _ensure_warehouse_exists
 from app.core.logger import get_logger
@@ -82,6 +90,87 @@ def _direct(row: list[Any], col_map: dict[str, int], field: str) -> Optional[str
     return str(row[idx]).strip()
 
 
+def _is_blank_cell(value: Any) -> bool:
+    return value is None or str(value).strip() == ""
+
+
+def _build_merge_anchor_map(ws) -> dict[tuple[int, int], tuple[int, int]]:
+    """Map each (row, col) in a merge range to its top-left cell (1-based)."""
+    anchors: dict[tuple[int, int], tuple[int, int]] = {}
+    for merged in ws.merged_cells.ranges:
+        top_left = (merged.min_row, merged.min_col)
+        for row in range(merged.min_row, merged.max_row + 1):
+            for col in range(merged.min_col, merged.max_col + 1):
+                anchors[(row, col)] = top_left
+    return anchors
+
+
+def _read_merged_row(
+    ws,
+    row_idx: int,
+    num_cols: int,
+    merge_anchors: dict[tuple[int, int], tuple[int, int]],
+) -> list[Any]:
+    row: list[Any] = []
+    for col in range(1, num_cols + 1):
+        anchor = merge_anchors.get((row_idx, col))
+        if anchor:
+            row.append(ws.cell(anchor[0], anchor[1]).value)
+        else:
+            row.append(ws.cell(row_idx, col).value)
+    return row
+
+
+def _merged_field_raw(
+    row: list[Any], col_map: dict[str, int], field: str
+) -> Any:
+    idx = col_map.get(field)
+    if idx is None or idx >= len(row):
+        return None
+    return row[idx]
+
+
+def _maybe_reset_item_carry_on_new_vehicle(
+    row: list[Any],
+    col_map: dict[str, int],
+    carry: dict[str, Any],
+) -> None:
+    idx = col_map.get("vehicle_no")
+    if idx is None or idx >= len(row) or _is_blank_cell(row[idx]):
+        return
+    vehicle = str(row[idx]).strip()
+    previous = carry.get("_vehicle_anchor")
+    if previous is not None and previous != vehicle:
+        for key in (
+            "sku",
+            "item_name",
+            "lot",
+            "lot_status",
+            "quantity",
+            "pallet_count",
+        ):
+            carry.pop(key, None)
+    carry["_vehicle_anchor"] = vehicle
+
+
+def _cell_raw(
+    row: list[Any],
+    col_map: dict[str, int],
+    field: str,
+    carry: dict[str, Any],
+) -> Any:
+    idx = col_map.get(field)
+    if idx is None:
+        return carry.get(field)
+
+    raw = row[idx] if idx < len(row) else None
+    if _is_blank_cell(raw):
+        return carry.get(field)
+
+    carry[field] = raw
+    return raw
+
+
 def _normalize_trip(value: Optional[str], carry: Optional[str]) -> Optional[str]:
     if value is None:
         return carry
@@ -95,19 +184,18 @@ def _cell_value(
     row: list[Any],
     col_map: dict[str, int],
     field: str,
-    carry: dict[str, str],
+    carry: dict[str, Any],
 ) -> Optional[str]:
-    idx = col_map.get(field)
-    if idx is None:
-        return carry.get(field)
-
-    raw = row[idx] if idx < len(row) else None
-    if raw is None or str(raw).strip() == "":
-        return carry.get(field)
+    raw = _cell_raw(row, col_map, field, carry)
+    if _is_blank_cell(raw):
+        prev = carry.get(field)
+        if prev is None or _is_blank_cell(prev):
+            return None
+        return str(prev).strip()
 
     value = str(raw).strip()
     if field == "trip":
-        normalized = _normalize_trip(value, carry.get(field))
+        normalized = _normalize_trip(value, str(carry.get(field) or "").strip() or None)
         if normalized:
             carry[field] = normalized
         return normalized
@@ -131,38 +219,63 @@ def _parse_quantity(raw: Any) -> tuple[int, Optional[str]]:
 def _validate_lot(raw: Optional[str], outbound_type: str) -> Optional[str]:
     if raw is None or str(raw).strip() == "":
         return None
-    lot = str(raw).strip()
+    lot = coerce_masan_lot_cell(str(raw))
+    if lot is None or str(lot).strip() == "":
+        return None
     if outbound_type == "auto":
-        try:
-            parse_legacy_lot_number(lot)
-        except ValueError as exc:
-            return str(exc)
+        single = normalize_masan_lot_cell(lot)
+        if not single:
+            try:
+                parse_legacy_lot_number(str(lot))
+            except ValueError as exc:
+                return str(exc)
+            return (
+                "LOT Masan (auto) phải là một mốc DDMMYY 6 chữ số, "
+                "không dùng khoảng lô"
+            )
     return None
 
 
 def parse_masan_outbound_rows(content: bytes) -> list[dict[str, Any]]:
-    wb = load_workbook(BytesIO(content), data_only=True)
+    wb = load_masan_workbook(content, data_only=True)
     ws = wb.active
+    merge_anchors = _build_merge_anchor_map(ws)
+    num_cols = ws.max_column
 
-    header_row = [ws.cell(HEADER_ROW, c).value for c in range(1, ws.max_column + 1)]
+    header_row = _read_merged_row(ws, HEADER_ROW, num_cols, merge_anchors)
     col_map = _build_column_map(header_row)
 
     if "sku" not in col_map:
         raise ValueError('Không tìm thấy cột "Mã Item" ở hàng 2')
 
     rows: list[dict[str, Any]] = []
-    carry: dict[str, str] = {}
+    carry: dict[str, Any] = {}
 
     for row_idx in range(DATA_START_ROW, ws.max_row + 1):
-        row = [ws.cell(row_idx, c).value for c in range(1, ws.max_column + 1)]
+        row = _read_merged_row(ws, row_idx, num_cols, merge_anchors)
+        _maybe_reset_item_carry_on_new_vehicle(row, col_map, carry)
 
-        sku_raw = row[col_map["sku"]] if col_map["sku"] < len(row) else None
-        if sku_raw is None or str(sku_raw).strip() == "":
+        merged_sku = _merged_field_raw(row, col_map, "sku")
+        merged_locator = _merged_field_raw(row, col_map, "locator")
+        merged_qty = _merged_field_raw(row, col_map, "quantity")
+        has_signal = not (
+            _is_blank_cell(merged_sku)
+            and _is_blank_cell(merged_locator)
+            and _is_blank_cell(merged_qty)
+        )
+        if not has_signal:
             continue
 
-        qty_idx = col_map.get("quantity")
-        quantity_raw = row[qty_idx] if qty_idx is not None and qty_idx < len(row) else None
+        sku_raw = _cell_raw(row, col_map, "sku", carry)
+        sku = str(sku_raw).strip() if not _is_blank_cell(sku_raw) else ""
+        if not sku:
+            continue
+
+        quantity_raw = _cell_raw(row, col_map, "quantity", carry)
         quantity, qty_error = _parse_quantity(quantity_raw)
+
+        lot_raw = _cell_value(row, col_map, "lot", carry)
+        lot = coerce_masan_lot_cell(lot_raw) if lot_raw else None
 
         rows.append(
             {
@@ -171,13 +284,13 @@ def parse_masan_outbound_rows(content: bytes) -> list[dict[str, Any]]:
                 "customer_name": _cell_value(row, col_map, "customer_name", carry),
                 "trip": _cell_value(row, col_map, "trip", carry),
                 "nvt": _cell_value(row, col_map, "nvt", carry),
-                "sku": str(sku_raw).strip(),
-                "item_name": _direct(row, col_map, "item_name"),
-                "lot": _direct(row, col_map, "lot"),
-                "lot_status": _direct(row, col_map, "lot_status"),
+                "sku": sku,
+                "item_name": _cell_value(row, col_map, "item_name", carry),
+                "lot": lot,
+                "lot_status": _cell_value(row, col_map, "lot_status", carry),
                 "quantity": quantity,
                 "quantity_error": qty_error,
-                "pallet_count": _direct(row, col_map, "pallet_count"),
+                "pallet_count": _cell_value(row, col_map, "pallet_count", carry),
                 "locator": _direct(row, col_map, "locator"),
             }
         )
@@ -200,6 +313,67 @@ def _lookup_item(db: Session, warehouse_id: int, sku: str) -> Optional[Item]:
     )
 
 
+def _validate_outbound_import_locator(
+    db: Session,
+    *,
+    warehouse_id: int,
+    row_no: int,
+    item: Item,
+    quantity: int,
+    locator: str,
+) -> Optional[str]:
+    """Return error message when BM.04 row has Locator but stock cannot satisfy the line."""
+    locator_str = str(locator).strip()
+    if not locator_str:
+        return None
+
+    location = (
+        db.query(Location)
+        .filter(
+            Location.warehouse_id == warehouse_id,
+            Location.is_active.is_(True),
+            or_(
+                Location.location_name == locator_str,
+                Location.location_code == locator_str,
+            ),
+        )
+        .first()
+    )
+    if not location:
+        return (
+            f"Dòng {row_no}: Không tìm thấy Locator \"{locator_str}\" trong kho"
+        )
+
+    stocks = (
+        db.query(ItemStock)
+        .filter(
+            ItemStock.location_id == location.id,
+            ItemStock.is_active.is_(True),
+            ItemStock.status.in_(["available", "split"]),
+            ItemStock.quantity > 0,
+        )
+        .all()
+    )
+    if not stocks:
+        return f"Dòng {row_no}: Locator \"{locator_str}\" không có tồn kho"
+
+    item_stocks = [s for s in stocks if s.item_id == item.id]
+    if not item_stocks:
+        return (
+            f"Dòng {row_no}: Locator \"{locator_str}\" không có mã Item "
+            f"\"{item.sku}\" (khác loại hàng tại vị trí này)"
+        )
+
+    available = sum(int(s.available_quantity or 0) for s in item_stocks)
+    if available < quantity:
+        return (
+            f"Dòng {row_no}: Locator \"{locator_str}\" chỉ còn {available} "
+            f"khả dụng, yêu cầu {quantity}"
+        )
+
+    return None
+
+
 def _build_line_item_details(row: dict[str, Any]) -> dict[str, Any]:
     details: dict[str, Any] = {}
     for key in (
@@ -214,9 +388,12 @@ def _build_line_item_details(row: dict[str, Any]) -> dict[str, Any]:
         value = row.get(key)
         if value is not None and str(value).strip() != "":
             details[key] = value
-    lot = row.get("lot")
+    lot = coerce_masan_lot_cell(row.get("lot"))
     if lot is not None and str(lot).strip() != "":
-        details["lot_number"] = str(lot).strip()
+        lot_text = str(lot).strip()
+        details["lot_number"] = (
+            format_lot_value_for_display(lot_text) or lot_text
+        )
     return details
 
 
@@ -236,6 +413,7 @@ def parse_masan_outbound_preview(
     line_items: list[MasanOutboundLineItem] = []
     warnings: list[str] = []
     invalid_count = 0
+    locator_import_errors: list[str] = []
 
     for row in parsed_rows:
         sku = row["sku"]
@@ -253,6 +431,25 @@ def parse_masan_outbound_preview(
         lot_error = _validate_lot(lot_raw, outbound_type)
         if lot_error:
             errors.append(lot_error)
+
+        locator_raw = row.get("locator")
+        if (
+            locator_raw is not None
+            and str(locator_raw).strip() != ""
+            and item is not None
+            and not row.get("quantity_error")
+        ):
+            locator_error = _validate_outbound_import_locator(
+                db,
+                warehouse_id=warehouse_id,
+                row_no=int(row["row_no"]),
+                item=item,
+                quantity=int(row["quantity"]),
+                locator=str(locator_raw),
+            )
+            if locator_error:
+                errors.append(locator_error)
+                locator_import_errors.append(locator_error)
 
         preview_rows.append(
             MasanOutboundPreviewRow(
@@ -288,8 +485,11 @@ def parse_masan_outbound_preview(
             )
         )
 
-    if not line_items:
-        raise ValueError(
+    import_errors: list[str] = list(locator_import_errors)
+    can_import = bool(line_items) and not import_errors
+
+    if not line_items and not import_errors:
+        import_errors.append(
             "Không có dòng hợp lệ để tạo đơn xuất. "
             "Kiểm tra SKU, số lượng và LOT trong file."
         )
@@ -297,13 +497,21 @@ def parse_masan_outbound_preview(
     if invalid_count:
         warnings.append(f"{invalid_count} dòng bị bỏ qua khỏi payload tạo đơn")
 
+    if import_errors:
+        warnings.insert(
+            0,
+            f"Không thể import: {len(import_errors)} lỗi (xem import_errors / error từng dòng).",
+        )
+
     return MasanOutboundParseResponse(
         preview_rows=preview_rows,
-        line_items=line_items,
+        line_items=line_items if can_import else [],
         total_rows=len(preview_rows),
         valid_rows=len(preview_rows) - invalid_count,
         invalid_rows=invalid_count,
         warnings=warnings,
+        import_errors=import_errors,
+        can_import=can_import,
     )
 
 
@@ -365,7 +573,10 @@ def _build_so_data_row(detail: OutboundOrderDetail, stt: int) -> list[Any]:
         stt,
         detail.item.sku if detail.item else "",
         detail.item.name if detail.item else "",
-        meta.get("lot_number"),
+        format_lot_for_masan_excel(
+            lot_number=str(meta.get("lot_number") or "") or None,
+        )
+        or None,
         lot_status,
         detail.quantity,
         pallet_count if pallet_count not in (None, "") else None,
@@ -469,43 +680,63 @@ def _sku_from_allocation(allocation: OutboundOrderAllocation) -> str | None:
     return None
 
 
+def _locator_name_for_allocation(allocation: OutboundOrderAllocation) -> str | None:
+    loc = allocation.from_location
+    if loc is not None:
+        name = (loc.location_name or "").strip()
+        if name:
+            return name
+        code = (loc.location_code or "").strip()
+        if code:
+            return code
+    detail = allocation.outbound_order_detail
+    if detail is not None and isinstance(detail.details, dict):
+        raw = detail.details.get("locator")
+        if raw is not None and str(raw).strip():
+            return str(raw).strip()
+    return None
+
+
 def _enrich_stock_ready_payloads(
     db: Session,
     rows: list[dict[str, Any]],
 ) -> list[dict[str, Any]]:
     if not rows:
         return rows
-    missing_ids: list[int] = []
+    alloc_ids: list[int] = []
     for row in rows:
-        sku = row.get("sku")
-        if sku is not None and str(sku).strip() != "":
-            continue
         raw_id = row.get("id")
         if raw_id is not None:
-            missing_ids.append(int(raw_id))
-    if not missing_ids:
+            alloc_ids.append(int(raw_id))
+    if not alloc_ids:
         return rows
     allocations = (
         db.query(OutboundOrderAllocation)
         .options(
+            joinedload(OutboundOrderAllocation.from_location),
             joinedload(OutboundOrderAllocation.outbound_order_detail).joinedload(
                 OutboundOrderDetail.item
             ),
             joinedload(OutboundOrderAllocation.item_stock).joinedload(ItemStock.item),
         )
-        .filter(OutboundOrderAllocation.id.in_(missing_ids))
+        .filter(OutboundOrderAllocation.id.in_(alloc_ids))
         .all()
     )
-    sku_by_id = {a.id: _sku_from_allocation(a) for a in allocations}
+    by_id = {a.id: a for a in allocations}
     enriched: list[dict[str, Any]] = []
     for row in rows:
         copy = dict(row)
-        if not (copy.get("sku") and str(copy.get("sku")).strip()):
-            alloc_id = copy.get("id")
-            if alloc_id is not None:
-                sku = sku_by_id.get(int(alloc_id))
-                if sku:
-                    copy["sku"] = sku
+        alloc_id = copy.get("id")
+        if alloc_id is not None:
+            allocation = by_id.get(int(alloc_id))
+            if allocation is not None:
+                if not (copy.get("sku") and str(copy.get("sku")).strip()):
+                    sku = _sku_from_allocation(allocation)
+                    if sku:
+                        copy["sku"] = sku
+                locator = _locator_name_for_allocation(allocation)
+                if locator:
+                    copy["locator"] = locator
         enriched.append(copy)
     return enriched
 
@@ -571,8 +802,11 @@ def _detail_to_cache_line(detail: OutboundOrderDetail) -> dict[str, Any]:
         "sku": _resolve_line_sku(detail, meta),
         "trip": meta.get("trip"),
         "nvt": meta.get("nvt"),
-        "lot_number": meta.get("lot_number"),
+        "lot_number": format_lot_value_for_display(
+            str(meta.get("lot_number") or "").strip() or None,
+        ),
         "pallet_count": meta.get("pallet_count"),
+        "locator": meta.get("locator"),
     }
 
 def assign_cc_zone(db: Session, warehouse_id: int) -> None:                     
@@ -585,7 +819,12 @@ def assign_cc_zone(db: Session, warehouse_id: int) -> None:
 
     logger.info(f"Existed locations: {existed_locations}")
 
-    numeric_suffix = cast(func.right(Location.location_name, 3), Integer)
+    numeric_suffix = cast(
+        func.nullif(
+            func.regexp_replace(Location.location_name, r"\D", "", "g"), ""
+        ),
+        Integer,
+    )
     available_locations = (
         db.query(Location)
         .join(Zone, Zone.id == Location.zone_id)
@@ -595,7 +834,7 @@ def assign_cc_zone(db: Session, warehouse_id: int) -> None:
             Zone.code.in_(settings.zone_cc),
             ~Location.id.in_(existed_locations),
         )
-        .order_by(numeric_suffix.asc(), Location.location_name.asc())
+        .order_by(numeric_suffix.asc().nulls_last(), Location.location_name.asc())
         .all()
     )
 
@@ -798,10 +1037,10 @@ def get_item_needed_to_sorting(
     }
 
 def sending_masan_outbound_task(db: Session, warehouse_id: int, zone: str, item_id: int, to_location_id: int):
-    
     # Need optimize
     keys = cache_scan_keys(f"outbound:assigned_cc_location:{warehouse_id}:*")
     list_lines: list[dict[str, Any]] = []
+    has_lo_lines: list[dict[str, Any]] = []
     for key in keys:
         suffix = key.rsplit(":", 1)[-1]
         if suffix.isdigit():
@@ -811,14 +1050,77 @@ def sending_masan_outbound_task(db: Session, warehouse_id: int, zone: str, item_
                 lines = bucket.get("lines") or []
                 for line in lines:
                     if line.get("item_id") == item_id:
-                        list_lines.append(line["detail_id"])
+                        if line.get("locator") is not None:
+                            has_lo_lines.append(line["detail_id"])
+                        else:
+                            list_lines.append(line["detail_id"])
 
     list_lines_db = db.query(OutboundOrderDetail).filter(
         OutboundOrderDetail.id.in_(list_lines),
         OutboundOrderDetail.status == "initialize"
     ).all()
 
+    has_lo_lines_db = db.query(OutboundOrderDetail).filter(
+        OutboundOrderDetail.id.in_(has_lo_lines),
+        OutboundOrderDetail.status == "initialize"
+    ).all()
+
     results: list[dict[str, Any]] = []
+    if len(has_lo_lines_db) > 0:
+        for detail in has_lo_lines_db:
+            locator = detail.details.get("locator")
+            has_task = None
+            if locator is not None:
+                stock = (
+                    db.query(ItemStock)
+                    .join(ItemStock.location)
+                    .filter(
+                        Location.location_name == locator,
+                        ItemStock.item_id == detail.item_id,
+                        ItemStock.quantity >= detail.quantity,
+                    )
+                    .first()
+                )
+                allocation = (
+                    db.query(OutboundOrderAllocation)
+                    .join(OutboundOrderAllocation.from_location)
+                    .filter(
+                        OutboundOrderAllocation.status == "initialize",
+                        OutboundOrderAllocation.allocation_type == "outbound",
+                        Location.location_name == locator,
+                    )
+                    .first()
+                )
+
+                if allocation is not None:
+                    has_task = allocation.robot_task_id
+                
+                if stock is not None:
+                    if not has_task:
+                        robot_task = RobotTask(
+                            order_id=f"TDS_Outbound_{uuid.uuid4().hex[:8]}",
+                            quantity=stock.quantity,
+                            process_code=settings.outbound_process_code,
+                            system_code="Thadosoft",
+                            task_order_detail=json.dumps([{"taskPath": "None"}]),
+                        )
+                        db.add(robot_task)
+                        db.flush()
+
+                        has_task = robot_task.id
+
+                    allocation = OutboundOrderAllocation(
+                        outbound_order_detail_id=detail.id,
+                        item_stock_id=stock.id,
+                        quantity=detail.quantity,
+                        status="initialize",
+                        from_location_id=stock.location_id,
+                        robot_task_id=has_task,
+                        allocation_type="outbound",
+                    )
+                    db.add(allocation)
+                    db.flush()
+
     if len(list_lines_db) > 0:
         details_by_order: dict[int, list[OutboundOrderDetail]] = defaultdict(list)
         for detail in list_lines_db:
@@ -857,7 +1159,7 @@ def sending_masan_outbound_task(db: Session, warehouse_id: int, zone: str, item_
         db.query(OutboundOrderAllocation)
         .options(joinedload(OutboundOrderAllocation.outbound_order_detail))
         .filter(
-            OutboundOrderAllocation.outbound_order_detail_id.in_(list_lines),
+            OutboundOrderAllocation.outbound_order_detail_id.in_(list_lines + has_lo_lines),
             OutboundOrderAllocation.status == "initialize",
             OutboundOrderAllocation.allocation_type == "outbound",
             OutboundOrderAllocation.robot_task_id.isnot(None),
@@ -887,7 +1189,7 @@ def sending_masan_outbound_task(db: Session, warehouse_id: int, zone: str, item_
         "zone": zone,
         "item_id": item_id,
         "lacked": all_lacked,
-    }
+    }    
 
 def _pack_and_execute_robot_task(db: Session, robot_task_id: int, picked_allocation: OutboundOrderAllocation, to_location_id: int) -> None: 
     robot_task = db.query(RobotTask).filter(RobotTask.id == robot_task_id).first()
@@ -906,6 +1208,30 @@ def _pack_and_execute_robot_task(db: Session, robot_task_id: int, picked_allocat
     )
     if not task_allocations:
         return
+    
+    detail_by_id = {
+        a.outbound_order_detail_id: a.outbound_order_detail
+        for a in task_allocations
+        if a.outbound_order_detail is not None
+    }
+
+    for detail in detail_by_id.values():
+        sum_quantity = sum(a.quantity for a in task_allocations if a.outbound_order_detail_id == detail.id)
+        order = detail.outbound_order if detail is not None else None
+        if detail is not None and order is not None:
+            warehouse_id = order.warehouse_id
+            cc_meta = cache_get(
+                f"outbound:assigned_cc_details:{warehouse_id}:{detail.id}"
+            )
+            if isinstance(cc_meta, dict) and cc_meta.get("location_id") is not None:
+                _apply_clear_outbound_masan_details(
+                    db,
+                    warehouse_id,
+                    str(cc_meta.get("zone") or ""),
+                    int(cc_meta["location_id"]),
+                    detail.id,
+                    sum_quantity,
+                )
     
     from_location_id = picked_allocation.from_location_id
     if from_location_id is None:
@@ -931,40 +1257,68 @@ def _apply_clear_outbound_masan_details(
     zone: str,
     location_id: int,
     detail_id: int,
+    quantity: int,
 ) -> None:
     detail_id = int(detail_id)
     location_id = int(location_id)
     zone = (zone or "").strip()
-
-    cache_delete(f"outbound:assigned_cc_details:{warehouse_id}:{detail_id}")
 
     loc_key = f"outbound:assigned_cc_location:{warehouse_id}:{location_id}"
     bucket = cache_get(loc_key)
     if not bucket:
         return
 
-    if (bucket.get("zone") or "").strip() != zone:
-        logger.warning(
-            "CC cache zone mismatch warehouse_id=%s location_id=%s expected=%r got=%r",
-            warehouse_id,
-            location_id,
-            zone,
-            bucket.get("zone"),
-        )
-
     lines = bucket.get("lines") or []
-    new_lines = [
-        line
-        for line in lines
-        if line.get("detail_id") is not None and int(line["detail_id"]) != detail_id
-    ]
-    if len(new_lines) == len(lines):
+    new_lines = []
+    changed = False
+    for line in lines:
+        if line.get("detail_id") is None or int(line["detail_id"]) != detail_id:
+            if line.get("detail_id") is not None:
+                new_lines.append(line)
+            continue
+        changed = True
+        remaining = int(line["quantity"]) - quantity
+        if remaining <= 0:
+            remaining = 0
+            # cache_delete(f"outbound:assigned_cc_details:{warehouse_id}:{detail_id}")
+            continue
+        new_lines.append({**line, "quantity": remaining})
+    if not changed:
+        return
+    if new_lines:
+        cache_set(loc_key, {**bucket, "lines": new_lines}, -1)
+    # if not new_lines:
+    #     cache_delete(loc_key)
+    # else:
+    #     cache_set(loc_key, {**bucket, "lines": new_lines}, -1)
+
+def _clear_cache_details(db: Session, warehouse_id: int, detail_id: int) -> None:
+    detail_id = int(detail_id)
+    loc_key = f"outbound:assigned_cc_details:{warehouse_id}:{detail_id}"
+    bucket = cache_get(loc_key)
+    if not bucket:
         return
 
-    if not new_lines:
-        cache_delete(loc_key)
+    location_id = bucket.get("location_id") 
+    cache_delete(f"outbound:assigned_cc_details:{warehouse_id}:{detail_id}")
+
+    cc_key = f"outbound:assigned_cc_location:{warehouse_id}:{location_id}"
+    bucket_cc = cache_get(cc_key)
+    if not bucket_cc:
+        return
+    lines = bucket_cc.get("lines") or []
+    new_lines = []
+    for line in lines:
+        if line.get("detail_id") is None or int(line["detail_id"]) != detail_id:
+            if line.get("detail_id") is not None:
+                new_lines.append(line)
+            continue
+    
+    if new_lines:
+        cache_set(cc_key, {**bucket_cc, "lines": new_lines}, -1)
     else:
-        cache_set(loc_key, {**bucket, "lines": new_lines}, -1)
+        cache_delete(cc_key)
+
 
 def get_sorting_zone_pending_stock(
     db: Session,
@@ -1061,13 +1415,39 @@ def _delete_stock_ready_cache_for_allocation(
     warehouse_id: int,
     zone: str,
     allocation_id: int,
+    *,
+    status: str,
+    quantity: int | None = None,
 ) -> None:
+    # zone_norm = (zone or "").strip()
+    # cache_delete_pattern(
+    #     f"outbound:masan:stock_ready:{warehouse_id}:{zone_norm}:{allocation_id}:*"
+    # )
+
     zone_norm = (zone or "").strip()
-    prefix = (
-        f"outbound:masan:stock_ready:{warehouse_id}:{zone_norm}:{allocation_id}:"
-    )
-    for key in cache_scan_keys(f"{prefix}*"):
-        cache_delete(key)
+    pattern = f"outbound:masan:stock_ready:{warehouse_id}:{zone_norm}:{allocation_id}:*"
+    updated = 0
+    for scanned in cache_scan_keys(pattern):
+        parts = scanned.rsplit(":", 2)
+        if len(parts) < 3:
+            continue
+        try:
+            loc_id = int(parts[-1])
+        except ValueError:
+            continue
+        logical_key = (
+            f"outbound:masan:stock_ready:{warehouse_id}:{zone_norm}:"
+            f"{allocation_id}:{loc_id}"
+        )
+        payload = cache_get(logical_key)
+        if not isinstance(payload, dict):
+            continue
+        payload = {**payload, "status": status}
+        if quantity is not None:
+            payload["quantity"] = int(quantity)
+        cache_set(logical_key, payload, -1)
+        updated += 1
+    return updated
 
 
 def confirm_allocation_outbound(
@@ -1092,14 +1472,25 @@ def confirm_allocation_outbound(
         raise ValueError(f"Allocations not found: {missing}")
 
     stocks: list[ItemStock] = []
-    details: list[OutboundOrderDetail] = []
     for allocation in target_allocations:
         allocation.status = "confirmed"
         _delete_stock_ready_cache_for_allocation(
-                warehouse_id, zone, allocation.id
+                warehouse_id, zone, allocation.id, status="completed", quantity=quantities[allocation.id]
             )
-        if allocation.outbound_order_detail not in details:
-            details.append(allocation.outbound_order_detail)
+        
+        db.flush()
+
+        detail = allocation.outbound_order_detail
+        still_pending = (
+            db.query(OutboundOrderAllocation.id)
+            .filter(
+                OutboundOrderAllocation.outbound_order_detail_id == detail.id,
+                OutboundOrderAllocation.allocation_type == "outbound",
+                OutboundOrderAllocation.status not in ["completed", "confirmed"],
+            )
+            .first()
+        )
+
         if quantities[allocation.id] != allocation.quantity:
             allocation.quantity = quantities[allocation.id]
             allocation.outbound_order_detail.quantity = allocation.outbound_order_detail.quantity - quantities[allocation.id]
@@ -1108,6 +1499,9 @@ def confirm_allocation_outbound(
 
         db.commit()
         db.refresh(allocation.outbound_order_detail)
+
+        if not still_pending:
+            _clear_cache_details(db, warehouse_id, detail.id)
             
     _settle_outbound_stock(db, target_allocations)
 
@@ -1149,17 +1543,6 @@ def confirm_allocation_outbound(
             return_allocation.quantity = stock.quantity
             
         db.flush()
-
-    for detail in details:
-        if detail.status == "completed":
-            cc_meta = cache_get(
-                f"outbound:assigned_cc_details:{warehouse_id}:{detail.id}"
-            )
-            if isinstance(cc_meta, dict) and cc_meta.get("location_id") is not None:
-                cc_location_id = int(cc_meta["location_id"])
-            _apply_clear_outbound_masan_details(
-                db, warehouse_id, zone, cc_location_id, detail.id
-            )
 
     
 def _send_taking_stock(db: Session, robot_task_id: int, allocations: list[OutboundOrderAllocation]) -> None:
@@ -1282,9 +1665,14 @@ def list_sorting_zone_cc_locations(
     }
 
 
-#Fix bấm vị trí gọi lệnh vẫn ra chỗ đã được chọn
+#Fix bấm vị trí gọi lệnh vẫn ra chỗ đã được chọn - NG
+#Fix Chọn được vị trí cho đơn xuất.
+#Fix Bypass
+#Fix export đơn nhập ra theo thời gian
 #Fix gọi khi click confirm 1 click cho tất cả tại vị trí VT - OK
 #Fix update detail để hoàn thành được lệnh nếu user gửi số lượng lấy ít hơn số có - OK
-#Add lệnh return nếu sửa đổi số lượng lấy ra trong đơn
+#Add lệnh return nếu sửa đổi số lượng lấy ra trong đơn - OK
 #Fix gọi robot tự động.
 #Fix không cho gửi nếu vị trí đó có hàng.
+#Fix QR code đơn nhập
+#Fix import phiên ra qrcode.

@@ -10,6 +10,8 @@ import type {
   InboundOrderDetail,
   InboundOrderDeleteResponse,
   InboundOrderListResponse,
+  InboundOperatorListSummaryRequest,
+  InboundOperatorListSummaryResponse,
   InboundOrderUpdateRequest,
   InboundReleaseLocationsRequest,
   InboundReleaseLocationsResponse,
@@ -37,6 +39,16 @@ export const getInboundOrderDetailsApi = async (
 ): Promise<InboundOrderDetail[]> => {
   const { data } = await axiosInstance.get<InboundOrderDetail[]>(
     `${BASE}/${encodeURIComponent(orderCode)}/details`,
+  );
+  return data;
+};
+
+export const postInboundOperatorListSummaryApi = async (
+  body: InboundOperatorListSummaryRequest,
+): Promise<InboundOperatorListSummaryResponse> => {
+  const { data } = await axiosInstance.post<InboundOperatorListSummaryResponse>(
+    `${BASE}/operator-list-summary`,
+    body,
   );
   return data;
 };

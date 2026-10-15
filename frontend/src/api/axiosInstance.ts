@@ -12,8 +12,16 @@ interface CustomAxiosRequestConfig extends InternalAxiosRequestConfig {
   _retry?: boolean;
 }
 
+/** Dev: URL tương đối → Vite proxy `/api` → localhost:8001. Tránh VITE_API_URL trỏ sai port (8000). */
+const resolveApiBaseUrl = (): string | undefined => {
+  if (import.meta.env.DEV) {
+    return undefined;
+  }
+  return import.meta.env.VITE_API_URL?.trim() || undefined;
+};
+
 const axiosInstance = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || undefined,
+  baseURL: resolveApiBaseUrl(),
   headers: {
     'Content-Type': 'application/json',
   },

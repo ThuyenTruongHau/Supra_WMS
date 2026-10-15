@@ -83,6 +83,21 @@ export const exportInboundOrderMasanApi = async (
   );
 };
 
+export const exportInboundOrdersMasanBulkApi = async (
+  orderIds: number[],
+): Promise<void> => {
+  const response = await axiosInstance.post(
+    "/api/v1/masan/inbound-orders/export",
+    { order_ids: orderIds },
+    { responseType: "blob" },
+  );
+  downloadBlobFromResponse(
+    response.data as Blob,
+    response.headers["content-disposition"] as string | undefined,
+    `BaoCaoNhap_${orderIds.length}don.xlsx`,
+  );
+};
+
 export const exportInboundDailyCapacityApi = async (
   warehouseId: number,
 ): Promise<void> => {

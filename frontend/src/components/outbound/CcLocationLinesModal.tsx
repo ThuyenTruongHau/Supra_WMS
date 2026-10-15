@@ -24,6 +24,7 @@ import type {
   MasanCcLocationResponse,
 } from "@/types/masan";
 import OutboundStatusTag from "@/components/shared/OutboundStatusTag";
+import { formatLotValueForDisplay } from "@/utils/legacyLotNumber";
 import { toDisplayInteger } from "@/utils/number";
 
 type Props = {
@@ -246,11 +247,16 @@ export default function CcLocationLinesModal({
         title: "Số lô",
         dataIndex: "lot_number",
         width: tier === "tv" ? 160 : 130,
-        render: (v) => (
-          <span className={cn("font-mono text-slate-600", cellBase)}>
-            {textOrDash(v)}
-          </span>
-        ),
+        render: (v) => {
+          const raw =
+            v != null && String(v).trim() !== "" ? String(v).trim() : null;
+          const label = raw ? formatLotValueForDisplay(raw) ?? raw : null;
+          return (
+            <span className={cn("font-mono text-slate-600", cellBase)}>
+              {label != null ? label : "—"}
+            </span>
+          );
+        },
       },
       {
         title: "Số lượng",

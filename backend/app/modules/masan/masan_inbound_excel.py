@@ -130,7 +130,9 @@ def style_masan_export_worksheet(ws: Worksheet, *, last_data_row: int) -> None:
     ws.freeze_panes = ws.cell(row=DATA_START_ROW, column=1)
 
 
-_DAILY_CAPACITY_COLS = 2
+_DAILY_CAPACITY_SUMMARY_COLS = 2
+_DAILY_CAPACITY_TABLE_COLS = 5
+_DAILY_CAPACITY_LOT_COLUMN = 5
 _DAILY_SUMMARY_LABEL_FILL = PatternFill("solid", fgColor="E2EFDA")
 _DAILY_TABLE_HEADER_FILL = PatternFill("solid", fgColor="D9E1F2")
 
@@ -143,16 +145,26 @@ def style_daily_capacity_worksheet(
     table_header_row: int,
     last_data_row: int,
 ) -> None:
-    """Two-column layout: summary block (label | value) then locator table."""
-    for col_idx in range(1, _DAILY_CAPACITY_COLS + 1):
+    """Summary (2 cols) + locator table (Locator, Trạng thái, Mã hàng, SL, LOT)."""
+    table_width = _DAILY_CAPACITY_TABLE_COLS
+    for col_idx in range(1, table_width + 1):
         letter = get_column_letter(col_idx)
-        ws.column_dimensions[letter].width = 22.0 if col_idx == 1 else 16.0
+        if col_idx == 1:
+            ws.column_dimensions[letter].width = 14.0
+        elif col_idx == 2:
+            ws.column_dimensions[letter].width = 14.0
+        elif col_idx == 3:
+            ws.column_dimensions[letter].width = 14.0
+        elif col_idx == 4:
+            ws.column_dimensions[letter].width = 10.0
+        else:
+            ws.column_dimensions[letter].width = 12.0
 
     ws.merge_cells(
         start_row=1,
         start_column=1,
         end_row=1,
-        end_column=_DAILY_CAPACITY_COLS,
+        end_column=table_width,
     )
     title_cell = ws.cell(row=1, column=1)
     title_cell.fill = _TITLE_FILL
@@ -162,7 +174,7 @@ def style_daily_capacity_worksheet(
 
     for row_idx in range(summary_header_row, summary_last_row + 1):
         ws.row_dimensions[row_idx].height = 22.0
-        for col_idx in range(1, _DAILY_CAPACITY_COLS + 1):
+        for col_idx in range(1, _DAILY_CAPACITY_SUMMARY_COLS + 1):
             cell = ws.cell(row=row_idx, column=col_idx)
             cell.border = _THIN_BORDER
             cell.font = _HEADER_FONT if row_idx == summary_header_row else _DATA_FONT
@@ -173,7 +185,7 @@ def style_daily_capacity_worksheet(
                 cell.fill = _DAILY_SUMMARY_LABEL_FILL
 
     ws.row_dimensions[table_header_row].height = 24.0
-    for col_idx in range(1, _DAILY_CAPACITY_COLS + 1):
+    for col_idx in range(1, table_width + 1):
         cell = ws.cell(row=table_header_row, column=col_idx)
         cell.font = _HEADER_FONT
         cell.alignment = _CENTER_WRAP
@@ -182,13 +194,18 @@ def style_daily_capacity_worksheet(
 
     for row_idx in range(table_header_row + 1, last_data_row + 1):
         ws.row_dimensions[row_idx].height = 18.0
-        for col_idx in range(1, _DAILY_CAPACITY_COLS + 1):
+        for col_idx in range(1, table_width + 1):
             cell = ws.cell(row=row_idx, column=col_idx)
             cell.font = _DATA_FONT
             cell.border = _THIN_BORDER
-            cell.alignment = (
-                _CENTER_WRAP if col_idx == 2 else _LEFT_WRAP
-            )
+            if col_idx == 2:
+                cell.alignment = _CENTER_WRAP
+            elif col_idx == 4:
+                cell.alignment = _CENTER_WRAP
+            else:
+                cell.alignment = _LEFT_TOP_WRAP
+            if col_idx == _DAILY_CAPACITY_LOT_COLUMN:
+                cell.number_format = "@"
 
     ws.freeze_panes = ws.cell(row=table_header_row + 1, column=1)
 

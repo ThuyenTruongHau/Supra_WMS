@@ -33,6 +33,8 @@ from app.modules.warehouse.inbound_order.inbound_order_schema import (
     RelocateAssignedStockResponse,
     InboundAssignedDetailsRequest,
     InboundAssignedDetailsResponse,
+    InboundOperatorListSummaryRequest,
+    InboundOperatorListSummaryResponse,
 )
 from app.modules.warehouse.inbound_order import inbound_order_service, qr_code_module
 from app.modules.masan import masan_inbound_service
@@ -100,7 +102,6 @@ def purge_packing_cache():
 )
 def create_inbound_order(
     body: InboundOrderCreate,
-    db: DbSession,
     current_user: Annotated[User, Depends(get_dev_admin_user)],
     inbound_type: str,
 ):
@@ -163,6 +164,22 @@ def list_inbound_orders(
 
 
 @router.post(
+    "/inbound-orders/operator-list-summary",
+    response_model=InboundOperatorListSummaryResponse,
+    dependencies=[Depends(_INBOUND_READ)],
+)
+def inbound_operator_list_summary(
+    body: InboundOperatorListSummaryRequest,
+    db: DbSession,
+):
+    return inbound_order_service.inbound_operator_list_summary(
+        db,
+        order_ids=body.order_ids,
+        item_id=body.item_id,
+    )
+
+
+@router.post(
     "/inbound-orders/assigned-details",
     response_model=InboundAssignedDetailsResponse,
 )
@@ -186,7 +203,7 @@ def list_inbound_assigned_details(
     response_model=list[InboundOrderDetailResponse],
     dependencies=[Depends(_INBOUND_READ)],
 )
-def get_inbound_order_details(db: DbSession, order_code: str):
+def get_inbound_order_details(order_code: str):
     try:
         details = run_logic_task(get_inbound_order_details_task, order_code=order_code)
     except ValueError as e:
@@ -200,7 +217,7 @@ def get_inbound_order_details(db: DbSession, order_code: str):
     status_code=status.HTTP_201_CREATED,
     dependencies=[Depends(_INBOUND_UPDATE)],
 )
-def accept_inbound_task(db: DbSession, detail_id: int):
+def accept_inbound_task(detail_id: int):
     try:
         task = run_logic_task(accept_inbound_task_task, detail_id=detail_id)
     except ValueError as e:
@@ -214,7 +231,7 @@ def accept_inbound_task(db: DbSession, detail_id: int):
     response_model=InboundOrderResponse,
     dependencies=[Depends(_INBOUND_UPDATE)],
 )
-def update_inbound_order(order_code: str, body: InboundOrderUpdate, db: DbSession, inbound_type: str, current_user: Annotated[User, Depends(_INBOUND_UPDATE)],):
+def update_inbound_order(order_code: str, body: InboundOrderUpdate, inbound_type: str, current_user: Annotated[User, Depends(_INBOUND_UPDATE)],):
     try:
         order = run_logic_task(
             update_inbound_order_task,
@@ -257,7 +274,6 @@ def delete_inbound_order(
 )
 def caller_inbound_order(
     body: InboundOrderCreate,
-    db: DbSession,
     inbound_type: str,
     # current_user: Annotated[User, Depends(_INBOUND_CREATE)],
 ):

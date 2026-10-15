@@ -61,14 +61,44 @@ export const getInboundOrderApi = async (id: number): Promise<InboundOrder> => {
   return response.data
 }
 
+function isIncompleteInboundStatus(status: string): boolean {
+  const normalized = status.trim().toLowerCase().replace(/-/g, '_')
+  return normalized === 'initialize' || normalized === 'in_progress'
+}
+
+/** BE không có `/oldest-incomplete`; lấy đơn cũ nhất chưa xong từ list. */
 export const getOldestIncompleteInboundApi = async (
   warehouseId: number,
 ): Promise<InboundOldestIncomplete> => {
-  const response = await axiosInstance.get<InboundOldestIncomplete>(
-    '/api/v1/inbound-orders/oldest-incomplete',
-    { params: { zone_id: warehouseId } },
-  )
-  return response.data
+  const orders = await listInboundOrdersApi(warehouseId, {
+    page: 1,
+    page_size: 100,
+  })
+  const incomplete = orders
+    .filter((order) => isIncompleteInboundStatus(order.status))
+    .sort(
+      (a, b) =>
+        new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
+    )
+  const order = incomplete[0]
+  if (!order) {
+    const err = new Error('No incomplete inbound order') as Error & {
+      response?: { status: number }
+    }
+    err.response = { status: 404 }
+    throw err
+  }
+  return {
+    order,
+    supplier_name: null,
+    waiting_vehicles_count: 0,
+    today_quantity: 0,
+    empty_locators_count: 0,
+    empty_locators_total: 0,
+    total_quantity: 0,
+    total_pallet_count: 0,
+    scada_latency_seconds: 0,
+  }
 }
 
 export const getInboundDetailReportApi = async (

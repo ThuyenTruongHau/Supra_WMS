@@ -2,7 +2,9 @@ import axios from 'axios';
 import type { RefreshResponse } from '@/types/auth';
 
 const refreshClient = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || undefined,
+  baseURL: import.meta.env.DEV
+    ? undefined
+    : import.meta.env.VITE_API_URL?.trim() || undefined,
   headers: {
     'Content-Type': 'application/json',
   },

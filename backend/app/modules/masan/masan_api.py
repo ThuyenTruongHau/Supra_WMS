@@ -1,6 +1,7 @@
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
+from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import Response
 from sqlalchemy.orm import Session
 
@@ -14,6 +15,7 @@ from app.modules.masan.masan_schema import (
     MasanClearInboundZoneRequest,
     MasanClearInboundZoneResponse,
     MasanInboundCallerRequest,
+    MasanInboundBulkExportRequest,
     MasanInboundCallerResponse,
     MasanInboundParseResponse,
     MasanOutboundParseResponse,
@@ -65,7 +67,8 @@ async def parse_masan_inbound_preview(
         )
 
     try:
-        return masan_inbound_service.parse_masan_inbound_preview(
+        return await run_in_threadpool(
+            masan_inbound_service.parse_masan_inbound_preview,
             db,
             warehouse_id=warehouse_id,
             content=content,
@@ -101,7 +104,8 @@ async def parse_masan_outbound_preview(
         )
 
     try:
-        return masan_outbound_service.parse_masan_outbound_preview(
+        return await run_in_threadpool(
+            masan_outbound_service.parse_masan_outbound_preview,
             db,
             warehouse_id=warehouse_id,
             content=content,
@@ -405,6 +409,37 @@ def export_masan_inbound_daily_capacity(
     try:
         content, filename = masan_inbound_service.export_daily_capacity_excel(
             db, warehouse_id
+        )
+    except ValueError as exc:
+        message = str(exc)
+        if "not found" in message.lower():
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail=message
+            ) from exc
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=message
+        ) from exc
+
+    return Response(
+        content=content,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+        },
+    )
+
+
+@router.post(
+    "/masan/inbound-orders/export",
+    dependencies=[Depends(require_permission("inbound:read"))],
+)
+def export_masan_inbound_orders_bulk(
+    db: DbSession,
+    body: MasanInboundBulkExportRequest,
+):
+    try:
+        content, filename = masan_inbound_service.export_inbound_orders_masan(
+            db, body.order_ids
         )
     except ValueError as exc:
         message = str(exc)

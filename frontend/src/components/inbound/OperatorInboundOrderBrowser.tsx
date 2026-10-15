@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect } from "react";
-import { useQueries } from "@tanstack/react-query";
-import { getInboundOrderDetailsApi } from "@/api/inboundOrder";
+import { useQuery } from "@tanstack/react-query";
+import { postInboundOperatorListSummaryApi } from "@/api/inboundOrder";
 import {
   ArrowLeftOutlined,
   CarOutlined,
@@ -12,6 +12,7 @@ import { SkuSearchSelect } from "@/components/shared/SkuSearchSelect";
 import { useGetInboundOrderDetails } from "@/hooks/useInboundOrder";
 import { useMasanInboundDetails } from "@/hooks/useMasanInbound";
 import type { InboundOrder, InboundOrderDetail } from "@/types/inboundOrder";
+import { formatOperatorSampleVehicle } from "@/utils/operatorOrderVehicleDisplay";
 import { toDisplayInteger } from "@/utils/number";
 import {
   operatorInboundOrderCodeClass,
@@ -173,13 +174,6 @@ function StatusBadge({
   );
 }
 
-function detailHasItemId(
-  detail: InboundOrderDetail,
-  itemId: number,
-): boolean {
-  return detailAllocations(detail).some((a) => a.item_id === itemId);
-}
-
 const detailColumns: ColumnsType<InboundOrderDetail> = [
   {
     title: "Sản phẩm",
@@ -248,6 +242,12 @@ const detailColumns: ColumnsType<InboundOrderDetail> = [
 const DETAIL_TABLE_CLASS =
   "[&_.ant-table]:text-base [&_.ant-table-thead_th]:!bg-[#EEF2FF] [&_.ant-table-thead_th]:!text-sm [&_.ant-table-tbody_td]:!py-3";
 
+export type InboundListFilterExportContext = {
+  visibleOrderIds: number[];
+  hasSkuFilter: boolean;
+  skuFilterLoading: boolean;
+};
+
 type OperatorInboundOrderBrowserProps = {
   /** Kho đang chọn — SkuSearchSelect cần `warehouse_id` khi gọi API sản phẩm. */
   warehouseId: number;
@@ -256,6 +256,8 @@ type OperatorInboundOrderBrowserProps = {
   error?: boolean;
   /** Đơn operator đang mở (double-click); dùng cho xuất Excel Masan ở panel cha. */
   onFocusedOrderIdChange?: (orderId: number | null) => void;
+  /** Danh sách đơn khớp lọc SKU (và list sau lọc ngày từ props.orders) — phục vụ xuất gom. */
+  onListFilterExportContext?: (ctx: InboundListFilterExportContext) => void;
   createdRange?: OrderCreatedAtRange;
   onCreatedRangeChange?: (value: OrderCreatedAtRange) => void;
 };
@@ -266,6 +268,7 @@ export default function OperatorInboundOrderBrowser({
   loading = false,
   error = false,
   onFocusedOrderIdChange,
+  onListFilterExportContext,
   createdRange = null,
   onCreatedRangeChange,
 }: OperatorInboundOrderBrowserProps) {
@@ -284,49 +287,71 @@ export default function OperatorInboundOrderBrowser({
   }, [selectedOrderId, onFocusedOrderIdChange]);
 
   const listAtRoot = selectedOrderId == null;
-  const listDetailQueries = useQueries({
-    queries: listAtRoot
-      ? orders.map((order) => ({
-          queryKey: ["inboundOrderDetails", order.order_code],
-          queryFn: () => getInboundOrderDetailsApi(order.order_code),
-          staleTime: 60_000,
-        }))
-      : [],
+  const orderIds = useMemo(() => orders.map((order) => order.id), [orders]);
+  const listSummaryQuery = useQuery({
+    queryKey: [
+      "inboundOperatorListSummary",
+      orderIds,
+      skuFilter?.itemId ?? null,
+    ],
+    queryFn: () =>
+      postInboundOperatorListSummaryApi({
+        order_ids: orderIds,
+        ...(skuFilter ? { item_id: skuFilter.itemId } : {}),
+      }),
+    enabled: listAtRoot && orderIds.length > 0,
+    staleTime: 60_000,
   });
 
-  const vehicleCountByOrderId = useMemo(() => {
-    const map = new Map<number, number>();
-    if (!listAtRoot) return map;
-    orders.forEach((order, index) => {
-      const details = listDetailQueries[index]?.data;
-      if (details) {
-        map.set(order.id, groupDetailsByVehicle(details).length);
-      }
-    });
+  const sampleVehicleByOrderId = useMemo(() => {
+    const map = new Map<number, string>();
+    const samples = listSummaryQuery.data?.sample_vehicle_by_order_id;
+    if (!samples) return map;
+    for (const [id, plate] of Object.entries(samples)) {
+      map.set(Number(id), plate);
+    }
     return map;
-  }, [listAtRoot, listDetailQueries, orders]);
+  }, [listSummaryQuery.data?.sample_vehicle_by_order_id]);
+
+  const hasMoreVehiclesByOrderId = useMemo(() => {
+    const map = new Map<number, boolean>();
+    const flags = listSummaryQuery.data?.has_more_vehicles_by_order_id;
+    if (!flags) return map;
+    for (const [id, hasMore] of Object.entries(flags)) {
+      map.set(Number(id), Boolean(hasMore));
+    }
+    return map;
+  }, [listSummaryQuery.data?.has_more_vehicles_by_order_id]);
 
   const skuFilterLoading =
-    listAtRoot &&
-    skuFilter != null &&
-    listDetailQueries.some((q) => q.isLoading);
+    listAtRoot && skuFilter != null && listSummaryQuery.isLoading;
 
   const visibleOrders = useMemo(() => {
     if (!listAtRoot || !skuFilter) return orders;
-    return orders.filter((order, index) => {
-      const details = listDetailQueries[index]?.data;
-      if (!details) return false;
-      return details.some((detail) =>
-        detailHasItemId(detail, skuFilter.itemId),
-      );
-    });
-  }, [listAtRoot, skuFilter, listDetailQueries, orders]);
+    const matching = new Set(listSummaryQuery.data?.order_ids_with_item ?? []);
+    if (listSummaryQuery.isLoading) return [];
+    return orders.filter((order) => matching.has(order.id));
+  }, [listAtRoot, skuFilter, listSummaryQuery.data, listSummaryQuery.isLoading, orders]);
 
-  const orderIndexById = useMemo(() => {
-    const map = new Map<number, number>();
-    orders.forEach((order, index) => map.set(order.id, index));
-    return map;
-  }, [orders]);
+  useEffect(() => {
+    if (!onListFilterExportContext) return;
+    if (!listAtRoot) return;
+    const idsForExport = skuFilter
+      ? visibleOrders.map((order) => order.id)
+      : orders.map((order) => order.id);
+    onListFilterExportContext({
+      visibleOrderIds: idsForExport,
+      hasSkuFilter: skuFilter != null,
+      skuFilterLoading: Boolean(skuFilterLoading),
+    });
+  }, [
+    listAtRoot,
+    orders,
+    visibleOrders,
+    skuFilter,
+    skuFilterLoading,
+    onListFilterExportContext,
+  ]);
 
   const orderDetailsQuery = useGetInboundOrderDetails(
     selectedOrder?.order_code,
@@ -581,10 +606,10 @@ export default function OperatorInboundOrderBrowser({
           </div>
         ) : (
           visibleOrders.map((order) => {
-              const index = orderIndexById.get(order.id) ?? 0;
               const tone = toneOf(order.status);
-              const vehicleCount = vehicleCountByOrderId.get(order.id);
-              const vehiclesLoading = listDetailQueries[index]?.isLoading;
+              const vehiclesLoading = listSummaryQuery.isLoading;
+              const samplePlate = sampleVehicleByOrderId.get(order.id);
+              const hasMoreVehicles = hasMoreVehiclesByOrderId.get(order.id) ?? false;
               return (
                 <button
                   key={order.id}
@@ -635,11 +660,11 @@ export default function OperatorInboundOrderBrowser({
                             operatorInboundOrderMetaClass(tier),
                           )}
                         >
-                          Số xe
+                          Biển số
                         </span>
                         <strong
                           className={cn(
-                            "mt-0.5 block font-black tabular-nums text-brand-dark",
+                            "mt-0.5 block truncate font-black text-brand-dark",
                             tier === "tv"
                               ? "text-lg"
                               : tier === "narrow"
@@ -649,9 +674,11 @@ export default function OperatorInboundOrderBrowser({
                         >
                           {vehiclesLoading
                             ? "…"
-                            : vehicleCount != null
-                              ? toDisplayInteger(vehicleCount)
-                              : "—"}
+                            : formatOperatorSampleVehicle(
+                                samplePlate,
+                                hasMoreVehicles,
+                                NO_VEHICLE_LABEL,
+                              )}
                         </strong>
                       </span>
                       <span>

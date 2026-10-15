@@ -166,7 +166,7 @@ export default function MasanVtPendingStockConfirmModal({
                   <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
                     <div>
                       <p className="text-xs font-semibold uppercase text-slate-400">
-                        Ô CC
+                        Vị trí lấy hàng
                       </p>
                       <p className="font-mono text-lg font-bold text-brand-dark">
                         {ccLabelForPendingRow(row)}

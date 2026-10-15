@@ -34,6 +34,18 @@ export interface InboundOrderListResponse {
   summary: OrderListSummary;
 }
 
+export interface InboundOperatorListSummaryRequest {
+  order_ids: number[];
+  item_id?: number;
+}
+
+export interface InboundOperatorListSummaryResponse {
+  vehicle_count_by_order_id: Record<number, number>;
+  sample_vehicle_by_order_id?: Record<number, string>;
+  has_more_vehicles_by_order_id?: Record<number, boolean>;
+  order_ids_with_item?: number[] | null;
+}
+
 /** Một SKU nằm trong vị trí đích của detail. */
 export interface InboundOrderAllocation {
   id: number;

@@ -35,8 +35,8 @@ import {
   mergePendingStockOverlays,
   pendingAllocationsByToLocationId,
   pendingAllocationsForCcLocationId,
-  pendingConfirmOverlayCodes,
 } from "@/utils/masanPendingStockOverlay";
+import { stripVtKeysFromOverlayLabels } from "@/utils/locationBin";
 import CcLocationLinesModal from "@/components/outbound/CcLocationLinesModal";
 import MasanCcPendingStockConfirmModal from "@/components/outbound/MasanCcPendingStockConfirmModal";
 import MasanCcPendingStockViewModal from "@/components/outbound/MasanCcPendingStockViewModal";
@@ -424,31 +424,17 @@ export default function SortingWaveStationBoard({
   );
 
   const mapOverlayLabels = useMemo(() => {
-    if (!masanCcZonePollEnabled) return stationOverlayLabels;
+    const stationForMap = stripVtKeysFromOverlayLabels(stationOverlayLabels);
+    if (!masanCcZonePollEnabled) return stationForMap;
     const pendingOverlays = buildPendingStockMapOverlays(
       pendingStockData,
       vtLocationCodeById,
       clickableLocationCodeById,
     );
-    return mergePendingStockOverlays(stationOverlayLabels, pendingOverlays);
+    return mergePendingStockOverlays(stationForMap, pendingOverlays);
   }, [
     masanCcZonePollEnabled,
     stationOverlayLabels,
-    pendingStockData,
-    vtLocationCodeById,
-    clickableLocationCodeById,
-  ]);
-
-  const mapPendingConfirmCodes = useMemo(() => {
-    if (!masanCcZonePollEnabled) return undefined;
-    const codes = pendingConfirmOverlayCodes(
-      pendingStockData,
-      vtLocationCodeById,
-      clickableLocationCodeById,
-    );
-    return codes.size > 0 ? codes : undefined;
-  }, [
-    masanCcZonePollEnabled,
     pendingStockData,
     vtLocationCodeById,
     clickableLocationCodeById,
@@ -861,7 +847,6 @@ export default function SortingWaveStationBoard({
             locationSubLabelByCode={
               warehouseId ? ccVehicleByCode : undefined
             }
-            pendingConfirmOverlayCodes={mapPendingConfirmCodes}
             interactiveCodes={clickableCodes}
             onBufferCellClick={handleStationCellClick}
             onBufferCellDoubleClick={

@@ -33,6 +33,7 @@ export interface ItemStockRow {
 export interface EmptyLocation {
   id: number;
   location_code: string;
+  location_name?: string | null;
   level: string | null;
   row: string | null;
   column: string | null;
@@ -138,7 +139,7 @@ export interface LocationStockLabel {
   display_status: string;
   product_sku: string | null;
   product_name: string | null;
-  /** Mã bin của location (warehouse_locations.bin) — đã chuẩn hóa theo type. */
+  /** Nhãn hiển thị (DB `location_name`, qua getLocationDisplayLabel). */
   bin: string | null;
   location_type?: string | null;
   quantity: number;

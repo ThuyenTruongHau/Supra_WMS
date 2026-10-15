@@ -20,6 +20,7 @@ import type {
 } from '@/types/warehouseLocation';
 import { ApiErrorResponse } from '@/types/apiError';
 import { getMockStockedLocatorCodes } from '@/utils/mockMapInventory';
+import { getLocationDisplayLabel } from '@/utils/locationBin';
 
 export const warehouseLocationsQueryKey = (warehouseId: number) =>
   ['warehouse_locations', warehouseId] as const;
@@ -49,6 +50,15 @@ export const useLocationByCodeMap = (warehouseId: number) => {
   const locationByCode = useMemo(() => {
     const map: Record<string, WarehouseLocation> = {};
     for (const loc of query.data?.locations ?? []) {
+      const displayLabel =
+        getLocationDisplayLabel(
+          {
+            location_name: loc.location_name,
+            location_code: loc.location_code,
+            bin_code: (loc as { bin_code?: string | null }).bin_code,
+          },
+          (loc as { location_type?: string | null }).location_type,
+        ) || null;
       map[loc.location_code] = {
         id: loc.id,
         location_code: loc.location_code,
@@ -60,7 +70,7 @@ export const useLocationByCodeMap = (warehouseId: number) => {
         level: loc.level ?? null,
         status: loc.status ?? null,
         is_active: true,
-        bin: (loc as any).bin_code ?? null,
+        bin: displayLabel,
         capacity: null,
         created_at: '',
         updated_at: '',
@@ -100,7 +110,15 @@ export const useLocationStockLabels = (warehouseId: number) => {
         display_status: cell.status,
         product_sku: cell.item_stock?.[0]?.sku ?? null,
         product_name: cell.item_stock?.[0]?.sku ?? null,
-        bin: cell.bin_code ?? null,
+        bin:
+          getLocationDisplayLabel(
+            {
+              location_name: cell.location_name,
+              location_code: cell.location_code,
+              bin_code: cell.bin_code,
+            },
+            null,
+          ) || null,
         location_type: null,
         quantity: qty,
         line_count: (cell.item_stock ?? []).length,

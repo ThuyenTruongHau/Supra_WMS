@@ -1,16 +1,20 @@
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime
 from io import BytesIO
 from pathlib import Path
 from typing import Any, Optional
 
-from openpyxl import Workbook, load_workbook
+from openpyxl import Workbook
+import re
+
+from app.modules.masan.masan_excel_io import load_masan_workbook
 from sqlalchemy import Integer, cast, func, or_
 from sqlalchemy.orm import Session, joinedload, selectinload
 from app.modules.warehouse.inbound_order.inbound_celery_task import accept_inbound_task_task
 from sqlalchemy import desc
 from app.core.config import settings
+from app.core.cache import cache_set, cache_get
 
 from app.modules.masan.masan_inbound_excel import (
     COLUMN_ALIASES,
@@ -40,14 +44,22 @@ from app.modules.warehouse.inbound_order.inbound_order_schema import (
 )
 from app.modules.warehouse.lot_number_utils import (
     apply_lot_display_fields,
+    coerce_masan_lot_cell,
+    format_lot_for_masan_excel,
     format_lot_number_display,
     format_lot_value_for_display,
+    normalize_stored_lot_part,
 )
 from app.modules.warehouse.inbound_order.inbound_order_service import (
     _build_detail_response,
 )
 from app.modules.warehouse.item.item_model import Item
-from app.modules.warehouse.item_stock.item_stock_model import ItemStock
+from app.modules.warehouse.item_stock.item_stock_model import (
+    ItemStock,
+    countable_stock_level_criterion,
+    positive_stock_quantity_criterion,
+)
+from app.modules.warehouse.location_map.location_display import location_display_label
 from app.modules.warehouse.location_map.location_model import Location
 from app.modules.warehouse.location_map.location_service import (
     location_ids_with_assigned_qr,
@@ -133,7 +145,7 @@ def _parse_quantity(raw: Any) -> tuple[int, Optional[str]]:
 
 
 def parse_masan_inbound_rows(content: bytes) -> list[dict[str, Any]]:
-    wb = load_workbook(BytesIO(content), data_only=True)
+    wb = load_masan_workbook(content, data_only=True)
     ws = wb.active
 
     header_row = [ws.cell(HEADER_ROW, c).value for c in range(1, ws.max_column + 1)]
@@ -167,7 +179,7 @@ def parse_masan_inbound_rows(content: bytes) -> list[dict[str, Any]]:
                 "nvt": _cell_value(row, col_map, "nvt", carry),
                 "sku": str(sku_raw).strip(),
                 "item_name": _direct(row, col_map, "item_name"),
-                "lot": _direct(row, col_map, "lot"),
+                "lot": coerce_masan_lot_cell(_direct(row, col_map, "lot")),
                 "lot_status": _direct(row, col_map, "lot_status"),
                 "quantity": quantity,
                 "quantity_error": qty_error,
@@ -193,7 +205,7 @@ def _build_line_item_details(row: dict[str, Any]) -> dict[str, Any]:
         "nvt": row.get("nvt"),
         "sku": row.get("sku"),
         "item_name": row.get("item_name"),
-        "lot": row.get("lot"),
+        "lot": coerce_masan_lot_cell(row.get("lot")),
         "lot_status": row.get("lot_status"),
         "pallet_count": row.get("pallet_count"),
         "storage_location": row.get("storage_location"),
@@ -419,11 +431,15 @@ def _build_export_row(
 
     sku = item.sku if item else _meta_value(meta, "sku", default="")
     item_name = item.name if item else _meta_value(meta, "item_name", default="")
-    lot = (
-        format_lot_number_display(stock.lot_number_from, stock.lot_number_to)
-        if stock
-        else _meta_value(meta, "lot", default="")
-    )
+    if stock:
+        lot = format_lot_for_masan_excel(
+            lot_number_from=stock.lot_number_from,
+            lot_number_to=stock.lot_number_to,
+        )
+    else:
+        lot = format_lot_for_masan_excel(
+            lot_number=str(_meta_value(meta, "lot", default="") or "") or None,
+        )
 
     warehouse_name = order.warehouse.name if order.warehouse else ""
     storage_location = (
@@ -476,16 +492,9 @@ def _build_export_workbook(rows: list[list[Any]]) -> bytes:
     return buffer.getvalue()
 
 
-def export_inbound_order_masan(db: Session, order_id: int) -> tuple[bytes, str]:
-    order = (
-        db.query(InboundOrder)
-        .options(joinedload(InboundOrder.warehouse))
-        .filter(InboundOrder.id == order_id)
-        .first()
-    )
-    if not order:
-        raise ValueError(f"Inbound order {order_id} not found")
-
+def _collect_inbound_export_rows(
+    db: Session, order: InboundOrder
+) -> list[list[Any]]:
     details = (
         db.query(InboundOrderDetail)
         .options(
@@ -502,11 +511,6 @@ def export_inbound_order_masan(db: Session, order_id: int) -> tuple[bytes, str]:
         .order_by(InboundOrderDetail.id)
         .all()
     )
-    if not details:
-        raise ValueError(
-            "Inbound order has no completed details to export"
-        )
-
     export_rows: list[list[Any]] = []
     for detail in details:
         allocations = sorted(detail.allocations, key=lambda a: a.id)
@@ -514,7 +518,20 @@ def export_inbound_order_masan(db: Session, order_id: int) -> tuple[bytes, str]:
             continue
         for allocation in allocations:
             export_rows.append(_build_export_row(order, detail, allocation))
+    return export_rows
 
+
+def export_inbound_order_masan(db: Session, order_id: int) -> tuple[bytes, str]:
+    order = (
+        db.query(InboundOrder)
+        .options(joinedload(InboundOrder.warehouse))
+        .filter(InboundOrder.id == order_id)
+        .first()
+    )
+    if not order:
+        raise ValueError(f"Inbound order {order_id} not found")
+
+    export_rows = _collect_inbound_export_rows(db, order)
     if not export_rows:
         raise ValueError(
             "Inbound order has no completed allocations to export"
@@ -522,6 +539,52 @@ def export_inbound_order_masan(db: Session, order_id: int) -> tuple[bytes, str]:
 
     content = _build_export_workbook(export_rows)
     filename = f"{order.order_code}_BaoCaoNhap.xlsx"
+    return content, filename
+
+
+_BULK_EXPORT_MAX_ORDERS = 100
+
+
+def export_inbound_orders_masan(
+    db: Session, order_ids: list[int]
+) -> tuple[bytes, str]:
+    unique_ids = list(dict.fromkeys(order_ids))
+    if not unique_ids:
+        raise ValueError("order_ids must not be empty")
+    if len(unique_ids) > _BULK_EXPORT_MAX_ORDERS:
+        raise ValueError(
+            f"At most {_BULK_EXPORT_MAX_ORDERS} orders per export request"
+        )
+
+    orders = (
+        db.query(InboundOrder)
+        .options(joinedload(InboundOrder.warehouse))
+        .filter(InboundOrder.id.in_(unique_ids))
+        .all()
+    )
+    order_by_id = {o.id: o for o in orders}
+    missing = [oid for oid in unique_ids if oid not in order_by_id]
+    if missing:
+        raise ValueError(
+            f"Inbound orders not found: {sorted(missing)}"
+        )
+
+    export_rows: list[list[Any]] = []
+    for oid in unique_ids:
+        export_rows.extend(_collect_inbound_export_rows(db, order_by_id[oid]))
+
+    if not export_rows:
+        raise ValueError(
+            "No completed inbound allocations to export for the selected orders"
+        )
+
+    content = _build_export_workbook(export_rows)
+    first = order_by_id[unique_ids[0]]
+    warehouse_label = (
+        first.warehouse.code if first.warehouse and first.warehouse.code else str(first.warehouse_id)
+    )
+    stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+    filename = f"BaoCaoNhap_{warehouse_label}_{len(unique_ids)}don_{stamp}.xlsx"
     return content, filename
 
 
@@ -548,7 +611,7 @@ def _daily_capacity_template_path() -> Path:
     raise ValueError("Daily capacity Excel template not found")
 
 
-def _location_name_sort_key():
+def _storage_locator_sql_sort_key():
     # Locator labels: G001..G420 (numeric suffix after single-letter prefix).
     return cast(func.substring(Location.location_name, 2), Integer)
 
@@ -556,6 +619,58 @@ def _location_name_sort_key():
 def _excel_location_status(db_status: str | None) -> str:
     status = (db_status or "empty").strip()
     return "Trống" if status == "empty" else "Có hàng"
+
+
+def _load_storage_stocks_by_location(
+    db: Session, location_ids: list[int]
+) -> dict[int, list[ItemStock]]:
+    if not location_ids:
+        return {}
+    stocks = (
+        db.query(ItemStock)
+        .options(joinedload(ItemStock.item))
+        .filter(
+            ItemStock.location_id.in_(location_ids),
+            ItemStock.is_active.is_(True),
+            ItemStock.status == "available",
+            ItemStock.available_quantity > 0,
+            countable_stock_level_criterion(),
+            positive_stock_quantity_criterion(),
+        )
+        .order_by(ItemStock.location_id.asc(), ItemStock.id.asc())
+        .all()
+    )
+    by_location: dict[int, list[ItemStock]] = {}
+    for stock in stocks:
+        if stock.location_id is None:
+            continue
+        by_location.setdefault(stock.location_id, []).append(stock)
+    return by_location
+
+
+def _format_locator_stock_cells(
+    stocks: list[ItemStock],
+) -> tuple[Optional[str], Optional[str], Optional[str]]:
+    if not stocks:
+        return None, None, None
+    sku_parts: list[str] = []
+    qty_parts: list[str] = []
+    lot_parts: list[str] = []
+    for stock in stocks:
+        item = stock.item
+        sku_parts.append(item.sku if item else "")
+        qty_parts.append(str(int(stock.available_quantity)))
+        lot_from = normalize_stored_lot_part(stock.lot_number_from)
+        lot_to = normalize_stored_lot_part(stock.lot_number_to)
+        lot_parts.append(
+            format_lot_for_masan_excel(
+                lot_number_from=lot_from,
+                lot_number_to=lot_to,
+            )
+            or ""
+        )
+    sep = "\n"
+    return sep.join(sku_parts), sep.join(qty_parts), sep.join(lot_parts)
 
 
 def _list_storage_locations_for_daily_capacity(
@@ -574,7 +689,7 @@ def _list_storage_locations_for_daily_capacity(
             Zone.code.in_(zone_codes),
         )
         .order_by(
-            _location_name_sort_key().asc().nulls_last(),
+            _storage_locator_sql_sort_key().asc().nulls_last(),
             Location.location_name.asc(),
             Location.id.asc(),
         )
@@ -593,9 +708,12 @@ def _list_storage_locations_for_daily_capacity(
     return rows
 
 
-def _build_daily_capacity_workbook(location_rows: list[tuple[Location, str]]) -> bytes:
+def _build_daily_capacity_workbook(
+    location_rows: list[tuple[Location, str]],
+    stock_by_location: dict[int, list[ItemStock]],
+) -> bytes:
     template_path = _daily_capacity_template_path()
-    wb = load_workbook(template_path)
+    wb = load_masan_workbook(template_path)
     ws = wb.active
 
     total = len(location_rows)
@@ -641,6 +759,9 @@ def _build_daily_capacity_workbook(location_rows: list[tuple[Location, str]]) ->
 
     ws.cell(row=_DAILY_CAPACITY_TABLE_HEADER_ROW, column=1, value="Locator")
     ws.cell(row=_DAILY_CAPACITY_TABLE_HEADER_ROW, column=2, value="Trạng thái")
+    ws.cell(row=_DAILY_CAPACITY_TABLE_HEADER_ROW, column=3, value="Mã hàng")
+    ws.cell(row=_DAILY_CAPACITY_TABLE_HEADER_ROW, column=4, value="Số lượng")
+    ws.cell(row=_DAILY_CAPACITY_TABLE_HEADER_ROW, column=5, value="LOT")
 
     last_data_row = _DAILY_CAPACITY_DATA_START_ROW - 1
     for offset, (loc, status) in enumerate(location_rows):
@@ -648,6 +769,14 @@ def _build_daily_capacity_workbook(location_rows: list[tuple[Location, str]]) ->
         last_data_row = row_idx
         ws.cell(row=row_idx, column=1, value=loc.location_name or "")
         ws.cell(row=row_idx, column=2, value=_excel_location_status(status))
+        sku_cell, qty_cell, lot_cell = _format_locator_stock_cells(
+            stock_by_location.get(loc.id, [])
+        )
+        if sku_cell:
+            ws.cell(row=row_idx, column=3, value=sku_cell)
+            ws.cell(row=row_idx, column=4, value=qty_cell)
+            if lot_cell:
+                ws.cell(row=row_idx, column=5, value=str(lot_cell))
 
     style_daily_capacity_worksheet(
         ws,
@@ -668,7 +797,9 @@ def export_daily_capacity_excel(db: Session, warehouse_id: int) -> tuple[bytes, 
         db.query(Warehouse).filter(Warehouse.id == warehouse_id).first()
     )
     location_rows = _list_storage_locations_for_daily_capacity(db, warehouse_id)
-    content = _build_daily_capacity_workbook(location_rows)
+    location_ids = [loc.id for loc, _ in location_rows]
+    stock_by_location = _load_storage_stocks_by_location(db, location_ids)
+    content = _build_daily_capacity_workbook(location_rows, stock_by_location)
     warehouse_label = (warehouse.code if warehouse and warehouse.code else None) or str(
         warehouse_id
     )
@@ -753,7 +884,9 @@ def _location_name_sort_key(location_name: str | None) -> tuple[int, str]:
 def caller_masan_inbound_order(
     db: Session, location_ids: list[int], *, assign_robot_id: str | None = None
 ) -> dict[str, Any]:
+    DEFAULT_GROUP = [0, 3, 2, 1]
     list_details: list[InboundOrderDetail] = []
+    group = {}
     for location_id in location_ids:
         detail = (
             db.query(InboundOrderDetail)
@@ -765,16 +898,57 @@ def caller_masan_inbound_order(
             .first()
         )
         if detail:
-            list_details.append(detail)
+            name = (
+                db.query(Location.location_name)
+                .filter(Location.id == location_id)
+                .scalar()
+            )
+            warehouse_id = detail.inbound_order.warehouse_id
+            name = (name or "").strip()
+            m = re.search(r"(\d{2})$", name)
+            pos = m.group(1) if m else ""
+            if not pos:
+                continue  
+            point = int(pos) % 4
+            group.setdefault(point, []).append(detail.id)
 
-    list_details.sort(
-        key=lambda d: _location_name_sort_key(
-            getattr(getattr(d, "from_location", None), "location_name", None)
-        ),
-        reverse=True,
-    )
+    for point in DEFAULT_GROUP:
+        list_details.extend(group.get(point, []))
 
-    detail_ids = [d.id for d in list_details]
+    if list_details:
+        result = _run_inbound_task(db, warehouse_id, list_details, assign_robot_id=assign_robot_id)
+        return result
+    # detail_ids = list_details[:2]
+    # list_details = list_details[2:]
+    # cache_data = {
+    #     "assign_robot_id": assign_robot_id,
+    #     "list_details": list_details,
+    # }
+    # cache_set(f"inbound:caller_masan_inbound_order:{warehouse_id}", cache_data, -1)
+
+    # job_ids = [
+    #     accept_inbound_task_task.apply_async(
+    #         kwargs={
+    #             "detail_id": detail_id,
+    #             **({"assign_robot_id": assign_robot_id} if assign_robot_id else {}),
+    #         },
+    #     ).id
+    #     for detail_id in detail_ids
+    # ]
+    # return {
+    #     "queued": len(detail_ids),
+    #     "detail_ids": detail_ids,
+    #     "job_ids": job_ids,
+    # }
+
+def _run_inbound_task(db: Session, warehouse_id: int, list_details: list[int], *, assign_robot_id: str | None = None, number_sending: int = 2) -> None:
+    detail_ids = list_details[:number_sending]
+    list_details = list_details[number_sending:]
+    cache_data = {
+        "assign_robot_id": assign_robot_id,
+        "list_details": list_details,
+    }
+    cache_set(f"inbound:caller_masan_inbound_order:{warehouse_id}", cache_data, -1)
 
     job_ids = [
         accept_inbound_task_task.apply_async(
@@ -791,16 +965,6 @@ def caller_masan_inbound_order(
         "job_ids": job_ids,
     }
 
-
-def _location_display_label(location: Location | None) -> str | None:
-    if location is None:
-        return None
-    return (
-        (location.location_name or "").strip()
-        or (location.location_code or "").strip()
-        or (location.bin_code or "").strip()
-        or None
-    )
 
 
 def _product_fields_from_detail(
@@ -873,8 +1037,8 @@ def list_inbound_details_awaiting_robot(
                 product_sku=sku,
                 product_name=name,
                 lot_number=lot,
-                from_location=_location_display_label(detail.from_location),
-                to_location=_location_display_label(detail.to_location),
+                from_location=location_display_label(detail.from_location),
+                to_location=location_display_label(detail.to_location),
                 from_location_code=(
                     detail.from_location.location_code
                     if detail.from_location

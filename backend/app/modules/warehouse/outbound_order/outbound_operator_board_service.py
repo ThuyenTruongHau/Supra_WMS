@@ -7,6 +7,7 @@ from typing import Any, Optional
 from sqlalchemy.orm import Session, joinedload
 
 from app.modules.warehouse.outbound_order import outbound_order_service
+from app.modules.warehouse.lot_number_utils import format_lot_value_for_display
 from app.modules.warehouse.outbound_order.outbound_order_model import (
     OutboundOrder,
     OutboundOrderDetail,
@@ -34,6 +35,18 @@ def _meta_str(meta: dict[str, Any], *keys: str, default: str = "") -> str:
 def normalize_vehicle(meta: dict[str, Any]) -> str:
     value = _meta_str(meta, "vehicle_no", "vehicle_number", default="")
     return value or VEHICLE_SENTINEL
+
+
+def sample_vehicle_from_set(vehicles: set[str]) -> tuple[Optional[str], bool]:
+    """First plate for list UI; True when more than one distinct plate."""
+    if not vehicles:
+        return None, False
+    ordered = sorted(v for v in vehicles if v != VEHICLE_SENTINEL)
+    if ordered:
+        return ordered[0], len(ordered) > 1
+    if VEHICLE_SENTINEL in vehicles:
+        return VEHICLE_SENTINEL, False
+    return None, False
 
 
 def normalize_customer(meta: dict[str, Any]) -> str:
@@ -151,6 +164,10 @@ def detail_to_board_line(detail: OutboundOrderDetail) -> dict[str, Any]:
     sku = meta.get("sku")
     if (sku is None or str(sku).strip() == "") and item is not None:
         sku = item.sku
+    raw_lot = meta.get("lot_number")
+    lot_display = None
+    if raw_lot is not None and str(raw_lot).strip() != "":
+        lot_display = format_lot_value_for_display(str(raw_lot).strip())
     return {
         "detail_id": detail.id,
         "item_id": detail.item_id,
@@ -161,7 +178,7 @@ def detail_to_board_line(detail: OutboundOrderDetail) -> dict[str, Any]:
         "vehicle_no": normalize_vehicle(meta),
         "customer_name": normalize_customer(meta),
         "trip": normalize_trip(meta),
-        "lot_number": meta.get("lot_number"),
+        "lot_number": lot_display,
         "pallet_count": meta.get("pallet_count"),
     }
 
@@ -222,6 +239,8 @@ def list_operator_board_orders(
     for order in orders:
         agg = stats.get(order.id, _new_progress_bucket())
         progress = _progress_row_fields(agg)
+        pending_set = pending_vehicles.get(order.id, set())
+        sample_vehicle_no, has_more_vehicles = sample_vehicle_from_set(pending_set)
         rows.append(
             {
                 "id": order.id,
@@ -230,9 +249,11 @@ def list_operator_board_orders(
                 "created_at": order.created_at,
                 "open_detail_count": progress["pending_detail_count"],
                 "open_line_quantity": progress["pending_quantity"],
-                "vehicle_count": len(pending_vehicles.get(order.id, set())),
+                "vehicle_count": len(pending_set),
                 **progress,
                 "total_vehicle_count": len(all_vehicles.get(order.id, set())),
+                "sample_vehicle_no": sample_vehicle_no,
+                "has_more_vehicles": has_more_vehicles,
             }
         )
     return rows, total
@@ -374,8 +395,7 @@ def list_operator_board_lines(
         ):
             continue
         _accumulate_progress(bucket, detail)
-        if is_detail_pending(detail.status):
-            lines.append(detail_to_board_line(detail))
+        lines.append(detail_to_board_line(detail))
 
     summary = _progress_row_fields(bucket)
     return lines, summary

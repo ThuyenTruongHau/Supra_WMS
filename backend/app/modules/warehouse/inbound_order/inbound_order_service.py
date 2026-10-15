@@ -1,3 +1,4 @@
+from collections import defaultdict
 from datetime import datetime
 from typing import Optional
 import uuid
@@ -30,6 +31,7 @@ from app.modules.warehouse.inbound_order.inbound_order_schema import (
     InboundOrderDetailUpdate,
     InboundOrderAllocationUpdate,
     InboundOrderListSummary,
+    InboundOperatorListSummaryResponse,
     SuggestAdditionalResponse,
     InboundExecuteDetailResult,
     InboundCallerResponse,
@@ -93,27 +95,27 @@ def suggest_allocation_inbound(db: Session, body: InboundSuggestAllocation):
     if reversed_location_ids:
         query = query.filter(Location.id.notin_(reversed_location_ids))
 
-    # empty_locations = (
-    #     query
-    #     .order_by(
-    #         cast(Location.row, Integer).nulls_last(),
-    #         cast(Location.column, Integer).nulls_last(),
-    #         cast(Location.level, Integer).nulls_last(),
-    #         Location.id,
-    #     )
-    #     .limit(needed)
-    #     .all()
-    # )
-
     empty_locations = (
         query
         .order_by(
-            Location.location_name.desc().nulls_last(),
-            Location.id.desc(),  # tie-break ổn định
+            cast(Location.row, Integer).nulls_last(),
+            cast(Location.column, Integer).nulls_last(),
+            cast(Location.level, Integer).nulls_last(),
+            Location.id,
         )
         .limit(needed)
         .all()
     )
+
+    # empty_locations = (
+    #     query
+    #     .order_by(
+    #         Location.location_name.desc().nulls_last(),
+    #         Location.id.desc(),  # tie-break ổn định
+    #     )
+    #     .limit(needed)
+    #     .all()
+    # )
 
     if len(empty_locations) < needed:
         raise ValueError(
@@ -812,6 +814,63 @@ def _build_detail_response(detail: InboundOrderDetail) -> InboundOrderDetailResp
             _build_allocation_response(allocation)
             for allocation in sorted(detail.allocations, key=lambda a: a.id)
         ],
+    )
+
+
+def inbound_operator_list_summary(
+    db: Session,
+    *,
+    order_ids: list[int],
+    item_id: Optional[int] = None,
+) -> InboundOperatorListSummaryResponse:
+    unique_ids = list(dict.fromkeys(order_ids))
+    vehicle_keys: dict[int, set[str]] = defaultdict(set)
+
+    detail_rows = (
+        db.query(InboundOrderDetail.inbound_order_id, InboundOrderDetail.details)
+        .filter(InboundOrderDetail.inbound_order_id.in_(unique_ids))
+        .all()
+    )
+    for order_id, details in detail_rows:
+        raw = (details or {}).get("vehicle_no")
+        if isinstance(raw, str) and raw.strip():
+            vehicle_keys[order_id].add(raw.strip())
+        else:
+            vehicle_keys[order_id].add("")
+
+    counts = {oid: len(vehicle_keys[oid]) for oid in unique_ids}
+    sample_vehicle_by_order_id: dict[int, str] = {}
+    has_more_vehicles_by_order_id: dict[int, bool] = {}
+    for oid in unique_ids:
+        plates = sorted(k for k in vehicle_keys[oid] if k)
+        if plates:
+            sample_vehicle_by_order_id[oid] = plates[0]
+            has_more_vehicles_by_order_id[oid] = len(plates) > 1
+        elif "" in vehicle_keys[oid]:
+            sample_vehicle_by_order_id[oid] = ""
+            has_more_vehicles_by_order_id[oid] = False
+
+    order_ids_with_item: Optional[list[int]] = None
+    if item_id is not None:
+        matched_rows = (
+            db.query(InboundOrderDetail.inbound_order_id)
+            .join(
+                InboundOrderAllocation,
+                InboundOrderAllocation.inbound_order_detail_id == InboundOrderDetail.id,
+            )
+            .join(ItemStock, ItemStock.id == InboundOrderAllocation.item_stock_id)
+            .filter(InboundOrderDetail.inbound_order_id.in_(unique_ids))
+            .filter(ItemStock.item_id == item_id)
+            .distinct()
+            .all()
+        )
+        order_ids_with_item = [int(row[0]) for row in matched_rows]
+
+    return InboundOperatorListSummaryResponse(
+        vehicle_count_by_order_id=counts,
+        sample_vehicle_by_order_id=sample_vehicle_by_order_id,
+        has_more_vehicles_by_order_id=has_more_vehicles_by_order_id,
+        order_ids_with_item=order_ids_with_item,
     )
 
 

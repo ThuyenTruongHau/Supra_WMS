@@ -42,7 +42,9 @@ import UnassignInboundBufferModal from "@/components/inbound/UnassignInboundBuff
 import OperatorMapCanvas, {
   type BufferCellClickPayload,
 } from "@/components/warehouse/OperatorMapCanvas";
-import OperatorInboundOrderBrowser from "@/components/inbound/OperatorInboundOrderBrowser";
+import OperatorInboundOrderBrowser, {
+  type InboundListFilterExportContext,
+} from "@/components/inbound/OperatorInboundOrderBrowser";
 import DirectOutboundFromInboundBoard from "@/components/inbound/DirectOutboundFromInboundBoard";
 import InboundLocationInfoModal from "@/components/inbound/InboundLocationInfoModal";
 import WarehouseViewModal from "@/components/inbound/WarehouseViewModal";
@@ -50,7 +52,11 @@ import AssignedRobotCallButton from "@/components/inbound/AssignedRobotCallButto
 import { RobotStatusPanel } from "@/components/layout/OperatorStatusMetricPanels";
 import { useRobotData } from "@/hooks/useRobotData";
 import { buildRobotStatusRows, type InboundRobot } from "@/utils/robotStatus";
-import { clearMasanInboundZoneApi, exportInboundOrderMasanApi } from "@/api/masan";
+import {
+  clearMasanInboundZoneApi,
+  exportInboundOrderMasanApi,
+  exportInboundOrdersMasanBulkApi,
+} from "@/api/masan";
 import { useCallerMasanInbound } from "@/hooks/useMasanInbound";
 import {
   useInboundBufferLocations,
@@ -68,6 +74,7 @@ import {
 } from "@/api/inboundOperator";
 import { exportInboundDailyCapacityApi } from "@/api/masan";
 import {
+  oldestIncompleteInboundQueryKey,
   useInboundAssignedDetails,
   useInboundList,
   useOldestIncompleteInbound,
@@ -79,6 +86,7 @@ import type {
   MasanCreatePayload,
 } from "@/types/inbound";
 import { getApiErrorDetail } from "@/types/apiError";
+import { collectMasanExcelLotErrors } from "@/utils/masanExcelLot";
 import { SOURCE_TABS, type SourceTabKey } from "@/data/mockOperatorInbound";
 import { toDisplayInteger } from "@/utils/number";
 import { columnCodesEqual } from "@/utils/mapTapGesture";
@@ -134,9 +142,11 @@ function OperatorInboundPageContent({ warehouseId }: { warehouseId: number }) {
   );
 
   const { data } = useOldestIncompleteInbound(warehouseId);
-  const { data: inboundOrders = [],
+  const {
+    data: inboundOrders = [],
     isLoading: inboundOrdersLoading,
     isError: inboundOrdersError,
+    refetch: refetchInboundList,
   } = useInboundList(warehouseId, orderCreatedAtParams);
   const incompleteOrderIds = useMemo(
     () =>
@@ -197,6 +207,39 @@ function OperatorInboundPageContent({ warehouseId }: { warehouseId: number }) {
   const [focusedInboundOrderId, setFocusedInboundOrderId] = useState<
     number | null
   >(null);
+  const [listFilterExportContext, setListFilterExportContext] =
+    useState<InboundListFilterExportContext>({
+      visibleOrderIds: [],
+      hasSkuFilter: false,
+      skuFilterLoading: false,
+    });
+
+  const handleListFilterExportContext = useCallback(
+    (ctx: InboundListFilterExportContext) => {
+      setListFilterExportContext(ctx);
+    },
+    [],
+  );
+
+  const hasActiveInboundFilters =
+    orderCreatedRange != null || listFilterExportContext.hasSkuFilter;
+
+  const exportReportDisabled =
+    isExportingDetailReport ||
+    (hasActiveInboundFilters
+      ? listFilterExportContext.visibleOrderIds.length === 0 ||
+        listFilterExportContext.skuFilterLoading
+      : inboundOrders.length === 0);
+
+  const exportReportDisabledTitle = hasActiveInboundFilters
+    ? listFilterExportContext.skuFilterLoading
+      ? "Đang lọc theo mã hàng..."
+      : listFilterExportContext.visibleOrderIds.length === 0
+        ? "Không có đơn khớp bộ lọc"
+        : undefined
+    : inboundOrders.length === 0
+      ? "Không có đơn nhập"
+      : undefined;
 
   const callerMutation = useCallerMasanInbound();
   const queryClient = useQueryClient();
@@ -273,6 +316,25 @@ function OperatorInboundPageContent({ warehouseId }: { warehouseId: number }) {
       formData.append('inbound_type', 'auto');
 
       const parseResult = await parseMasanInboundExcelApi(formData);
+
+      const lotErrors = collectMasanExcelLotErrors(parseResult.preview_rows);
+      if (lotErrors.length > 0) {
+        Modal.error({
+          title: "LOT không hợp lệ (DDMMYY 6 chữ số)",
+          width: OPERATOR_DESKTOP.modal.sm,
+          destroyOnHidden: true,
+          content: (
+            <ul
+              className={`mt-2 ${operatorDesktopClass.listMax64} list-disc space-y-1 overflow-y-auto pl-5 text-sm`}
+            >
+              {lotErrors.map((line) => (
+                <li key={line}>{line}</li>
+              ))}
+            </ul>
+          ),
+        });
+        return;
+      }
 
       const errors = parseResult.preview_rows.filter((r: any) => r.error !== null);
       if (errors.length > 0) {
@@ -510,8 +572,14 @@ function OperatorInboundPageContent({ warehouseId }: { warehouseId: number }) {
       message.success("Import đơn nhập Masan thành công!");
       setIsMasanPreviewOpen(false);
       resetImportState();
-      queryClient.invalidateQueries({ queryKey: ["inbound-orders"] });
-      queryClient.invalidateQueries({ queryKey: ["inbound", "oldest-incomplete"] });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["inboundOrders"] }),
+        queryClient.invalidateQueries({ queryKey: ["inbound_orders"] }),
+        queryClient.invalidateQueries({
+          queryKey: oldestIncompleteInboundQueryKey(warehouseId),
+        }),
+      ]);
+      await refetchInboundList();
     } catch (err: unknown) {
       message.error(getApiErrorDetail(err, "Không thể tạo đơn nhập từ file Excel"));
     } finally {
@@ -569,16 +637,37 @@ function OperatorInboundPageContent({ warehouseId }: { warehouseId: number }) {
   };
 
   const handleExportDetailReport = async () => {
-    const exportOrderId =
-      focusedInboundOrderId ?? inboundOrders[0]?.id ?? null;
-    if (exportOrderId == null) {
-      message.warning("Không có đơn nhập nào để xuất báo cáo");
-      return;
-    }
-
     setIsExportingDetailReport(true);
     try {
       message.loading({ content: "Đang xuất Excel...", key: "masan-inbound-export" });
+
+      if (hasActiveInboundFilters) {
+        const orderIds = listFilterExportContext.visibleOrderIds;
+        if (orderIds.length === 0) {
+          message.warning({
+            content: "Không có đơn khớp bộ lọc để xuất báo cáo",
+            key: "masan-inbound-export",
+          });
+          return;
+        }
+        await exportInboundOrdersMasanBulkApi(orderIds);
+        message.success({
+          content: `Đã tải báo cáo nhập Masan (${orderIds.length} đơn)`,
+          key: "masan-inbound-export",
+        });
+        return;
+      }
+
+      const exportOrderId =
+        focusedInboundOrderId ?? inboundOrders[0]?.id ?? null;
+      if (exportOrderId == null) {
+        message.warning({
+          content: "Không có đơn nhập nào để xuất báo cáo",
+          key: "masan-inbound-export",
+        });
+        return;
+      }
+
       await exportInboundOrderMasanApi(exportOrderId);
       const orderCode =
         inboundOrders.find((o) => o.id === exportOrderId)?.order_code ??
@@ -1067,6 +1156,7 @@ function OperatorInboundPageContent({ warehouseId }: { warehouseId: number }) {
                       loading={inboundOrdersLoading}
                       error={inboundOrdersError}
                       onFocusedOrderIdChange={setFocusedInboundOrderId}
+                      onListFilterExportContext={handleListFilterExportContext}
                       createdRange={orderCreatedRange}
                       onCreatedRangeChange={setOrderCreatedRange}
                     />
@@ -1099,7 +1189,8 @@ function OperatorInboundPageContent({ warehouseId }: { warehouseId: number }) {
                   variant="secondary"
                   icon={<FileExcelOutlined />}
                   loading={isExportingDetailReport}
-                  disabled={inboundOrders.length === 0}
+                  disabled={exportReportDisabled}
+                  title={exportReportDisabledTitle}
                   onClick={() => void handleExportDetailReport()}
                   className="!h-10 !w-full justify-center !text-sm disabled:!border-stripe-hairline disabled:!bg-white disabled:!text-slate-400 disabled:!opacity-100"
                 >

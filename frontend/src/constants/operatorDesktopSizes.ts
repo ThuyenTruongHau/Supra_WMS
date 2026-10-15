@@ -77,7 +77,7 @@ export const OPERATOR_DESKTOP = {
 export const OPERATOR_INBOUND_MAP_TUNING = {
   fitPaddingRatio: 0.02,
   fitScaleFactor: 1,
-  fillRatio: 0.88,
+  fillRatio: 0.68,
   minGapRatio: 0.08,
   titleBandRatio: 0.22,
   /** Phóng chữ label trong ô map operator (chỉ trang user). */
@@ -115,7 +115,10 @@ export const OPERATOR_WAVE_MAP_TUNING = {
   fillRatio: 0.86,
   minGapRatio: 0.1,
   titleBandRatio: 0.26,
-  labelTextScale: 1.70,
+  labelTextScale: 1.7,
+  /** CC: cao thêm ~10%, không đổi width. */
+  ccCellHeightBoost: 1.1,
+  ccLabelTextScale: 1.88,
 } as const
 
 /**

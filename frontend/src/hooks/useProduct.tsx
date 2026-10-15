@@ -1,6 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
-  getProductsByZoneIdApi,
   getProductByIdApi,
   deleteProductApi,
   createProductApi,
@@ -8,6 +7,7 @@ import {
   importProductsApi,
   getProductImportJobApi,
 } from "@/api/product";
+import { listItemsApi } from "@/api/item";
 import {
   Product,
   CreateProductInput,
@@ -16,6 +16,23 @@ import {
   ProductImportJobAccepted,
   ProductImportJobStatus,
 } from "@/types/product";
+import type { Item } from "@/types/item";
+
+function itemToProduct(item: Item): Product {
+  return {
+    id: item.id,
+    sku: item.sku,
+    name: item.name,
+    lot: "",
+    base_unit: item.base_unit,
+    quantity: item.quantity,
+    zone_id: item.warehouse_id,
+    details: item.details,
+    is_active: item.is_active,
+    created_at: item.created_at,
+    updated_at: item.updated_at,
+  };
+}
 import { AxiosError } from "axios";
 import { ApiErrorResponse } from "@/types/apiError";
 
@@ -24,8 +41,13 @@ export const useProduct = (warehouseId: number) => {
   return useQuery<Product[], Error>({
     queryKey: ["product_by_zone", warehouseId],
     queryFn: async () => {
-      const res = await getProductsByZoneIdApi(warehouseId);
-      return res.products;
+      const res = await listItemsApi({
+        warehouse_id: warehouseId,
+        page: 1,
+        page_size: 100,
+        is_active: true,
+      });
+      return res.items.map(itemToProduct);
     },
     enabled: warehouseId > 0,
     staleTime: 30 * 1000,

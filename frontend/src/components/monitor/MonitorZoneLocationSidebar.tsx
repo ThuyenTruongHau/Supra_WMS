@@ -4,110 +4,181 @@ import type { MasanSortingZonePendingStockResponse } from "@/types/masan";
 import {
   buildMonitorPendingStockSidebar,
   formatSidebarCcLabel,
+  formatSidebarLocator,
   formatSidebarPickQty,
-  formatSidebarPickSku,
+  summarizeSkusForVtRows,
 } from "@/utils/monitorPendingStockSidebar";
+import {
+  monitorSidebarType,
+  useOperatorViewportTier,
+} from "@/utils/operatorViewportTier";
 
 type Props = {
   zoneTitle: string;
   pendingStock: MasanSortingZonePendingStockResponse | undefined;
   pendingStockLoading: boolean;
   vtLocationCodeById?: Map<number, string>;
+  vtLocationDisplayLabelById?: Map<number, string>;
   ccLocationIdToCode?: Map<number, string>;
+  ccLocationDisplayLabelById?: Map<number, string>;
+  /** Ô VT đang chọn trên map — chỉ hiện block CC cho VT này. */
+  selectedVtLocationId?: number | null;
+  /** CC đã gán biển số — dòng không thuộc tập này coi như không chia tại ô đó. */
+  assignedCcCodes?: Set<string>;
+  onClearVtSelection?: () => void;
   className?: string;
 };
 
 /**
- * Hiển thị pending-stock gom theo VT (to_location_id); mỗi dòng kèm nhãn CC.
+ * Pending-stock gom theo đích VT; mỗi dòng nguồn CC + mã lấy.
  */
 export default function MonitorZoneLocationSidebar({
   zoneTitle,
   pendingStock,
   pendingStockLoading,
   vtLocationCodeById,
+  vtLocationDisplayLabelById,
   ccLocationIdToCode,
+  ccLocationDisplayLabelById,
+  selectedVtLocationId = null,
+  assignedCcCodes,
+  onClearVtSelection,
   className,
 }: Props) {
-  const sections = useMemo(
+  const allSections = useMemo(
     () =>
       buildMonitorPendingStockSidebar(
         pendingStock,
         vtLocationCodeById,
         ccLocationIdToCode,
+        vtLocationDisplayLabelById,
+        ccLocationDisplayLabelById,
       ),
-    [pendingStock, vtLocationCodeById, ccLocationIdToCode],
+    [
+      pendingStock,
+      vtLocationCodeById,
+      ccLocationIdToCode,
+      vtLocationDisplayLabelById,
+      ccLocationDisplayLabelById,
+    ],
   );
 
+  const sections = useMemo(() => {
+    let list = allSections;
+    if (selectedVtLocationId != null) {
+      list = list.filter(
+        (block) => block.vtLocationId === selectedVtLocationId,
+      );
+    }
+    if (assignedCcCodes && assignedCcCodes.size > 0) {
+      list = list
+        .map((block) => {
+          const pickRows = block.pickRows.filter((row) => {
+            const code = row.ccLocationCode?.trim();
+            return code ? assignedCcCodes.has(code) : false;
+          });
+          return {
+            ...block,
+            pickRows,
+            stockSummary: summarizeSkusForVtRows(pickRows),
+          };
+        })
+        .filter((block) => block.pickRows.length > 0);
+    }
+    return list;
+  }, [allSections, selectedVtLocationId, assignedCcCodes]);
+
   const loading = pendingStockLoading && sections.length === 0;
+  const viewportTier = useOperatorViewportTier();
+  const type = monitorSidebarType(viewportTier);
 
   return (
     <aside
       className={cn(
-        "flex h-full min-h-0 w-[min(100%,20rem)] shrink-0 flex-col border-l border-stripe-hairline bg-panel",
+        "flex h-full min-h-0 w-[40%] max-w-[40%] shrink-0 flex-col border-l border-stripe-hairline bg-panel",
         className,
       )}
     >
-      <div className="border-b border-stripe-hairline px-3 py-2.5">
-        <h2 className="text-sm font-bold text-brand-dark">{zoneTitle}</h2>
-        <p className="text-[11px] text-slate-500">
-          Hàng chờ lấy theo VT (double-click ô VT để xác nhận)
+      <div className={cn("border-b border-stripe-hairline", type.shellHeader)}>
+        <h2 className={type.zoneTitle}>{zoneTitle}</h2>
+        <p className={type.hint}>
+          {selectedVtLocationId != null
+            ? "Các ô CC cần lấy hàng cho VT đang chọn."
+            : "Click ô VT trên bản đồ để xem CC nguồn; click lại VT để bỏ lọc."}
         </p>
+        {selectedVtLocationId != null && onClearVtSelection ? (
+          <button
+            type="button"
+            onClick={onClearVtSelection}
+            className="mt-2 text-sm font-semibold text-brand-primary hover:underline"
+          >
+            Xem tất cả VT
+          </button>
+        ) : null}
       </div>
-      <div className="min-h-0 flex-1 overflow-y-auto px-2 py-2">
+      <div className={cn("operator-panel-scroll", type.list)}>
         {loading ? (
           <div className="flex justify-center py-8">
             <Loading />
           </div>
         ) : null}
         {!loading && sections.length === 0 ? (
-          <p className="px-1 py-4 text-center text-xs text-slate-500">
-            Không có hàng chờ lấy tại VT
+          <p className={type.empty}>
+            {selectedVtLocationId != null
+              ? "VT này chưa có hàng stock_ready từ CC"
+              : "Không có hàng chờ lấy"}
           </p>
         ) : null}
-        <div className="space-y-3">
+        <div className={type.sectionGap}>
           {sections.map((block) => (
             <section
               key={block.vtLocationId}
-              className="overflow-hidden rounded-xl border border-stripe-hairline bg-panel-soft"
+              className={cn(
+                "overflow-hidden rounded-2xl border bg-panel-soft",
+                selectedVtLocationId === block.vtLocationId
+                  ? "border-brand-primary/40 ring-1 ring-brand-primary/20"
+                  : "border-stripe-hairline",
+              )}
             >
-              <header className="border-b border-stripe-hairline bg-slate-50/90 px-2.5 py-2">
-                <p className="text-sm font-bold text-brand-dark">
-                  VT {block.displayLabel}
-                </p>
-                {block.primary && block.extraCount > 0 ? (
-                  <p className="mt-1 text-[11px] font-semibold text-orange-700">
-                    +{block.extraCount} lô khác (ưu tiên lô cũ nhất trước)
+              <header
+                className={cn(
+                  "border-b border-stripe-hairline bg-slate-50/90",
+                  type.blockHeader,
+                )}
+              >
+                <div className={type.blockHeaderRow}>
+                  <p className={type.vtName} title={block.vtDisplayLabel}>
+                    {block.vtDisplayLabel}
                   </p>
-                ) : null}
+                  <p className={type.sku} title={block.stockSummary}>
+                    {block.stockSummary}
+                  </p>
+                </div>
               </header>
-              <ul className="space-y-1 px-2.5 py-2">
-                {[...block.pickRows].reverse().map((row) => {
-                  const isPrimary = block.primary?.id === row.id;
-                  return (
-                    <li
-                      key={row.id}
-                      className={cn(
-                        "flex flex-col gap-0.5 rounded-lg px-2 py-1.5 text-xs",
-                        isPrimary
-                          ? "border border-orange-200 bg-orange-50/90"
-                          : "bg-white",
-                      )}
-                    >
-                      <div className="flex items-baseline justify-between gap-2">
-                        <span className="min-w-0 truncate font-mono font-semibold text-slate-800">
-                          {formatSidebarPickSku(row)}
-                        </span>
-                        <span className="shrink-0 font-bold tabular-nums text-brand-primary">
-                          {formatSidebarPickQty(row)}
-                        </span>
-                      </div>
-                      <span className="text-[10px] font-medium text-slate-500">
-                        CC {formatSidebarCcLabel(row)}
-                      </span>
-                    </li>
-                  );
-                })}
-              </ul>
+              <div className={type.tableWrap}>
+                <div className={type.tableHeader} role="row">
+                  <span>CC</span>
+                  <span className={type.tableHeaderQty}>Số lượng</span>
+                  <span className={type.tableHeaderLocator}>Locator</span>
+                </div>
+                <ul className={type.rows}>
+                  {block.pickRows.map((row) => {
+                    const qty = formatSidebarPickQty(row);
+                    const ccLabel = formatSidebarCcLabel(
+                      row,
+                      ccLocationDisplayLabelById,
+                    );
+                    const locator = formatSidebarLocator(row);
+                    return (
+                      <li key={row.id} className={type.row}>
+                        <span className={type.rowCc}>{ccLabel}</span>
+                        <span className={type.rowQty}>{qty}</span>
+                        <span className={type.rowLocator}>{locator}</span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
             </section>
           ))}
         </div>

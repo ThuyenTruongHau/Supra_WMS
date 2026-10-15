@@ -1,5 +1,7 @@
 import type { LocationStockLabel } from '@/types/warehouseLocation'
-import { formatDisplayBin } from '@/utils/locationBin'
+import { brand } from '@/components/ui/theme/tokens'
+import { formatLotCompactDdmmyy } from '@/utils/legacyLotNumber'
+import { isCcLocationCode, isVtLocationCode, stockLabelLocationText } from '@/utils/locationBin'
 
 /** Palette ô có hàng — SCADA / tech trên nền trắng */
 export const SHELF_TECH = {
@@ -50,8 +52,7 @@ export function resolveShelfHalf(half: ShelfHalf): { hw: number; hh: number; bas
 export const CC_VEHICLE_PLATE_SCALE = 1.72
 
 function isCcLocationLabel(label: string | null | undefined): boolean {
-  const value = (label ?? '').trim().toUpperCase()
-  return value.startsWith('CC')
+  return isCcLocationCode(label)
 }
 
 function drawTechCornerAccents(
@@ -282,6 +283,14 @@ export function drawAssignedCcShelf(
   ctx.lineWidth = invScale * 1.1
   ctx.stroke()
 }
+
+/** Chữ trên ô CC — hàng stock_ready (hàng cần lấy), xanh biển đậm Supra. */
+export const SHELF_CC_STOCK_READY_TECH = {
+  labelPrimary: brand.dark,
+  labelQty: '#1565A8',
+  labelMore: brand.techAccent,
+  divider: 'rgba(21, 101, 168, 0.45)',
+} as const
 
 /** Ô CC có hàng chờ operator xác nhận lấy (WS pending-stock). */
 export const SHELF_PENDING_CONFIRM_TECH = {
@@ -517,13 +526,17 @@ export function drawStationOverlayLabel(
   ctx.textBaseline = 'middle'
 
   const pendingConfirm = overlayVariant === 'pendingConfirm'
+  const ccStockReady =
+    !pendingConfirm && isCcLocationLabel(fallbackLocationCode) && Boolean(sku)
   const drawDivider = (yPos: number) => {
     ctx.beginPath()
     ctx.moveTo(x - hw * 0.8, yPos)
     ctx.lineTo(x + hw * 0.8, yPos)
     ctx.strokeStyle = pendingConfirm
       ? SHELF_PENDING_CONFIRM_TECH.divider
-      : 'rgba(255, 255, 255, 0.95)'
+      : ccStockReady
+        ? SHELF_CC_STOCK_READY_TECH.divider
+        : 'rgba(255, 255, 255, 0.95)'
     ctx.lineWidth = Math.max(4, half * 0.07)
     ctx.stroke()
   }
@@ -565,9 +578,11 @@ export function drawStationOverlayLabel(
     ctx.font = `700 ${skuSize}px ${mono}`
     ctx.fillStyle = pendingConfirm
       ? SHELF_PENDING_CONFIRM_TECH.labelPrimary
-      : highlighted
-        ? '#FFFFFF'
-        : SHELF_TECH.labelPrimary
+      : ccStockReady
+        ? SHELF_CC_STOCK_READY_TECH.labelPrimary
+        : highlighted
+          ? '#FFFFFF'
+          : SHELF_TECH.labelPrimary
     ctx.fillText(fitLabelText(ctx, sku, maxW), x, cursorY)
 
     if (qty) {
@@ -584,9 +599,11 @@ export function drawStationOverlayLabel(
     ctx.font = `800 ${qtySize}px ${sans}`
     ctx.fillStyle = pendingConfirm
       ? SHELF_PENDING_CONFIRM_TECH.labelQty
-      : highlighted
-        ? '#D7ECEB'
-        : '#FFFFFF'
+      : ccStockReady
+        ? SHELF_CC_STOCK_READY_TECH.labelQty
+        : highlighted
+          ? '#D7ECEB'
+          : '#FFFFFF'
     ctx.fillText(fitLabelText(ctx, qty, maxW), x, cursorY)
     cursorY += qtyStep / 2
 
@@ -601,9 +618,11 @@ export function drawStationOverlayLabel(
     ctx.font = `700 ${moreSize}px ${sans}`
     ctx.fillStyle = pendingConfirm
       ? SHELF_PENDING_CONFIRM_TECH.labelQty
-      : highlighted
-        ? '#D7ECEB'
-        : 'rgba(255,255,255,0.92)'
+      : ccStockReady
+        ? SHELF_CC_STOCK_READY_TECH.labelMore
+        : highlighted
+          ? '#D7ECEB'
+          : 'rgba(255,255,255,0.92)'
     ctx.fillText(fitLabelText(ctx, moreLabel, maxW), x, cursorY)
     cursorY += moreStep / 2
   }
@@ -647,9 +666,7 @@ export function drawShelfStockLabel(
 
   if (label.is_empty) {
     const emptyLabel =
-      formatDisplayBin(label.bin, label.location_type) ||
-      (label.location_code || '').trim() ||
-      ''
+      stockLabelLocationText(label) || (label.location_code || '').trim() || ''
     if (!emptyLabel) {
       ctx.restore()
       return
@@ -680,7 +697,7 @@ export function drawShelfStockLabel(
   let rawSku = String(label.product_sku || label.product_name || 'Hàng')
   let sku = rawSku.length > 6 ? rawSku.slice(0, 4) + rawSku.slice(6) : rawSku
   // Tên vị trí (mã bin) — luôn hiện khi có, không phụ thuộc SKU.
-  const locationText = formatDisplayBin(label.bin, label.location_type)
+  const locationText = stockLabelLocationText(label)
 
   const qty =
     Number.isInteger(label.quantity) || Math.abs(label.quantity % 1) < 1e-6
@@ -717,7 +734,11 @@ export function drawShelfStockLabel(
   const skuStep = skuSize * 1.12
   const metaStep = metaSize * 1.15
   const qtyStep = qtySize * 1.15
-  const lot = (label.lot_number || '').trim()
+  const lotRaw = (label.lot_number || '').trim()
+  const lot =
+    isVtLocationCode(locationText) || isVtLocationCode(label.location_code)
+      ? (formatLotCompactDdmmyy(lotRaw) ?? '')
+      : lotRaw
 
   const lineGap = half * 0.12 * scale
   const numDividers = lot ? 2 : 1
@@ -747,7 +768,7 @@ export function drawShelfStockLabel(
   ctx.fillStyle = highlighted ? '#D7ECEB' : SHELF_TECH.labelPrimary
   ctx.fillText(fitLabelText(ctx, lineSl, maxW), x, cursorY)
 
-  // Lot nguyên bản từ DB, ví dụ 040526
+  // LOT ô VT: 6 chữ số ddmmyy, ví dụ 021103
   if (lot) {
     dividerY = cursorY + qtyStep / 2 + lineGap / 2
     drawDivider(dividerY)
@@ -786,7 +807,7 @@ export function drawOutboundSortingShelfLabel(
 
   let locationText = fallbackCode
   if (label && !label.is_empty) {
-    locationText = formatDisplayBin(label.bin, label.location_type)
+    locationText = stockLabelLocationText(label)
   }
   const isVTC = locationText.toUpperCase().startsWith('VTC') || locationText.toUpperCase().startsWith('CX')
 

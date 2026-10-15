@@ -200,6 +200,34 @@ export function computeCellLayout(
   };
 }
 
+/**
+ * Tăng chiều cao nhóm (giữ nguyên rộng), vd. CC map chia chọn — `heightMultiplier` 1.1 ≈ +10%.
+ */
+export function boostGroupCellHeight(
+  layout: CellLayout,
+  groupKeys: string[],
+  groups: string[],
+  heightMultiplier: number,
+): CellLayout {
+  if (groups.length === 0) return layout;
+  const mult =
+    Number.isFinite(heightMultiplier) && heightMultiplier > 1
+      ? heightMultiplier
+      : 1;
+  if (mult === 1) return layout;
+  const targetGroups = new Set(groups);
+  const byGroup = new Map(layout.byGroup);
+  for (const key of targetGroups) {
+    const prev = byGroup.get(key);
+    if (!prev || prev.h <= 0) continue;
+    byGroup.set(key, { ...prev, h: prev.h * mult });
+  }
+  return {
+    sizes: groupKeys.map((key) => byGroup.get(key)!),
+    byGroup,
+  };
+}
+
 /** Bounding box của các ô (đã cộng nửa ô, dải tên phía trên và dải phụ phía dưới). */
 export function computeCellBounds(
   nodes: Array<{ x: number; y: number }>,

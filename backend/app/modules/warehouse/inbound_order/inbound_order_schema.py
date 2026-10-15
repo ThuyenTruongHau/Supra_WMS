@@ -528,6 +528,20 @@ class RelocateAssignedStockResponse(BaseModel):
     message: str = "Assigned stock cache relocated"
 
 
+class InboundOperatorListSummaryRequest(BaseModel):
+    """Tóm tắt nhẹ cho danh sách operator (số xe, lọc SKU) — một query thay vì N lần /details."""
+
+    order_ids: list[int] = Field(..., min_length=1, max_length=200)
+    item_id: Optional[int] = Field(None, gt=0)
+
+
+class InboundOperatorListSummaryResponse(BaseModel):
+    vehicle_count_by_order_id: dict[int, int] = Field(default_factory=dict)
+    sample_vehicle_by_order_id: dict[int, str] = Field(default_factory=dict)
+    has_more_vehicles_by_order_id: dict[int, bool] = Field(default_factory=dict)
+    order_ids_with_item: Optional[list[int]] = None
+
+
 class InboundAssignedDetailsRequest(BaseModel):
     order_ids: list[int] = Field(..., min_length=1)
 

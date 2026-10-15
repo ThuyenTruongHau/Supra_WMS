@@ -1,0 +1,366 @@
+2026-10-11 12:40:41,074 - main - INFO - Warehouse ids: [1]
+2026-10-11 12:40:41,081 - main - INFO - Existed locations: [3496]
+2026-10-11 12:40:41,101 - main - INFO - Available locations: [<app.modules.warehouse.location_map.location_model.Location object at 0x73a82603e300>, <app.modules.warehouse.location_map.location_model.Location object at 0x73a82603e540>, <app.modules.warehouse.location_map.location_model.Location object at 0x73a82603dc40>, <app.modules.warehouse.location_map.location_model.Location object at 0x73a8264e1a60>, <app.modules.warehouse.location_map.location_model.Location object at 0x73a8264e2480>, <app.modules.warehouse.location_map.location_model.Location object at 0x73a8264e2db0>, <app.modules.warehouse.location_map.location_model.Location object at 0x73a8264e2e10>, <app.modules.warehouse.location_map.location_model.Location object at 0x73a8264e2420>, <app.modules.warehouse.location_map.location_model.Location object at 0x73a8264e2780>, <app.modules.warehouse.location_map.location_model.Location object at 0x73a8264e2960>, <app.modules.warehouse.location_map.location_model.Location object at 0x73a8264e2cf0>, <app.modules.warehouse.location_map.location_model.Location object at 0x73a826024c20>, <app.modules.warehouse.location_map.location_model.Location object at 0x73a826025430>, <app.modules.warehouse.location_map.location_model.Location object at 0x73a826025e50>, <app.modules.warehouse.location_map.location_model.Location object at 0x73a826027080>, <app.modules.warehouse.location_map.location_model.Location object at 0x73a8260254c0>, <app.modules.warehouse.location_map.location_model.Location object at 0x73a826025010>, <app.modules.warehouse.location_map.location_model.Location object at 0x73a826024950>, <app.modules.warehouse.location_map.location_model.Location object at 0x73a826026cc0>]
+2026-10-11 12:57:26,217 - main - INFO - Warehouse ids: [1]
+2026-10-11 12:57:26,220 - main - INFO - Existed locations: [3496]
+2026-10-11 12:57:26,232 - main - INFO - Available locations: [<app.modules.warehouse.location_map.location_model.Location object at 0x73a826025430>, <app.modules.warehouse.location_map.location_model.Location object at 0x73a826025e50>, <app.modules.warehouse.location_map.location_model.Location object at 0x73a826025010>, <app.modules.warehouse.location_map.location_model.Location object at 0x73a826024950>, <app.modules.warehouse.location_map.location_model.Location object at 0x73a826026cc0>, <app.modules.warehouse.location_map.location_model.Location object at 0x73a826024710>, <app.modules.warehouse.location_map.location_model.Location object at 0x73a826024fb0>, <app.modules.warehouse.location_map.location_model.Location object at 0x73a826026e40>, <app.modules.warehouse.location_map.location_model.Location object at 0x73a8260245f0>, <app.modules.warehouse.location_map.location_model.Location object at 0x73a826024c50>, <app.modules.warehouse.location_map.location_model.Location object at 0x73a826025e80>, <app.modules.warehouse.location_map.location_model.Location object at 0x73a8260257f0>, <app.modules.warehouse.location_map.location_model.Location object at 0x73a826024e30>, <app.modules.warehouse.location_map.location_model.Location object at 0x73a826025280>, <app.modules.warehouse.location_map.location_model.Location object at 0x73a8260255e0>, <app.modules.warehouse.location_map.location_model.Location object at 0x73a826027d10>, <app.modules.warehouse.location_map.location_model.Location object at 0x73a826027140>, <app.modules.warehouse.location_map.location_model.Location object at 0x73a826027f80>, <app.modules.warehouse.location_map.location_model.Location object at 0x73a826026a50>]
+2026-10-11 17:57:31,270 - main - INFO - Warehouse ids: [1]
+2026-10-11 17:57:31,274 - main - INFO - Existed locations: [3496]
+2026-10-11 17:57:31,294 - main - ERROR - outbound.assign_cc_zone failed warehouse_id=1
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/default.py", line 941, in do_execute
+    cursor.execute(statement, parameters)
+psycopg2.errors.InvalidTextRepresentation: invalid input syntax for type integer: "C13"
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/app/app/modules/masan/masan_celery_task.py", line 29, in assign_cc_zone_task
+    masan_outbound_service.assign_cc_zone(db, warehouse_id)
+  File "/app/app/modules/masan/masan_outbound_service.py", line 597, in assign_cc_zone
+    .all()
+     ^^^^^
+  File "/usr/local/lib/python3.12/site-packages/sqlalchemy/orm/query.py", line 2673, in all
+    return self._iter().all()  # type: ignore
+           ^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/sqlalchemy/orm/query.py", line 2827, in _iter
+    result: Union[ScalarResult[_T], Result[_T]] = self.session.execute(
+                                                  ^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/sqlalchemy/orm/session.py", line 2362, in execute
+    return self._execute_internal(
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/sqlalchemy/orm/session.py", line 2247, in _execute_internal
+    result: Result[Any] = compile_state_cls.orm_execute_statement(
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/sqlalchemy/orm/context.py", line 305, in orm_execute_statement
+    result = conn.execute(
+             ^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1418, in execute
+    return meth(
+           ^^^^^
+  File "/usr/local/lib/python3.12/site-packages/sqlalchemy/sql/elements.py", line 515, in _execute_on_connection
+    return connection._execute_clauseelement(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1640, in _execute_clauseelement
+    ret = self._execute_context(
+          ^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1846, in _execute_context
+    return self._exec_single_context(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1986, in _exec_single_context
+    self._handle_dbapi_exception(
+  File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 2355, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/default.py", line 941, in do_execute
+    cursor.execute(statement, parameters)
+sqlalchemy.exc.DataError: (psycopg2.errors.InvalidTextRepresentation) invalid input syntax for type integer: "C13"
+
+[SQL: SELECT (SELECT coalesce(sum(item_stock.quantity), %(coalesce_2)s) AS coalesce_1 
+FROM item_stock 
+WHERE item_stock.location_id = location.id AND item_stock.is_active IS true AND (item_stock.stock_level IS NULL OR item_stock.stock_level <= %(stock_level_1)s) AND item_stock.quantity > %(quantity_1)s) AS anon_1, CASE WHEN ((EXISTS (SELECT 1 
+FROM inbound_order_detail 
+WHERE inbound_order_detail.status IN (%(status_1_1)s, %(status_1_2)s) AND (inbound_order_detail.to_location_id = location.id OR inbound_order_detail.from_location_id = location.id))) OR (EXISTS (SELECT 1 
+FROM outbound_order_allocation 
+WHERE outbound_order_allocation.status IN (%(status_2_1)s, %(status_2_2)s) AND (outbound_order_allocation.to_location_id = location.id OR outbound_order_allocation.from_location_id = location.id)))) THEN %(param_1)s WHEN ((EXISTS (SELECT 1 
+FROM inbound_order_detail 
+WHERE inbound_order_detail.status IN (%(status_3_1)s, %(status_3_2)s) AND (inbound_order_detail.to_location_id = location.id OR inbound_order_detail.from_location_id = location.id))) OR (EXISTS (SELECT 1 
+FROM outbound_order_allocation 
+WHERE outbound_order_allocation.status IN (%(status_4_1)s, %(status_4_2)s) AND (outbound_order_allocation.to_location_id = location.id OR outbound_order_allocation.from_location_id = location.id)))) THEN %(param_2)s WHEN (EXISTS (SELECT 1 
+FROM item_stock 
+WHERE item_stock.location_id = location.id AND item_stock.quantity > %(quantity_2)s AND item_stock.is_active IS true AND (item_stock.stock_level IS NULL OR item_stock.stock_level <= %(stock_level_2)s))) THEN %(param_3)s ELSE %(param_4)s END AS anon_2, location.id AS location_id, location.location_code AS location_location_code, location.location_name AS location_location_name, location.bin_code AS location_bin_code, location.row AS location_row, location."column" AS location_column, location.level AS location_level, location.node_name AS location_node_name, location.map_x AS location_map_x, location.map_y AS location_map_y, location.warehouse_id AS location_warehouse_id, location.zone_id AS location_zone_id, location.is_active AS location_is_active, location.created_at AS location_created_at, location.updated_at AS location_updated_at, warehouse_1.id AS warehouse_1_id, warehouse_1.code AS warehouse_1_code, warehouse_1.name AS warehouse_1_name, warehouse_1.description AS warehouse_1_description, warehouse_2.id AS warehouse_2_id, warehouse_2.code AS warehouse_2_code, warehouse_2.name AS warehouse_2_name, warehouse_2.description AS warehouse_2_description, zone_1.id AS zone_1_id, zone_1.warehouse_id AS zone_1_warehouse_id, zone_1.code AS zone_1_code, zone_1.name AS zone_1_name, zone_1.description AS zone_1_description 
+FROM location JOIN zone ON zone.id = location.zone_id LEFT OUTER JOIN warehouse AS warehouse_1 ON warehouse_1.id = location.warehouse_id LEFT OUTER JOIN zone AS zone_1 ON zone_1.id = location.zone_id LEFT OUTER JOIN warehouse AS warehouse_2 ON warehouse_2.id = zone_1.warehouse_id 
+WHERE location.warehouse_id = %(warehouse_id_1)s AND location.is_active IS true AND zone.code IN (%(code_1_1)s, %(code_1_2)s) AND (location.id NOT IN (%(id_1_1)s)) ORDER BY CAST(right(location.location_name, %(right_1)s) AS INTEGER) ASC, location.location_name ASC]
+[parameters: {'coalesce_2': 0, 'stock_level_1': 1, 'quantity_1': 0, 'param_1': 'in_transit', 'param_2': 'reserved', 'quantity_2': 0, 'stock_level_2': 1, 'param_3': 'has_stock', 'param_4': 'empty', 'warehouse_id_1': 1, 'right_1': 3, 'status_1_1': 'in_progress', 'status_1_2': 'issued', 'status_2_1': 'in_progress', 'status_2_2': 'issued', 'status_3_1': 'initialize', 'status_3_2': 'reserved', 'status_4_1': 'initialize', 'status_4_2': 'reserved', 'code_1_1': 'Zone_CC_01', 'code_1_2': 'Zone_CC_02', 'id_1_1': 3496}]
+(Background on this error at: https://sqlalche.me/e/20/9h9h)
+2026-10-11 23:14:16,283 - main - INFO - Warehouse ids: [1]
+2026-10-11 23:14:16,285 - main - INFO - Existed locations: [3496]
+2026-10-11 23:14:16,294 - main - ERROR - outbound.assign_cc_zone failed warehouse_id=1
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/default.py", line 941, in do_execute
+    cursor.execute(statement, parameters)
+psycopg2.errors.InvalidTextRepresentation: invalid input syntax for type integer: "C13"
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/app/app/modules/masan/masan_celery_task.py", line 29, in assign_cc_zone_task
+    masan_outbound_service.assign_cc_zone(db, warehouse_id)
+  File "/app/app/modules/masan/masan_outbound_service.py", line 597, in assign_cc_zone
+    .all()
+     ^^^^^
+  File "/usr/local/lib/python3.12/site-packages/sqlalchemy/orm/query.py", line 2673, in all
+    return self._iter().all()  # type: ignore
+           ^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/sqlalchemy/orm/query.py", line 2827, in _iter
+    result: Union[ScalarResult[_T], Result[_T]] = self.session.execute(
+                                                  ^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/sqlalchemy/orm/session.py", line 2362, in execute
+    return self._execute_internal(
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/sqlalchemy/orm/session.py", line 2247, in _execute_internal
+    result: Result[Any] = compile_state_cls.orm_execute_statement(
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/sqlalchemy/orm/context.py", line 305, in orm_execute_statement
+    result = conn.execute(
+             ^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1418, in execute
+    return meth(
+           ^^^^^
+  File "/usr/local/lib/python3.12/site-packages/sqlalchemy/sql/elements.py", line 515, in _execute_on_connection
+    return connection._execute_clauseelement(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1640, in _execute_clauseelement
+    ret = self._execute_context(
+          ^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1846, in _execute_context
+    return self._exec_single_context(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1986, in _exec_single_context
+    self._handle_dbapi_exception(
+  File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 2355, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/default.py", line 941, in do_execute
+    cursor.execute(statement, parameters)
+sqlalchemy.exc.DataError: (psycopg2.errors.InvalidTextRepresentation) invalid input syntax for type integer: "C13"
+
+[SQL: SELECT (SELECT coalesce(sum(item_stock.quantity), %(coalesce_2)s) AS coalesce_1 
+FROM item_stock 
+WHERE item_stock.location_id = location.id AND item_stock.is_active IS true AND (item_stock.stock_level IS NULL OR item_stock.stock_level <= %(stock_level_1)s) AND item_stock.quantity > %(quantity_1)s) AS anon_1, CASE WHEN ((EXISTS (SELECT 1 
+FROM inbound_order_detail 
+WHERE inbound_order_detail.status IN (%(status_1_1)s, %(status_1_2)s) AND (inbound_order_detail.to_location_id = location.id OR inbound_order_detail.from_location_id = location.id))) OR (EXISTS (SELECT 1 
+FROM outbound_order_allocation 
+WHERE outbound_order_allocation.status IN (%(status_2_1)s, %(status_2_2)s) AND (outbound_order_allocation.to_location_id = location.id OR outbound_order_allocation.from_location_id = location.id)))) THEN %(param_1)s WHEN ((EXISTS (SELECT 1 
+FROM inbound_order_detail 
+WHERE inbound_order_detail.status IN (%(status_3_1)s, %(status_3_2)s) AND (inbound_order_detail.to_location_id = location.id OR inbound_order_detail.from_location_id = location.id))) OR (EXISTS (SELECT 1 
+FROM outbound_order_allocation 
+WHERE outbound_order_allocation.status IN (%(status_4_1)s, %(status_4_2)s) AND (outbound_order_allocation.to_location_id = location.id OR outbound_order_allocation.from_location_id = location.id)))) THEN %(param_2)s WHEN (EXISTS (SELECT 1 
+FROM item_stock 
+WHERE item_stock.location_id = location.id AND item_stock.quantity > %(quantity_2)s AND item_stock.is_active IS true AND (item_stock.stock_level IS NULL OR item_stock.stock_level <= %(stock_level_2)s))) THEN %(param_3)s ELSE %(param_4)s END AS anon_2, location.id AS location_id, location.location_code AS location_location_code, location.location_name AS location_location_name, location.bin_code AS location_bin_code, location.row AS location_row, location."column" AS location_column, location.level AS location_level, location.node_name AS location_node_name, location.map_x AS location_map_x, location.map_y AS location_map_y, location.warehouse_id AS location_warehouse_id, location.zone_id AS location_zone_id, location.is_active AS location_is_active, location.created_at AS location_created_at, location.updated_at AS location_updated_at, warehouse_1.id AS warehouse_1_id, warehouse_1.code AS warehouse_1_code, warehouse_1.name AS warehouse_1_name, warehouse_1.description AS warehouse_1_description, warehouse_2.id AS warehouse_2_id, warehouse_2.code AS warehouse_2_code, warehouse_2.name AS warehouse_2_name, warehouse_2.description AS warehouse_2_description, zone_1.id AS zone_1_id, zone_1.warehouse_id AS zone_1_warehouse_id, zone_1.code AS zone_1_code, zone_1.name AS zone_1_name, zone_1.description AS zone_1_description 
+FROM location JOIN zone ON zone.id = location.zone_id LEFT OUTER JOIN warehouse AS warehouse_1 ON warehouse_1.id = location.warehouse_id LEFT OUTER JOIN zone AS zone_1 ON zone_1.id = location.zone_id LEFT OUTER JOIN warehouse AS warehouse_2 ON warehouse_2.id = zone_1.warehouse_id 
+WHERE location.warehouse_id = %(warehouse_id_1)s AND location.is_active IS true AND zone.code IN (%(code_1_1)s, %(code_1_2)s) AND (location.id NOT IN (%(id_1_1)s)) ORDER BY CAST(right(location.location_name, %(right_1)s) AS INTEGER) ASC, location.location_name ASC]
+[parameters: {'coalesce_2': 0, 'stock_level_1': 1, 'quantity_1': 0, 'param_1': 'in_transit', 'param_2': 'reserved', 'quantity_2': 0, 'stock_level_2': 1, 'param_3': 'has_stock', 'param_4': 'empty', 'warehouse_id_1': 1, 'right_1': 3, 'status_1_1': 'in_progress', 'status_1_2': 'issued', 'status_2_1': 'in_progress', 'status_2_2': 'issued', 'status_3_1': 'initialize', 'status_3_2': 'reserved', 'status_4_1': 'initialize', 'status_4_2': 'reserved', 'code_1_1': 'Zone_CC_01', 'code_1_2': 'Zone_CC_02', 'id_1_1': 3496}]
+(Background on this error at: https://sqlalche.me/e/20/9h9h)
+2026-10-12 03:55:35,543 - main - INFO - inbound.accept_task detail_id=443 assign_robot_id=None job_id=6f5ccaef-dc9d-4cb0-a0c4-110d236f21cd
+2026-10-12 03:55:35,714 - main - INFO - ICS addTask request order_id=TDS_Inbound_05ec19e2 url=http://192.168.50.250:7000/ics/taskOrder/addTask payload={"orderId": "TDS_Inbound_05ec19e2", "priority": 4, "modelProcessCode": "Supra_to_storage", "fromSystem": "Thadosoft", "taskOrderDetail": [{"taskPath": "10002728,10000377"}]}
+2026-10-12 03:55:35,800 - main - INFO - ICS addTask response order_id=TDS_Inbound_05ec19e2 body={'code': 1000, 'data': 'TDS_Inbound_05ec19e2', 'desc': '请求成功'}
+2026-10-12 03:55:35,936 - main - INFO - inbound.accept_task detail_id=446 assign_robot_id=None job_id=aaa13df6-b12b-40d1-b489-603c6136ef50
+2026-10-12 03:55:36,438 - main - INFO - ICS addTask request order_id=TDS_Inbound_a3a64d89 url=http://192.168.50.250:7000/ics/taskOrder/addTask payload={"orderId": "TDS_Inbound_a3a64d89", "priority": 4, "modelProcessCode": "Supra_to_storage", "fromSystem": "Thadosoft", "taskOrderDetail": [{"taskPath": "10002716,10000806"}]}
+2026-10-12 03:55:36,499 - main - INFO - ICS addTask response order_id=TDS_Inbound_a3a64d89 body={'code': 1000, 'data': 'TDS_Inbound_a3a64d89', 'desc': '请求成功'}
+2026-10-12 03:55:36,580 - main - INFO - inbound.accept_task detail_id=452 assign_robot_id=None job_id=fa0f58b2-6327-4c37-9345-171f3159a16d
+2026-10-12 03:55:36,662 - main - INFO - ICS addTask request order_id=TDS_Inbound_c08c9da5 url=http://192.168.50.250:7000/ics/taskOrder/addTask payload={"orderId": "TDS_Inbound_c08c9da5", "priority": 4, "modelProcessCode": "Supra_to_storage", "fromSystem": "Thadosoft", "taskOrderDetail": [{"taskPath": "10002696,10000801"}]}
+2026-10-12 03:55:36,716 - main - INFO - ICS addTask response order_id=TDS_Inbound_c08c9da5 body={'code': 1000, 'data': 'TDS_Inbound_c08c9da5', 'desc': '请求成功'}
+2026-10-12 03:55:36,832 - main - INFO - inbound.accept_task detail_id=456 assign_robot_id=None job_id=6620f2f1-a5fa-44d6-b02d-feda605c5733
+2026-10-12 03:55:36,916 - main - INFO - ICS addTask request order_id=TDS_Inbound_84c3902f url=http://192.168.50.250:7000/ics/taskOrder/addTask payload={"orderId": "TDS_Inbound_84c3902f", "priority": 4, "modelProcessCode": "Supra_to_storage", "fromSystem": "Thadosoft", "taskOrderDetail": [{"taskPath": "10002684,10000797"}]}
+2026-10-12 03:55:36,976 - main - INFO - ICS addTask response order_id=TDS_Inbound_84c3902f body={'code': 1000, 'data': 'TDS_Inbound_84c3902f', 'desc': '请求成功'}
+2026-10-12 03:55:37,081 - main - INFO - inbound.accept_task detail_id=460 assign_robot_id=None job_id=b0582f96-a168-4705-a568-92af250c27dd
+2026-10-12 03:55:37,176 - main - INFO - ICS addTask request order_id=TDS_Inbound_40db7a53 url=http://192.168.50.250:7000/ics/taskOrder/addTask payload={"orderId": "TDS_Inbound_40db7a53", "priority": 4, "modelProcessCode": "Supra_to_storage", "fromSystem": "Thadosoft", "taskOrderDetail": [{"taskPath": "10002671,10000756"}]}
+2026-10-12 03:55:37,235 - main - INFO - ICS addTask response order_id=TDS_Inbound_40db7a53 body={'code': 1000, 'data': 'TDS_Inbound_40db7a53', 'desc': '请求成功'}
+2026-10-12 03:55:37,340 - main - INFO - inbound.accept_task detail_id=465 assign_robot_id=None job_id=797845f9-b987-4339-b110-864983504f68
+2026-10-12 03:55:37,412 - main - INFO - ICS addTask request order_id=TDS_Inbound_9300ce28 url=http://192.168.50.250:7000/ics/taskOrder/addTask payload={"orderId": "TDS_Inbound_9300ce28", "priority": 4, "modelProcessCode": "Supra_to_storage", "fromSystem": "Thadosoft", "taskOrderDetail": [{"taskPath": "10002655,10000751"}]}
+2026-10-12 03:55:37,498 - main - INFO - ICS addTask response order_id=TDS_Inbound_9300ce28 body={'code': 1000, 'data': 'TDS_Inbound_9300ce28', 'desc': '请求成功'}
+2026-10-12 03:55:37,568 - main - INFO - inbound.accept_task detail_id=468 assign_robot_id=None job_id=74a6682f-8cbc-4123-8a48-3fe49a40060e
+2026-10-12 03:55:37,651 - main - INFO - ICS addTask request order_id=TDS_Inbound_e5b8a04a url=http://192.168.50.250:7000/ics/taskOrder/addTask payload={"orderId": "TDS_Inbound_e5b8a04a", "priority": 4, "modelProcessCode": "Supra_to_storage", "fromSystem": "Thadosoft", "taskOrderDetail": [{"taskPath": "10002646,10000748"}]}
+2026-10-12 03:55:37,712 - main - INFO - ICS addTask response order_id=TDS_Inbound_e5b8a04a body={'code': 1000, 'data': 'TDS_Inbound_e5b8a04a', 'desc': '请求成功'}
+2026-10-12 04:13:57,982 - main - INFO - Warehouse ids: [1]
+2026-10-12 04:13:57,983 - main - INFO - Existed locations: [3496]
+2026-10-12 04:13:57,990 - main - ERROR - outbound.assign_cc_zone failed warehouse_id=1
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/default.py", line 941, in do_execute
+    cursor.execute(statement, parameters)
+psycopg2.errors.InvalidTextRepresentation: invalid input syntax for type integer: "C13"
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/app/app/modules/masan/masan_celery_task.py", line 29, in assign_cc_zone_task
+    masan_outbound_service.assign_cc_zone(db, warehouse_id)
+  File "/app/app/modules/masan/masan_outbound_service.py", line 597, in assign_cc_zone
+    .all()
+     ^^^^^
+  File "/usr/local/lib/python3.12/site-packages/sqlalchemy/orm/query.py", line 2673, in all
+    return self._iter().all()  # type: ignore
+           ^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/sqlalchemy/orm/query.py", line 2827, in _iter
+    result: Union[ScalarResult[_T], Result[_T]] = self.session.execute(
+                                                  ^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/sqlalchemy/orm/session.py", line 2362, in execute
+    return self._execute_internal(
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/sqlalchemy/orm/session.py", line 2247, in _execute_internal
+    result: Result[Any] = compile_state_cls.orm_execute_statement(
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/sqlalchemy/orm/context.py", line 305, in orm_execute_statement
+    result = conn.execute(
+             ^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1418, in execute
+    return meth(
+           ^^^^^
+  File "/usr/local/lib/python3.12/site-packages/sqlalchemy/sql/elements.py", line 515, in _execute_on_connection
+    return connection._execute_clauseelement(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1640, in _execute_clauseelement
+    ret = self._execute_context(
+          ^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1846, in _execute_context
+    return self._exec_single_context(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1986, in _exec_single_context
+    self._handle_dbapi_exception(
+  File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 2355, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/default.py", line 941, in do_execute
+    cursor.execute(statement, parameters)
+sqlalchemy.exc.DataError: (psycopg2.errors.InvalidTextRepresentation) invalid input syntax for type integer: "C13"
+
+[SQL: SELECT (SELECT coalesce(sum(item_stock.quantity), %(coalesce_2)s) AS coalesce_1 
+FROM item_stock 
+WHERE item_stock.location_id = location.id AND item_stock.is_active IS true AND (item_stock.stock_level IS NULL OR item_stock.stock_level <= %(stock_level_1)s) AND item_stock.quantity > %(quantity_1)s) AS anon_1, CASE WHEN ((EXISTS (SELECT 1 
+FROM inbound_order_detail 
+WHERE inbound_order_detail.status IN (%(status_1_1)s, %(status_1_2)s) AND (inbound_order_detail.to_location_id = location.id OR inbound_order_detail.from_location_id = location.id))) OR (EXISTS (SELECT 1 
+FROM outbound_order_allocation 
+WHERE outbound_order_allocation.status IN (%(status_2_1)s, %(status_2_2)s) AND (outbound_order_allocation.to_location_id = location.id OR outbound_order_allocation.from_location_id = location.id)))) THEN %(param_1)s WHEN ((EXISTS (SELECT 1 
+FROM inbound_order_detail 
+WHERE inbound_order_detail.status IN (%(status_3_1)s, %(status_3_2)s) AND (inbound_order_detail.to_location_id = location.id OR inbound_order_detail.from_location_id = location.id))) OR (EXISTS (SELECT 1 
+FROM outbound_order_allocation 
+WHERE outbound_order_allocation.status IN (%(status_4_1)s, %(status_4_2)s) AND (outbound_order_allocation.to_location_id = location.id OR outbound_order_allocation.from_location_id = location.id)))) THEN %(param_2)s WHEN (EXISTS (SELECT 1 
+FROM item_stock 
+WHERE item_stock.location_id = location.id AND item_stock.quantity > %(quantity_2)s AND item_stock.is_active IS true AND (item_stock.stock_level IS NULL OR item_stock.stock_level <= %(stock_level_2)s))) THEN %(param_3)s ELSE %(param_4)s END AS anon_2, location.id AS location_id, location.location_code AS location_location_code, location.location_name AS location_location_name, location.bin_code AS location_bin_code, location.row AS location_row, location."column" AS location_column, location.level AS location_level, location.node_name AS location_node_name, location.map_x AS location_map_x, location.map_y AS location_map_y, location.warehouse_id AS location_warehouse_id, location.zone_id AS location_zone_id, location.is_active AS location_is_active, location.created_at AS location_created_at, location.updated_at AS location_updated_at, warehouse_1.id AS warehouse_1_id, warehouse_1.code AS warehouse_1_code, warehouse_1.name AS warehouse_1_name, warehouse_1.description AS warehouse_1_description, warehouse_2.id AS warehouse_2_id, warehouse_2.code AS warehouse_2_code, warehouse_2.name AS warehouse_2_name, warehouse_2.description AS warehouse_2_description, zone_1.id AS zone_1_id, zone_1.warehouse_id AS zone_1_warehouse_id, zone_1.code AS zone_1_code, zone_1.name AS zone_1_name, zone_1.description AS zone_1_description 
+FROM location JOIN zone ON zone.id = location.zone_id LEFT OUTER JOIN warehouse AS warehouse_1 ON warehouse_1.id = location.warehouse_id LEFT OUTER JOIN zone AS zone_1 ON zone_1.id = location.zone_id LEFT OUTER JOIN warehouse AS warehouse_2 ON warehouse_2.id = zone_1.warehouse_id 
+WHERE location.warehouse_id = %(warehouse_id_1)s AND location.is_active IS true AND zone.code IN (%(code_1_1)s, %(code_1_2)s) AND (location.id NOT IN (%(id_1_1)s)) ORDER BY CAST(right(location.location_name, %(right_1)s) AS INTEGER) ASC, location.location_name ASC]
+[parameters: {'coalesce_2': 0, 'stock_level_1': 1, 'quantity_1': 0, 'param_1': 'in_transit', 'param_2': 'reserved', 'quantity_2': 0, 'stock_level_2': 1, 'param_3': 'has_stock', 'param_4': 'empty', 'warehouse_id_1': 1, 'right_1': 3, 'status_1_1': 'in_progress', 'status_1_2': 'issued', 'status_2_1': 'in_progress', 'status_2_2': 'issued', 'status_3_1': 'initialize', 'status_3_2': 'reserved', 'status_4_1': 'initialize', 'status_4_2': 'reserved', 'code_1_1': 'Zone_CC_01', 'code_1_2': 'Zone_CC_02', 'id_1_1': 3496}]
+(Background on this error at: https://sqlalche.me/e/20/9h9h)
+2026-10-12 04:59:00,006 - main - INFO - notification.check_long_holding_stock started
+2026-10-12 04:59:00,029 - main - INFO - notification.check_long_holding_stock done, created=0
+2026-10-12 06:43:13,924 - main - INFO - inbound.accept_task detail_id=479 assign_robot_id=None job_id=1fbf187b-3784-4d05-85d5-ac64b16e5dfa
+2026-10-12 06:43:14,057 - main - INFO - ICS addTask request order_id=TDS_Inbound_dd31b80a url=http://192.168.50.250:7000/ics/taskOrder/addTask payload={"orderId": "TDS_Inbound_dd31b80a", "priority": 4, "modelProcessCode": "Supra_to_storage", "fromSystem": "Thadosoft", "taskOrderDetail": [{"taskPath": "10002693,10000745"}]}
+2026-10-12 06:43:14,140 - main - INFO - ICS addTask response order_id=TDS_Inbound_dd31b80a body={'code': 1000, 'data': 'TDS_Inbound_dd31b80a', 'desc': '请求成功'}
+2026-10-12 06:43:14,232 - main - INFO - inbound.accept_task detail_id=476 assign_robot_id=None job_id=5b94f6dd-a7f8-4f18-b64e-a9c2e1f6a4a9
+2026-10-12 06:43:14,358 - main - INFO - ICS addTask request order_id=TDS_Inbound_42979bb1 url=http://192.168.50.250:7000/ics/taskOrder/addTask payload={"orderId": "TDS_Inbound_42979bb1", "priority": 4, "modelProcessCode": "Supra_to_storage", "fromSystem": "Thadosoft", "taskOrderDetail": [{"taskPath": "10002703,10000793"}]}
+2026-10-12 06:43:14,433 - main - INFO - ICS addTask response order_id=TDS_Inbound_42979bb1 body={'code': 1000, 'data': 'TDS_Inbound_42979bb1', 'desc': '请求成功'}
+2026-10-12 06:43:14,631 - main - INFO - inbound.accept_task detail_id=471 assign_robot_id=None job_id=8de12cf2-f69b-42b7-98d2-446cd1cf7b15
+2026-10-12 06:43:14,713 - main - INFO - ICS addTask request order_id=TDS_Inbound_7fb57c9f url=http://192.168.50.250:7000/ics/taskOrder/addTask payload={"orderId": "TDS_Inbound_7fb57c9f", "priority": 4, "modelProcessCode": "Supra_to_storage", "fromSystem": "Thadosoft", "taskOrderDetail": [{"taskPath": "10002728,10000377"}]}
+2026-10-12 06:43:14,776 - main - INFO - ICS addTask response order_id=TDS_Inbound_7fb57c9f body={'code': 1000, 'data': 'TDS_Inbound_7fb57c9f', 'desc': '请求成功'}
+2026-10-12 06:43:14,900 - main - INFO - inbound.accept_task detail_id=470 assign_robot_id=None job_id=5c76991c-cf1c-4f84-aa48-7e71ff4a9500
+2026-10-12 06:43:14,983 - main - INFO - ICS addTask request order_id=TDS_Inbound_31f9a76d url=http://192.168.50.250:7000/ics/taskOrder/addTask payload={"orderId": "TDS_Inbound_31f9a76d", "priority": 4, "modelProcessCode": "Supra_to_storage", "fromSystem": "Thadosoft", "taskOrderDetail": [{"taskPath": "10002732,10000774"}]}
+2026-10-12 06:43:15,034 - main - INFO - ICS addTask response order_id=TDS_Inbound_31f9a76d body={'code': 1000, 'data': 'TDS_Inbound_31f9a76d', 'desc': '请求成功'}
+2026-10-12 09:30:33,126 - main - INFO - Warehouse ids: [1]
+2026-10-12 09:30:33,131 - main - INFO - Existed locations: [3496]
+2026-10-12 09:30:33,151 - main - ERROR - outbound.assign_cc_zone failed warehouse_id=1
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/default.py", line 941, in do_execute
+    cursor.execute(statement, parameters)
+psycopg2.errors.InvalidTextRepresentation: invalid input syntax for type integer: "C13"
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/app/app/modules/masan/masan_celery_task.py", line 29, in assign_cc_zone_task
+    masan_outbound_service.assign_cc_zone(db, warehouse_id)
+  File "/app/app/modules/masan/masan_outbound_service.py", line 597, in assign_cc_zone
+    .all()
+     ^^^^^
+  File "/usr/local/lib/python3.12/site-packages/sqlalchemy/orm/query.py", line 2673, in all
+    return self._iter().all()  # type: ignore
+           ^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/sqlalchemy/orm/query.py", line 2827, in _iter
+    result: Union[ScalarResult[_T], Result[_T]] = self.session.execute(
+                                                  ^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/sqlalchemy/orm/session.py", line 2362, in execute
+    return self._execute_internal(
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/sqlalchemy/orm/session.py", line 2247, in _execute_internal
+    result: Result[Any] = compile_state_cls.orm_execute_statement(
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/sqlalchemy/orm/context.py", line 305, in orm_execute_statement
+    result = conn.execute(
+             ^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1418, in execute
+    return meth(
+           ^^^^^
+  File "/usr/local/lib/python3.12/site-packages/sqlalchemy/sql/elements.py", line 515, in _execute_on_connection
+    return connection._execute_clauseelement(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1640, in _execute_clauseelement
+    ret = self._execute_context(
+          ^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1846, in _execute_context
+    return self._exec_single_context(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1986, in _exec_single_context
+    self._handle_dbapi_exception(
+  File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 2355, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/default.py", line 941, in do_execute
+    cursor.execute(statement, parameters)
+sqlalchemy.exc.DataError: (psycopg2.errors.InvalidTextRepresentation) invalid input syntax for type integer: "C13"
+
+[SQL: SELECT (SELECT coalesce(sum(item_stock.quantity), %(coalesce_2)s) AS coalesce_1 
+FROM item_stock 
+WHERE item_stock.location_id = location.id AND item_stock.is_active IS true AND (item_stock.stock_level IS NULL OR item_stock.stock_level <= %(stock_level_1)s) AND item_stock.quantity > %(quantity_1)s) AS anon_1, CASE WHEN ((EXISTS (SELECT 1 
+FROM inbound_order_detail 
+WHERE inbound_order_detail.status IN (%(status_1_1)s, %(status_1_2)s) AND (inbound_order_detail.to_location_id = location.id OR inbound_order_detail.from_location_id = location.id))) OR (EXISTS (SELECT 1 
+FROM outbound_order_allocation 
+WHERE outbound_order_allocation.status IN (%(status_2_1)s, %(status_2_2)s) AND (outbound_order_allocation.to_location_id = location.id OR outbound_order_allocation.from_location_id = location.id)))) THEN %(param_1)s WHEN ((EXISTS (SELECT 1 
+FROM inbound_order_detail 
+WHERE inbound_order_detail.status IN (%(status_3_1)s, %(status_3_2)s) AND (inbound_order_detail.to_location_id = location.id OR inbound_order_detail.from_location_id = location.id))) OR (EXISTS (SELECT 1 
+FROM outbound_order_allocation 
+WHERE outbound_order_allocation.status IN (%(status_4_1)s, %(status_4_2)s) AND (outbound_order_allocation.to_location_id = location.id OR outbound_order_allocation.from_location_id = location.id)))) THEN %(param_2)s WHEN (EXISTS (SELECT 1 
+FROM item_stock 
+WHERE item_stock.location_id = location.id AND item_stock.quantity > %(quantity_2)s AND item_stock.is_active IS true AND (item_stock.stock_level IS NULL OR item_stock.stock_level <= %(stock_level_2)s))) THEN %(param_3)s ELSE %(param_4)s END AS anon_2, location.id AS location_id, location.location_code AS location_location_code, location.location_name AS location_location_name, location.bin_code AS location_bin_code, location.row AS location_row, location."column" AS location_column, location.level AS location_level, location.node_name AS location_node_name, location.map_x AS location_map_x, location.map_y AS location_map_y, location.warehouse_id AS location_warehouse_id, location.zone_id AS location_zone_id, location.is_active AS location_is_active, location.created_at AS location_created_at, location.updated_at AS location_updated_at, warehouse_1.id AS warehouse_1_id, warehouse_1.code AS warehouse_1_code, warehouse_1.name AS warehouse_1_name, warehouse_1.description AS warehouse_1_description, warehouse_2.id AS warehouse_2_id, warehouse_2.code AS warehouse_2_code, warehouse_2.name AS warehouse_2_name, warehouse_2.description AS warehouse_2_description, zone_1.id AS zone_1_id, zone_1.warehouse_id AS zone_1_warehouse_id, zone_1.code AS zone_1_code, zone_1.name AS zone_1_name, zone_1.description AS zone_1_description 
+FROM location JOIN zone ON zone.id = location.zone_id LEFT OUTER JOIN warehouse AS warehouse_1 ON warehouse_1.id = location.warehouse_id LEFT OUTER JOIN zone AS zone_1 ON zone_1.id = location.zone_id LEFT OUTER JOIN warehouse AS warehouse_2 ON warehouse_2.id = zone_1.warehouse_id 
+WHERE location.warehouse_id = %(warehouse_id_1)s AND location.is_active IS true AND zone.code IN (%(code_1_1)s, %(code_1_2)s) AND (location.id NOT IN (%(id_1_1)s)) ORDER BY CAST(right(location.location_name, %(right_1)s) AS INTEGER) ASC, location.location_name ASC]
+[parameters: {'coalesce_2': 0, 'stock_level_1': 1, 'quantity_1': 0, 'param_1': 'in_transit', 'param_2': 'reserved', 'quantity_2': 0, 'stock_level_2': 1, 'param_3': 'has_stock', 'param_4': 'empty', 'warehouse_id_1': 1, 'right_1': 3, 'status_1_1': 'in_progress', 'status_1_2': 'issued', 'status_2_1': 'in_progress', 'status_2_2': 'issued', 'status_3_1': 'initialize', 'status_3_2': 'reserved', 'status_4_1': 'initialize', 'status_4_2': 'reserved', 'code_1_1': 'Zone_CC_01', 'code_1_2': 'Zone_CC_02', 'id_1_1': 3496}]
+(Background on this error at: https://sqlalche.me/e/20/9h9h)
+2026-10-12 09:57:04,559 - main - INFO - inbound.accept_task detail_id=504 assign_robot_id=None job_id=83b92e81-5f49-4d67-a895-a174f80c87f2
+2026-10-12 09:57:04,726 - main - INFO - ICS addTask request order_id=TDS_Inbound_f7495823 url=http://192.168.50.250:7000/ics/taskOrder/addTask payload={"orderId": "TDS_Inbound_f7495823", "priority": 4, "modelProcessCode": "Supra_to_storage", "fromSystem": "Thadosoft", "taskOrderDetail": [{"taskPath": "10002646,10000706"}]}
+2026-10-12 09:57:04,824 - main - INFO - ICS addTask response order_id=TDS_Inbound_f7495823 body={'code': 1000, 'data': 'TDS_Inbound_f7495823', 'desc': '请求成功'}
+2026-10-12 09:57:04,979 - main - INFO - inbound.accept_task detail_id=501 assign_robot_id=None job_id=be631867-04bc-48bc-a62e-7d55aed1aa1e
+2026-10-12 09:57:05,073 - main - INFO - ICS addTask request order_id=TDS_Inbound_fd8317f5 url=http://192.168.50.250:7000/ics/taskOrder/addTask payload={"orderId": "TDS_Inbound_fd8317f5", "priority": 4, "modelProcessCode": "Supra_to_storage", "fromSystem": "Thadosoft", "taskOrderDetail": [{"taskPath": "10002655,10000762"}]}
+2026-10-12 09:57:05,128 - main - INFO - ICS addTask response order_id=TDS_Inbound_fd8317f5 body={'code': 1000, 'data': 'TDS_Inbound_fd8317f5', 'desc': '请求成功'}
+2026-10-12 09:57:05,200 - main - INFO - inbound.accept_task detail_id=499 assign_robot_id=None job_id=604ec392-481a-48bd-8a2c-c51671616118
+2026-10-12 09:57:05,276 - main - INFO - ICS addTask request order_id=TDS_Inbound_368b2888 url=http://192.168.50.250:7000/ics/taskOrder/addTask payload={"orderId": "TDS_Inbound_368b2888", "priority": 4, "modelProcessCode": "Supra_to_storage", "fromSystem": "Thadosoft", "taskOrderDetail": [{"taskPath": "10002662,10000764"}]}
+2026-10-12 09:57:05,336 - main - INFO - ICS addTask response order_id=TDS_Inbound_368b2888 body={'code': 1000, 'data': 'TDS_Inbound_368b2888', 'desc': '请求成功'}
+2026-10-12 09:57:05,424 - main - INFO - inbound.accept_task detail_id=497 assign_robot_id=None job_id=96ffa19c-db63-4aa0-a288-cd8a2b8d607e
+2026-10-12 09:57:05,512 - main - INFO - ICS addTask request order_id=TDS_Inbound_2ab01467 url=http://192.168.50.250:7000/ics/taskOrder/addTask payload={"orderId": "TDS_Inbound_2ab01467", "priority": 4, "modelProcessCode": "Supra_to_storage", "fromSystem": "Thadosoft", "taskOrderDetail": [{"taskPath": "10002668,10000766"}]}
+2026-10-12 09:57:05,580 - main - INFO - ICS addTask response order_id=TDS_Inbound_2ab01467 body={'code': 1000, 'data': 'TDS_Inbound_2ab01467', 'desc': '请求成功'}
+2026-10-12 09:57:05,652 - main - INFO - inbound.accept_task detail_id=493 assign_robot_id=None job_id=3c6053ae-19d4-413d-a22d-fdaa39cdf56d
+2026-10-12 09:57:05,745 - main - INFO - ICS addTask request order_id=TDS_Inbound_bed976d2 url=http://192.168.50.250:7000/ics/taskOrder/addTask payload={"orderId": "TDS_Inbound_bed976d2", "priority": 4, "modelProcessCode": "Supra_to_storage", "fromSystem": "Thadosoft", "taskOrderDetail": [{"taskPath": "10002680,10000761"}]}
+2026-10-12 09:57:05,867 - main - INFO - ICS addTask response order_id=TDS_Inbound_bed976d2 body={'code': 1000, 'data': 'TDS_Inbound_bed976d2', 'desc': '请求成功'}
+2026-10-12 09:57:05,987 - main - INFO - inbound.accept_task detail_id=489 assign_robot_id=None job_id=368401ad-ec13-429a-99b4-97ca736a26ea
+2026-10-12 09:57:06,066 - main - INFO - ICS addTask request order_id=TDS_Inbound_9839f35f url=http://192.168.50.250:7000/ics/taskOrder/addTask payload={"orderId": "TDS_Inbound_9839f35f", "priority": 4, "modelProcessCode": "Supra_to_storage", "fromSystem": "Thadosoft", "taskOrderDetail": [{"taskPath": "10002693,10000757"}]}
+2026-10-12 09:57:06,129 - main - INFO - ICS addTask response order_id=TDS_Inbound_9839f35f body={'code': 1000, 'data': 'TDS_Inbound_9839f35f', 'desc': '请求成功'}
+2026-10-12 09:57:06,211 - main - INFO - inbound.accept_task detail_id=485 assign_robot_id=None job_id=d12c6ee9-4b3a-4953-86ff-6e5d542dea88
+2026-10-12 09:57:06,286 - main - INFO - ICS addTask request order_id=TDS_Inbound_9fa80467 url=http://192.168.50.250:7000/ics/taskOrder/addTask payload={"orderId": "TDS_Inbound_9fa80467", "priority": 4, "modelProcessCode": "Supra_to_storage", "fromSystem": "Thadosoft", "taskOrderDetail": [{"taskPath": "10002706,10000741"}]}
+2026-10-12 09:57:06,357 - main - INFO - ICS addTask response order_id=TDS_Inbound_9fa80467 body={'code': 1000, 'data': 'TDS_Inbound_9fa80467', 'desc': '请求成功'}
+2026-10-12 09:57:06,428 - main - INFO - inbound.accept_task detail_id=482 assign_robot_id=None job_id=1ddde0de-efdb-49a5-8dc1-95f63fe4a603
+2026-10-12 09:57:06,510 - main - INFO - ICS addTask request order_id=TDS_Inbound_7b6b1de3 url=http://192.168.50.250:7000/ics/taskOrder/addTask payload={"orderId": "TDS_Inbound_7b6b1de3", "priority": 4, "modelProcessCode": "Supra_to_storage", "fromSystem": "Thadosoft", "taskOrderDetail": [{"taskPath": "10002716,10000739"}]}
+2026-10-12 09:57:06,571 - main - INFO - ICS addTask response order_id=TDS_Inbound_7b6b1de3 body={'code': 1000, 'data': 'TDS_Inbound_7b6b1de3', 'desc': '请求成功'}
+2026-10-12 11:09:46,117 - main - INFO - inbound.accept_task detail_id=514 assign_robot_id=None job_id=35f0d592-1075-442a-a4f8-a842f18756e7
+2026-10-12 11:09:46,215 - main - INFO - ICS addTask request order_id=TDS_Inbound_8a61937d url=http://192.168.50.250:7000/ics/taskOrder/addTask payload={"orderId": "TDS_Inbound_8a61937d", "priority": 4, "modelProcessCode": "Supra_to_storage", "fromSystem": "Thadosoft", "taskOrderDetail": [{"taskPath": "10002646,10000696"}]}
+2026-10-12 11:09:46,291 - main - INFO - ICS addTask response order_id=TDS_Inbound_8a61937d body={'code': 1000, 'data': 'TDS_Inbound_8a61937d', 'desc': '请求成功'}
+2026-10-12 11:09:46,426 - main - INFO - inbound.accept_task detail_id=511 assign_robot_id=None job_id=47064f34-a9c8-4e03-9349-948b82abe54e
+2026-10-12 11:09:46,514 - main - INFO - ICS addTask request order_id=TDS_Inbound_63b7b1b9 url=http://192.168.50.250:7000/ics/taskOrder/addTask payload={"orderId": "TDS_Inbound_63b7b1b9", "priority": 4, "modelProcessCode": "Supra_to_storage", "fromSystem": "Thadosoft", "taskOrderDetail": [{"taskPath": "10002655,10000699"}]}
+2026-10-12 11:09:46,581 - main - INFO - ICS addTask response order_id=TDS_Inbound_63b7b1b9 body={'code': 1000, 'data': 'TDS_Inbound_63b7b1b9', 'desc': '请求成功'}
+2026-10-12 11:09:46,654 - main - INFO - inbound.accept_task detail_id=507 assign_robot_id=None job_id=5ddce45e-8ec1-43d2-af30-9ff597d279a8
+2026-10-12 11:09:46,728 - main - INFO - ICS addTask request order_id=TDS_Inbound_8057fdff url=http://192.168.50.250:7000/ics/taskOrder/addTask payload={"orderId": "TDS_Inbound_8057fdff", "priority": 4, "modelProcessCode": "Supra_to_storage", "fromSystem": "Thadosoft", "taskOrderDetail": [{"taskPath": "10002674,10000703"}]}
+2026-10-12 11:09:46,799 - main - INFO - ICS addTask response order_id=TDS_Inbound_8057fdff body={'code': 1000, 'data': 'TDS_Inbound_8057fdff', 'desc': '请求成功'}

@@ -14,6 +14,7 @@ import type { ColumnsType } from "antd/es/table";
 import CreateImportModal, {
   type ImportGroupDraft,
 } from "./components/CreateImportModal";
+import { useQueryClient } from "@tanstack/react-query";
 import { useGetInboundOrders } from "@/hooks/useInboundOrder";
 import { useAppStore } from "@/store/useAppStore";
 import type { InboundOrder } from "@/types/inboundOrder";
@@ -25,6 +26,7 @@ import {
 import { resolveInboundType } from "@/config/warehouseMode";
 import { getApiErrorMessage } from "@/utils/apiErrorMessage";
 import { buildMasanInboundCreateRequest } from "@/utils/masanInboundImport";
+import { collectMasanExcelLotErrors } from "@/utils/masanExcelLot";
 import dayjs from "dayjs";
 import { useUser } from "@/hooks/useAuth";
 import OrderCreatedAtRangeFilter from "@/components/shared/OrderCreatedAtRangeFilter";
@@ -68,6 +70,7 @@ export default function ImportPage() {
     return () => window.clearTimeout(timer);
   }, [searchInput]);
 
+  const queryClient = useQueryClient();
   const { data: ordersData, isLoading, refetch } = useGetInboundOrders({
     warehouse_id: selectedWarehouseId || 0,
     page,
@@ -77,6 +80,11 @@ export default function ImportPage() {
     ...createdAtParams,
   });
   const orders = ordersData?.items ?? [];
+
+  const refreshInboundOrderList = async () => {
+    await queryClient.invalidateQueries({ queryKey: ["inboundOrders"] });
+    await refetch();
+  };
 
   const { data: users = [] } = useUser();
 
@@ -156,6 +164,22 @@ export default function ImportPage() {
         inboundType,
       );
 
+      const lotErrors = collectMasanExcelLotErrors(parseResult.preview_rows);
+      if (lotErrors.length > 0) {
+        message.error({
+          content: (
+            <ul className="mt-2 max-h-64 list-disc space-y-1 overflow-y-auto pl-5 text-left text-sm">
+              {lotErrors.map((line) => (
+                <li key={line}>{line}</li>
+              ))}
+            </ul>
+          ),
+          key: messageKey,
+          duration: 8,
+        });
+        return;
+      }
+
       if (parseResult.invalid_rows > 0) {
         message.warning(
           `${parseResult.invalid_rows} dòng lỗi sẽ bỏ qua; tiếp tục với ${parseResult.valid_rows} dòng hợp lệ`,
@@ -184,7 +208,7 @@ export default function ImportPage() {
         content: `Đã tạo đơn ${order.order_code} với ${parseResult.valid_rows} dòng`,
         key: messageKey,
       });
-      void refetch();
+      await refreshInboundOrderList();
     } catch (err) {
       message.error({ content: getApiErrorMessage(err), key: messageKey });
     } finally {
@@ -362,7 +386,7 @@ export default function ImportPage() {
         onSuccess={() => {
           setIsCreateOpen(false);
           setImportGroups(undefined);
-          void refetch();
+          void refreshInboundOrderList();
         }}
       />
     </div>

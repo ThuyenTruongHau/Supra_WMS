@@ -283,6 +283,8 @@ export interface OperatorBoardOrderRow extends OperatorBoardProgressFields {
   open_line_quantity: number
   vehicle_count: number
   total_vehicle_count: number
+  sample_vehicle_no?: string | null
+  has_more_vehicles?: boolean
 }
 
 export interface OperatorBoardOrdersResponse {

@@ -84,6 +84,8 @@ export interface MasanOutboundParseResponse {
   valid_rows: number;
   invalid_rows: number;
   warnings: string[];
+  can_import?: boolean;
+  import_errors?: string[];
 }
 
 export interface MasanCcLocationLine {
@@ -181,6 +183,8 @@ export interface MasanSortingZonePendingAllocationRow {
   robot_task_id: number | null;
   from_location_id: number | null;
   to_location_id: number | null;
+  /** Nguồn: `from_location.location_name` (BE enrich) hoặc locator detail. */
+  locator?: string | null;
 }
 
 export interface MasanSortingZoneLocationPendingStock {

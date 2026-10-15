@@ -19,6 +19,8 @@ import { createOutboundOrderApi } from "@/api/outboundOrder";
 import { resolveOutboundType } from "@/config/warehouseMode";
 import { getApiErrorMessage } from "@/utils/apiErrorMessage";
 import { buildMasanOutboundCreateRequest } from "@/utils/masanOutboundImport";
+import { collectMasanExcelLotErrors } from "@/utils/masanExcelLot";
+import { collectMasanOutboundImportBlockers } from "@/utils/masanOutboundImportErrors";
 import dayjs from "dayjs";
 import { useUser } from "@/hooks/useAuth";
 import OrderCreatedAtRangeFilter from "@/components/shared/OrderCreatedAtRangeFilter";
@@ -173,6 +175,38 @@ export default function OutboundPage() {
         selectedWarehouseId,
         outboundType,
       );
+
+      const lotErrors = collectMasanExcelLotErrors(parseResult.preview_rows);
+      if (lotErrors.length > 0) {
+        message.error({
+          content: (
+            <ul className="mt-2 max-h-64 list-disc space-y-1 overflow-y-auto pl-5 text-left text-sm">
+              {lotErrors.map((line) => (
+                <li key={line}>{line}</li>
+              ))}
+            </ul>
+          ),
+          key: messageKey,
+          duration: 8,
+        });
+        return;
+      }
+
+      const importBlockers = collectMasanOutboundImportBlockers(parseResult);
+      if (importBlockers.length > 0) {
+        message.error({
+          content: (
+            <ul className="mt-2 max-h-64 list-disc space-y-1 overflow-y-auto pl-5 text-left text-sm">
+              {importBlockers.map((line) => (
+                <li key={line}>{line}</li>
+              ))}
+            </ul>
+          ),
+          key: messageKey,
+          duration: 10,
+        });
+        return;
+      }
 
       if (parseResult.invalid_rows > 0) {
         message.warning(

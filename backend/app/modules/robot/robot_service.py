@@ -16,7 +16,7 @@ from app.modules.warehouse.outbound_order.outbound_order_model import (
 from app.modules.warehouse.transaction_history.history_model import Transaction, History
 from app.modules.warehouse.notificcation.notification_service import check_and_create_notifications_under_over_min_max
 from app.core.logger import get_logger
-from app.core.cache import cache_set
+from app.core.cache import cache_set, cache_get
 
 logger = get_logger("main")
 
@@ -168,6 +168,15 @@ class TaskStatusService:
                 if MAPPING_STATUS[ics_status] == "completed":
                     logger.info(f"Receive completed for {order_id}")
                     self._settle_inbound_stock(db, detail)
+                    
+                if MAPPING_STATUS[ics_status] in ["completed", "cancelled", "failed"]:
+                    warehouse_id = detail.inbound_order.warehouse_id
+                    cache_data = cache_get(f"inbound:caller_masan_inbound_order:{warehouse_id}")
+                    from app.modules.masan.masan_inbound_service import _run_inbound_task
+                    if cache_data:
+                        list_details = cache_data.get("list_details", [])
+                        assign_robot_id = cache_data.get("assign_robot_id", None)
+                        _run_inbound_task(db, warehouse_id, list_details, assign_robot_id=assign_robot_id, number_sending = 1)
             else:
                 for allocation in allocations:
                     allocation.status = (

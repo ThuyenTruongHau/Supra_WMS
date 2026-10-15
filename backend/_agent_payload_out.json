@@ -1,0 +1,726 @@
+{
+  "merge_cells_count": 0,
+  "merge_cells": [],
+  "parsed_row_count": 43,
+  "naive_row_count": 37,
+  "naive_vs_merge_diffs": [],
+  "can_import_now": false,
+  "actual_create_payload_today": {
+    "order_code": "OUT-EXAMPLE-TESTCHIEU",
+    "note": "Import BM.04",
+    "warehouse_id": 1,
+    "line_items": []
+  },
+  "payload_if_all_43_lines_no_stock_validation": {
+    "order_code": "OUT-EXAMPLE-TESTCHIEU",
+    "note": "Import BM.04",
+    "warehouse_id": 1,
+    "line_items": [
+      {
+        "item_id": 2049,
+        "quantity": 10,
+        "unit_id": 44,
+        "detail_type": "auto",
+        "details": {
+          "vehicle_no": "29H29423",
+          "customer_name": "10KF1266 -Công ty CP Thương Mại và Dịch Vụ Nga Ngọc",
+          "trip": "129477",
+          "nvt": "Công Ty TNHH Minh Kiên Phát",
+          "lot_status": "GOOD",
+          "pallet_count": "0.14",
+          "locator": "G348",
+          "lot_number": "03/10/26"
+        }
+      },
+      {
+        "item_id": 30731,
+        "quantity": 31,
+        "unit_id": 44,
+        "detail_type": "auto",
+        "details": {
+          "vehicle_no": "29H29423",
+          "customer_name": "10KF1266 -Công ty CP Thương Mại và Dịch Vụ Nga Ngọc",
+          "trip": "129477",
+          "nvt": "Công Ty TNHH Minh Kiên Phát",
+          "lot_status": "GOOD",
+          "pallet_count": "0.16",
+          "locator": "G380",
+          "lot_number": "19/09/26"
+        }
+      },
+      {
+        "item_id": 2049,
+        "quantity": 10,
+        "unit_id": 44,
+        "detail_type": "auto",
+        "details": {
+          "vehicle_no": "34H02868",
+          "customer_name": "10KF0981 -Công ty TNHH XNK TM và Dịch Vụ Quang Trung",
+          "trip": "130276",
+          "nvt": "Công Ty Cổ Phần Tiếp Vận Hòa Phát",
+          "lot_status": "GOOD",
+          "pallet_count": "0.14",
+          "locator": "G395",
+          "lot_number": "06/10/26"
+        }
+      },
+      {
+        "item_id": 30731,
+        "quantity": 25,
+        "unit_id": 44,
+        "detail_type": "auto",
+        "details": {
+          "vehicle_no": "34H02868",
+          "customer_name": "10KF0981 -Công ty TNHH XNK TM và Dịch Vụ Quang Trung",
+          "trip": "130276",
+          "nvt": "Công Ty Cổ Phần Tiếp Vận Hòa Phát",
+          "lot_status": "GOOD",
+          "pallet_count": "0.13",
+          "locator": "G318",
+          "lot_number": "05/10/26"
+        }
+      },
+      {
+        "item_id": 22800,
+        "quantity": 2,
+        "unit_id": 44,
+        "detail_type": "auto",
+        "details": {
+          "vehicle_no": "34H02868",
+          "customer_name": "10KF0981 -Công ty TNHH XNK TM và Dịch Vụ Quang Trung",
+          "trip": "130274",
+          "nvt": "Công Ty Cổ Phần Tiếp Vận Hòa Phát",
+          "lot_status": "GOOD",
+          "pallet_count": "0.02",
+          "locator": "G415",
+          "lot_number": "22/09/26"
+        }
+      },
+      {
+        "item_id": 2158,
+        "quantity": 5,
+        "unit_id": 44,
+        "detail_type": "auto",
+        "details": {
+          "vehicle_no": "34H02868",
+          "customer_name": "10KF0981 -Công ty TNHH XNK TM và Dịch Vụ Quang Trung",
+          "trip": "130274",
+          "nvt": "Công Ty Cổ Phần Tiếp Vận Hòa Phát",
+          "lot_status": "GOOD",
+          "pallet_count": "0.09",
+          "locator": "G337",
+          "lot_number": "19/09/26"
+        }
+      },
+      {
+        "item_id": 2057,
+        "quantity": 3,
+        "unit_id": 44,
+        "detail_type": "auto",
+        "details": {
+          "vehicle_no": "34H02868",
+          "customer_name": "10KF0981 -Công ty TNHH XNK TM và Dịch Vụ Quang Trung",
+          "trip": "130274",
+          "nvt": "Công Ty Cổ Phần Tiếp Vận Hòa Phát",
+          "lot_status": "GOOD",
+          "pallet_count": "0.04",
+          "locator": "G357",
+          "lot_number": "23/09/26"
+        }
+      },
+      {
+        "item_id": 22800,
+        "quantity": 2,
+        "unit_id": 44,
+        "detail_type": "auto",
+        "details": {
+          "vehicle_no": "34h06203",
+          "customer_name": "10KF1182 -Công Ty TNHH Thương Mại Hưng Anh Logistics",
+          "trip": "128861",
+          "nvt": "Công Ty CP Vận Tải Và Thương Mại Vitranimex",
+          "lot_status": "GOOD",
+          "pallet_count": "0.02",
+          "locator": "G414",
+          "lot_number": "22/09/26"
+        }
+      },
+      {
+        "item_id": 2158,
+        "quantity": 10,
+        "unit_id": 44,
+        "detail_type": "auto",
+        "details": {
+          "vehicle_no": "34h06203",
+          "customer_name": "10KF1182 -Công Ty TNHH Thương Mại Hưng Anh Logistics",
+          "trip": "128861",
+          "nvt": "Công Ty CP Vận Tải Và Thương Mại Vitranimex",
+          "lot_status": "GOOD",
+          "pallet_count": "0.18",
+          "locator": "G337",
+          "lot_number": "19/09/26"
+        }
+      },
+      {
+        "item_id": 2159,
+        "quantity": 5,
+        "unit_id": 44,
+        "detail_type": "auto",
+        "details": {
+          "vehicle_no": "34h06203",
+          "customer_name": "10KF1182 -Công Ty TNHH Thương Mại Hưng Anh Logistics",
+          "trip": "128861",
+          "nvt": "Công Ty CP Vận Tải Và Thương Mại Vitranimex",
+          "lot_status": "GOOD",
+          "pallet_count": "0.09",
+          "locator": "G322",
+          "lot_number": "12/09/26"
+        }
+      },
+      {
+        "item_id": 2057,
+        "quantity": 4,
+        "unit_id": 44,
+        "detail_type": "auto",
+        "details": {
+          "vehicle_no": "34h06203",
+          "customer_name": "10KF1182 -Công Ty TNHH Thương Mại Hưng Anh Logistics",
+          "trip": "128861",
+          "nvt": "Công Ty CP Vận Tải Và Thương Mại Vitranimex",
+          "lot_status": "GOOD",
+          "pallet_count": "0.06",
+          "locator": "G357",
+          "lot_number": "23/09/26"
+        }
+      },
+      {
+        "item_id": 2057,
+        "quantity": 8,
+        "unit_id": 44,
+        "detail_type": "auto",
+        "details": {
+          "vehicle_no": "34h06203",
+          "customer_name": "10KF1182 -Công Ty TNHH Thương Mại Hưng Anh Logistics",
+          "trip": "128861",
+          "nvt": "Công Ty CP Vận Tải Và Thương Mại Vitranimex",
+          "lot_status": "GOOD",
+          "pallet_count": "0.11",
+          "locator": "G357",
+          "lot_number": "23/09/26"
+        }
+      },
+      {
+        "item_id": 2049,
+        "quantity": 5,
+        "unit_id": 44,
+        "detail_type": "auto",
+        "details": {
+          "vehicle_no": "34h06203",
+          "customer_name": "10KF1182 -Công Ty TNHH Thương Mại Hưng Anh Logistics",
+          "trip": "128861",
+          "nvt": "Công Ty CP Vận Tải Và Thương Mại Vitranimex",
+          "lot_status": "GOOD",
+          "pallet_count": "0.07",
+          "locator": "G347",
+          "lot_number": "03/10/26"
+        }
+      },
+      {
+        "item_id": 2049,
+        "quantity": 10,
+        "unit_id": 44,
+        "detail_type": "auto",
+        "details": {
+          "vehicle_no": "34h06203",
+          "customer_name": "10KF1182 -Công Ty TNHH Thương Mại Hưng Anh Logistics",
+          "trip": "128861",
+          "nvt": "Công Ty CP Vận Tải Và Thương Mại Vitranimex",
+          "lot_status": "GOOD",
+          "pallet_count": "0.14",
+          "locator": "G347",
+          "lot_number": "03/10/26"
+        }
+      },
+      {
+        "item_id": 30731,
+        "quantity": 3,
+        "unit_id": 44,
+        "detail_type": "auto",
+        "details": {
+          "vehicle_no": "34h06203",
+          "customer_name": "10KF1182 -Công Ty TNHH Thương Mại Hưng Anh Logistics",
+          "trip": "128861",
+          "nvt": "Công Ty CP Vận Tải Và Thương Mại Vitranimex",
+          "lot_status": "GOOD",
+          "pallet_count": "0.02",
+          "locator": "G380",
+          "lot_number": "19/09/26"
+        }
+      },
+      {
+        "item_id": 30731,
+        "quantity": 6,
+        "unit_id": 44,
+        "detail_type": "auto",
+        "details": {
+          "vehicle_no": "34h06203",
+          "customer_name": "10KF1182 -Công Ty TNHH Thương Mại Hưng Anh Logistics",
+          "trip": "128861",
+          "nvt": "Công Ty CP Vận Tải Và Thương Mại Vitranimex",
+          "lot_status": "GOOD",
+          "pallet_count": "0.03",
+          "locator": "G376",
+          "lot_number": "19/09/26"
+        }
+      },
+      {
+        "item_id": 30731,
+        "quantity": 51,
+        "unit_id": 44,
+        "detail_type": "auto",
+        "details": {
+          "vehicle_no": "34h06203",
+          "customer_name": "10KF1182 -Công Ty TNHH Thương Mại Hưng Anh Logistics",
+          "trip": "128861",
+          "nvt": "Công Ty CP Vận Tải Và Thương Mại Vitranimex",
+          "lot_status": "GOOD",
+          "pallet_count": "0.26",
+          "locator": "G380",
+          "lot_number": "19/09/26"
+        }
+      },
+      {
+        "item_id": 30731,
+        "quantity": 103,
+        "unit_id": 44,
+        "detail_type": "auto",
+        "details": {
+          "vehicle_no": "34h06203",
+          "customer_name": "10KF1182 -Công Ty TNHH Thương Mại Hưng Anh Logistics",
+          "trip": "128861",
+          "nvt": "Công Ty CP Vận Tải Và Thương Mại Vitranimex",
+          "lot_status": "GOOD",
+          "pallet_count": "0.52",
+          "locator": "G376",
+          "lot_number": "19/09/26"
+        }
+      },
+      {
+        "item_id": 30718,
+        "quantity": 65,
+        "unit_id": 44,
+        "detail_type": "auto",
+        "details": {
+          "vehicle_no": "34h06203",
+          "customer_name": "10KF1182 -Công Ty TNHH Thương Mại Hưng Anh Logistics",
+          "trip": "128861",
+          "nvt": "Công Ty CP Vận Tải Và Thương Mại Vitranimex",
+          "lot_status": "GOOD",
+          "pallet_count": "0.28",
+          "locator": "G312",
+          "lot_number": "06/10/26"
+        }
+      },
+      {
+        "item_id": 30731,
+        "quantity": 34,
+        "unit_id": 44,
+        "detail_type": "auto",
+        "details": {
+          "vehicle_no": "89H04917",
+          "customer_name": "10KF1402 -Công ty Cổ phần Dịch vụ thương mại Mỹ Phát",
+          "trip": "129486",
+          "nvt": "Công Ty Cổ Phần Đầu Tư Vinalog",
+          "lot_status": "GOOD",
+          "pallet_count": "0.09",
+          "locator": "G380",
+          "lot_number": "19/09/26"
+        }
+      },
+      {
+        "item_id": 30731,
+        "quantity": 31,
+        "unit_id": 44,
+        "detail_type": "auto",
+        "details": {
+          "vehicle_no": "89H16324",
+          "customer_name": "10KF3229 -Công Ty TNHH Hàng Tiêu Dùng Tâm Anh",
+          "trip": "130246",
+          "nvt": "Công Ty TNHH Đầu Tư Và Thương Mại Nam Khôi",
+          "lot_status": "GOOD",
+          "pallet_count": "0.16",
+          "locator": "G318",
+          "lot_number": "05/10/26"
+        }
+      },
+      {
+        "item_id": 22800,
+        "quantity": 15,
+        "unit_id": 44,
+        "detail_type": "auto",
+        "details": {
+          "vehicle_no": "89H16324",
+          "customer_name": "10KF3229 -Công Ty TNHH Hàng Tiêu Dùng Tâm Anh",
+          "trip": "130259",
+          "nvt": "Công Ty TNHH Đầu Tư Và Thương Mại Nam Khôi",
+          "lot_status": "GOOD",
+          "pallet_count": "0.12",
+          "locator": "G414",
+          "lot_number": "22/09/26"
+        }
+      },
+      {
+        "item_id": 22800,
+        "quantity": 2,
+        "unit_id": 44,
+        "detail_type": "auto",
+        "details": {
+          "vehicle_no": "89H01520",
+          "customer_name": "10KF1586 -Công Ty Cổ Phần Đầu Tư Và Phát Triển Thương Mại An Sơn",
+          "trip": "130269",
+          "nvt": "Công Ty Cổ Phần Tiếp Vận Hòa Phát",
+          "lot_status": "GOOD",
+          "pallet_count": "0.02",
+          "locator": "G414",
+          "lot_number": "22/09/26"
+        }
+      },
+      {
+        "item_id": 22800,
+        "quantity": 4,
+        "unit_id": 44,
+        "detail_type": "auto",
+        "details": {
+          "vehicle_no": "89H01520",
+          "customer_name": "10KF1586 -Công Ty Cổ Phần Đầu Tư Và Phát Triển Thương Mại An Sơn",
+          "trip": "130269",
+          "nvt": "Công Ty Cổ Phần Tiếp Vận Hòa Phát",
+          "lot_status": "GOOD",
+          "pallet_count": "0.03",
+          "locator": "G415",
+          "lot_number": "22/09/26"
+        }
+      },
+      {
+        "item_id": 2158,
+        "quantity": 5,
+        "unit_id": 44,
+        "detail_type": "auto",
+        "details": {
+          "vehicle_no": "89H01520",
+          "customer_name": "10KF1586 -Công Ty Cổ Phần Đầu Tư Và Phát Triển Thương Mại An Sơn",
+          "trip": "130269",
+          "nvt": "Công Ty Cổ Phần Tiếp Vận Hòa Phát",
+          "lot_status": "GOOD",
+          "pallet_count": "0.09",
+          "locator": "G337",
+          "lot_number": "19/09/26"
+        }
+      },
+      {
+        "item_id": 31219,
+        "quantity": 5,
+        "unit_id": 44,
+        "detail_type": "auto",
+        "details": {
+          "vehicle_no": "89H01520",
+          "customer_name": "10KF1586 -Công Ty Cổ Phần Đầu Tư Và Phát Triển Thương Mại An Sơn",
+          "trip": "130269",
+          "nvt": "Công Ty Cổ Phần Tiếp Vận Hòa Phát",
+          "lot_status": "GOOD",
+          "pallet_count": "0.12",
+          "locator": "G299",
+          "lot_number": "25/09/26"
+        }
+      },
+      {
+        "item_id": 2049,
+        "quantity": 10,
+        "unit_id": 44,
+        "detail_type": "auto",
+        "details": {
+          "vehicle_no": "89H01520",
+          "customer_name": "10KF1586 -Công Ty Cổ Phần Đầu Tư Và Phát Triển Thương Mại An Sơn",
+          "trip": "130269",
+          "nvt": "Công Ty Cổ Phần Tiếp Vận Hòa Phát",
+          "lot_status": "GOOD",
+          "pallet_count": "0.14",
+          "locator": "G348",
+          "lot_number": "03/10/26"
+        }
+      },
+      {
+        "item_id": 30731,
+        "quantity": 22,
+        "unit_id": 44,
+        "detail_type": "auto",
+        "details": {
+          "vehicle_no": "89H01520",
+          "customer_name": "10KF1586 -Công Ty Cổ Phần Đầu Tư Và Phát Triển Thương Mại An Sơn",
+          "trip": "130269",
+          "nvt": "Công Ty Cổ Phần Tiếp Vận Hòa Phát",
+          "lot_status": "GOOD",
+          "pallet_count": "0.06",
+          "locator": "G380",
+          "lot_number": "19/09/26"
+        }
+      },
+      {
+        "item_id": 2049,
+        "quantity": 10,
+        "unit_id": 44,
+        "detail_type": "auto",
+        "details": {
+          "vehicle_no": "29H29872",
+          "customer_name": "10KF1275 -Công ty TNHH Dịch Vụ Thương Mại Khánh Tùng",
+          "trip": "129431",
+          "nvt": "Công Ty TNHH Minh Kiên Phát",
+          "lot_status": "GOOD",
+          "pallet_count": "0.14",
+          "locator": "G348",
+          "lot_number": "03/10/26"
+        }
+      },
+      {
+        "item_id": 30731,
+        "quantity": 24,
+        "unit_id": 44,
+        "detail_type": "auto",
+        "details": {
+          "vehicle_no": "29H29872",
+          "customer_name": "10KF1275 -Công ty TNHH Dịch Vụ Thương Mại Khánh Tùng",
+          "trip": "129431",
+          "nvt": "Công Ty TNHH Minh Kiên Phát",
+          "lot_status": "GOOD",
+          "pallet_count": "0.06",
+          "locator": "G380",
+          "lot_number": "19/09/26"
+        }
+      },
+      {
+        "item_id": 22800,
+        "quantity": 3,
+        "unit_id": 44,
+        "detail_type": "auto",
+        "details": {
+          "vehicle_no": "89H03056",
+          "customer_name": "10KF2958 -Công Ty TNHH Thương Mại Và Dịch Vụ Hóa Long",
+          "trip": "130298",
+          "nvt": "Công Ty TNHH Đầu Tư Và Thương Mại Nam Khôi",
+          "lot_status": "GOOD",
+          "pallet_count": "0.02",
+          "locator": "G415",
+          "lot_number": "22/09/26"
+        }
+      },
+      {
+        "item_id": 2057,
+        "quantity": 5,
+        "unit_id": 44,
+        "detail_type": "auto",
+        "details": {
+          "vehicle_no": "89H03056",
+          "customer_name": "10KF2958 -Công Ty TNHH Thương Mại Và Dịch Vụ Hóa Long",
+          "trip": "130298",
+          "nvt": "Công Ty TNHH Đầu Tư Và Thương Mại Nam Khôi",
+          "lot_status": "GOOD",
+          "pallet_count": "0.07",
+          "locator": "G357",
+          "lot_number": "23/09/26"
+        }
+      },
+      {
+        "item_id": 2049,
+        "quantity": 15,
+        "unit_id": 44,
+        "detail_type": "auto",
+        "details": {
+          "vehicle_no": "89H03056",
+          "customer_name": "10KF2958 -Công Ty TNHH Thương Mại Và Dịch Vụ Hóa Long",
+          "trip": "130298",
+          "nvt": "Công Ty TNHH Đầu Tư Và Thương Mại Nam Khôi",
+          "lot_status": "GOOD",
+          "pallet_count": "0.21",
+          "locator": "G348",
+          "lot_number": "03/10/26"
+        }
+      },
+      {
+        "item_id": 30731,
+        "quantity": 2,
+        "unit_id": 44,
+        "detail_type": "auto",
+        "details": {
+          "vehicle_no": "89H03056",
+          "customer_name": "10KF2958 -Công Ty TNHH Thương Mại Và Dịch Vụ Hóa Long",
+          "trip": "130298",
+          "nvt": "Công Ty TNHH Đầu Tư Và Thương Mại Nam Khôi",
+          "lot_status": "GOOD",
+          "pallet_count": "0.01",
+          "locator": "G380",
+          "lot_number": "19/09/26"
+        }
+      },
+      {
+        "item_id": 30731,
+        "quantity": 5,
+        "unit_id": 44,
+        "detail_type": "auto",
+        "details": {
+          "vehicle_no": "89H03056",
+          "customer_name": "10KF2958 -Công Ty TNHH Thương Mại Và Dịch Vụ Hóa Long",
+          "trip": "130298",
+          "nvt": "Công Ty TNHH Đầu Tư Và Thương Mại Nam Khôi",
+          "lot_status": "GOOD",
+          "pallet_count": "0.03",
+          "locator": "G381",
+          "lot_number": "19/09/26"
+        }
+      },
+      {
+        "item_id": 30731,
+        "quantity": 7,
+        "unit_id": 44,
+        "detail_type": "auto",
+        "details": {
+          "vehicle_no": "89H03056",
+          "customer_name": "10KF2958 -Công Ty TNHH Thương Mại Và Dịch Vụ Hóa Long",
+          "trip": "130298",
+          "nvt": "Công Ty TNHH Đầu Tư Và Thương Mại Nam Khôi",
+          "lot_status": "GOOD",
+          "pallet_count": "0.04",
+          "locator": "G380",
+          "lot_number": "19/09/26"
+        }
+      },
+      {
+        "item_id": 2049,
+        "quantity": 2,
+        "unit_id": 44,
+        "detail_type": "auto",
+        "details": {
+          "vehicle_no": "99H02676",
+          "customer_name": "10KF1132 -Công Ty TNHH Phong Huy Tỉnh Điện Biên",
+          "trip": "129427",
+          "nvt": "Công Ty CP Vinafco",
+          "lot_status": "GOOD",
+          "pallet_count": "0.03",
+          "locator": "G348",
+          "lot_number": "03/10/26"
+        }
+      },
+      {
+        "item_id": 2049,
+        "quantity": 3,
+        "unit_id": 44,
+        "detail_type": "auto",
+        "details": {
+          "vehicle_no": "99H02676",
+          "customer_name": "10KF1132 -Công Ty TNHH Phong Huy Tỉnh Điện Biên",
+          "trip": "129427",
+          "nvt": "Công Ty CP Vinafco",
+          "lot_status": "GOOD",
+          "pallet_count": "0.04",
+          "locator": "G347",
+          "lot_number": "03/10/26"
+        }
+      },
+      {
+        "item_id": 2158,
+        "quantity": 3,
+        "unit_id": 44,
+        "detail_type": "auto",
+        "details": {
+          "vehicle_no": "99H02032",
+          "customer_name": "10KF1305 -Công Ty TNHH MTV Lâm Diệu",
+          "trip": "130279",
+          "nvt": "Công Ty Đại Tân - (TNHH)",
+          "lot_status": "GOOD",
+          "pallet_count": "0.05",
+          "locator": "G337",
+          "lot_number": "19/09/26"
+        }
+      },
+      {
+        "item_id": 31219,
+        "quantity": 5,
+        "unit_id": 44,
+        "detail_type": "auto",
+        "details": {
+          "vehicle_no": "99H02032",
+          "customer_name": "10KF1305 -Công Ty TNHH MTV Lâm Diệu",
+          "trip": "130279",
+          "nvt": "Công Ty Đại Tân - (TNHH)",
+          "lot_status": "GOOD",
+          "pallet_count": "0.12",
+          "locator": "G299",
+          "lot_number": "25/09/26"
+        }
+      },
+      {
+        "item_id": 2057,
+        "quantity": 5,
+        "unit_id": 44,
+        "detail_type": "auto",
+        "details": {
+          "vehicle_no": "99H02032",
+          "customer_name": "10KF1305 -Công Ty TNHH MTV Lâm Diệu",
+          "trip": "130279",
+          "nvt": "Công Ty Đại Tân - (TNHH)",
+          "lot_status": "GOOD",
+          "pallet_count": "0.07",
+          "locator": "G357",
+          "lot_number": "23/09/26"
+        }
+      },
+      {
+        "item_id": 2049,
+        "quantity": 20,
+        "unit_id": 44,
+        "detail_type": "auto",
+        "details": {
+          "vehicle_no": "99H02032",
+          "customer_name": "10KF1305 -Công Ty TNHH MTV Lâm Diệu",
+          "trip": "130279",
+          "nvt": "Công Ty Đại Tân - (TNHH)",
+          "lot_status": "GOOD",
+          "pallet_count": "0.29",
+          "locator": "G348",
+          "lot_number": "03/10/26"
+        }
+      },
+      {
+        "item_id": 30731,
+        "quantity": 24,
+        "unit_id": 44,
+        "detail_type": "auto",
+        "details": {
+          "vehicle_no": "99H02032",
+          "customer_name": "10KF1305 -Công Ty TNHH MTV Lâm Diệu",
+          "trip": "130279",
+          "nvt": "Công Ty Đại Tân - (TNHH)",
+          "lot_status": "GOOD",
+          "pallet_count": "0.12",
+          "locator": "G380",
+          "lot_number": "19/09/26"
+        }
+      }
+    ]
+  },
+  "stock_ok_line_nos": [
+    6,
+    7,
+    8,
+    9,
+    11,
+    13,
+    21,
+    23,
+    26,
+    27,
+    33,
+    34,
+    39,
+    41,
+    43
+  ]
+}

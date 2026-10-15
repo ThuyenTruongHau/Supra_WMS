@@ -96,8 +96,9 @@ def init_worker_logging(**_kwargs):
     )
 
 def run_logic_task(task: Task, /, **kwargs: Any) -> Any:
-    if settings.debug:  
-        return task.apply(kwargs=kwargs).get(propagate=True)
+    if settings.debug:
+        # Gọi trực tiếp — tránh task.apply() giữ thêm connection/broker trong process API.
+        return task.run(**kwargs)
     return task.apply_async(kwargs=kwargs).get(
         timeout=CELERY_LOGIC_TIMEOUT,
         propagate=True,

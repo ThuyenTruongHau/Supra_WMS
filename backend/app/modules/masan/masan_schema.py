@@ -57,6 +57,10 @@ class MasanInboundCallerResponse(BaseModel):
     job_ids: list[str]
 
 
+class MasanInboundBulkExportRequest(BaseModel):
+    order_ids: list[int] = Field(..., min_length=1, max_length=100)
+
+
 class MasanClearInboundZoneRequest(BaseModel):
     warehouse_id: int = Field(..., gt=0)
 
@@ -106,6 +110,9 @@ class MasanOutboundParseResponse(BaseModel):
     valid_rows: int
     invalid_rows: int
     warnings: list[str] = Field(default_factory=list)
+    """False khi có lỗi locator/tồn chặn tạo đơn — FE vẫn nhận preview_rows."""
+    can_import: bool = True
+    import_errors: list[str] = Field(default_factory=list)
 
 
 class MasanCcLocationLine(BaseModel):
@@ -269,6 +276,10 @@ class MasanSortingZonePendingAllocationRow(BaseModel):
     robot_task_id: Optional[int] = None
     from_location_id: Optional[int] = None
     to_location_id: Optional[int] = None
+    locator: Optional[str] = Field(
+        None,
+        description="Nguồn lấy hàng: location_name (from_location) hoặc locator trên detail",
+    )
 
 
 class MasanSortingZoneLocationPendingStock(BaseModel):

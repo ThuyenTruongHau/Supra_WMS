@@ -1,7 +1,7 @@
 import { DEMO_MASAN_PRODUCTS } from "@/data/demoMasanProducts";
 import type { IncompleteVehicle, SortingStationFillStation } from "@/types/outbound";
 import type { WarehouseLocation } from "@/types/warehouseLocation";
-import { formatDisplayBin } from "@/utils/locationBin";
+import { getLocationDisplayLabel } from "@/utils/locationBin";
 import { toDisplayInteger } from "@/utils/number";
 
 /** Bật mô phỏng FE: 2 outbound station + sorting xung quanh (dev/demo). */
@@ -134,11 +134,17 @@ function formatStationBin(
   code: string,
 ): string {
   const loc = locationByCode[code];
-  return (
-    formatDisplayBin(loc?.bin, loc?.location_type) ||
-    (code || "").trim() ||
-    "—"
-  ).toUpperCase();
+  const label =
+    (loc?.bin ?? "").trim() ||
+    getLocationDisplayLabel(
+      {
+        location_name: loc?.location_name,
+        location_code: loc?.location_code ?? code,
+        bin_code: loc?.bin,
+      },
+      loc?.location_type,
+    );
+  return (label || (code || "").trim() || "—").toUpperCase();
 }
 
 type MergedVehicleLine = {

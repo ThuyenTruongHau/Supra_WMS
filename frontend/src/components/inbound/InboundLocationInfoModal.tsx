@@ -1,7 +1,7 @@
 import { Modal } from "@/components/ui";
 import { useLocationDetail } from "@/hooks/useWarehouseMap";
 import { useProduct } from "@/hooks/useProduct";
-import { formatDisplayBin } from "@/utils/locationBin";
+import { formatDisplayBin, getLocationDisplayLabel } from "@/utils/locationBin";
 import { toDisplayInteger } from "@/utils/number";
 
 type Props = {
@@ -31,11 +31,15 @@ export default function InboundLocationInfoModal({
   const productById = new Map(products.map((product) => [product.id, product]));
 
   const location = data?.location;
-  const locationBin = location?.bin ?? location?.bin_code ?? null;
   const locationName = location
-    ? formatDisplayBin(locationBin, location.location_type) ||
-      location.location_name ||
-      location.location_code
+    ? getLocationDisplayLabel(
+        {
+          location_name: location.location_name,
+          location_code: location.location_code,
+          bin_code: location.bin_code ?? location.bin,
+        },
+        location.location_type,
+      )
     : "";
 
   return (
@@ -112,13 +116,7 @@ export default function InboundLocationInfoModal({
                       .map(displayValue)
                       .join(" / "),
                   ],
-                  [
-                    "Bin",
-                    formatDisplayBin(
-                      locationBin,
-                      data.location.location_type,
-                    ),
-                  ],
+                  ["Bin", locationName || displayValue(data.location.location_name)],
                   ["Trạng thái", data.location.status],
                 ].map(([label, value]) => (
                   <div

@@ -25,4 +25,6 @@ export interface MasanOutboundParseResponse {
   valid_rows: number;
   invalid_rows: number;
   warnings: string[];
+  can_import?: boolean;
+  import_errors?: string[];
 }

@@ -81,7 +81,6 @@ __all__ = [
 )
 def create_outbound_order(
     body: OutboundOrderCreate,
-    db: DbSession,
     current_user: Annotated[User, Depends(_OUTBOUND_CREATE)],
     outbound_type: str,
 ):
@@ -95,11 +94,6 @@ def create_outbound_order(
         raise HTTPException(status_code=400, detail=str(e)) from e
 
 
-@router.get(
-    "/outbound-orders",
-    response_model=OutboundOrderListResponse,
-    dependencies=[Depends(_OUTBOUND_READ)],
-)
 def _validate_created_range(
     created_from: Optional[datetime],
     created_to: Optional[datetime],
@@ -115,6 +109,11 @@ def _validate_created_range(
         )
 
 
+@router.get(
+    "/outbound-orders",
+    response_model=OutboundOrderListResponse,
+    dependencies=[Depends(_OUTBOUND_READ)],
+)
 def list_outbound_orders(
     db: DbSession,
     warehouse_id: int = Query(...),
@@ -282,7 +281,7 @@ def list_operator_board_lines(
     response_model=OutboundOrderUpdateResponse,
     dependencies=[Depends(_OUTBOUND_READ)],
 )
-def get_outbound_order_by_id(db: DbSession, order_id: int):
+def get_outbound_order_by_id(order_id: int):
     try:
         order = run_logic_task(get_outbound_order_by_id_task, order_id=order_id)
     except ValueError as e:
@@ -296,7 +295,7 @@ def get_outbound_order_by_id(db: DbSession, order_id: int):
     response_model=list[OutboundRobotTaskResponse],
     dependencies=[Depends(_OUTBOUND_READ)],
 )
-def get_outbound_robot_tasks(db: DbSession, order_id: int):
+def get_outbound_robot_tasks(order_id: int):
     try:
         robot_tasks = run_logic_task(get_outbound_robot_tasks_task, order_id=order_id)
     except ValueError as e:
@@ -311,7 +310,7 @@ def get_outbound_robot_tasks(db: DbSession, order_id: int):
     response_model=list[OutboundRobotTaskResponse],
     dependencies=[Depends(_OUTBOUND_READ)],
 )
-def get_outbound_manual_allocation_tasks(db: DbSession, order_id: int):
+def get_outbound_manual_allocation_tasks(order_id: int):
     try:
         tasks = run_logic_task(
             get_outbound_manual_allocation_tasks_task, order_id=order_id
@@ -330,7 +329,7 @@ def get_outbound_manual_allocation_tasks(db: DbSession, order_id: int):
     response_model=list[OutboundOrderDetailResponse],
     dependencies=[Depends(_OUTBOUND_READ)],
 )
-def get_outbound_order_details(db: DbSession, order_id: int):
+def get_outbound_order_details(order_id: int):
     try:
         details = run_logic_task(get_outbound_order_details_task, order_id=order_id)
     except ValueError as e:
@@ -345,7 +344,7 @@ def get_outbound_order_details(db: DbSession, order_id: int):
     response_model=list[LackedDetailResponse],
     dependencies=[Depends(_OUTBOUND_READ)],
 )
-def get_outbound_lacked_details(db: DbSession, order_id: int):
+def get_outbound_lacked_details(order_id: int):
     try:
         lacked = run_logic_task(get_outbound_lacked_details_task, order_id=order_id)
     except ValueError as e:
@@ -362,7 +361,6 @@ def get_outbound_lacked_details(db: DbSession, order_id: int):
 )
 def calculate_outbound_order(
     body: CalculateOutboundDetail,
-    db: DbSession,
     strategy: str = Query("fefo"),
 ):
     try:
@@ -381,7 +379,6 @@ def calculate_outbound_order(
 )
 def execute_outbound_task(
     body: OutboundRobotTaskCreate,
-    db: DbSession,
     detail_type: str = Query("auto"),
 ):
     try:
@@ -404,7 +401,6 @@ def execute_outbound_task(
 def update_outbound_order(
     order_id: int,
     body: OutboundOrderUpdate,
-    db: DbSession,
     outbound_type: str,
     current_user: Annotated[User, Depends(_OUTBOUND_UPDATE)],
 ):

@@ -71,25 +71,16 @@ export function pickOldestPendingAllocation(
   return rows[rows.length - 1] ?? null;
 }
 
-/** Một allocation đại diện (cũ nhất) trên ô CC — giống commit view CC. */
-export function buildCcPendingStockOverlays(
-  data: MasanSortingZonePendingStockResponse | undefined,
+function ccOverlayFromAllocationBuckets(
+  buckets: Map<number, MasanSortingZonePendingAllocationRow[]>,
   ccLocationIdToCode: Map<number, string>,
 ): Record<string, string> {
   const out: Record<string, string> = {};
-  if (!data?.locations) return out;
-
-  for (const loc of data.locations) {
-    const code = ccLocationIdToCode.get(loc.location_id)?.trim();
+  for (const [locId, allocations] of buckets.entries()) {
+    const code = ccLocationIdToCode.get(locId)?.trim();
     if (!code) continue;
-    const allocations = (loc.allocations ?? []).filter(
-      (a) => (a.quantity ?? 0) > 0,
-    );
-    if (allocations.length === 0) continue;
-
     const primary = pickOldestPendingAllocation(allocations);
     if (!primary) continue;
-
     const detailLines = [
       `SKU::${skuLabelForAllocation(primary)}`,
       `SL::${toDisplayInteger(primary.quantity ?? 0)}`,
@@ -101,6 +92,56 @@ export function buildCcPendingStockOverlays(
     out[code] = formatSortingCellLabel(detailLines);
   }
   return out;
+}
+
+/** Một allocation đại diện (cũ nhất) trên ô CC — giống commit view CC. */
+export function buildCcPendingStockOverlays(
+  data: MasanSortingZonePendingStockResponse | undefined,
+  ccLocationIdToCode: Map<number, string>,
+): Record<string, string> {
+  const buckets = new Map<number, MasanSortingZonePendingAllocationRow[]>();
+  if (!data?.locations) return {};
+
+  for (const loc of data.locations) {
+    const allocations = (loc.allocations ?? []).filter(
+      (a) => (a.quantity ?? 0) > 0,
+    );
+    if (allocations.length > 0) {
+      buckets.set(loc.location_id, allocations);
+    }
+  }
+  return ccOverlayFromAllocationBuckets(buckets, ccLocationIdToCode);
+}
+
+/** Overlay CC chỉ allocation có đích ``vtLocationId`` (khi chọn VT trên Monitor). */
+export function buildCcPendingStockOverlaysForVt(
+  data: MasanSortingZonePendingStockResponse | undefined,
+  vtLocationId: number,
+  ccLocationIdToCode: Map<number, string>,
+): Record<string, string> {
+  const buckets = new Map<number, MasanSortingZonePendingAllocationRow[]>();
+  for (const row of flattenPendingAllocations(data, ccLocationIdToCode)) {
+    if (row.to_location_id !== vtLocationId) continue;
+    const bucket = buckets.get(row.ccLocationId) ?? [];
+    bucket.push(row);
+    buckets.set(row.ccLocationId, bucket);
+  }
+  return ccOverlayFromAllocationBuckets(buckets, ccLocationIdToCode);
+}
+
+/** Mã ô CC có hàng stock_ready cho VT đích. */
+export function ccLocationCodesForVt(
+  data: MasanSortingZonePendingStockResponse | undefined,
+  vtLocationId: number,
+  ccLocationIdToCode: Map<number, string>,
+): string[] {
+  const codes = new Set<string>();
+  for (const row of flattenPendingAllocations(data, ccLocationIdToCode)) {
+    if (row.to_location_id !== vtLocationId) continue;
+    const code = row.ccLocationCode?.trim();
+    if (code) codes.add(code);
+  }
+  return [...codes];
 }
 
 /** Một allocation đại diện trên ô VT (confirm); kèm MORE nếu nhiều dòng gom VT. */
@@ -131,19 +172,13 @@ export function buildVtPendingStockOverlays(
   return out;
 }
 
-/** Overlay map: CC (view stock_ready) + VT (confirm). VT ghi đè nếu trùng mã ô. */
+/** Overlay map: chỉ ô CC (stock_ready / hàng cần lấy). VT dùng tồn API map status. */
 export function buildPendingStockMapOverlays(
   data: MasanSortingZonePendingStockResponse | undefined,
-  vtLocationIdToCode: Map<number, string>,
+  _vtLocationIdToCode: Map<number, string>,
   ccLocationIdToCode: Map<number, string>,
 ): Record<string, string> {
-  const cc = buildCcPendingStockOverlays(data, ccLocationIdToCode);
-  const vt = buildVtPendingStockOverlays(
-    data,
-    vtLocationIdToCode,
-    ccLocationIdToCode,
-  );
-  return mergePendingStockOverlays(mergePendingStockOverlays({}, cc), vt);
+  return buildCcPendingStockOverlays(data, ccLocationIdToCode);
 }
 
 /** @deprecated Dùng buildPendingStockMapOverlays hoặc buildVtPendingStockOverlays */
@@ -190,9 +225,9 @@ export function pendingConfirmOverlayCodes(
 }
 
 export function ccLabelForPendingRow(row: MasanPendingAllocationWithCc): string {
-  const code = (row.ccLocationCode ?? "").trim();
-  if (code) return code;
   const name = (row.ccLocationName ?? "").trim();
   if (name) return name;
+  const code = (row.ccLocationCode ?? "").trim();
+  if (code) return code;
   return `#${row.ccLocationId}`;
 }

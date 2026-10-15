@@ -23,6 +23,8 @@ import { resolveOutboundType } from "@/config/warehouseMode";
 import { useCreateOutboundOrder } from "@/hooks/useOutbound";
 import type { OutboundOrderLineItemCreate } from "@/types/outbound";
 import { buildMasanOutboundCreateRequest } from "@/utils/masanOutboundImport";
+import { collectMasanExcelLotErrors } from "@/utils/masanExcelLot";
+import { collectMasanOutboundImportBlockers } from "@/utils/masanOutboundImportErrors";
 import { toDisplayInteger } from "@/utils/number";
 import dayjs from "dayjs";
 import type { MasanOutboundParseResponse } from "@/types/masanOutbound";
@@ -211,6 +213,44 @@ export default React.memo(function SortingWaveOverviewPicker({
         warehouseId,
         outboundType,
       );
+
+      const lotErrors = collectMasanExcelLotErrors(result.preview_rows);
+      if (lotErrors.length > 0) {
+        Modal.error({
+          title: "LOT không hợp lệ (DDMMYY 6 chữ số)",
+          width: OPERATOR_DESKTOP.modal.sm,
+          destroyOnHidden: true,
+          content: (
+            <ul
+              className={`mt-2 ${operatorDesktopClass.listMax64} list-disc space-y-1 overflow-y-auto pl-5 text-sm`}
+            >
+              {lotErrors.map((line) => (
+                <li key={line}>{line}</li>
+              ))}
+            </ul>
+          ),
+        });
+        return;
+      }
+
+      const importBlockers = collectMasanOutboundImportBlockers(result);
+      if (importBlockers.length > 0) {
+        Modal.error({
+          title: "Không thể import — lỗi tồn / Locator",
+          width: OPERATOR_DESKTOP.modal.sm,
+          destroyOnHidden: true,
+          content: (
+            <ul
+              className={`mt-2 ${operatorDesktopClass.listMax64} list-disc space-y-1 overflow-y-auto pl-5 text-sm`}
+            >
+              {importBlockers.map((line) => (
+                <li key={line}>{line}</li>
+              ))}
+            </ul>
+          ),
+        });
+        return;
+      }
 
       setImportLineItems(result.line_items);
       setImportPreviewRows(result.preview_rows);

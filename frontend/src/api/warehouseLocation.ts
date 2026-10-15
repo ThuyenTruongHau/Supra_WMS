@@ -13,7 +13,7 @@ import type {
   SuggestEmptyLocationsResponse,
   WarehouseLocation,
 } from '@/types/warehouseLocation';
-import { formatDisplayBin } from '@/utils/locationBin';
+import { getLocationDisplayLabel } from '@/utils/locationBin';
 
 const PAGE_SIZE = 200;
 
@@ -156,7 +156,14 @@ export async function getLocationStockLabelsApi(
 }
 
 export function formatEmptyLocationLabel(location: EmptyLocation): string {
-  const bin = formatDisplayBin(location.bin, location.location_type);
+  const bin = getLocationDisplayLabel(
+    {
+      location_name: location.location_name,
+      location_code: location.location_code,
+      bin_code: location.bin,
+    },
+    location.location_type,
+  );
   const parts = [location.row, location.column, bin || location.bin]
     .map((part) => part?.trim())
     .filter((part): part is string => Boolean(part));
@@ -171,6 +178,7 @@ export function formatEmptyLocationLabel(location: EmptyLocation): string {
 export function formatStorageLocationLabel(
   location: {
     location_code: string;
+    location_name?: string | null;
     row: string | null;
     column: string | null;
     bin: string | null;
@@ -180,7 +188,14 @@ export function formatStorageLocationLabel(
     quantity: number;
   },
 ): string {
-  const bin = formatDisplayBin(location.bin, location.location_type ?? 'storage');
+  const bin = getLocationDisplayLabel(
+    {
+      location_name: location.location_name,
+      location_code: location.location_code,
+      bin_code: location.bin,
+    },
+    location.location_type ?? 'storage',
+  );
   const aisle = [location.row, location.column, bin || location.bin]
     .map((part) => part?.trim())
     .filter((part): part is string => Boolean(part))

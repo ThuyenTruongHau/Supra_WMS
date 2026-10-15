@@ -37,7 +37,7 @@ import type { StationProductLine } from "@/types/outboundTask";
 import type { WarehouseLocation } from "@/types/warehouseLocation";
 import { getApiErrorDetail } from "@/types/apiError";
 import { toDisplayInteger } from "@/utils/number";
-import { formatDisplayBin } from "@/utils/locationBin";
+import { getLocationDisplayLabel } from "@/utils/locationBin";
 import { OUTBOUND_MAP_ZONE_IDS } from "@/constants/outboundMapZones";
 import type { SortingWave } from "@/types/sortingWave";
 
@@ -53,28 +53,25 @@ type DirectOutboundFromInboundBoardProps = {
 function locationLabel(loc: {
   id: number;
   location_code: string;
+  location_name?: string | null;
   bin?: string | null;
   location_type?: string | null;
   status?: string | null;
 }) {
   const code =
-    formatDisplayBin(loc.bin, loc.location_type) ||
-    (loc.location_code || "").trim() ||
+    getLocationDisplayLabel(loc, loc.location_type) ||
     `#${loc.id}`;
   const status = (loc.status || "").trim();
   return status ? `${code} · ${status}` : code;
 }
 
 function displayBin(loc: {
+  location_name?: string | null;
   bin?: string | null;
   location_type?: string | null;
   location_code?: string | null;
 }): string {
-  return (
-    formatDisplayBin(loc.bin, loc.location_type) ||
-    (loc.location_code || "").trim() ||
-    ""
-  ).toUpperCase();
+  return getLocationDisplayLabel(loc, loc.location_type).toUpperCase();
 }
 
 /** Ô chọn được trên map: mã bin BP* (chia chọn) hoặc CX* (cửa xuất). */

@@ -18,6 +18,7 @@ import {
 } from "@/hooks/useMasanSortingZonePendingStock";
 import { useMasanSortingZoneWebSocket } from "@/hooks/useMasanSortingZoneWebSocket";
 import { useZonesMapStatus } from "@/hooks/useWarehouseMap";
+import { getLocationDisplayLabel } from "@/utils/locationBin";
 import {
   buildPendingStockMapOverlays,
   pendingAllocationsByLocationId,
@@ -102,6 +103,43 @@ export function useOperatorDisplayZoneMasanMap(
     }
     return map;
   }, [vtStatusQuery.items]);
+
+  const vtLocationCodes = useMemo(() => {
+    const codes = new Set<string>();
+    for (const loc of vtStatusQuery.items) {
+      const code = (loc.location_code ?? "").trim();
+      if (code) codes.add(code);
+    }
+    return codes;
+  }, [vtStatusQuery.items]);
+
+  const vtLocationDisplayLabelById = useMemo(() => {
+    const map = new Map<number, string>();
+    for (const loc of vtStatusQuery.items) {
+      const label =
+        getLocationDisplayLabel({
+          location_name: loc.location_name,
+          location_code: loc.location_code,
+          bin_code: loc.bin_code,
+        }) || loc.location_code;
+      map.set(loc.id, label);
+    }
+    return map;
+  }, [vtStatusQuery.items]);
+
+  const ccLocationDisplayLabelById = useMemo(() => {
+    const map = new Map<number, string>();
+    for (const loc of ccStatusQuery.items) {
+      const label =
+        getLocationDisplayLabel({
+          location_name: loc.location_name,
+          location_code: loc.location_code,
+          bin_code: loc.bin_code,
+        }) || loc.location_code;
+      map.set(loc.id, label);
+    }
+    return map;
+  }, [ccStatusQuery.items]);
 
   const locationSubLabelByCode = useMemo(
     () => ccVehicleByCodeFromZoneLocations(ccQuery.data?.locations ?? []),
@@ -199,8 +237,13 @@ export function useOperatorDisplayZoneMasanMap(
     pendingConfirmOverlayCodes: pendingConfirmOverlayCodesSet,
     interactiveCodes,
     clickableLocationIdByCode,
+    /** CC `location_id` → `location_code` (overlay pending-stock, sidebar). */
+    ccLocationCodeById: clickableLocationCodeById,
     vtLocationIdByCode,
     vtLocationCodeById,
+    vtLocationCodes,
+    vtLocationDisplayLabelById,
+    ccLocationDisplayLabelById,
     pendingByLocationId,
     pendingByToLocationId,
     invalidateMasanCcCaches,

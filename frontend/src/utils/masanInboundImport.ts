@@ -3,7 +3,7 @@ import type {
   InboundSuggestAllocationResponse,
 } from "@/types/inboundOrder";
 import type { MasanInboundParseResponse } from "@/types/masan";
-import { normalizeLotNumber } from "@/utils/lotNumberValidation";
+import { normalizeMasanExcelLotInput } from "@/utils/masanExcelLot";
 
 export function buildMasanInboundCreateRequest(
   parseResult: MasanInboundParseResponse,
@@ -24,8 +24,11 @@ export function buildMasanInboundCreateRequest(
   const line_items = suggestResult.line_items.map((suggested, index) => {
     const source = sourceLineItems[index];
     const toLocationId = suggested.target_location_id;
-    const details = source.details ?? {};
+    const details = { ...(source.details ?? {}) };
     const fromLocationId = details.from_location_id as number | undefined;
+    if (details.lot != null && String(details.lot).trim() !== "") {
+      details.lot = normalizeMasanExcelLotInput(details.lot) ?? details.lot;
+    }
 
     if (!fromLocationId) {
       throw new Error(
@@ -41,7 +44,7 @@ export function buildMasanInboundCreateRequest(
         item_id: item.item_id,
         quantity: item.quantity,
         unit_id: item.unit_id,
-        lot_number: normalizeLotNumber(item.lot_number ?? undefined),
+        lot_number: normalizeMasanExcelLotInput(item.lot_number ?? undefined),
       })),
     };
   });

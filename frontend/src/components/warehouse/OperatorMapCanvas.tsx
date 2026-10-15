@@ -21,6 +21,7 @@ import {
   computeCellLayout,
   estimateAxisPitch,
   findCellAt,
+  boostGroupCellHeight,
   layoutGroupKey,
   type CellBounds,
   type CellSize,
@@ -40,7 +41,17 @@ import {
   drawStationOverlayLabel,
   parseVehicleFromStationOverlay,
 } from "@/utils/warehouseMapShelfDraw";
-import { formatDisplayBin } from "@/utils/locationBin";
+import {
+  formatLotCompactDdmmyy,
+  formatLotNumberDisplay,
+  formatLotValueForDisplay,
+} from "@/utils/legacyLotNumber";
+import {
+  getLocationDisplayLabel,
+  isCcLocationCode,
+  isVtLocationCode,
+  stockLabelLocationText,
+} from "@/utils/locationBin";
 import {
   SHELF_FULL_COLOR,
   SHELF_EMPTY_COLOR,
@@ -127,6 +138,10 @@ export type BufferMapCanvasTuning = {
   titleBandRatio?: number;
   /** Hệ số phóng chữ label trong ô. */
   labelTextScale?: number;
+  /** Map chia chọn: nhân chiều cao ô CC (>1, vd. 1.1 = +10%), không đổi width. */
+  ccCellHeightBoost?: number;
+  /** Hệ số chữ riêng trong ô CC (mặc định dùng labelTextScale). */
+  ccLabelTextScale?: number;
   /** @deprecated Kích thước ô tự tính theo pitch; chỉ còn dùng khi layout chỉ có 1 ô. */
   baseNodeSize?: number;
   /** @deprecated Không còn tác dụng — dùng fillRatio. */
@@ -203,6 +218,17 @@ type Props = {
    * Nếu không truyền → tất cả ô đều có thể click.
    */
   interactiveCodes?: string[] | Set<string>;
+  /** Monitor: bỏ refetch map status mỗi lần click (giảm delay). Mặc định true. */
+  refetchStatusOnCellClick?: boolean;
+  /** ms trước khi fire single-click (0 = ngay). Mặc định 320. */
+  cellClickDelayMs?: number;
+  /**
+   * Monitor: khi set — chỉ CC trong tập này hiện overlay/biển số chia hàng;
+   * CC khác coi như không chia (ô xám trống).
+   */
+  ccSortingActiveCodes?: string[] | Set<string>;
+  /** Monitor: mã ô VT — luôn vẽ tồn gốc; chỉ CC mới bị dim khi focus. */
+  vtLocationCodes?: string[] | Set<string>;
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -273,6 +299,33 @@ function drawInboundSeparator(
   ctx.restore();
 }
 
+function isVtMapCell(locationCode: string, locationName?: string | null): boolean {
+  if (isVtLocationCode(locationCode) || isVtLocationCode(locationName)) return true;
+  return (locationName ?? "").trim().toUpperCase().startsWith("VT");
+}
+
+/** Ô VT: LOT hiển thị compact DDMMYY. Ô khác giữ chuỗi API. */
+function lotLabelForMapCell(cell: {
+  location_code: string;
+  location_name?: string | null;
+  item_stock?: {
+    lot_number?: string | null;
+    lot_number_from?: string | null;
+    lot_number_to?: string | null;
+  }[] | null;
+}): string | null {
+  const stock = cell.item_stock?.[0];
+  const raw =
+    stock?.lot_number?.trim() ||
+    formatLotNumberDisplay(stock?.lot_number_from, stock?.lot_number_to) ||
+    stock?.lot_number_from?.trim() ||
+    null;
+  if (!isVtMapCell(cell.location_code, cell.location_name)) {
+    return raw ? formatLotValueForDisplay(raw) ?? raw : null;
+  }
+  return formatLotCompactDdmmyy(raw);
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function OperatorMapCanvas({
   zoneId,
@@ -286,6 +339,10 @@ export default function OperatorMapCanvas({
   locationSubLabelByCode,
   pendingConfirmOverlayCodes,
   interactiveCodes,
+  refetchStatusOnCellClick = true,
+  cellClickDelayMs = 320,
+  ccSortingActiveCodes,
+  vtLocationCodes,
 }: Props) {
   // ── API data ────────────────────────────────────────────────────────────────
   const zoneIdsKey = (Array.isArray(zoneId) ? zoneId : [zoneId]).join(",");
@@ -330,11 +387,19 @@ export default function OperatorMapCanvas({
         display_status: cell.status,
         product_sku: cell.item_stock?.[0]?.sku ?? null,
         product_name: cell.item_stock?.[0]?.sku ?? null,
-        bin: cell.bin_code ?? null,
+        bin:
+          getLocationDisplayLabel(
+            {
+              location_name: cell.location_name,
+              location_code: cell.location_code,
+              bin_code: cell.bin_code,
+            },
+            null,
+          ) || null,
         location_type: null,
         quantity: qty,
         line_count: (cell.item_stock ?? []).length,
-        lot_number: cell.item_stock?.[0]?.lot_number ?? null,
+        lot_number: lotLabelForMapCell(cell),
       });
     }
     return map;
@@ -353,6 +418,18 @@ export default function OperatorMapCanvas({
     return new Set(pendingConfirmOverlayCodes);
   }, [pendingConfirmOverlayCodes]);
 
+  const ccSortingActiveCodeSet = useMemo(() => {
+    if (ccSortingActiveCodes == null) return null;
+    if (ccSortingActiveCodes instanceof Set) return ccSortingActiveCodes;
+    return new Set(ccSortingActiveCodes);
+  }, [ccSortingActiveCodes]);
+
+  const vtLocationCodeSet = useMemo(() => {
+    if (vtLocationCodes == null) return new Set<string>();
+    if (vtLocationCodes instanceof Set) return vtLocationCodes;
+    return new Set(vtLocationCodes);
+  }, [vtLocationCodes]);
+
   // ── Refs ────────────────────────────────────────────────────────────────────
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -366,6 +443,8 @@ export default function OperatorMapCanvas({
   const overlayLabelByCodeRef = useRef<Record<string, string>>({});
   const locationSubLabelByCodeRef = useRef<Record<string, string>>({});
   const pendingConfirmOverlayCodesRef = useRef<Set<string>>(new Set());
+  const ccSortingActiveCodesRef = useRef<Set<string> | null>(null);
+  const vtLocationCodesRef = useRef<Set<string>>(new Set());
   const selectedCodesRef = useRef<Set<string>>(new Set());
   const interactiveCodesRef = useRef<Set<string> | null>(null);
 
@@ -380,6 +459,14 @@ export default function OperatorMapCanvas({
 
   // Sync tuningRef với prop tuning mỗi render (không cần useEffect)
   tuningRef.current = resolveTuning(tuning);
+  const ccMapTuningRef = useRef({
+    heightBoost: 1,
+    labelTextScale: undefined as number | undefined,
+  });
+  ccMapTuningRef.current = {
+    heightBoost: tuning?.ccCellHeightBoost ?? 1,
+    labelTextScale: tuning?.ccLabelTextScale,
+  };
 
   const [hasData, setHasData] = useState(false);
 
@@ -428,22 +515,54 @@ export default function OperatorMapCanvas({
       const halfH = sizes[i].h / 2;
       const shelfHalf = { w: halfW, h: halfH };
       const showLabels = Math.min(halfW, halfH) * 2 * scale >= LABEL_MIN_SCREEN_PX;
+      const isCcCell = isCcLocationCode(node.content);
+      const cellLabelScale =
+        isCcCell && ccMapTuningRef.current.labelTextScale != null
+          ? ccMapTuningRef.current.labelTextScale
+          : opts.labelTextScale;
 
       const interactive = isInteractiveCode(node.content);
-      const isSelected = interactive && selectedCodes.has(node.content);
+      const isSelected = selectedCodes.has(node.content);
       const label = labels.get(node.content);
       const status = label?.display_status ?? "empty";
       const isFull = label != null && !label.is_empty;
+      const isVtCell = isVtLocationCode(node.content);
+      const sortFilter = ccSortingActiveCodesRef.current;
+      const sortFocusMode = sortFilter != null;
+      const isVtOnMap =
+        vtLocationCodesRef.current.has(node.content) || isVtLocationCode(node.content);
+      const isActiveSortCc = sortFilter?.has(node.content) ?? false;
+      // Monitor focus: chỉ CC (không phải VT) — ô CC không active vẽ xám trống.
+      if (sortFocusMode && !isVtOnMap && !isActiveSortCc) {
+        drawShelfByStatus(ctx, "empty", false, node.x, node.y, halfW, halfH, invScale);
+        continue;
+      }
 
-      const overlayForAssign =
-        overlayLabelByCodeRef.current[node.content]?.trim() ?? "";
-      const vehiclePlateForAssign =
-        locationSubLabelByCodeRef.current[node.content]?.trim() ||
-        parseVehicleFromStationOverlay(overlayForAssign);
+      const ccSortFocus = sortFocusMode && !isVtOnMap;
+      const ccActiveForSort =
+        !ccSortFocus || sortFilter.has(node.content);
+
+      let overlayForAssign = isVtCell
+        ? ""
+        : (overlayLabelByCodeRef.current[node.content]?.trim() ?? "");
+      if (ccSortFocus && !ccActiveForSort) {
+        overlayForAssign = "";
+      }
+
+      let vehiclePlateForAssign = isVtCell
+        ? ""
+        : locationSubLabelByCodeRef.current[node.content]?.trim() ||
+          parseVehicleFromStationOverlay(overlayForAssign);
+      if (ccSortFocus && !ccActiveForSort) {
+        vehiclePlateForAssign = "";
+      }
+
       const isPendingConfirm =
-        pendingConfirmOverlayCodesRef.current.has(node.content) &&
-        overlayForAssign.length > 0;
+        !isVtCell &&
+        ccActiveForSort &&
+        pendingConfirmOverlayCodesRef.current.has(node.content);
       const showAssignedShelf =
+        ccActiveForSort &&
         !isPendingConfirm &&
         Boolean(vehiclePlateForAssign) &&
         !isFull &&
@@ -465,11 +584,28 @@ export default function OperatorMapCanvas({
 
       // Text label (SKU, số lượng, bin code)
       if (showLabels) {
-        const overlay = overlayLabelByCodeRef.current[node.content]?.trim();
-        const displayBin = label ? formatDisplayBin(label.bin, label.location_type) : "";
+        let overlay = isVtCell
+          ? ""
+          : (overlayLabelByCodeRef.current[node.content]?.trim() ?? "");
+        if (ccSortFocus && !ccActiveForSort) {
+          overlay = "";
+        }
+        const displayBin = label ? stockLabelLocationText(label) : "";
         const vehiclePlate = vehiclePlateForAssign || undefined;
 
-        if (overlay) {
+        if (ccSortFocus && !ccActiveForSort) {
+          drawShelfStockLabel(
+            ctx,
+            node.x,
+            node.y,
+            shelfHalf,
+            label,
+            cellLabelScale,
+            isSelected,
+            false,
+            undefined,
+          );
+        } else if (overlay) {
           drawStationOverlayLabel(
             ctx,
             node.x,
@@ -478,7 +614,7 @@ export default function OperatorMapCanvas({
             overlay,
             isSelected,
             displayBin,
-            opts.labelTextScale,
+            cellLabelScale,
             vehiclePlate,
             isPendingConfirm ? "pendingConfirm" : "default",
           );
@@ -490,7 +626,7 @@ export default function OperatorMapCanvas({
             shelfHalf,
             displayBin,
             vehiclePlate,
-            opts.labelTextScale,
+            cellLabelScale,
             isSelected,
           );
         } else {
@@ -500,7 +636,7 @@ export default function OperatorMapCanvas({
             node.y,
             shelfHalf,
             label,
-            opts.labelTextScale,
+            cellLabelScale,
             isSelected,
             false,
             vehiclePlate,
@@ -578,6 +714,16 @@ export default function OperatorMapCanvas({
   }, [pendingConfirmCodeSet, draw]);
 
   useEffect(() => {
+    ccSortingActiveCodesRef.current = ccSortingActiveCodeSet;
+    draw();
+  }, [ccSortingActiveCodeSet, draw]);
+
+  useEffect(() => {
+    vtLocationCodesRef.current = vtLocationCodeSet;
+    draw();
+  }, [vtLocationCodeSet, draw]);
+
+  useEffect(() => {
     interactiveCodesRef.current = interactiveCodeSet;
     draw();
   }, [interactiveCodeSet, draw]);
@@ -608,7 +754,9 @@ export default function OperatorMapCanvas({
       x: n.map_x,
       y: -n.map_y, // Lật ngược trục Y (Flip Y)
       content: n.location_code,
-      group: layoutGroupKey(n.bin_code || n.location_name || n.location_code),
+      group: layoutGroupKey(
+        getLocationDisplayLabel(n, null) || n.location_code,
+      ),
     }));
 
     const rawPitch = estimateAxisPitch(nodes);
@@ -624,7 +772,8 @@ export default function OperatorMapCanvas({
       node.x = nextX;
     }
 
-    const layout = computeCellLayout(nodes, {
+    const groupKeys = nodes.map((node) => node.group ?? "");
+    let layout = computeCellLayout(nodes, {
       fillRatio: opts.fillRatio,
       minGapRatio: opts.minGapRatio,
       titleBandRatio: opts.titleBandRatio,
@@ -632,6 +781,10 @@ export default function OperatorMapCanvas({
       maxAspect: OPERATOR_CELL_MAX_ASPECT,
       fallbackSize: opts.baseNodeSize,
     });
+    const ccHeightBoost = ccMapTuningRef.current.heightBoost;
+    if (ccHeightBoost > 1) {
+      layout = boostGroupCellHeight(layout, groupKeys, ["CC"], ccHeightBoost);
+    }
     const halfWs = layout.sizes.map((s) => s.w / 2).sort((a, b) => a - b);
     const halfHs = layout.sizes.map((s) => s.h / 2).sort((a, b) => a - b);
     const mid = Math.floor(layout.sizes.length / 2);
@@ -644,7 +797,13 @@ export default function OperatorMapCanvas({
 
     setHasData(true);
     resizeCanvas();
-  }, [layoutQuery.isLoading, layoutNodes, resizeCanvas, draw]);
+  }, [
+    layoutQuery.isLoading,
+    layoutNodes,
+    resizeCanvas,
+    draw,
+    tuning?.ccCellHeightBoost,
+  ]);
 
   // ResizeObserver
   useEffect(() => {
@@ -662,7 +821,8 @@ export default function OperatorMapCanvas({
     if (!canvas) return;
 
     const DOUBLE_TAP_MS = 380;
-    const SINGLE_TAP_DELAY_MS = 320;
+    const SINGLE_TAP_DELAY_MS = Math.max(0, cellClickDelayMs);
+    const refetchOnClick = refetchStatusOnCellClick;
     let lastTapCode: string | null = null;
     let lastTapAt = 0;
     let singleTapTimer: number | undefined;
@@ -713,7 +873,7 @@ export default function OperatorMapCanvas({
         }
         lastTapCode = null;
         lastTapAt = 0;
-        void refetchMapStatusRef.current();
+        if (refetchOnClick) void refetchMapStatusRef.current();
         onDoubleClickRef.current?.(payload);
         return;
       }
@@ -724,12 +884,17 @@ export default function OperatorMapCanvas({
       if (singleTapTimer !== undefined) {
         window.clearTimeout(singleTapTimer);
       }
-      singleTapTimer = window.setTimeout(() => {
+      const fireClick = () => {
         singleTapTimer = undefined;
         lastTapCode = null;
-        void refetchMapStatusRef.current();
+        if (refetchOnClick) void refetchMapStatusRef.current();
         onClickRef.current?.(payload);
-      }, SINGLE_TAP_DELAY_MS);
+      };
+      if (SINGLE_TAP_DELAY_MS <= 0) {
+        fireClick();
+      } else {
+        singleTapTimer = window.setTimeout(fireClick, SINGLE_TAP_DELAY_MS);
+      }
     };
 
     canvas.addEventListener("pointerup", onPointerUp);
@@ -742,7 +907,13 @@ export default function OperatorMapCanvas({
         window.clearTimeout(singleTapTimer);
       }
     };
-  }, [onBufferCellClick, onBufferCellDoubleClick, isInteractiveCode]);
+  }, [
+    onBufferCellClick,
+    onBufferCellDoubleClick,
+    isInteractiveCode,
+    refetchStatusOnCellClick,
+    cellClickDelayMs,
+  ]);
 
   // ── Render ───────────────────────────────────────────────────────────────────
   return (

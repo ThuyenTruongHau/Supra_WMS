@@ -10,10 +10,24 @@ const COMPACT_SINGLE_RE = new RegExp(`^(${COMPACT6})$`);
 const SLASH_RANGE_RE = new RegExp(`^(${SLASH_DATE})-(${SLASH_DATE})$`);
 const SLASH_DAY_RANGE_RE = /^(\d{1,2})-(\d{1,2})\/(\d{2})\/(\d{2})$/;
 const SLASH_SINGLE_RE = new RegExp(`^(${SLASH_DATE})$`);
+const SLASH_SINGLE_4Y_RE = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/;
+const ISO_DATE_RE = /^(\d{4})-(\d{2})-(\d{2})$/;
+const COMPACT5_RE = /^(\d{5})$/;
+const COMPACT5_RANGE_RE = /^(\d{5})-(\d{5})$/;
 
 export interface LegacyLotBounds {
   from: string;
   to: string;
+}
+
+/** Strip ISO datetime suffix (Excel export) before parse. */
+export function normalizeLotParseInput(value: string): string {
+  const trimmed = value.trim();
+  const m = /^(\d{4}-\d{2}-\d{2})(?:[T\s].*)?$/.exec(trimmed);
+  if (m) {
+    return m[1];
+  }
+  return trimmed;
 }
 
 export class LegacyLotNumberError extends Error {
@@ -47,7 +61,7 @@ function slashToCompact(slash: string): string {
 
 /** Mirror backend parse_legacy_lot_number — always returns compact DDMMYY. */
 export function parseLegacyLotNumber(value: string): LegacyLotBounds {
-  const s = value.trim();
+  const s = normalizeLotParseInput(value);
   if (!s) {
     throw new LegacyLotNumberError();
   }
@@ -97,6 +111,36 @@ export function parseLegacyLotNumber(value: string): LegacyLotBounds {
     return { from: compact, to: compact };
   }
 
+  match = SLASH_SINGLE_4Y_RE.exec(s);
+  if (match) {
+    const yy = match[3].slice(-2);
+    const compact = toCompact(match[1], match[2], yy);
+    return { from: compact, to: compact };
+  }
+
+  match = ISO_DATE_RE.exec(s);
+  if (match) {
+    const yy = match[1].slice(-2);
+    const compact = toCompact(match[3], match[2], yy);
+    return { from: compact, to: compact };
+  }
+
+  match = COMPACT5_RE.exec(s);
+  if (match) {
+    const padded = `0${match[1]}`;
+    validateDdmmyy(padded);
+    return { from: padded, to: padded };
+  }
+
+  match = COMPACT5_RANGE_RE.exec(s);
+  if (match) {
+    const from = `0${match[1]}`;
+    const to = `0${match[2]}`;
+    validateDdmmyy(from);
+    validateDdmmyy(to);
+    return { from, to };
+  }
+
   throw new LegacyLotNumberError();
 }
 
@@ -117,6 +161,14 @@ export function formatLotPartForDisplay(
     const year = s.slice(4, 6);
     return `${day}/${month}/${year}`;
   }
+  try {
+    const { from, to } = parseLegacyLotNumber(s);
+    if (from === to) {
+      return formatLotPartForDisplay(from);
+    }
+  } catch {
+    /* keep raw */
+  }
   return s;
 }
 
@@ -128,6 +180,19 @@ export function formatLotValueForDisplay(
   if (!s) {
     return null;
   }
+  try {
+    const { from, to } = parseLegacyLotNumber(s);
+    if (from === to) {
+      return formatLotPartForDisplay(from);
+    }
+    const leftDisp = formatLotPartForDisplay(from);
+    const rightDisp = formatLotPartForDisplay(to);
+    if (leftDisp && rightDisp) {
+      return `${leftDisp}-${rightDisp}`;
+    }
+  } catch {
+    /* fall through */
+  }
   if (s.includes("-")) {
     const [left, right] = s.split("-", 2);
     const leftDisp = formatLotPartForDisplay(left);
@@ -138,6 +203,38 @@ export function formatLotValueForDisplay(
     return leftDisp || rightDisp;
   }
   return formatLotPartForDisplay(s);
+}
+
+/**
+ * LOT trên ô VT: một mốc compact DDMMYY, 6 chữ số, không dấu `/`.
+ * Ví dụ `02/11/03` → `021103`.
+ */
+export function formatLotCompactDdmmyy(
+  value: string | null | undefined,
+): string | null {
+  const s = value?.trim();
+  if (!s) return null;
+  const candidates = [
+    normalizeLotParseInput(s),
+    formatLotValueForDisplay(s),
+    formatLotValueForDisplay(normalizeLotParseInput(s)),
+  ].filter((c): c is string => Boolean(c?.trim()));
+  const seen = new Set<string>();
+  for (const candidate of candidates) {
+    const key = candidate.trim();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    try {
+      const { from, to } = parseLegacyLotNumber(key);
+      return from === to ? from : `${from}-${to}`;
+    } catch {
+      continue;
+    }
+  }
+  const stripped = normalizeLotParseInput(s).replace(/\//g, "").replace(/-/g, "");
+  if (/^\d{6}$/.test(stripped)) return stripped;
+  const fallback = formatLotValueForDisplay(s);
+  return fallback ?? null;
 }
 
 /** Mirror backend format_lot_number_display. */
