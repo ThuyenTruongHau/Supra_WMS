@@ -1,8 +1,18 @@
-import { useEffect, useMemo, useState, type Key, type ReactNode } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type Key,
+  type ReactNode,
+} from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeftOutlined,
+  FilePdfOutlined,
   RightOutlined,
 } from "@ant-design/icons";
+import MasanPickingListModal from "@/components/outbound/MasanPickingListModal";
 import type { ColumnsType } from "antd/es/table";
 import { Button, Table, cn } from "@/components/ui";
 import { TruckDockIcon } from "@/components/outbound/iotIcons";
@@ -157,6 +167,15 @@ export default function OperatorOutboundOrderBrowser({
   onSelectVehicle,
   onSelectedProductsChange,
 }: OperatorOutboundOrderBrowserProps) {
+  const queryClient = useQueryClient();
+  const refetchOperatorBoardAfterPicking = useCallback(async () => {
+    await queryClient.invalidateQueries({
+      predicate: (query) =>
+        typeof query.queryKey[0] === "string" &&
+        query.queryKey[0].startsWith("outbound_operator_board"),
+    });
+  }, [queryClient]);
+
   const [selectedCustomerName, setSelectedCustomerName] = useState<
     string | null
   >(null);
@@ -165,6 +184,7 @@ export default function OperatorOutboundOrderBrowser({
   const [createdRange, setCreatedRange] = useState<OrderCreatedAtRange>(null);
   const [itemIdFilter, setItemIdFilter] = useState<number | null>(null);
   const [skuLabel, setSkuLabel] = useState<string | null>(null);
+  const [pickingListOpen, setPickingListOpen] = useState(false);
   const createdAtParams = useMemo(
     () => orderCreatedAtQueryParams(createdRange),
     [createdRange],
@@ -428,8 +448,13 @@ export default function OperatorOutboundOrderBrowser({
     );
   }
 
+  const pickingVehicleEnabled =
+    Boolean(selectedVehicleNumber) &&
+    selectedVehicleNumber !== "no_vehicle";
+
   if (selectedVehicleNumber && selectedOrderId) {
     return (
+      <>
       <DrillList<OperatorBoardCustomerRow & { key: string }>
         backLabel="Xe"
         title={displayVehicle(selectedVehicleNumber)}
@@ -442,6 +467,18 @@ export default function OperatorOutboundOrderBrowser({
           onSelectVehicle(null);
           setSelectedCustomerName(null);
         }}
+        headerExtra={
+          pickingVehicleEnabled ? (
+            <Button
+              variant="primary"
+              icon={<FilePdfOutlined />}
+              className="!h-9 shrink-0 !text-sm"
+              onClick={() => setPickingListOpen(true)}
+            >
+              Picking list
+            </Button>
+          ) : null
+        }
         renderCard={(customer, index) => {
           const { label: badgeLabel, tone } = progressStatusBadge(customer);
           return (
@@ -456,6 +493,14 @@ export default function OperatorOutboundOrderBrowser({
           );
         }}
       />
+      <MasanPickingListModal
+        open={pickingListOpen}
+        warehouseId={warehouseId}
+        vehicleNo={selectedVehicleNumber}
+        onClose={() => setPickingListOpen(false)}
+        onDownloadComplete={refetchOperatorBoardAfterPicking}
+      />
+      </>
     );
   }
 
@@ -674,6 +719,7 @@ function DrillList<T>({
   emptyText,
   items,
   onBack,
+  headerExtra,
   renderCard,
 }: {
   backLabel: string;
@@ -684,6 +730,7 @@ function DrillList<T>({
   emptyText: string;
   items: T[];
   onBack: () => void;
+  headerExtra?: ReactNode;
   renderCard: (item: T, index: number) => ReactNode;
 }) {
   return (
@@ -701,6 +748,7 @@ function DrillList<T>({
           <p className="truncate text-base font-bold text-brand-dark">{title}</p>
           <p className="text-sm text-slate-500">{subtitle}</p>
         </div>
+        {headerExtra}
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto p-2.5">
         {loading ? (

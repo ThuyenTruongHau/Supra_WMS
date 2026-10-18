@@ -201,13 +201,16 @@ export function useOperatorDisplayZoneMasanMap(
 
   const refreshMasanMapOverlays = useCallback(async () => {
     if (!masanEnabled) return undefined;
-    const [ccResult] = await Promise.all([
+    const [ccResult, pendingResult] = await Promise.all([
       ccQuery.refetch(),
       pendingQuery.refetch(),
       ccStatusQuery.refetch(),
       vtStatusQuery.refetch(),
     ]);
-    return ccResult.data?.locations;
+    return {
+      ccLocations: ccResult.data?.locations,
+      pendingStock: pendingResult.data,
+    };
   }, [masanEnabled, ccQuery, pendingQuery, ccStatusQuery, vtStatusQuery]);
 
   const resolveLocationName = useCallback(

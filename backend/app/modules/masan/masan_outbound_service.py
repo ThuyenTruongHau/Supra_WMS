@@ -737,6 +737,27 @@ def _enrich_stock_ready_payloads(
                 locator = _locator_name_for_allocation(allocation)
                 if locator:
                     copy["locator"] = locator
+                detail = allocation.outbound_order_detail
+                if detail is not None:
+                    cache_line = _detail_to_cache_line(detail)
+                    for key in (
+                        "outbound_order_id",
+                        "item_id",
+                        "unit",
+                        "detail_type",
+                        "vehicle_no",
+                        "customer_name",
+                        "trip",
+                        "nvt",
+                        "lot_number",
+                        "pallet_count",
+                    ):
+                        existing = copy.get(key)
+                        if existing is not None and str(existing).strip() != "":
+                            continue
+                        value = cache_line.get(key)
+                        if value is not None and str(value).strip() != "":
+                            copy[key] = value
         enriched.append(copy)
     return enriched
 
@@ -887,16 +908,40 @@ def assign_cc_zone(db: Session, warehouse_id: int) -> None:
     while i < len(available_locations) and i < len(reversed_vehicles_list):
         key = f"outbound:assigned_cc_location:{warehouse_id}:{available_locations[i].id}"
         lines = details_by_vehicle[reversed_vehicles_list[i]]
+        outbound_order_id = lines[0].get("outbound_order_id")
         for line in lines:
             cache_data = {
                 "zone": available_locations[i].zone.code,
                 "location_id": available_locations[i].id,
             }
             cache_set(f"outbound:assigned_cc_details:{warehouse_id}:{line['detail_id']}", cache_data, -1)
-        cache_set(key, {"zone": available_locations[i].zone.code, "vehicle_number": reversed_vehicles_list[i], "lines": lines}, -1)
+        cache_set(key, {"outbound_order_id": outbound_order_id, "zone": available_locations[i].zone.code, "vehicle_number": reversed_vehicles_list[i], "lines": lines}, -1)
         i += 1
 
-    
+def _clear_assigned_cc_location(warehouse_id: int, outbound_order_id: int) -> None:
+    keys = cache_scan_keys(f"outbound:assigned_cc_location:{warehouse_id}:*")
+    for key in keys:
+        suffix = key.rsplit(":", 1)[-1]
+        if suffix.isdigit():
+            location_id = int(suffix)
+            loc_key = f"outbound:assigned_cc_location:{warehouse_id}:{location_id}"
+            bucket = cache_get(loc_key)
+            if bucket and bucket.get("outbound_order_id") == outbound_order_id:
+                cache_delete(loc_key)
+
+def _clear_cc_cache_if_order_completed(
+    db: Session,
+    warehouse_id: int,
+    order_id: int,
+) -> None:
+    order = (
+        db.query(OutboundOrder)
+        .filter(OutboundOrder.id == order_id)
+        .first()
+    )
+    if order and order.status == "completed":
+        _clear_assigned_cc_location(warehouse_id, order_id)
+
 def get_sorting_data_for_zone(
     db: Session,
     warehouse_id: int,
@@ -1292,15 +1337,21 @@ def _apply_clear_outbound_masan_details(
     # else:
     #     cache_set(loc_key, {**bucket, "lines": new_lines}, -1)
 
-def _clear_cache_details(db: Session, warehouse_id: int, detail_id: int) -> None:
-    detail_id = int(detail_id)
+def _clear_cache_details(db: Session, warehouse_id: int, detail: OutboundOrderDetail) -> None:
+    detail_id = detail.id
     loc_key = f"outbound:assigned_cc_details:{warehouse_id}:{detail_id}"
     bucket = cache_get(loc_key)
     if not bucket:
         return
 
-    location_id = bucket.get("location_id") 
+    location_id = bucket.get("location_id")
+    if location_id is not None:
+        detail.sorting_location_id = int(location_id)
+        db.flush()
     cache_delete(f"outbound:assigned_cc_details:{warehouse_id}:{detail_id}")
+
+    if location_id is None:
+        return
 
     cc_key = f"outbound:assigned_cc_location:{warehouse_id}:{location_id}"
     bucket_cc = cache_get(cc_key)
@@ -1472,6 +1523,7 @@ def confirm_allocation_outbound(
         raise ValueError(f"Allocations not found: {missing}")
 
     stocks: list[ItemStock] = []
+    outbound_order = None
     for allocation in target_allocations:
         allocation.status = "confirmed"
         _delete_stock_ready_cache_for_allocation(
@@ -1501,9 +1553,14 @@ def confirm_allocation_outbound(
         db.refresh(allocation.outbound_order_detail)
 
         if not still_pending:
-            _clear_cache_details(db, warehouse_id, detail.id)
+            _clear_cache_details(db, warehouse_id, detail)
+            outbound_order = detail.outbound_order
             
     _settle_outbound_stock(db, target_allocations)
+
+    if outbound_order:
+        _clear_cc_cache_if_order_completed(db, warehouse_id, outbound_order.id)
+
 
     for stock in stocks:
         return_allocation = db.query(OutboundOrderAllocation).filter(

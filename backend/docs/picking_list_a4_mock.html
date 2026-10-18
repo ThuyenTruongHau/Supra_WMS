@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <title>Phiếu lấy hàng - Picking List A4</title>
+  <!--
+    Template in Picking List A4 — 1 phiếu / trang (bảng chi tiết, phân trang khi nhiều dòng).
+
+    Backend / FE truyền dữ liệu qua window.__PICKING_LIST_PRINT_DATA__ rồi gọi PickingListPrint.init().
+
+    Payload:
+    {
+      "vehicle_number": "51F-123.45",
+      "assigned_location": "CC23",
+      "zone": "Zone_CC_02",              // tùy chọn
+      "printed_at": "16/10/2026",       // tùy chọn — thiếu thì lấy ngày hiện tại (local)
+      "lines": [
+        {
+          "sku": "02KK00361",
+          "item_name": "Tên hàng",
+          "quantity": 120,
+          "unit": "Thùng",
+          "lot_number": "L001",
+          "trip": "TR-101",
+          "customer_name": "Khách A",
+          "pallet_count": "2"
+        }
+      ]
+    }
+
+    Số trang = Math.ceil(lines.length / ROWS_PER_PAGE)
+    In PDF: Scale 100%, margin theo @page.
+  -->
+  <style>
+    :root {
+      --page-width: 194mm;
+      --page-height: 281mm;
+      --page-margin: 7mm;
+      --sheet-padding: 6mm 8mm;
+      --rows-per-page: 18;
+      --font-base: 11px;
+      --font-small: 9px;
+      --border: 1px solid #000;
+    }
+
+    @page {
+      size: A4 portrait;
+      margin: var(--page-margin);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      padding: 8mm;
+      font-family: "Times New Roman", Times, serif;
+      font-size: var(--font-base);
+      color: #000;
+      background: #f3f4f6;
+    }
+
+    .toolbar {
+      max-width: calc(var(--page-width) + 16mm);
+      margin: 0 auto 6mm;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      font-family: system-ui, sans-serif;
+      font-size: 13px;
+      color: #475569;
+    }
+
+    .toolbar button {
+      padding: 8px 16px;
+      font-size: 14px;
+      cursor: pointer;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      background: #fff;
+    }
+
+    .print-root {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10mm;
+    }
+
+    .print-root.is-empty {
+      min-height: 40mm;
+      justify-content: center;
+      color: #64748b;
+      font-size: 14px;
+      font-family: system-ui, sans-serif;
+    }
+
+    .sheet-page {
+      width: var(--page-width);
+      min-height: var(--page-height);
+      background: #fff;
+      padding: var(--sheet-padding);
+      display: flex;
+      flex-direction: column;
+      page-break-after: always;
+      break-after: page;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+    }
+
+    .sheet-page:last-child {
+      page-break-after: auto;
+      break-after: auto;
+    }
+
+    .doc-header {
+      text-align: center;
+      margin-bottom: 4mm;
+      border-bottom: 2px solid #000;
+      padding-bottom: 3mm;
+    }
+
+    .doc-header h1 {
+      margin: 0 0 1mm;
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      text-transform: uppercase;
+    }
+
+    .doc-header p {
+      margin: 0;
+      font-size: 11px;
+      font-style: italic;
+    }
+
+    .meta-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2mm 8mm;
+      margin-bottom: 4mm;
+      font-size: var(--font-base);
+    }
+
+    .meta-row {
+      display: flex;
+      gap: 2mm;
+      align-items: baseline;
+    }
+
+    .meta-row .label {
+      font-weight: 700;
+      white-space: nowrap;
+      min-width: 28mm;
+    }
+
+    .meta-row .value {
+      flex: 1;
+      border-bottom: 1px dotted #666;
+      min-height: 1.2em;
+      font-weight: 600;
+    }
+
+    .meta-row.full {
+      grid-column: 1 / -1;
+    }
+
+    .lines-table {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+      flex: 1;
+    }
+
+    .lines-table th,
+    .lines-table td {
+      border: var(--border);
+      padding: 1.5mm 1.2mm;
+      vertical-align: middle;
+      word-wrap: break-word;
+      overflow-wrap: anywhere;
+    }
+
+    .lines-table th {
+      background: #f0f0f0;
+      font-size: var(--font-small);
+      font-weight: 700;
+      text-align: center;
+      text-transform: uppercase;
+    }
+
+    .lines-table td.num {
+      text-align: center;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .lines-table td.qty {
+      text-align: right;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .lines-table td.sku {
+      font-family: "Courier New", Courier, monospace;
+      font-size: 10px;
+    }
+
+    .lines-table tbody tr {
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
+
+    .col-stt { width: 7%; }
+    .col-sku { width: 14%; }
+    .col-name { width: 28%; }
+    .col-lot { width: 12%; }
+    .col-qty { width: 8%; }
+    .col-unit { width: 7%; }
+    .col-trip { width: 10%; }
+    .col-customer { width: 14%; }
+
+    .sheet-footer {
+      margin-top: auto;
+      padding-top: 4mm;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      font-size: var(--font-small);
+    }
+
+    .sign-block {
+      width: 30%;
+      text-align: center;
+    }
+
+    .sign-block .title {
+      font-weight: 700;
+      margin-bottom: 12mm;
+    }
+
+    .sign-line {
+      border-top: 1px solid #000;
+      margin-top: 0;
+      padding-top: 1mm;
+    }
+
+    .page-num {
+      text-align: center;
+      font-size: var(--font-small);
+      color: #333;
+    }
+
+    @media print {
+      body {
+        padding: 0;
+        background: #fff;
+      }
+      .toolbar { display: none; }
+      .print-root { gap: 0; }
+      .print-root.is-empty { display: none; }
+      .sheet-page {
+        box-shadow: none;
+        margin: 0;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="toolbar">
+    <span id="page-info">Chưa có dữ liệu in</span>
+    <button type="button" id="toolbar-print-btn">In / Lưu PDF</button>
+  </div>
+
+  <div class="print-root is-empty" id="print-root">Chưa có dữ liệu in.</div>
+
+  <script>
+    window.__PICKING_LIST_PRINT_DATA__ = {
+      __mock: true,
+      mode: "preview",
+      vehicle_number: "51F-123.45",
+      assigned_location: "CC23",
+      zone: "Zone_CC_02",
+      lines: [
+        {
+          sku: "02KK00361",
+          item_name: "Omachi sườn hầm 92g x 30 gói",
+          quantity: 120,
+          unit: "Thùng",
+          lot_number: "LOT-2026-001",
+          trip: "TR-101",
+          customer_name: "WinMart+ Q.1",
+          pallet_count: "2",
+        },
+        {
+          sku: "02OM00858",
+          item_name: "Mì Omachi bò hầm 80g x 30",
+          quantity: 75,
+          unit: "Thùng",
+          lot_number: "LOT-2026-002",
+          trip: "TR-101",
+          customer_name: "WinMart+ Q.1",
+          pallet_count: "1",
+        },
+        {
+          sku: "01PH00073",
+          item_name: "Phở Omachi bò 75g x 30",
+          quantity: 200,
+          unit: "Thùng",
+          lot_number: "LOT-2026-003",
+          trip: "TR-102",
+          customer_name: "Co.opmart Tân Bình",
+          pallet_count: "3",
+        },
+        {
+          sku: "02KK00410",
+          item_name: "Omachi lẩu thái tom yum 91g x 30",
+          quantity: 48,
+          unit: "Thùng",
+          lot_number: "LOT-2026-004",
+          trip: "TR-102",
+          customer_name: "Co.opmart Tân Bình",
+          pallet_count: "1",
+        },
+        {
+          sku: "02KK00500",
+          item_name: "Omachi chua cay Hàn Quốc 95g x 30",
+          quantity: 36,
+          unit: "Thùng",
+          lot_number: "LOT-2026-005",
+          trip: "TR-103",
+          customer_name: "Big C An Phú",
+          pallet_count: "1",
+        },
+      ],
+    };
+  </script>
+
+  <script>
+    (function () {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("mock") !== "1" && !window.__PICKING_LIST_PRINT_DATA__) return;
+      window.__PICKING_LIST_PRINT_DATA__ = window.__PICKING_LIST_PRINT_DATA__ || {
+        __mock: true,
+        mode: "preview",
+        vehicle_number: "51F-123.45",
+        assigned_location: "CC23",
+        zone: "Zone_CC_02",
+        lines: [],
+      };
+    })();
+  </script>
+
+  <!--
+    BACKEND (ví dụ inject):
+    <script>window.__PICKING_LIST_PRINT_DATA__ = {{ payload | tojson }};</script>
+  -->
+
+  <script>
+    (function () {
+      "use strict";
+
+      const ROWS_PER_PAGE = 18;
+      const DOCUMENT_CODE = "PICKING-LIST-A4";
+
+      function escapeHtml(value) {
+        return String(value ?? "")
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;");
+      }
+
+      function formatTodayVi() {
+        const d = new Date();
+        const dd = String(d.getDate()).padStart(2, "0");
+        const mm = String(d.getMonth() + 1).padStart(2, "0");
+        const yyyy = d.getFullYear();
+        return `${dd}/${mm}/${yyyy}`;
+      }
+
+      function displayText(value) {
+        const s = String(value ?? "").trim();
+        return s ? escapeHtml(s) : "—";
+      }
+
+      function displayQty(value) {
+        const n = Number(value);
+        if (!Number.isFinite(n)) return "—";
+        if (Number.isInteger(n)) return String(n);
+        return n.toLocaleString("vi-VN", { maximumFractionDigits: 3 });
+      }
+
+      /**
+       * @param {object} data
+       * @returns {{ vehicle_number: string, assigned_location: string, zone: string, printed_at: string, lines: object[] }}
+       */
+      function normalizePayload(data) {
+        const lines = Array.isArray(data?.lines) ? data.lines : [];
+        return {
+          vehicle_number: String(data?.vehicle_number ?? "").trim(),
+          assigned_location: String(data?.assigned_location ?? "").trim(),
+          zone: String(data?.zone ?? "").trim(),
+          printed_at: String(data?.printed_at ?? "").trim() || formatTodayVi(),
+          lines: lines.map((row, index) => ({
+            stt: index + 1,
+            sku: String(row?.sku ?? "").trim(),
+            item_name: String(row?.item_name ?? "").trim(),
+            quantity: row?.quantity,
+            unit: String(row?.unit ?? "").trim(),
+            lot_number: String(row?.lot_number ?? "").trim(),
+            trip: String(row?.trip ?? "").trim(),
+            customer_name: String(row?.customer_name ?? "").trim(),
+            pallet_count: String(row?.pallet_count ?? "").trim(),
+          })),
+        };
+      }
+
+      function renderMeta(payload) {
+        const zoneRow = payload.zone
+          ? `<div class="meta-row"><span class="label">Khu CC:</span><span class="value">${displayText(payload.zone)}</span></div>`
+          : "";
+        return `
+          <div class="meta-grid">
+            <div class="meta-row">
+              <span class="label">Biển số xe:</span>
+              <span class="value">${displayText(payload.vehicle_number)}</span>
+            </div>
+            <div class="meta-row">
+              <span class="label">Ngày:</span>
+              <span class="value">${displayText(payload.printed_at)}</span>
+            </div>
+            <div class="meta-row">
+              <span class="label">Vị trí gán:</span>
+              <span class="value">${displayText(payload.assigned_location)}</span>
+            </div>
+            ${zoneRow}
+            <div class="meta-row full">
+              <span class="label">Mã biểu mẫu:</span>
+              <span class="value">${escapeHtml(DOCUMENT_CODE)}</span>
+            </div>
+          </div>
+        `;
+      }
+
+      function renderTableHead() {
+        return `
+          <thead>
+            <tr>
+              <th class="col-stt">STT</th>
+              <th class="col-sku">Mã hàng</th>
+              <th class="col-name">Tên hàng</th>
+              <th class="col-lot">Số lô</th>
+              <th class="col-qty">SL</th>
+              <th class="col-unit">ĐVT</th>
+              <th class="col-trip">Chuyến</th>
+              <th class="col-customer">Khách hàng</th>
+            </tr>
+          </thead>
+        `;
+      }
+
+      function renderTableRow(row) {
+        return `
+          <tr>
+            <td class="num">${row.stt}</td>
+            <td class="sku">${displayText(row.sku)}</td>
+            <td>${displayText(row.item_name)}</td>
+            <td class="num">${displayText(row.lot_number)}</td>
+            <td class="qty">${displayQty(row.quantity)}</td>
+            <td class="num">${displayText(row.unit)}</td>
+            <td class="num">${displayText(row.trip)}</td>
+            <td>${displayText(row.customer_name)}</td>
+          </tr>
+        `;
+      }
+
+      function renderPage(payload, chunk, pageIndex, pageCount) {
+        const rowsHtml = chunk.map(renderTableRow).join("");
+        const emptyRows =
+          chunk.length < ROWS_PER_PAGE
+            ? Array.from({ length: ROWS_PER_PAGE - chunk.length }, () =>
+                `<tr><td class="num">&nbsp;</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>`,
+              ).join("")
+            : "";
+
+        return `
+          <div class="sheet-page">
+            <header class="doc-header">
+              <h1>Phiếu lấy hàng</h1>
+              <p>Picking List</p>
+            </header>
+            ${renderMeta(payload)}
+            <table class="lines-table">
+              ${renderTableHead()}
+              <tbody>${rowsHtml}${emptyRows}</tbody>
+            </table>
+            <footer class="sheet-footer">
+              <div class="sign-block">
+                <div class="title">Người lấy hàng</div>
+                <div class="sign-line">Ký, ghi rõ họ tên</div>
+              </div>
+              <div class="page-num">Trang ${pageIndex + 1} / ${pageCount}</div>
+              <div class="sign-block">
+                <div class="title">Giám sát</div>
+                <div class="sign-line">Ký, ghi rõ họ tên</div>
+              </div>
+            </footer>
+          </div>
+        `;
+      }
+
+      function renderPages(payload) {
+        const lines = payload.lines;
+        if (!lines.length) return "";
+
+        const pageCount = Math.max(1, Math.ceil(lines.length / ROWS_PER_PAGE));
+        const pages = [];
+        for (let i = 0; i < lines.length; i += ROWS_PER_PAGE) {
+          const chunk = lines.slice(i, i + ROWS_PER_PAGE);
+          pages.push(renderPage(payload, chunk, pages.length, pageCount));
+        }
+        return pages.join("");
+      }
+
+      function countPages(lineCount) {
+        if (lineCount <= 0) return 0;
+        return Math.ceil(lineCount / ROWS_PER_PAGE);
+      }
+
+      function updatePageInfo(lineCount) {
+        const pageInfo = document.getElementById("page-info");
+        if (!pageInfo) return;
+        if (lineCount === 0) {
+          pageInfo.textContent = "Chưa có dữ liệu in";
+          return;
+        }
+        const pages = countPages(lineCount);
+        pageInfo.textContent =
+          `${lineCount} dòng · ${pages} trang A4 (${ROWS_PER_PAGE} dòng/trang)`;
+      }
+
+      /**
+       * @param {object} data
+       * @returns {{ payload: object, pageCount: number, html: string }}
+       */
+      function init(data) {
+        const payload = normalizePayload(data || {});
+        const html = renderPages(payload);
+        const root = document.getElementById("print-root");
+
+        if (root) {
+          root.classList.toggle("is-empty", payload.lines.length === 0);
+          root.innerHTML =
+            payload.lines.length === 0 ? "Chưa có dữ liệu in." : html;
+        }
+
+        updatePageInfo(payload.lines.length);
+
+        return {
+          payload,
+          pageCount: countPages(payload.lines.length),
+          html,
+        };
+      }
+
+      window.PickingListPrint = {
+        ROWS_PER_PAGE,
+        DOCUMENT_CODE,
+        normalizePayload,
+        renderPages,
+        init,
+      };
+
+      function handleToolbarPrint() {
+        window.print();
+      }
+
+      document
+        .getElementById("toolbar-print-btn")
+        ?.addEventListener("click", handleToolbarPrint);
+
+      if (window.__PICKING_LIST_PRINT_DATA__) {
+        init(window.__PICKING_LIST_PRINT_DATA__);
+      }
+    })();
+  </script>
+</body>
+</html>

@@ -9,7 +9,11 @@ from app.core.celery_app import run_logic_task
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.dependencies import require_permission
-from app.modules.masan import masan_inbound_service, masan_outbound_service
+from app.modules.masan import (
+    masan_inbound_service,
+    masan_outbound_service,
+    masan_picking_list_service,
+)
 from app.modules.masan.masan_celery_task import sending_masan_outbound_task_task
 from app.modules.masan.masan_schema import (
     MasanClearInboundZoneRequest,
@@ -27,6 +31,9 @@ from app.modules.masan.masan_schema import (
     MasanConfirmAllocationOutboundRequest,
     MasanConfirmAllocationOutboundResponse,
     MasanSortingZonePendingStockResponse,
+    MasanPickingListCreateRequest,
+    MasanPickingListListResponse,
+    MasanPickingListSummary,
 )
 from app.modules.warehouse.inbound_order.inbound_order_schema import (
     InboundOrderDetailResponse,
@@ -40,6 +47,27 @@ from app.modules.warehouse.outbound_order.outbound_order_model import (
 router = APIRouter(tags=["Masan"])
 
 DbSession = Annotated[Session, Depends(get_db)]
+
+
+def _picking_list_http_error(exc: Exception) -> HTTPException:
+    if isinstance(exc, (RuntimeError, NotImplementedError)):
+        return HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc)
+            if str(exc)
+            else masan_picking_list_service.PLAYWRIGHT_INSTALL_HINT,
+        )
+    message = str(exc)
+    if any(
+        token in message
+        for token in (
+            "Không tìm thấy",
+            "Không có dòng",
+            "Không còn dòng",
+        )
+    ):
+        return HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=message)
+    return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=message)
 
 
 @router.post(
@@ -289,6 +317,81 @@ def get_masan_sorting_zone_pending_stock(
             detail=str(exc),
         ) from exc
     return MasanSortingZonePendingStockResponse.model_validate(payload)
+
+
+@router.get(
+    "/masan/outbound/picking-lists",
+    response_model=MasanPickingListListResponse,
+    dependencies=[Depends(require_permission("outbound:read"))],
+)
+def list_masan_picking_lists(
+    db: DbSession,
+    vehicle_no: str = Query(..., min_length=1, max_length=100),
+    warehouse_id: int | None = Query(None, ge=1),
+):
+    vehicle = vehicle_no.strip()
+    try:
+        items = masan_picking_list_service.list_picking_lists_for_vehicle(
+            db, vehicle, warehouse_id=warehouse_id
+        )
+    except ValueError as exc:
+        raise _picking_list_http_error(exc) from exc
+    return MasanPickingListListResponse(
+        vehicle_number=vehicle,
+        items=[MasanPickingListSummary.model_validate(row) for row in items],
+    )
+
+
+@router.post(
+    "/masan/outbound/picking-lists",
+    dependencies=[Depends(require_permission("outbound:update"))],
+)
+def create_masan_picking_list_pdf(
+    db: DbSession,
+    body: MasanPickingListCreateRequest,
+):
+    try:
+        pdf_bytes, filename, _batch = masan_picking_list_service.create_picking_list_pdf(
+            db,
+            body.vehicle_no.strip(),
+            warehouse_id=body.warehouse_id,
+            location_id=body.location_id,
+        )
+    except (ValueError, RuntimeError, NotImplementedError) as exc:
+        raise _picking_list_http_error(exc) from exc
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@router.get(
+    "/masan/outbound/picking-lists/pdf",
+    dependencies=[Depends(require_permission("outbound:read"))],
+)
+def download_masan_picking_list_pdf(
+    db: DbSession,
+    vehicle_no: str = Query(..., min_length=1, max_length=100),
+    extracted: int = Query(..., ge=1),
+    warehouse_id: int | None = Query(None, ge=1),
+    location_id: int | None = Query(None, ge=1),
+):
+    try:
+        pdf_bytes, filename = masan_picking_list_service.download_picking_list_pdf(
+            db,
+            vehicle_no.strip(),
+            extracted,
+            warehouse_id=warehouse_id,
+            location_id=location_id,
+        )
+    except (ValueError, RuntimeError, NotImplementedError) as exc:
+        raise _picking_list_http_error(exc) from exc
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 @router.post(

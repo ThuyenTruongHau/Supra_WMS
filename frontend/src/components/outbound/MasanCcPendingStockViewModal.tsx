@@ -1,5 +1,5 @@
 /**
- * Xem toàn bộ allocation stock_ready tại một ô CC (double-click; không confirm).
+ * Xem mọi allocation pending-stock tại một ô CC (mọi status; không confirm).
  */
 import { Modal } from "@/components/ui";
 import type { MasanPendingAllocationWithCc } from "@/types/masan";
@@ -72,13 +72,14 @@ export default function MasanCcPendingStockViewModal({
                 <th className="px-2 py-2 font-semibold">SKU</th>
                 <th className="px-2 py-2 font-semibold">SL</th>
                 <th className="px-2 py-2 font-semibold">VT đích</th>
+                <th className="px-2 py-2 font-semibold">Trạng thái</th>
                 <th className="px-2 py-2 font-semibold">Alloc #</th>
               </tr>
             </thead>
             <tbody>
-              {lines.map((row) => (
+              {lines.map((row, index) => (
                 <tr
-                  key={row.id}
+                  key={`${row.id}-${row.ccLocationId}-${index}`}
                   className="border-b border-stripe-hairline/80"
                 >
                   <td className="px-2 py-2 font-medium">{skuLabel(row)}</td>
@@ -86,6 +87,7 @@ export default function MasanCcPendingStockViewModal({
                     {toDisplayInteger(row.quantity ?? 0)}
                   </td>
                   <td className="px-2 py-2">{vtLabel(row, vtLocationCodeById)}</td>
+                  <td className="px-2 py-2">{(row.status ?? "—").trim() || "—"}</td>
                   <td className="px-2 py-2 text-muted tabular-nums">{row.id}</td>
                 </tr>
               ))}
@@ -94,7 +96,9 @@ export default function MasanCcPendingStockViewModal({
         </div>
       )}
       <p className="mt-3 text-xs text-muted">
-        Double-click ô VT trên bản đồ để xác nhận lấy hàng.
+        Danh sách từ pending-stock (stock_ready). Double-click ô VT để xác nhận
+        lấy hàng; double-click ô CC trên board xuất để xem chi tiết hàng đã
+        chia (gán xe).
       </p>
     </Modal>
   );

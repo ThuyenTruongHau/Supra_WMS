@@ -1073,8 +1073,29 @@ def clear_zone_inbound(db: Session, warehouse_id: int) -> int:
         )
         .all()
     )
+
+    item_stock_ids = [stock.item_stock_id for stock in stocks]
+
+    if not item_stock_ids:
+        details = []
+    else:
+        details = (
+            db.query(InboundOrderDetail)
+            .join(
+                InboundOrderAllocation,
+                InboundOrderAllocation.inbound_order_detail_id == InboundOrderDetail.id,
+            )
+            .filter(InboundOrderAllocation.item_stock_id.in_(item_stock_ids))
+            .distinct()
+            .all()
+        )
+
     logger.info(f"Found {len(stocks)} stocks to clear")
+
     for stock in stocks:
         stock.is_active = False
+
+    for detail in details:
+        detail.status = "not call"
     db.commit()
     return len(stocks)

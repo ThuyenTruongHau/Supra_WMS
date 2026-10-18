@@ -240,6 +240,8 @@ class OutboundOrderDetail(Base):
     quantity = Column(Integer, nullable=False, default=0)
     unit = Column(String(50), nullable=False)
     detail_type = Column(String(50), nullable=False, index=True)
+    extracted = Column(Integer, nullable=True, default=0)
+    sorting_location_id = Column(Integer, ForeignKey("location.id"), nullable=True)
 
     details = Column(
         JSON().with_variant(JSONB, "postgresql"),
@@ -252,6 +254,7 @@ class OutboundOrderDetail(Base):
 
     outbound_order = relationship("OutboundOrder", foreign_keys=[outbound_order_id], lazy="joined")
     item = relationship("Item", foreign_keys=[item_id], lazy="joined")
+    sorting_location = relationship("Location", foreign_keys=[sorting_location_id], lazy="joined")
     allocations = relationship(
         "OutboundOrderAllocation",
         back_populates="outbound_order_detail",
@@ -272,6 +275,7 @@ class OutboundOrderAllocation(Base):
     from_location_id = Column(Integer, ForeignKey("location.id"), nullable=True, index=True)
     to_location_id = Column(Integer, ForeignKey("location.id"), nullable=True, index=True)
     allocation_type = Column(String(20), default="outbound", nullable=False, index=True)
+    extracted = Column(Integer, nullable=True, default=0)
     robot_task_id = Column(Integer, ForeignKey("robot_task.id"), nullable=True, index=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())

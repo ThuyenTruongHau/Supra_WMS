@@ -282,6 +282,38 @@ def format_lot_part_for_display(value: str | None) -> str | None:
     return s
 
 
+def format_lot_compact_ddmmyy(value: str | None) -> str | None:
+    """Compact DDMMYY (6 chữ số), không dấu `/`. Ví dụ 02/11/03 → 021103."""
+    if value is None:
+        return None
+    s = normalize_lot_parse_input(str(value).strip())
+    if not s:
+        return None
+    candidates: list[str] = []
+    for candidate in (s, format_lot_value_for_display(s)):
+        if candidate and candidate.strip() and candidate not in candidates:
+            candidates.append(candidate.strip())
+    for candidate in candidates:
+        try:
+            from_val, to_val = parse_legacy_lot_number(candidate)
+            if from_val == to_val:
+                return from_val
+            return f"{from_val}-{to_val}"
+        except ValueError:
+            continue
+    stripped = s.replace("/", "").replace("-", "")
+    if re.fullmatch(rf"^{_COMPACT6}$", stripped):
+        try:
+            datetime.strptime(stripped, "%d%m%y")
+            return stripped
+        except ValueError:
+            pass
+    padded = pad_missing_leading_zero_compact(s)
+    if padded:
+        return padded
+    return format_lot_value_for_display(s)
+
+
 def format_lot_value_for_display(value: str | None) -> str | None:
     """Format a single lot string, including compact ranges like 070826-080826."""
     if value is None:

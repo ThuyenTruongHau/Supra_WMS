@@ -13,7 +13,6 @@ import {
   useSortingStationFills,
 } from "@/hooks/useOutbound";
 import { getSortingStationAssignmentApi } from "@/api/outbound";
-import { getMasanCcLocationApi } from "@/api/masan";
 import type { SortingStationAssignment } from "@/types/outbound";
 import type {
   MasanCcLocationResponse,
@@ -33,13 +32,16 @@ import { useMasanSortingZoneWebSocket } from "@/hooks/useMasanSortingZoneWebSock
 import {
   buildPendingStockMapOverlays,
   mergePendingStockOverlays,
-  pendingAllocationsByToLocationId,
-  pendingAllocationsForCcLocationId,
+  pendingAllocationsForVtLocationId,
 } from "@/utils/masanPendingStockOverlay";
+import {
+  ccLocationLinesFromPendingStock,
+  ccLocationResponseFromPendingAndCache,
+  loadCcLocationModalData,
+} from "@/utils/masanCcLocationModalData";
 import { stripVtKeysFromOverlayLabels } from "@/utils/locationBin";
 import CcLocationLinesModal from "@/components/outbound/CcLocationLinesModal";
 import MasanCcPendingStockConfirmModal from "@/components/outbound/MasanCcPendingStockConfirmModal";
-import MasanCcPendingStockViewModal from "@/components/outbound/MasanCcPendingStockViewModal";
 import SortingItemsNeededModal from "@/components/outbound/SortingItemsNeededModal";
 import {
   outboundCcBucketZoneCodeFor,
@@ -414,15 +416,6 @@ export default function SortingWaveStationBoard({
     sortingStationCodes,
   ]);
 
-  const pendingByToLocationId = useMemo(
-    () =>
-      pendingAllocationsByToLocationId(
-        pendingStockData,
-        clickableLocationCodeById,
-      ),
-    [pendingStockData, clickableLocationCodeById],
-  );
-
   const mapOverlayLabels = useMemo(() => {
     const stationForMap = stripVtKeysFromOverlayLabels(stationOverlayLabels);
     if (!masanCcZonePollEnabled) return stationForMap;
@@ -474,17 +467,6 @@ export default function SortingWaveStationBoard({
   const [pendingConfirmLocationName, setPendingConfirmLocationName] = useState<
     string | null
   >(null);
-  const [ccPendingViewOpen, setCcPendingViewOpen] = useState(false);
-  const [ccPendingViewLocationId, setCcPendingViewLocationId] = useState<
-    number | null
-  >(null);
-  const [ccPendingViewLocationCode, setCcPendingViewLocationCode] = useState<
-    string | null
-  >(null);
-  const [ccPendingViewLocationName, setCcPendingViewLocationName] = useState<
-    string | null
-  >(null);
-
   const invalidateMasanCcCaches = () => {
     if (!warehouseId || !ccBucketZoneCode) return;
     void queryClient.invalidateQueries({
@@ -504,11 +486,14 @@ export default function SortingWaveStationBoard({
   /** Làm mới overlay CC + pending stock khi click ô map (giống admin refetch full-locations). */
   const refreshMasanMapOverlays = async () => {
     if (!warehouseId || !ccBucketZoneCode) return undefined;
-    const [ccResult] = await Promise.all([
+    const [ccResult, pendingResult] = await Promise.all([
       ccZoneStatusQuery.refetch(),
       pendingStockQuery.refetch(),
     ]);
-    return ccResult.data?.locations;
+    return {
+      ccLocations: ccResult.data?.locations,
+      pendingStock: pendingResult.data,
+    };
   };
 
   const ccRowToLocationResponse = (
@@ -547,32 +532,65 @@ export default function SortingWaveStationBoard({
   const openCcLocation = async (
     locationCode: string,
     locationId: number,
-    ccLocations?: MasanSortingZoneCcLocationRow[],
+    overlayRefresh?: {
+      ccLocations?: MasanSortingZoneCcLocationRow[];
+      pendingStock?: typeof pendingStockData;
+    },
   ) => {
     if (!warehouseId) return;
     const requestId = ++ccRequestIdRef.current;
+    const locationName = resolveCcLocationName(locationCode, locationId);
     setSelectedStationCode(locationCode);
     setSelectedStationLocationId(locationId);
-    setSelectedStationLocationName(
-      resolveCcLocationName(locationCode, locationId),
-    );
+    setSelectedStationLocationName(locationName);
     setSelectedStationKind(null);
     setCcLocationData(null);
     setCcModalOpen(true);
+
     const locationPool =
-      ccLocations ?? ccZoneStatusData?.locations ?? [];
+      overlayRefresh?.ccLocations ?? ccZoneStatusData?.locations ?? [];
+    const pendingStock =
+      overlayRefresh?.pendingStock ?? pendingStockData;
     const cachedRow = locationPool.find(
       (row) =>
         row.location_id === locationId || row.location_code === locationCode,
     );
-    if (cachedRow) {
+    const cachedName = (cachedRow?.location_name ?? "").trim();
+    if (cachedName) setSelectedStationLocationName(cachedName);
+
+    const pendingLines = ccLocationLinesFromPendingStock(
+      pendingStock,
+      locationId,
+      clickableLocationCodeById,
+      { locationCode, locationName: cachedName || locationName },
+    );
+    if (pendingLines.length > 0) {
+      setCcLocationData(
+        ccLocationResponseFromPendingAndCache(
+          warehouseId,
+          locationId,
+          cachedName || locationName,
+          pendingLines,
+          cachedRow,
+          ccBucketZoneCode,
+        ),
+      );
+    } else if (cachedRow) {
       setCcLocationData(ccRowToLocationResponse(cachedRow));
-      const cachedName = (cachedRow.location_name ?? "").trim();
-      if (cachedName) setSelectedStationLocationName(cachedName);
     }
-    setCcLoading(!cachedRow);
+
+    setCcLoading(true);
     try {
-      const data = await getMasanCcLocationApi(warehouseId, locationId);
+      const data = await loadCcLocationModalData({
+        warehouseId,
+        locationId,
+        locationCode,
+        locationName: cachedName || locationName,
+        pendingStock,
+        ccLocationIdToCode: clickableLocationCodeById,
+        cachedRow,
+        ccBucketZoneCode,
+      });
       if (requestId === ccRequestIdRef.current) {
         setCcLocationData(data);
         const apiName = (data.location_name ?? "").trim();
@@ -580,12 +598,87 @@ export default function SortingWaveStationBoard({
       }
     } catch (err) {
       if (requestId !== ccRequestIdRef.current) return;
-      if (!cachedRow) {
+      if (pendingLines.length === 0 && !cachedRow) {
         const detail =
           (err as { response?: { data?: { detail?: string } } })?.response
-            ?.data?.detail ?? "Không tải được hàng đã chia của ô";
+            ?.data?.detail ??
+          (err instanceof Error ? err.message : "Không tải được hàng đã chia của ô");
         message.error(detail);
       }
+    } finally {
+      if (requestId === ccRequestIdRef.current) setCcLoading(false);
+    }
+  };
+
+  const refreshCcModalAfterPickingList = async () => {
+    invalidateMasanCcCaches();
+    const overlayRefresh = await refreshMasanMapOverlays();
+    if (
+      !ccModalOpen ||
+      !warehouseId ||
+      selectedStationLocationId == null ||
+      !selectedStationCode
+    ) {
+      return;
+    }
+    const locationCode = selectedStationCode;
+    const locationId = selectedStationLocationId;
+    const requestId = ++ccRequestIdRef.current;
+    const locationName =
+      (selectedStationLocationName ?? "").trim() ||
+      resolveCcLocationName(locationCode, locationId);
+
+    const locationPool =
+      overlayRefresh?.ccLocations ?? ccZoneStatusData?.locations ?? [];
+    const pendingStock =
+      overlayRefresh?.pendingStock ?? pendingStockData;
+    const cachedRow = locationPool.find(
+      (row) =>
+        row.location_id === locationId || row.location_code === locationCode,
+    );
+    const cachedName = (cachedRow?.location_name ?? "").trim();
+    const displayName = cachedName || locationName;
+
+    const pendingLines = ccLocationLinesFromPendingStock(
+      pendingStock,
+      locationId,
+      clickableLocationCodeById,
+      { locationCode, locationName: displayName },
+    );
+    if (pendingLines.length > 0) {
+      setCcLocationData(
+        ccLocationResponseFromPendingAndCache(
+          warehouseId,
+          locationId,
+          displayName,
+          pendingLines,
+          cachedRow,
+          ccBucketZoneCode,
+        ),
+      );
+    } else if (cachedRow) {
+      setCcLocationData(ccRowToLocationResponse(cachedRow));
+    }
+
+    setCcLoading(true);
+    try {
+      const data = await loadCcLocationModalData({
+        warehouseId,
+        locationId,
+        locationCode,
+        locationName: displayName,
+        pendingStock,
+        ccLocationIdToCode: clickableLocationCodeById,
+        cachedRow,
+        ccBucketZoneCode,
+      });
+      if (requestId === ccRequestIdRef.current) {
+        setCcLocationData(data);
+        const apiName = (data.location_name ?? "").trim();
+        if (apiName) setSelectedStationLocationName(apiName);
+      }
+    } catch {
+      /* giữ dữ liệu hiện tại nếu API lỗi */
     } finally {
       if (requestId === ccRequestIdRef.current) setCcLoading(false);
     }
@@ -619,32 +712,15 @@ export default function SortingWaveStationBoard({
     return locationCode;
   };
 
-  const openCcPendingStockView = (
-    locationCode: string,
-    ccLocationId: number,
-  ) => {
-    const lines = pendingAllocationsForCcLocationId(
-      pendingStockData,
-      ccLocationId,
-      clickableLocationCodeById,
-    );
-    if (lines.length === 0) {
-      message.info("Không có hàng stock_ready tại ô CC này");
-      return;
-    }
-    setCcPendingViewLocationId(ccLocationId);
-    setCcPendingViewLocationCode(locationCode);
-    setCcPendingViewLocationName(
-      resolveCcLocationName(locationCode, ccLocationId),
-    );
-    setCcPendingViewOpen(true);
-  };
-
   const openPendingStockConfirm = (
     locationCode: string,
     vtLocationId: number,
   ) => {
-    const lines = pendingByToLocationId.get(vtLocationId) ?? [];
+    const lines = pendingAllocationsForVtLocationId(
+      pendingStockData,
+      vtLocationId,
+      clickableLocationCodeById,
+    );
     if (lines.length === 0) {
       message.info("Không có hàng chờ xác nhận lấy tại VT này");
       return;
@@ -663,7 +739,7 @@ export default function SortingWaveStationBoard({
     locationCode: string;
   }) => {
     if (!restrictToClickableZones || !warehouseId) return;
-    await refreshMasanMapOverlays();
+    const overlayRefresh = await refreshMasanMapOverlays();
     const vtLocationId = vtLocationIdByCode.get(payload.locationCode);
     if (vtLocationId != null) {
       openPendingStockConfirm(payload.locationCode, vtLocationId);
@@ -671,12 +747,12 @@ export default function SortingWaveStationBoard({
     }
     const ccLocationId = clickableLocationIdByCode.get(payload.locationCode);
     if (ccLocationId != null) {
-      openCcPendingStockView(payload.locationCode, ccLocationId);
+      await openCcLocation(payload.locationCode, ccLocationId, overlayRefresh);
     }
   };
 
   const handleStationCellClick = async (payload: { locationCode: string }) => {
-    const freshCcLocations = await refreshMasanMapOverlays();
+    const overlayRefresh = await refreshMasanMapOverlays();
     if (restrictToClickableZones) {
       const vtLocationId = vtLocationIdByCode.get(payload.locationCode);
       if (vtLocationId != null) {
@@ -686,11 +762,7 @@ export default function SortingWaveStationBoard({
       const locationId = clickableLocationIdByCode.get(payload.locationCode);
       if (locationId == null) return;
       if (warehouseId) {
-        await openCcLocation(
-          payload.locationCode,
-          locationId,
-          freshCcLocations,
-        );
+        await openCcLocation(payload.locationCode, locationId, overlayRefresh);
       }
       return;
     }
@@ -704,7 +776,7 @@ export default function SortingWaveStationBoard({
     }
 
     if (warehouseId) {
-      await openCcLocation(payload.locationCode, location.id, freshCcLocations);
+      await openCcLocation(payload.locationCode, location.id, overlayRefresh);
       return;
     }
 
@@ -1091,27 +1163,7 @@ export default function SortingWaveStationBoard({
           data={ccLocationData}
           loading={ccLoading}
           onClose={clearStationSelection}
-          zIndex={mapFullscreen ? 1200 : undefined}
-        />
-      ) : null}
-
-      {warehouseId && ccPendingViewLocationId != null ? (
-        <MasanCcPendingStockViewModal
-          open={ccPendingViewOpen}
-          onClose={() => {
-            setCcPendingViewOpen(false);
-            setCcPendingViewLocationId(null);
-            setCcPendingViewLocationCode(null);
-            setCcPendingViewLocationName(null);
-          }}
-          ccLocationCode={ccPendingViewLocationCode}
-          ccLocationName={ccPendingViewLocationName}
-          lines={pendingAllocationsForCcLocationId(
-            pendingStockData,
-            ccPendingViewLocationId,
-            clickableLocationCodeById,
-          )}
-          vtLocationCodeById={vtLocationCodeById}
+          onPickingListDownloadComplete={refreshCcModalAfterPickingList}
           zIndex={mapFullscreen ? 1200 : undefined}
         />
       ) : null}
@@ -1130,7 +1182,15 @@ export default function SortingWaveStationBoard({
           vtLocationId={pendingConfirmLocationId}
           vtLocationCode={pendingConfirmLocationCode}
           vtLocationName={pendingConfirmLocationName}
-          lines={pendingByToLocationId.get(pendingConfirmLocationId) ?? []}
+          lines={
+            pendingConfirmLocationId != null
+              ? pendingAllocationsForVtLocationId(
+                  pendingStockData,
+                  pendingConfirmLocationId,
+                  clickableLocationCodeById,
+                )
+              : []
+          }
           onConfirmed={invalidateMasanCcCaches}
           zIndex={mapFullscreen ? 1200 : undefined}
         />

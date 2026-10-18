@@ -103,6 +103,8 @@ export interface MasanCcLocationLine {
   lot_number: string | number | null;
   pallet_count: string | number | null;
   status?: string | null;
+  /** Một detail có thể có nhiều allocation stock_ready. */
+  allocation_id?: number;
 }
 
 export interface MasanCcLocationResponse {
@@ -129,6 +131,25 @@ export interface MasanSortingZoneCcLocationsResponse {
   warehouse_id: number;
   zone: string;
   locations: MasanSortingZoneCcLocationRow[];
+}
+
+export interface MasanPickingListSummary {
+  extracted: number;
+  line_count: number;
+  assigned_location: string;
+  zone: string;
+  vehicle_number: string;
+}
+
+export interface MasanPickingListListResponse {
+  vehicle_number: string;
+  items: MasanPickingListSummary[];
+}
+
+export interface MasanPickingListCreateRequest {
+  warehouse_id: number;
+  vehicle_no: string;
+  location_id?: number | null;
 }
 
 export interface MasanSortingItemNeededRow {
@@ -185,6 +206,17 @@ export interface MasanSortingZonePendingAllocationRow {
   to_location_id: number | null;
   /** Nguồn: `from_location.location_name` (BE enrich) hoặc locator detail. */
   locator?: string | null;
+  /** Enrich từ outbound detail (BM.04) — hiển thị modal CC. */
+  outbound_order_id?: number;
+  item_id?: number;
+  unit?: string | null;
+  detail_type?: string | null;
+  vehicle_no?: string | number | null;
+  customer_name?: string | null;
+  trip?: string | number | null;
+  nvt?: string | number | null;
+  lot_number?: string | number | null;
+  pallet_count?: string | number | null;
 }
 
 export interface MasanSortingZoneLocationPendingStock {

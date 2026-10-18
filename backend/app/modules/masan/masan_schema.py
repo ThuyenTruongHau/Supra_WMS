@@ -280,6 +280,16 @@ class MasanSortingZonePendingAllocationRow(BaseModel):
         None,
         description="Nguồn lấy hàng: location_name (from_location) hoặc locator trên detail",
     )
+    outbound_order_id: Optional[int] = None
+    item_id: Optional[int] = None
+    unit: Optional[str] = None
+    detail_type: Optional[str] = None
+    vehicle_no: Optional[str | int] = None
+    customer_name: Optional[str] = None
+    trip: Optional[str | int] = None
+    nvt: Optional[str | int] = None
+    lot_number: Optional[str | int] = None
+    pallet_count: Optional[str | int | float] = None
 
 
 class MasanSortingZoneLocationPendingStock(BaseModel):
@@ -296,3 +306,26 @@ class MasanSortingZonePendingStockResponse(BaseModel):
         0,
         description="Số lần publish WS khi republish=true",
     )
+
+
+class MasanPickingListCreateRequest(BaseModel):
+    warehouse_id: int = Field(..., ge=1)
+    vehicle_no: str = Field(..., min_length=1, max_length=100)
+    location_id: Optional[int] = Field(
+        None,
+        ge=1,
+        description="Ô CC đang mở (validate khớp sorting_location của xe)",
+    )
+
+
+class MasanPickingListSummary(BaseModel):
+    extracted: int
+    line_count: int
+    assigned_location: str = ""
+    zone: str = ""
+    vehicle_number: str
+
+
+class MasanPickingListListResponse(BaseModel):
+    vehicle_number: str
+    items: list[MasanPickingListSummary] = Field(default_factory=list)

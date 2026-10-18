@@ -154,6 +154,7 @@ class TaskStatusService:
             detail = robot_task.inbound_order_detail
         elif robot_task.outbound_order_allocations:
             allocations = robot_task.outbound_order_allocations
+            outbound_order = allocations[0].outbound_order_detail.outbound_order
         else:
             raise ValueError("Order not found")
 
@@ -202,10 +203,12 @@ class TaskStatusService:
                         
 
                     from app.modules.masan.masan_outbound_service import (
-                        _send_taking_stock,
+                        _send_taking_stock, _clear_cc_cache_if_order_completed,
                     )
                     
                     _send_taking_stock(db, robot_task.id, allocations)
+                    _clear_cc_cache_if_order_completed(db, outbound_order.warehouse_id, outbound_order.id)
+
 
             if notify_completed:
                 if robot_task.inbound_order_detail_id is not None:

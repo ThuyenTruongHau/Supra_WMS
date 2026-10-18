@@ -2,6 +2,7 @@ import unittest
 
 from app.modules.warehouse.lot_number_utils import (
     coerce_masan_lot_cell,
+    format_lot_compact_ddmmyy,
     format_lot_for_masan_excel,
     format_lot_value_for_display,
     normalize_lot_parse_input,
@@ -65,6 +66,12 @@ class LotLeadingZeroTests(unittest.TestCase):
             normalize_storage_lot_pair("19/08/26", "19/08/26"),
             ("190826", "190826"),
         )
+
+    def test_format_lot_compact_ddmmyy(self):
+        self.assertEqual(format_lot_compact_ddmmyy("19/08/26"), "190826")
+        self.assertEqual(format_lot_compact_ddmmyy("2026-03-10"), "100326")
+        self.assertEqual(format_lot_compact_ddmmyy("040526-050526"), "040526-050526")
+        self.assertEqual(format_lot_compact_ddmmyy("71026"), "071026")
 
     def test_masan_excel_export_compact(self):
         self.assertEqual(

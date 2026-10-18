@@ -7,7 +7,11 @@ import { Button, Modal, message } from "@/components/ui";
 import { masanConfirmAllocationOutboundApi } from "@/api/masan";
 import type { MasanPendingAllocationWithCc } from "@/types/masan";
 import { getApiErrorDetail } from "@/types/apiError";
-import { ccLabelForPendingRow } from "@/utils/masanPendingStockOverlay";
+import {
+  allocationMatchesVtDestination,
+  ccLabelForPendingRow,
+  isConfirmablePendingStockAllocation,
+} from "@/utils/masanPendingStockOverlay";
 import { toDisplayInteger } from "@/utils/number";
 import {
   operatorModalWidthForTier,
@@ -55,17 +59,27 @@ export default function MasanVtPendingStockConfirmModal({
   >({});
   const [submitting, setSubmitting] = useState(false);
 
+  const confirmLines = useMemo(
+    () =>
+      lines.filter(
+        (row) =>
+          allocationMatchesVtDestination(row, vtLocationId) &&
+          isConfirmablePendingStockAllocation(row),
+      ),
+    [lines, vtLocationId],
+  );
+
   useEffect(() => {
     if (!open) {
       setQtyByAllocationId({});
       return;
     }
     const initial: Record<number, number> = {};
-    for (const row of lines) {
+    for (const row of confirmLines) {
       initial[row.id] = Math.round(Number(row.quantity || 0));
     }
     setQtyByAllocationId(initial);
-  }, [open, lines]);
+  }, [open, confirmLines]);
 
   const titleLabel =
     (vtLocationName ?? "").trim() ||
@@ -78,7 +92,7 @@ export default function MasanVtPendingStockConfirmModal({
       return;
     }
     const quantities: Record<number, number> = {};
-    for (const row of lines) {
+    for (const row of confirmLines) {
       const maxQty = Math.round(Number(row.quantity || 0));
       const qty = Math.round(qtyByAllocationId[row.id] ?? 0);
       if (qty <= 0) continue;
@@ -114,14 +128,14 @@ export default function MasanVtPendingStockConfirmModal({
 
   const sortedLines = useMemo(
     () =>
-      [...lines].sort((a, b) =>
+      [...confirmLines].sort((a, b) =>
         ccLabelForPendingRow(a).localeCompare(
           ccLabelForPendingRow(b),
           undefined,
           { numeric: true },
         ),
       ),
-    [lines],
+    [confirmLines],
   );
 
   return (

@@ -14,9 +14,14 @@ import type {
   MasanConfirmAllocationOutboundRequest,
   MasanConfirmAllocationOutboundResponse,
   MasanSortingZonePendingStockResponse,
+  MasanPickingListListResponse,
+  MasanPickingListCreateRequest,
 } from "@/types/masan";
 import type { InboundOrderDetail } from "@/types/inboundOrder";
-import { downloadBlobFromResponse } from "@/utils/downloadBlob";
+import {
+  downloadBlobFromResponse,
+  downloadPdfFromAxiosResponse,
+} from "@/utils/downloadBlob";
 
 export const getMasanInboundDetailsApi = async (
   inboundOrderId: number,
@@ -205,6 +210,53 @@ export const masanConfirmAllocationOutboundApi = async (
       body,
     );
   return data;
+};
+
+export const listMasanPickingListsApi = async (
+  warehouseId: number,
+  vehicleNo: string,
+): Promise<MasanPickingListListResponse> => {
+  const { data } = await axiosInstance.get<MasanPickingListListResponse>(
+    "/api/v1/masan/outbound/picking-lists",
+    {
+      params: { warehouse_id: warehouseId, vehicle_no: vehicleNo },
+    },
+  );
+  return data;
+};
+
+export const createMasanPickingListPdfApi = async (
+  body: MasanPickingListCreateRequest,
+): Promise<void> => {
+  const response = await axiosInstance.post(
+    "/api/v1/masan/outbound/picking-lists",
+    body,
+    { responseType: "blob", timeout: 120_000 },
+  );
+  await downloadPdfFromAxiosResponse(
+    response,
+    `picking_list_${body.vehicle_no}.pdf`,
+  );
+};
+
+export const downloadMasanPickingListPdfApi = async (params: {
+  warehouse_id: number;
+  vehicle_no: string;
+  extracted: number;
+  location_id?: number | null;
+}): Promise<void> => {
+  const response = await axiosInstance.get(
+    "/api/v1/masan/outbound/picking-lists/pdf",
+    {
+      params,
+      responseType: "blob",
+      timeout: 120_000,
+    },
+  );
+  await downloadPdfFromAxiosResponse(
+    response,
+    `picking_list_${params.vehicle_no}_${params.extracted}.pdf`,
+  );
 };
 
 export const exportOutboundOrderSOApi = async (

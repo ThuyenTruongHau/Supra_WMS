@@ -1,3 +1,5 @@
+import type { AxiosResponse } from "axios";
+
 function parseFilenameFromContentDisposition(
   disposition: string | undefined,
   fallback: string,
@@ -16,19 +18,37 @@ function parseFilenameFromContentDisposition(
 
   const plainMatch = /filename=([^;\n]+)/i.exec(disposition);
   if (plainMatch?.[1]) {
-    return plainMatch[1].trim();
+    return plainMatch[1].trim().replace(/^"|"$/g, "");
   }
 
   return fallback;
 }
 
+function sanitizeDownloadFilename(filename: string, fallback: string): string {
+  const raw = (filename || fallback).trim() || fallback;
+  const base = raw.replace(/[/\\?%*:|"<>]/g, "_").replace(/\.tmp$/i, "");
+  if (!base) return fallback;
+  return base.toLowerCase().endsWith(".pdf") ? base : `${base}.pdf`;
+}
+
 export function triggerBlobDownload(blob: Blob, filename: string) {
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement('a');
+  const safeName = sanitizeDownloadFilename(filename, "download.pdf");
+  const typedBlob =
+    blob.type === "application/pdf"
+      ? blob
+      : new Blob([blob], { type: "application/pdf" });
+
+  const url = URL.createObjectURL(typedBlob);
+  const anchor = document.createElement("a");
   anchor.href = url;
-  anchor.download = filename;
+  anchor.download = safeName;
+  anchor.rel = "noopener";
+  anchor.style.display = "none";
+  document.body.appendChild(anchor);
   anchor.click();
-  URL.revokeObjectURL(url);
+  anchor.remove();
+  // Revoke quá sớm (Edge/Chrome) → thêm file .tmp / tải lỗi song song file PDF.
+  window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }
 
 export function downloadBlobFromResponse(
@@ -41,4 +61,37 @@ export function downloadBlobFromResponse(
     fallbackFilename,
   );
   triggerBlobDownload(blob, filename);
+}
+
+async function blobLooksLikePdf(blob: Blob): Promise<boolean> {
+  if (blob.size < 4) return false;
+  const head = new Uint8Array(await blob.slice(0, 4).arrayBuffer());
+  return (
+    head[0] === 0x25 &&
+    head[1] === 0x50 &&
+    head[2] === 0x44 &&
+    head[3] === 0x46
+  );
+}
+
+/** Chỉ trigger tải xuống khi body là PDF thật (tránh blob lỗi / tmp). */
+export async function downloadPdfFromAxiosResponse(
+  response: Pick<AxiosResponse<Blob>, "data" | "headers">,
+  fallbackFilename: string,
+): Promise<void> {
+  const blob = response.data;
+  if (!(await blobLooksLikePdf(blob))) {
+    const text = await blob.text();
+    try {
+      const json = JSON.parse(text) as { detail?: string };
+      throw new Error(json.detail ?? text);
+    } catch (err) {
+      if (err instanceof Error && err.message !== text) throw err;
+      throw new Error(text || "Không tải được PDF");
+    }
+  }
+  const disposition = response.headers["content-disposition"] as
+    | string
+    | undefined;
+  downloadBlobFromResponse(blob, disposition, fallbackFilename);
 }

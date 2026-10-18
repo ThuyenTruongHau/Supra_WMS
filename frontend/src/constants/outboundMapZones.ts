@@ -39,6 +39,17 @@ export const OUTBOUND_DISPLAY_ZONES: OutboundDisplayZone[] = [
 ];
 
 /** Param `zone` cho Masan sorting-items-needed (Zone.code CC 10 hoặc 11). */
+/** Zone.code CC từ cấu hình display zones (không hardcode id ô). */
+export function isMasanCcBucketZoneCode(
+  zone: string | null | undefined,
+): boolean {
+  const normalized = (zone ?? "").trim();
+  if (!normalized) return false;
+  return OUTBOUND_DISPLAY_ZONES.some(
+    (row) => row.ccBucketZoneCode === normalized,
+  );
+}
+
 export function outboundCcBucketZoneCodeFor(displayZoneId: number): string | null {
   return (
     OUTBOUND_DISPLAY_ZONES.find((zone) => zone.id === displayZoneId)

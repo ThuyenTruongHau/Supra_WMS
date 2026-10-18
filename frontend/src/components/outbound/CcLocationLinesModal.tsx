@@ -13,6 +13,9 @@ import { Button, Modal, Table, cn } from "@/components/ui";
 import ReAssignCcSplitModal, {
   type ReAssignCcSplitSelection,
 } from "@/components/outbound/ReAssignCcSplitModal";
+import MasanPickingListModal from "@/components/outbound/MasanPickingListModal";
+import { isMasanCcBucketZoneCode } from "@/constants/outboundMapZones";
+import { FilePdfOutlined } from "@ant-design/icons";
 import { OPERATOR_DESKTOP } from "@/constants/operatorDesktopSizes";
 import {
   operatorModalWidthForTier,
@@ -39,6 +42,7 @@ type Props = {
   loading?: boolean;
   onClose: () => void;
   zIndex?: number;
+  onPickingListDownloadComplete?: () => void | Promise<void>;
 };
 
 type ViewportTier = OperatorViewportTier;
@@ -116,13 +120,26 @@ export default function CcLocationLinesModal({
   loading = false,
   onClose,
   zIndex,
+  onPickingListDownloadComplete,
 }: Props) {
   const [reAssignOpen, setReAssignOpen] = useState(false);
+  const [pickingListOpen, setPickingListOpen] = useState(false);
   const tier = useOperatorViewportTier();
 
   useEffect(() => {
-    if (!open) setReAssignOpen(false);
+    if (!open) {
+      setReAssignOpen(false);
+      setPickingListOpen(false);
+    }
   }, [open]);
+
+  const vehicleNumber = (data?.vehicle_number ?? "").trim();
+  const showPickingListButton =
+    Boolean(data?.assigned) &&
+    vehicleNumber.length > 0 &&
+    vehicleNumber !== "no_vehicle" &&
+    isMasanCcBucketZoneCode(data?.zone) &&
+    warehouseId > 0;
   const [viewportSize, setViewportSize] = useState(() => ({
     width: typeof window !== "undefined" ? window.innerWidth : 1280,
     height: typeof window !== "undefined" ? window.innerHeight : 800,
@@ -329,6 +346,7 @@ export default function CcLocationLinesModal({
   };
 
   return (
+    <>
     <Modal
       open={open}
       onCancel={onClose}
@@ -403,16 +421,31 @@ export default function CcLocationLinesModal({
           ) : (
             <span />
           )}
-          <Button
-            variant="secondary"
-            onClick={onClose}
-            className={cn(
-              tier === "tv" ? "!h-12 !min-w-[140px] !text-lg" : "!min-w-[120px]",
-              tier === "narrow" && "!h-9 !text-sm",
-            )}
-          >
-            Đóng
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            {showPickingListButton ? (
+              <Button
+                variant="primary"
+                icon={<FilePdfOutlined />}
+                disabled={loading}
+                className={cn(
+                  tier === "tv" ? "!h-12 !text-base" : tier === "narrow" && "!h-9 !text-sm",
+                )}
+                onClick={() => setPickingListOpen(true)}
+              >
+                Picking list PDF
+              </Button>
+            ) : null}
+            <Button
+              variant="secondary"
+              onClick={onClose}
+              className={cn(
+                tier === "tv" ? "!h-12 !min-w-[140px] !text-lg" : "!min-w-[120px]",
+                tier === "narrow" && "!h-9 !text-sm",
+              )}
+            >
+              Đóng
+            </Button>
+          </div>
         </div>
       }
     >
@@ -494,7 +527,11 @@ export default function CcLocationLinesModal({
             <Table<MasanCcLocationLine>
               dataSource={lines}
               columns={columns}
-              rowKey="detail_id"
+              rowKey={(row) =>
+                row.allocation_id != null
+                  ? `alloc-${row.allocation_id}`
+                  : `detail-${row.detail_id}`
+              }
               loading={loading}
               pagination={false}
               scroll={{
@@ -509,6 +546,8 @@ export default function CcLocationLinesModal({
         )}
       </div>
 
+    </Modal>
+
       <ReAssignCcSplitModal
         open={reAssignOpen}
         locationCode={locationCode ?? ""}
@@ -519,6 +558,14 @@ export default function CcLocationLinesModal({
         onConfirm={handleReAssignConfirm}
         zIndex={reAssignZIndex}
       />
-    </Modal>
+      <MasanPickingListModal
+        open={pickingListOpen}
+        warehouseId={warehouseId}
+        vehicleNo={vehicleNumber}
+        locationId={locationId}
+        onClose={() => setPickingListOpen(false)}
+        onDownloadComplete={onPickingListDownloadComplete}
+      />
+    </>
   );
 }
