@@ -28,15 +28,31 @@ function sanitizeDownloadFilename(filename: string, fallback: string): string {
   const raw = (filename || fallback).trim() || fallback;
   const base = raw.replace(/[/\\?%*:|"<>]/g, "_").replace(/\.tmp$/i, "");
   if (!base) return fallback;
-  return base.toLowerCase().endsWith(".pdf") ? base : `${base}.pdf`;
+  if (/\.[a-z0-9]{2,5}$/i.test(base)) return base;
+  return `${base}.pdf`;
+}
+
+function blobMimeForDownload(filename: string, blob: Blob): Blob {
+  const lower = filename.toLowerCase();
+  if (lower.endsWith(".pdf")) {
+    return blob.type === "application/pdf"
+      ? blob
+      : new Blob([blob], { type: "application/pdf" });
+  }
+  if (lower.endsWith(".xlsx")) {
+    return blob.type ===
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      ? blob
+      : new Blob([blob], {
+          type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        });
+  }
+  return blob;
 }
 
 export function triggerBlobDownload(blob: Blob, filename: string) {
   const safeName = sanitizeDownloadFilename(filename, "download.pdf");
-  const typedBlob =
-    blob.type === "application/pdf"
-      ? blob
-      : new Blob([blob], { type: "application/pdf" });
+  const typedBlob = blobMimeForDownload(safeName, blob);
 
   const url = URL.createObjectURL(typedBlob);
   const anchor = document.createElement("a");

@@ -1,9 +1,10 @@
+from collections import defaultdict
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import Response
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app.core.celery_app import run_logic_task
 from app.core.config import settings
@@ -15,11 +16,32 @@ from app.modules.masan import (
     masan_picking_list_service,
 )
 from app.modules.masan.masan_celery_task import sending_masan_outbound_task_task
+from app.modules.masan.masan_oubound_auto_service import (
+    clear_outbound_station_cache,
+    robot_task_for_zone,
+)
+from app.modules.robot.robot_model import RobotTask
+from app.modules.warehouse.item_stock.item_stock_model import ItemStock
+from app.modules.warehouse.outbound_order.outbound_order_model import (
+    OutboundOrderAllocation,
+)
+from app.modules.warehouse.outbound_order.outbound_order_schema import (
+    OutboundRobotTaskResponse,
+)
+from app.modules.warehouse.outbound_order.outbound_order_service import (
+    _build_allocation_response,
+    _parse_task_path,
+)
 from app.modules.masan.masan_schema import (
     MasanClearInboundZoneRequest,
     MasanClearInboundZoneResponse,
+    MasanClearCcCacheRequest,
+    MasanClearCcCacheResponse,
+    MasanClearOutboundStationCacheRequest,
+    MasanClearOutboundStationCacheResponse,
     MasanInboundCallerRequest,
     MasanInboundBulkExportRequest,
+    MasanOutboundBulkExportRequest,
     MasanInboundCallerResponse,
     MasanInboundParseResponse,
     MasanOutboundParseResponse,
@@ -31,6 +53,7 @@ from app.modules.masan.masan_schema import (
     MasanConfirmAllocationOutboundRequest,
     MasanConfirmAllocationOutboundResponse,
     MasanSortingZonePendingStockResponse,
+    MasanSortingZoneRobotTasksResponse,
     MasanPickingListCreateRequest,
     MasanPickingListListResponse,
     MasanPickingListSummary,
@@ -155,6 +178,61 @@ def export_masan_outbound_order_so(db: DbSession, order_id: int):
         if "not found" in message.lower():
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=message) from exc
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=message) from exc
+
+    return Response(
+        content=content,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+        },
+    )
+
+
+@router.get(
+    "/masan/outbound-orders/{order_id}/export",
+    dependencies=[Depends(require_permission("outbound:read"))],
+)
+def export_masan_outbound_order_report(db: DbSession, order_id: int):
+    try:
+        content, filename = masan_outbound_service.export_outbound_order_report_masan(
+            db, order_id
+        )
+    except ValueError as exc:
+        message = str(exc)
+        if "not found" in message.lower():
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=message) from exc
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=message) from exc
+
+    return Response(
+        content=content,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+        },
+    )
+
+
+@router.post(
+    "/masan/outbound-orders/export",
+    dependencies=[Depends(require_permission("outbound:read"))],
+)
+def export_masan_outbound_orders_report_bulk(
+    db: DbSession,
+    body: MasanOutboundBulkExportRequest,
+):
+    try:
+        content, filename = masan_outbound_service.export_outbound_orders_report_masan(
+            db, body.order_ids
+        )
+    except ValueError as exc:
+        message = str(exc)
+        if "not found" in message.lower():
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail=message
+            ) from exc
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=message
+        ) from exc
 
     return Response(
         content=content,
@@ -319,6 +397,78 @@ def get_masan_sorting_zone_pending_stock(
     return MasanSortingZonePendingStockResponse.model_validate(payload)
 
 
+def _masan_robot_tasks_for_sorting_zone_payload(
+    db: Session, zone_str: str
+) -> dict[str, object]:
+    zone = zone_str.strip()
+    tasks = robot_task_for_zone(db, zone)
+    if not tasks:
+        return {"zone": zone, "tasks": []}
+
+    task_ids = [task.id for task in tasks]
+    allocations = (
+        db.query(OutboundOrderAllocation)
+        .filter(OutboundOrderAllocation.robot_task_id.in_(task_ids))
+        .options(
+            joinedload(OutboundOrderAllocation.item_stock).joinedload(ItemStock.item),
+            joinedload(OutboundOrderAllocation.from_location),
+            joinedload(OutboundOrderAllocation.to_location),
+        )
+        .order_by(OutboundOrderAllocation.id)
+        .all()
+    )
+
+    allocations_by_task_id: dict[int, list] = defaultdict(list)
+    raw_by_task_id: dict[int, list[OutboundOrderAllocation]] = defaultdict(list)
+    for allocation in allocations:
+        if allocation.robot_task_id is None:
+            continue
+        raw_by_task_id[allocation.robot_task_id].append(allocation)
+        allocations_by_task_id[allocation.robot_task_id].append(
+            _build_allocation_response(allocation)
+        )
+
+    def _task_type(
+        task: RobotTask, raw_allocs: list[OutboundOrderAllocation]
+    ) -> str:
+        if raw_allocs:
+            return raw_allocs[0].allocation_type
+        if task.process_code == settings.outbound_process_code:
+            return "outbound"
+        return "return"
+
+    task_payloads = [
+        OutboundRobotTaskResponse(
+            order_id=task.order_id,
+            task_path=_parse_task_path(task.task_order_detail),
+            task_type=_task_type(task, raw_by_task_id.get(task.id, [])),
+            status=task.status or "initialize",
+            quantity=int(task.quantity),
+            allocations=allocations_by_task_id.get(task.id, []),
+        )
+        for task in tasks
+    ]
+    return {"zone": zone, "tasks": task_payloads}
+
+
+@router.get(
+    "/masan/outbound-orders/sorting-zone/robot-tasks",
+    response_model=MasanSortingZoneRobotTasksResponse,
+    dependencies=[Depends(require_permission("outbound:read"))],
+)
+def get_masan_sorting_zone_robot_tasks(
+    db: DbSession,
+    zone: str = Query(
+        ...,
+        min_length=1,
+        max_length=50,
+        description="Zone.code khu VT (vd. Zone_sorting_1, Zone_sorting_2)",
+    ),
+):
+    payload = _masan_robot_tasks_for_sorting_zone_payload(db, zone)
+    return MasanSortingZoneRobotTasksResponse.model_validate(payload)
+
+
 @router.get(
     "/masan/outbound/picking-lists",
     response_model=MasanPickingListListResponse,
@@ -479,6 +629,46 @@ def masan_clear_inbound_zone(db: DbSession, body: MasanClearInboundZoneRequest):
         warehouse_id=body.warehouse_id,
         zones=list(settings.zone_inbound),
         deactivated_count=count,
+    )
+
+
+@router.post(
+    "/masan/outbound-orders/clear-cc-cache",
+    response_model=MasanClearCcCacheResponse,
+    dependencies=[Depends(require_permission("outbound:update"))],
+)
+def masan_clear_cc_cache(body: MasanClearCcCacheRequest):
+    try:
+        payload = masan_outbound_service.clear_cc_location_caches(body.warehouse_id)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
+    return MasanClearCcCacheResponse.model_validate(payload)
+
+
+@router.post(
+    "/masan/outbound-orders/clear-station-cache",
+    response_model=MasanClearOutboundStationCacheResponse,
+    dependencies=[Depends(require_permission("outbound:update"))],
+)
+def masan_clear_outbound_station_cache(
+    body: MasanClearOutboundStationCacheRequest,
+):
+    try:
+        payload = clear_outbound_station_cache(
+            body.warehouse_id,
+            body.cc_location_ids,
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
+    return MasanClearOutboundStationCacheResponse(
+        warehouse_id=body.warehouse_id,
+        **payload,
     )
 
 

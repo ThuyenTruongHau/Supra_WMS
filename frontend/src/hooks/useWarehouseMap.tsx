@@ -280,10 +280,10 @@ export const useZoneMapLayout = (zoneId: number) => {
 export const useZoneMapStatus = (zoneId: number) => {
   return useQuery<FullLocationsResponse, AxiosError<ApiErrorResponse>>({
     queryKey: ['zone_map_status', zoneId],
-    queryFn: () => getZoneMapStatusApi(zoneId),
+    queryFn: ({ signal }) => getZoneMapStatusApi(zoneId, signal),
     enabled: zoneId > 0,
     refetchInterval: 5000, // Poll every 5 seconds for status
-    staleTime: 1000,
+    staleTime: 4000,
   });
 };
 
@@ -354,9 +354,9 @@ export const useZonesMapStatus = (zoneIds: number[]) => {
   return useQueries({
     queries: zoneIds.map((zoneId) => ({
       queryKey: ['zone_map_status', zoneId],
-      queryFn: () => getZoneMapStatusApi(zoneId),
+      queryFn: ({ signal }: { signal: AbortSignal }) => getZoneMapStatusApi(zoneId, signal),
       refetchInterval: 5000,
-      staleTime: 1000,
+      staleTime: 4000,
     })),
     combine,
   });

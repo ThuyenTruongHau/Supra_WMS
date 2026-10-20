@@ -17,9 +17,15 @@ import {
 } from 'recharts'
 import { useEffect, useMemo, useState } from 'react'
 import { NavLink } from 'react-router-dom'
+import { FileExcelOutlined } from '@ant-design/icons'
 import { Segmented, Spin } from 'antd'
-import { Card } from '@/components/ui'
+import { Button, Card, Modal, message } from '@/components/ui'
 import { useAppStore } from '@/store/useAppStore'
+import {
+  exportRobotPerformanceReportApi,
+  type RobotReportPeriod,
+} from '@/api/dashboard'
+import { getApiErrorDetail } from '@/types/apiError'
 import {
   useReportKpis,
   useReportStockAging,
@@ -377,6 +383,37 @@ export default function ReportPage() {
   } = useReportTopProducts(warehouseId, topProductsPeriod)
   const [selectedAgingBucket, setSelectedAgingBucket] =
     useState<StockAgingBucketKey | null>(null)
+  const [robotReportModalOpen, setRobotReportModalOpen] = useState(false)
+  const [robotReportPeriod, setRobotReportPeriod] =
+    useState<RobotReportPeriod>('day')
+  const [isExportingRobotReport, setIsExportingRobotReport] = useState(false)
+
+  const handleExportRobotReport = async () => {
+    if (warehouseId <= 0) {
+      message.warning('Vui lòng chọn kho trước khi xuất báo cáo robot')
+      return
+    }
+    setIsExportingRobotReport(true)
+    try {
+      message.loading({
+        content: 'Đang xuất Excel...',
+        key: 'robot-performance-export',
+      })
+      await exportRobotPerformanceReportApi(warehouseId, robotReportPeriod)
+      message.success({
+        content: 'Đã tải báo cáo hiệu suất robot',
+        key: 'robot-performance-export',
+      })
+      setRobotReportModalOpen(false)
+    } catch (err: unknown) {
+      message.error({
+        content: getApiErrorDetail(err, 'Không thể xuất báo cáo robot'),
+        key: 'robot-performance-export',
+      })
+    } finally {
+      setIsExportingRobotReport(false)
+    }
+  }
   const {
     data: stockAging,
     isLoading: isStockAgingLoading,
@@ -443,10 +480,55 @@ export default function ReportPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-2xl font-bold text-brand-dark">Báo cáo</h2>
-        <span className="text-sm text-gray-400">Tháng 6 / 2026</span>
+        <div className="flex items-center gap-3">
+          <Button
+            variant="secondary"
+            icon={<FileExcelOutlined />}
+            disabled={warehouseId <= 0}
+            onClick={() => setRobotReportModalOpen(true)}
+            className="!h-9"
+          >
+            Xuất báo cáo robot
+          </Button>
+          <span className="text-sm text-gray-400">Tháng 6 / 2026</span>
+        </div>
       </div>
+
+      <Modal
+        title="Xuất báo cáo hiệu suất robot"
+        open={robotReportModalOpen}
+        onCancel={() => setRobotReportModalOpen(false)}
+        footer={null}
+        width={420}
+      >
+        <p className="mb-4 text-sm text-slate-600">
+          Thống kê theo robot (deviceNum) từ task_status với mã 3 (hủy), 7
+          (thất bại), 8 (hoàn thành). Excel gồm số lệnh nhập/xuất hoàn thành và
+          lỗi nhập/xuất riêng.
+        </p>
+        <div className="mb-6 flex justify-center">
+          <Segmented
+            value={robotReportPeriod}
+            onChange={(value) => setRobotReportPeriod(value as RobotReportPeriod)}
+            options={[
+              { label: 'Ngày', value: 'day' },
+              { label: 'Tuần (7 ngày)', value: 'week' },
+            ]}
+          />
+        </div>
+        <Button
+          variant="primary"
+          icon={<FileExcelOutlined />}
+          loading={isExportingRobotReport}
+          disabled={warehouseId <= 0}
+          onClick={() => void handleExportRobotReport()}
+          className="!w-full justify-center"
+        >
+          Tải xuống Excel
+        </Button>
+      </Modal>
 
       {!warehouseId ? (
         <Card className="p-6 text-center text-slate-500">

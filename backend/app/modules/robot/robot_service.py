@@ -17,6 +17,7 @@ from app.modules.warehouse.transaction_history.history_model import Transaction,
 from app.modules.warehouse.notificcation.notification_service import check_and_create_notifications_under_over_min_max
 from app.core.logger import get_logger
 from app.core.cache import cache_set, cache_get
+from datetime import datetime
 
 logger = get_logger("main")
 
@@ -152,6 +153,10 @@ class TaskStatusService:
 
         if robot_task.inbound_order_detail_id is not None:
             detail = robot_task.inbound_order_detail
+            if detail.device is None:
+                detail.device = payload.get("deviceNum")
+            if detail.start_time is None:
+                detail.start_time = datetime.now()
         elif robot_task.outbound_order_allocations:
             allocations = robot_task.outbound_order_allocations
             outbound_order = allocations[0].outbound_order_detail.outbound_order
@@ -169,7 +174,9 @@ class TaskStatusService:
                 if MAPPING_STATUS[ics_status] == "completed":
                     logger.info(f"Receive completed for {order_id}")
                     self._settle_inbound_stock(db, detail)
-                    
+                    if detail.end_time is None:
+                        detail.end_time = datetime.now()
+
                 if MAPPING_STATUS[ics_status] in ["completed", "cancelled", "failed"]:
                     warehouse_id = detail.inbound_order.warehouse_id
                     cache_data = cache_get(f"inbound:caller_masan_inbound_order:{warehouse_id}")
@@ -180,6 +187,10 @@ class TaskStatusService:
                         _run_inbound_task(db, warehouse_id, list_details, assign_robot_id=assign_robot_id, number_sending = 1)
             else:
                 for allocation in allocations:
+                    if allocation.device is None:
+                        allocation.device = payload.get("deviceNum")
+                    if allocation.start_time is None:
+                        allocation.start_time = datetime.now()
                     allocation.status = (
                         "pre_completed"
                         if MAPPING_STATUS[ics_status] == "completed" and allocation.allocation_type == "outbound"
@@ -191,6 +202,8 @@ class TaskStatusService:
                             _settle_outbound_stock,
                         )
                         _settle_outbound_stock(db, [allocation])
+                        if allocation.end_time is None:
+                            allocation.end_time = datetime.now()
 
                 if MAPPING_STATUS[ics_status] == "completed":
                     from_location = allocations[0].from_location

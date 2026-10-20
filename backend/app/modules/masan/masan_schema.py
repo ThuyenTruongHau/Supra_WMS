@@ -5,6 +5,9 @@ from typing import Any, Literal, Optional
 from pydantic import BaseModel, Field, field_validator
 
 from app.modules.warehouse.inbound_order.inbound_order_schema import InboundSuggestAllocation
+from app.modules.warehouse.outbound_order.outbound_order_schema import (
+    OutboundRobotTaskResponse,
+)
 
 
 class MasanInboundPreviewRow(BaseModel):
@@ -61,6 +64,9 @@ class MasanInboundBulkExportRequest(BaseModel):
     order_ids: list[int] = Field(..., min_length=1, max_length=100)
 
 
+MasanOutboundBulkExportRequest = MasanInboundBulkExportRequest
+
+
 class MasanClearInboundZoneRequest(BaseModel):
     warehouse_id: int = Field(..., gt=0)
 
@@ -74,6 +80,43 @@ class MasanClearInboundZoneResponse(BaseModel):
     deactivated_count: int = Field(
         0,
         description="Số dòng ItemStock is_active=True đã tắt trong các zone inbound",
+    )
+
+
+class MasanClearCcCacheRequest(BaseModel):
+    warehouse_id: int = Field(..., gt=0)
+
+
+class MasanClearCcCacheResponse(BaseModel):
+    warehouse_id: int
+    zones: list[str] = Field(
+        ...,
+        description="Các zone CC cấu hình (settings.zone_cc)",
+    )
+    assigned_cc_location_keys: int = 0
+    assigned_cc_details_keys: int = 0
+    stock_ready_keys: int = 0
+    total_keys_deleted: int = 0
+
+
+class MasanClearOutboundStationCacheRequest(BaseModel):
+    warehouse_id: int = Field(..., gt=0)
+    cc_location_ids: list[int] = Field(
+        ...,
+        min_length=1,
+        description="Danh sách location.id các ô CC thuộc một zone (map zone 10/11)",
+    )
+
+
+class MasanClearOutboundStationCacheResponse(BaseModel):
+    warehouse_id: int
+    assigned_cc_location: int = 0
+    assigned_cc_details: int = 0
+    stock_ready: int = 0
+    orphan_details: int = 0
+    zones_seen: list[str] = Field(
+        default_factory=list,
+        description="Zone.code đọc từ bucket đã xóa (vd. Zone_CC_01)",
     )
 
 
@@ -212,6 +255,14 @@ class MasanSortingOutboundDispatchResponse(BaseModel):
     zone: str
     item_id: int
     lacked: list[MasanSortingOutboundLackedRow] = Field(default_factory=list)
+
+
+class MasanSortingZoneRobotTasksResponse(BaseModel):
+    zone: str = Field(
+        ...,
+        description="Zone.code khu VT (vd. Zone_sorting_1) — khớp to_location sau gửi lệnh",
+    )
+    tasks: list[OutboundRobotTaskResponse] = Field(default_factory=list)
 
 
 class MasanConfirmAllocationOutboundRequest(BaseModel):

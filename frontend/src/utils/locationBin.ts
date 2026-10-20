@@ -65,6 +65,17 @@ export function isVtLocationCode(code: string | null | undefined): boolean {
   return value.startsWith('VT') || value.startsWith('CX')
 }
 
+/** Cùng tiêu chí VT với OperatorMapCanvas / click ô trên board. */
+export function isVtMapLocation(
+  locationCode: string | null | undefined,
+  locationName?: string | null,
+): boolean {
+  if (isVtLocationCode(locationCode) || isVtLocationCode(locationName)) {
+    return true
+  }
+  return (locationName ?? '').trim().toUpperCase().startsWith('VT')
+}
+
 export function isCcLocationCode(code: string | null | undefined): boolean {
   return (code ?? '').trim().toUpperCase().startsWith('CC')
 }

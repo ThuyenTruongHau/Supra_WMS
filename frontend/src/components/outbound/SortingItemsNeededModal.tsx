@@ -16,6 +16,7 @@ import {
 } from "@/utils/masanSortingReturnTasks";
 import { toDisplayInteger } from "@/utils/number";
 import { getRobotTaskDisplayStatus } from "@/utils/outboundRobotTaskDisplay";
+import MasanSortingDispatchHistoryPanel from "@/components/outbound/MasanSortingDispatchHistoryPanel";
 import {
   operatorModalWidthForTier,
   operatorPickBodyTextClass,
@@ -41,6 +42,8 @@ type SortingItemsNeededModalProps = {
   subtitle?: string | null;
   zIndex?: number;
   onConfirmExport?: (items: MasanSortingItemNeededRow[]) => void | Promise<void>;
+  /** Zone.code VT (Zone_sorting_1 / _2) — lịch sử robot sau khi chọn vị trí. */
+  sortingZoneCode: string;
 };
 
 export default function SortingItemsNeededModal({
@@ -52,6 +55,7 @@ export default function SortingItemsNeededModal({
   subtitle,
   zIndex,
   onConfirmExport,
+  sortingZoneCode,
 }: SortingItemsNeededModalProps) {
   const tier = useOperatorViewportTier();
   const [viewportWidth, setViewportWidth] = useState(
@@ -432,6 +436,15 @@ export default function SortingItemsNeededModal({
             />
           )}
         </div>
+
+        {sortingZoneCode.trim().length > 0 ? (
+          <div className="min-w-0 border-t border-slate-200 pt-4">
+            <MasanSortingDispatchHistoryPanel
+              sortingZoneCode={sortingZoneCode}
+              enabled={open}
+            />
+          </div>
+        ) : null}
       </div>
     </Modal>
   );

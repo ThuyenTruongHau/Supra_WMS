@@ -25,6 +25,7 @@ import {
   useSortingWaves,
   useUpdateSortingWave,
 } from "@/hooks/useSortingWave";
+import { useWarehouseLocations } from "@/hooks/useZones";
 import {
   getInboundBufferPointsApi,
   type MapLocationType,
@@ -104,6 +105,8 @@ export default function SortingWaveManagementPanel({
     staleTime: 60_000,
   });
 
+  const { data: warehouseLocations = [] } = useWarehouseLocations(zoneId);
+
   const createMutation = useCreateSortingWave();
   const updateMutation = useUpdateSortingWave();
   const deleteMutation = useDeleteSortingWave();
@@ -141,6 +144,16 @@ export default function SortingWaveManagementPanel({
     }
     return map;
   }, [outboundOptions, sortingOptions]);
+
+  const locationNameByCode = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const loc of warehouseLocations) {
+      const code = String(loc.location_code);
+      const name = loc.location_name?.trim();
+      map.set(code, name || code);
+    }
+    return map;
+  }, [warehouseLocations]);
 
   const filteredData = useMemo(() => {
     const keyword = trimmedSearch.toLowerCase();
@@ -278,8 +291,9 @@ export default function SortingWaveManagementPanel({
       ? current.filter((id) => id !== locationId)
       : [...current, locationId];
     form.setFieldsValue({ [mapField]: next });
+    const locationLabel = locationNameByCode.get(locationCode) ?? locationCode;
     message.success(
-      exists ? `Đã bỏ chọn ${locationCode}` : `Đã thêm ${locationCode}`,
+      exists ? `Đã bỏ chọn ${locationLabel}` : `Đã chọn ${locationLabel}`,
     );
   };
 

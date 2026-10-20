@@ -1,6 +1,7 @@
 from typing import Annotated, Literal
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi.responses import Response
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -33,6 +34,36 @@ def get_report_kpis(
     warehouse_id: int = Query(..., gt=0),
 ):
     return dashboard_service.get_report_kpis(db, warehouse_id=warehouse_id)
+
+
+@router.get(
+    "/dashboard/report-robot-performance/export",
+    dependencies=[Depends(get_current_user)],
+)
+def export_report_robot_performance(
+    db: DbSession,
+    warehouse_id: int = Query(..., gt=0),
+    period: Literal["day", "week"] = Query("day"),
+):
+    try:
+        content, filename = dashboard_service.export_robot_performance_report(
+            db,
+            warehouse_id=warehouse_id,
+            period=period,
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
+
+    return Response(
+        content=content,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+        },
+    )
 
 
 @router.get(

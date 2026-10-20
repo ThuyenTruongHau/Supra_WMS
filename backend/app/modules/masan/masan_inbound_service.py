@@ -19,7 +19,7 @@ from app.core.cache import cache_set, cache_get
 from app.modules.masan.masan_inbound_excel import (
     COLUMN_ALIASES,
     DATA_START_ROW,
-    EXPORT_HEADERS,
+    INBOUND_REPORT_HEADERS,
     HEADER_ROW,
     normalize_export_cell_value,
     style_daily_capacity_worksheet,
@@ -420,6 +420,12 @@ def _format_inbound_datetime(order: InboundOrder, meta: dict[str, Any]) -> str:
     return ""
 
 
+def _format_inbound_report_datetime(dt) -> str:
+    if not dt:
+        return ""
+    return dt.strftime("%d/%m/%Y\n%H:%M")
+
+
 def _build_export_row(
     order: InboundOrder,
     detail: InboundOrderDetail,
@@ -464,6 +470,9 @@ def _build_export_row(
         _meta_value(meta, "pallet_count"),
         storage_location,
         locator,
+        detail.device or None,
+        _format_inbound_report_datetime(detail.start_time),
+        _format_inbound_report_datetime(detail.end_time),
     ]
 
 
@@ -472,7 +481,7 @@ def _build_export_workbook(rows: list[list[Any]]) -> bytes:
     ws = wb.active
     ws.title = "Sheet1"
 
-    for col_idx, header in enumerate(EXPORT_HEADERS, start=1):
+    for col_idx, header in enumerate(INBOUND_REPORT_HEADERS, start=1):
         ws.cell(row=HEADER_ROW, column=col_idx, value=header)
 
     last_data_row = DATA_START_ROW - 1
@@ -648,17 +657,26 @@ def _load_storage_stocks_by_location(
     return by_location
 
 
+def _format_stock_inbound_date(created_at) -> str:
+    if not created_at:
+        return ""
+    return created_at.strftime("%d/%m/%Y")
+
+
 def _format_locator_stock_cells(
     stocks: list[ItemStock],
-) -> tuple[Optional[str], Optional[str], Optional[str]]:
+) -> tuple[Optional[str], Optional[str], Optional[str], Optional[str], Optional[str]]:
     if not stocks:
-        return None, None, None
+        return None, None, None, None, None
     sku_parts: list[str] = []
+    name_parts: list[str] = []
     qty_parts: list[str] = []
     lot_parts: list[str] = []
+    inbound_date_parts: list[str] = []
     for stock in stocks:
         item = stock.item
         sku_parts.append(item.sku if item else "")
+        name_parts.append(item.name if item else "")
         qty_parts.append(str(int(stock.available_quantity)))
         lot_from = normalize_stored_lot_part(stock.lot_number_from)
         lot_to = normalize_stored_lot_part(stock.lot_number_to)
@@ -669,8 +687,15 @@ def _format_locator_stock_cells(
             )
             or ""
         )
+        inbound_date_parts.append(_format_stock_inbound_date(stock.created_at))
     sep = "\n"
-    return sep.join(sku_parts), sep.join(qty_parts), sep.join(lot_parts)
+    return (
+        sep.join(sku_parts),
+        sep.join(name_parts),
+        sep.join(qty_parts),
+        sep.join(lot_parts),
+        sep.join(inbound_date_parts),
+    )
 
 
 def _list_storage_locations_for_daily_capacity(
@@ -760,8 +785,10 @@ def _build_daily_capacity_workbook(
     ws.cell(row=_DAILY_CAPACITY_TABLE_HEADER_ROW, column=1, value="Locator")
     ws.cell(row=_DAILY_CAPACITY_TABLE_HEADER_ROW, column=2, value="Trạng thái")
     ws.cell(row=_DAILY_CAPACITY_TABLE_HEADER_ROW, column=3, value="Mã hàng")
-    ws.cell(row=_DAILY_CAPACITY_TABLE_HEADER_ROW, column=4, value="Số lượng")
-    ws.cell(row=_DAILY_CAPACITY_TABLE_HEADER_ROW, column=5, value="LOT")
+    ws.cell(row=_DAILY_CAPACITY_TABLE_HEADER_ROW, column=4, value="Tên hàng")
+    ws.cell(row=_DAILY_CAPACITY_TABLE_HEADER_ROW, column=5, value="Số lượng")
+    ws.cell(row=_DAILY_CAPACITY_TABLE_HEADER_ROW, column=6, value="LOT")
+    ws.cell(row=_DAILY_CAPACITY_TABLE_HEADER_ROW, column=7, value="Ngày nhập kho")
 
     last_data_row = _DAILY_CAPACITY_DATA_START_ROW - 1
     for offset, (loc, status) in enumerate(location_rows):
@@ -769,14 +796,17 @@ def _build_daily_capacity_workbook(
         last_data_row = row_idx
         ws.cell(row=row_idx, column=1, value=loc.location_name or "")
         ws.cell(row=row_idx, column=2, value=_excel_location_status(status))
-        sku_cell, qty_cell, lot_cell = _format_locator_stock_cells(
-            stock_by_location.get(loc.id, [])
+        sku_cell, name_cell, qty_cell, lot_cell, inbound_date_cell = (
+            _format_locator_stock_cells(stock_by_location.get(loc.id, []))
         )
         if sku_cell:
             ws.cell(row=row_idx, column=3, value=sku_cell)
-            ws.cell(row=row_idx, column=4, value=qty_cell)
+            ws.cell(row=row_idx, column=4, value=name_cell)
+            ws.cell(row=row_idx, column=5, value=qty_cell)
             if lot_cell:
-                ws.cell(row=row_idx, column=5, value=str(lot_cell))
+                ws.cell(row=row_idx, column=6, value=str(lot_cell))
+            if inbound_date_cell:
+                ws.cell(row=row_idx, column=7, value=inbound_date_cell)
 
     style_daily_capacity_worksheet(
         ws,
@@ -803,7 +833,7 @@ def export_daily_capacity_excel(db: Session, warehouse_id: int) -> tuple[bytes, 
     warehouse_label = (warehouse.code if warehouse and warehouse.code else None) or str(
         warehouse_id
     )
-    filename = f"Daily_Capacity_{warehouse_label}_{date.today().isoformat()}.xlsx"
+    filename = f"Capacity_{warehouse_label}_{date.today().isoformat()}.xlsx"
     return content, filename
 
 
@@ -1074,7 +1104,7 @@ def clear_zone_inbound(db: Session, warehouse_id: int) -> int:
         .all()
     )
 
-    item_stock_ids = [stock.item_stock_id for stock in stocks]
+    item_stock_ids = [stock.id for stock in stocks]
 
     if not item_stock_ids:
         details = []

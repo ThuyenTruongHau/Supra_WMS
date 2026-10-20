@@ -84,6 +84,9 @@ class InboundOrderDetail(Base):
         default=dict,
         server_default="{}",
     )
+    device = Column(String(50), nullable=True, index=True)
+    start_time = Column(DateTime(timezone=True), nullable=True)
+    end_time = Column(DateTime(timezone=True), nullable=True)
     status = Column(String(20), default="initialize", nullable=False, index=True)
     detail_type = Column(String(50), nullable=False, index=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())

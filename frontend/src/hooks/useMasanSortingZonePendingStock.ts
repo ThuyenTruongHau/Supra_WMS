@@ -1,4 +1,3 @@
-import { useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getMasanSortingZonePendingStockApi } from "@/api/masan";
 
@@ -7,28 +6,19 @@ export const masanSortingZonePendingStockQueryKey = (
   ccZoneCode: string,
 ) => ["masan", "sorting-zone", "pending-stock", warehouseId, ccZoneCode] as const;
 
+/** Không poll: dữ liệu được làm mới qua WS `masan.sorting.*` (xem useMasanSortingZoneWebSocket). */
 export function useMasanSortingZonePendingStock(
   warehouseId: number,
   ccZoneCode: string | null,
   enabled: boolean,
 ) {
   const zone = ccZoneCode?.trim() ?? "";
-  const republishDoneRef = useRef(false);
 
-  useEffect(() => {
-    republishDoneRef.current = false;
-  }, [warehouseId, zone]);
-
-  const query = useQuery({
+  return useQuery({
     queryKey: masanSortingZonePendingStockQueryKey(warehouseId, zone),
-    queryFn: async () => {
-      const republish = !republishDoneRef.current;
-      if (republish) republishDoneRef.current = true;
-      return getMasanSortingZonePendingStockApi(warehouseId, zone, republish);
-    },
+    queryFn: ({ signal }) =>
+      getMasanSortingZonePendingStockApi(warehouseId, zone, false, signal),
     enabled: enabled && warehouseId > 0 && zone.length > 0,
-    staleTime: 1_000,
+    staleTime: 5_000,
   });
-
-  return query;
 }

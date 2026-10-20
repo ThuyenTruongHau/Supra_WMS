@@ -91,6 +91,16 @@ export default function CreateStocktakeModal({
     return map;
   }, [fullLocationsData]);
 
+  const locationNameByCode = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const loc of fullLocationsData?.locations ?? []) {
+      const code = String(loc.location_code);
+      const name = loc.location_name?.trim();
+      map.set(code, name || code);
+    }
+    return map;
+  }, [fullLocationsData]);
+
   const itemOptions = useMemo(
     () =>
       (itemsData?.items ?? []).map((item) => ({
@@ -361,9 +371,12 @@ export default function CreateStocktakeModal({
                 return;
               }
               const isSelected = selectedLocationCodes.includes(code);
+              const locationLabel = locationNameByCode.get(code) ?? code;
               toggleLocationCode(code);
               message.info(
-                isSelected ? `Đã bỏ chọn: ${code}` : `Đã chọn: ${code}`,
+                isSelected
+                  ? `Đã bỏ chọn ${locationLabel}`
+                  : `Đã chọn ${locationLabel}`,
               );
             }}
           />

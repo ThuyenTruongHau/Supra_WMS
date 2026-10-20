@@ -13,6 +13,8 @@ export type OutboundDisplayZone = {
   ccBucketZoneCode: string;
   /** Zone VT (DB id): click ô → modal chọn mã hàng (vẫn gửi `ccBucketZoneCode` cho BE). */
   vtZoneId: number;
+  /** `Zone.code` khu VT — gửi BE `sorting-zone/robot-tasks?zone=` */
+  vtSortingZoneCode: string;
 };
 
 /**
@@ -27,6 +29,7 @@ export const OUTBOUND_DISPLAY_ZONES: OutboundDisplayZone[] = [
     vtZoneId: 8,
     ccZoneId: 11,
     ccBucketZoneCode: "Zone_CC_02",
+    vtSortingZoneCode: "Zone_sorting_2",
   },
   {
     id: 9,
@@ -35,6 +38,7 @@ export const OUTBOUND_DISPLAY_ZONES: OutboundDisplayZone[] = [
     vtZoneId: 9,
     ccZoneId: 10,
     ccBucketZoneCode: "Zone_CC_01",
+    vtSortingZoneCode: "Zone_sorting_1",
   },
 ];
 
@@ -54,6 +58,15 @@ export function outboundCcBucketZoneCodeFor(displayZoneId: number): string | nul
   return (
     OUTBOUND_DISPLAY_ZONES.find((zone) => zone.id === displayZoneId)
       ?.ccBucketZoneCode ?? null
+  );
+}
+
+export function outboundVtSortingZoneCodeFor(
+  displayZoneId: number,
+): string | null {
+  return (
+    OUTBOUND_DISPLAY_ZONES.find((zone) => zone.id === displayZoneId)
+      ?.vtSortingZoneCode ?? null
   );
 }
 
@@ -90,4 +103,12 @@ const OUTBOUND_DETAIL_ZONE_IDS = new Set<number>(
 
 export function isOutboundDetailZoneId(zoneId: number): boolean {
   return OUTBOUND_DETAIL_ZONE_IDS.has(zoneId);
+}
+
+export function operatorExportZonePath(displayZoneId: number): string {
+  return `/export/zone/${displayZoneId}`;
+}
+
+export function operatorMonitorZonePath(displayZoneId: number): string {
+  return `/monitor/zone/${displayZoneId}`;
 }

@@ -1,4 +1,5 @@
 import axiosInstance from "./axiosInstance";
+import { downloadBlobFromResponse } from "@/utils/downloadBlob";
 import type {
   ReportKpiResponse,
   ReportStockAgingBucketResponse,
@@ -63,4 +64,24 @@ export const getReportStockAgingBucketApi = async (
     { params: { warehouse_id: warehouseId, bucket } },
   );
   return data;
+};
+
+export type RobotReportPeriod = "day" | "week";
+
+export const exportRobotPerformanceReportApi = async (
+  warehouseId: number,
+  period: RobotReportPeriod,
+): Promise<void> => {
+  const response = await axiosInstance.get(
+    `${BASE}/report-robot-performance/export`,
+    {
+      params: { warehouse_id: warehouseId, period },
+      responseType: "blob",
+    },
+  );
+  downloadBlobFromResponse(
+    response.data as Blob,
+    response.headers["content-disposition"] as string | undefined,
+    `BaoCaoRobot_${warehouseId}_${period}.xlsx`,
+  );
 };

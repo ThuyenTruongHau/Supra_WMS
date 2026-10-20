@@ -101,10 +101,12 @@ export const calculateOutboundOrderApi = async (
 
 export const getOutboundRobotTasksApi = async (
   orderId: number,
+  signal?: AbortSignal,
 ): Promise<OutboundRobotTask[]> => {
   try {
     const { data } = await axiosInstance.get<OutboundRobotTask[]>(
       `/api/v1/robot-tasks/${orderId}`,
+      { signal },
     );
     return Array.isArray(data) ? data : [];
   } catch (err) {

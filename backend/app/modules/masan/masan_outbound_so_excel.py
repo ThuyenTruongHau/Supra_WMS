@@ -163,10 +163,8 @@ def build_so_customer_sheet(
         cell.border = _THIN_BORDER
     ws.row_dimensions[HEADER_ROW].height = HEADER_ROW_HEIGHT
 
-    last_data_row = DATA_START_ROW - 1
     for offset, row_values in enumerate(data_rows):
         row_idx = DATA_START_ROW + offset
-        last_data_row = row_idx
         ws.row_dimensions[row_idx].height = DATA_ROW_HEIGHT
         for col_idx, value in enumerate(row_values, start=1):
             ws.cell(
@@ -175,5 +173,3 @@ def build_so_customer_sheet(
                 value=normalize_so_cell_value(col_idx, value),
             )
             _apply_data_cell_style(ws, row_idx, col_idx)
-
-    ws.freeze_panes = ws.cell(row=DATA_START_ROW, column=1)

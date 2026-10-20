@@ -1,4 +1,5 @@
 import type { InboundSuggestAllocationRequest } from "@/types/inboundOrder";
+import type { OutboundRobotTask } from "@/types/outbound";
 
 export interface MasanInboundPreviewRow {
   row_no: number;
@@ -57,6 +58,20 @@ export interface MasanClearInboundZoneResponse {
   warehouse_id: number;
   zones: string[];
   deactivated_count: number;
+}
+
+export interface MasanClearOutboundStationCacheRequest {
+  warehouse_id: number;
+  cc_location_ids: number[];
+}
+
+export interface MasanClearOutboundStationCacheResponse {
+  warehouse_id: number;
+  assigned_cc_location: number;
+  assigned_cc_details: number;
+  stock_ready: number;
+  orphan_details: number;
+  zones_seen: string[];
 }
 
 export interface MasanOutboundPreviewRow {
@@ -191,6 +206,11 @@ export interface MasanSortingOutboundDispatchResponse {
   zone: string;
   item_id: number;
   lacked: MasanSortingOutboundLackedRow[];
+}
+
+export interface MasanSortingZoneRobotTasksResponse {
+  zone: string;
+  tasks: OutboundRobotTask[];
 }
 
 export interface MasanSortingZonePendingAllocationRow {

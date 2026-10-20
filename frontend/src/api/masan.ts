@@ -3,6 +3,8 @@ import type {
   MasanCcLocationResponse,
   MasanClearInboundZoneRequest,
   MasanClearInboundZoneResponse,
+  MasanClearOutboundStationCacheRequest,
+  MasanClearOutboundStationCacheResponse,
   MasanInboundCallerRequest,
   MasanInboundCallerResponse,
   MasanInboundDetailFilter,
@@ -14,6 +16,7 @@ import type {
   MasanConfirmAllocationOutboundRequest,
   MasanConfirmAllocationOutboundResponse,
   MasanSortingZonePendingStockResponse,
+  MasanSortingZoneRobotTasksResponse,
   MasanPickingListListResponse,
   MasanPickingListCreateRequest,
 } from "@/types/masan";
@@ -41,6 +44,31 @@ export const clearMasanInboundZoneApi = async (
     "/api/v1/masan/inbound-orders/clear-inbound-zone",
     body,
   );
+  return data;
+};
+
+export const clearMasanOutboundStationCacheApi = async (
+  body: MasanClearOutboundStationCacheRequest,
+): Promise<MasanClearOutboundStationCacheResponse> => {
+  const { data } =
+    await axiosInstance.post<MasanClearOutboundStationCacheResponse>(
+      "/api/v1/masan/outbound-orders/clear-station-cache",
+      body,
+    );
+  return data;
+};
+
+export const clearMasanCcCacheApi = async (warehouseId: number) => {
+  const { data } = await axiosInstance.post<{
+    warehouse_id: number;
+    zones: string[];
+    assigned_cc_location_keys: number;
+    assigned_cc_details_keys: number;
+    stock_ready_keys: number;
+    total_keys_deleted: number;
+  }>("/api/v1/masan/outbound-orders/clear-cc-cache", {
+    warehouse_id: warehouseId,
+  });
   return data;
 };
 
@@ -116,7 +144,7 @@ export const exportInboundDailyCapacityApi = async (
   downloadBlobFromResponse(
     response.data as Blob,
     response.headers["content-disposition"] as string | undefined,
-    `Daily_Capacity_${warehouseId}.xlsx`,
+    `Capacity_${warehouseId}.xlsx`,
   );
 };
 
@@ -154,10 +182,11 @@ export const getMasanCcLocationApi = async (
 export const getMasanSortingZoneCcLocationsApi = async (
   warehouseId: number,
   zone: string,
+  signal?: AbortSignal,
 ): Promise<MasanSortingZoneCcLocationsResponse> => {
   const { data } = await axiosInstance.get<MasanSortingZoneCcLocationsResponse>(
     "/api/v1/masan/outbound-orders/sorting-zone/cc-locations",
-    { params: { warehouse_id: warehouseId, zone } },
+    { params: { warehouse_id: warehouseId, zone }, signal },
   );
   return data;
 };
@@ -165,10 +194,11 @@ export const getMasanSortingZoneCcLocationsApi = async (
 export const getMasanSortingItemsNeededApi = async (
   warehouseId: number,
   zone: string,
+  signal?: AbortSignal,
 ): Promise<MasanSortingItemsNeededResponse> => {
   const { data } = await axiosInstance.get<MasanSortingItemsNeededResponse>(
     "/api/v1/masan/outbound-orders/sorting-items-needed",
-    { params: { warehouse_id: warehouseId, zone } },
+    { params: { warehouse_id: warehouseId, zone }, signal },
   );
   return data;
 };
@@ -183,10 +213,26 @@ export const masanSortingOutboundDispatchApi = async (
   return data;
 };
 
+export const getMasanSortingZoneRobotTasksApi = async (
+  sortingZoneCode: string,
+  signal?: AbortSignal,
+): Promise<MasanSortingZoneRobotTasksResponse> => {
+  const zone = sortingZoneCode.trim();
+  const { data } = await axiosInstance.get<MasanSortingZoneRobotTasksResponse>(
+    "/api/v1/masan/outbound-orders/sorting-zone/robot-tasks",
+    { params: { zone }, signal },
+  );
+  return {
+    zone: typeof data?.zone === "string" && data.zone.trim() ? data.zone : zone,
+    tasks: Array.isArray(data?.tasks) ? data.tasks : [],
+  };
+};
+
 export const getMasanSortingZonePendingStockApi = async (
   warehouseId: number,
   zone: string,
   republish = false,
+  signal?: AbortSignal,
 ): Promise<MasanSortingZonePendingStockResponse> => {
   const { data } = await axiosInstance.get<MasanSortingZonePendingStockResponse>(
     "/api/v1/masan/outbound-orders/sorting-zone/pending-stock",
@@ -196,6 +242,7 @@ export const getMasanSortingZonePendingStockApi = async (
         zone,
         ...(republish ? { republish: true } : {}),
       },
+      signal,
     },
   );
   return data;
@@ -270,5 +317,34 @@ export const exportOutboundOrderSOApi = async (
     response.data as Blob,
     response.headers["content-disposition"] as string | undefined,
     `outbound-${orderId}_SO.xlsx`,
+  );
+};
+
+export const exportOutboundOrderReportApi = async (
+  orderId: number,
+): Promise<void> => {
+  const response = await axiosInstance.get(
+    `/api/v1/masan/outbound-orders/${orderId}/export`,
+    { responseType: "blob" },
+  );
+  downloadBlobFromResponse(
+    response.data as Blob,
+    response.headers["content-disposition"] as string | undefined,
+    `outbound-${orderId}_BaoCaoXuat.xlsx`,
+  );
+};
+
+export const exportOutboundOrdersReportBulkApi = async (
+  orderIds: number[],
+): Promise<void> => {
+  const response = await axiosInstance.post(
+    "/api/v1/masan/outbound-orders/export",
+    { order_ids: orderIds },
+    { responseType: "blob" },
+  );
+  downloadBlobFromResponse(
+    response.data as Blob,
+    response.headers["content-disposition"] as string | undefined,
+    `BaoCaoXuat_${orderIds.length}don.xlsx`,
   );
 };

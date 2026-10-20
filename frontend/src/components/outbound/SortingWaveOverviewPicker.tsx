@@ -9,7 +9,12 @@ import { EyeOutlined, PartitionOutlined, UploadOutlined } from "@ant-design/icon
 import WarehouseViewModal from "@/components/inbound/WarehouseViewModal";
 import type { ColumnsType } from "antd/es/table";
 import { Button, Modal, Table, Space, message, cn } from "@/components/ui";
+import MasanVtLocationPickerModal, {
+  type MasanVtLocationPick,
+} from "@/components/outbound/MasanVtLocationPickerModal";
 import SortingItemsNeededModal from "@/components/outbound/SortingItemsNeededModal";
+import { useMasanVtLocations } from "@/hooks/useMasanVtLocations";
+import { useMasanVtSortingDispatch } from "@/hooks/useMasanVtSortingDispatch";
 import {
   OPERATOR_DESKTOP,
   operatorDesktopClass,
@@ -56,8 +61,8 @@ function SortingWaveOverviewCell({
     <div className="group relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-xl border border-stripe-hairline bg-panel text-left shadow-stripe-1 transition hover:border-brand-primary/35 hover:shadow-[0_8px_28px_rgba(37,99,235,0.12)]">
       <button
         type="button"
-        title={`Nhấp để chọn mã hàng · ${title}`}
-        aria-label={`Chọn mã hàng xuất tại ${title}`}
+        title={`Gọi lệnh · ${title}`}
+        aria-label={`Gọi lệnh xuất tại ${title}`}
         onClick={onOpenSorting}
         className="flex shrink-0 w-full items-center justify-between gap-2 border-b border-stripe-hairline bg-panel-soft px-4 py-2.5 text-left transition hover:bg-sky-50/80 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/40"
       >
@@ -68,12 +73,12 @@ function SortingWaveOverviewCell({
               {title}
             </p>
             <p className="mt-0.5 text-sm font-medium text-cyan-700">
-              Nhấp để chọn mã hàng xuất
+              Gọi lệnh — chọn VT và mã hàng
             </p>
           </div>
         </div>
         <span className="shrink-0 rounded-full border border-cyan-300/30 bg-cyan-50 px-3 py-1 text-xs font-bold uppercase tracking-wider text-cyan-700">
-          Chọn hàng
+          Gọi lệnh
         </span>
       </button>
       <div
@@ -134,7 +139,20 @@ export default React.memo(function SortingWaveOverviewPicker({
   const [sortingZone, setSortingZone] = useState<OutboundDisplayZone | null>(
     null,
   );
-  const sortingModalOpen = sortingZone != null;
+  const [dispatchVt, setDispatchVt] = useState<MasanVtLocationPick | null>(
+    null,
+  );
+  const dispatchDisplayZoneId = sortingZone?.id ?? 0;
+  const {
+    locations: vtLocationsForDispatch,
+    vtZoneIds: dispatchVtZoneIds,
+    isLoading: vtLocationsLoading,
+    failedZoneIds: vtLocationFailedZoneIds,
+  } = useMasanVtLocations(dispatchDisplayZoneId);
+  const runVtSortingDispatch = useMasanVtSortingDispatch(
+    dispatchDisplayZoneId,
+    warehouseId,
+  );
 
   const ccPollEnabled = warehouseId > 0;
   const ccZoneOne = useMasanSortingZoneCcLocations(
@@ -169,11 +187,17 @@ export default React.memo(function SortingWaveOverviewPicker({
       message.warning("Vui lòng chọn kho trước");
       return;
     }
+    setDispatchVt(null);
     setSortingZone(zone);
   }, [warehouseId]);
 
-  const closeSortingModal = useCallback(() => {
+  const closeDispatchFlow = useCallback(() => {
     setSortingZone(null);
+    setDispatchVt(null);
+  }, []);
+
+  const handleVtPickerSelect = useCallback((pick: MasanVtLocationPick) => {
+    setDispatchVt(pick);
   }, []);
 
   const resetImportState = () => {
@@ -413,22 +437,30 @@ export default React.memo(function SortingWaveOverviewPicker({
       </div>
 
       {sortingZone && warehouseId > 0 ? (
+        <MasanVtLocationPickerModal
+          open={dispatchVt == null}
+          onClose={closeDispatchFlow}
+          title={`Gọi lệnh — ${sortingZone.name}`}
+          subtitle={`CC Masan: ${sortingZone.ccBucketZoneCode}`}
+          locations={vtLocationsForDispatch}
+          vtZoneIds={dispatchVtZoneIds}
+          isLoading={vtLocationsLoading}
+          failedZoneIds={vtLocationFailedZoneIds}
+          onSelect={handleVtPickerSelect}
+        />
+      ) : null}
+      {sortingZone && warehouseId > 0 && dispatchVt ? (
         <SortingItemsNeededModal
-          open={sortingModalOpen}
-          onClose={closeSortingModal}
+          open
+          onClose={closeDispatchFlow}
           warehouseId={warehouseId}
           ccBucketZoneCode={sortingZone.ccBucketZoneCode}
-          title={`Chọn mã hàng — ${sortingZone.name}`}
+          sortingZoneCode={sortingZone.vtSortingZoneCode}
+          title={`Chọn mã hàng — ${dispatchVt.locationName}`}
+          subtitle={`${sortingZone.name} · VT ${dispatchVt.locationCode}`}
           onConfirmExport={async (picked) => {
-            console.info("[SortingExport]", {
-              displayZoneId: sortingZone.id,
-              ccZone: sortingZone.ccBucketZoneCode,
-              itemIds: picked.map((r) => r.item_id),
-              skus: picked.map((r) => r.sku),
-            });
-            message.success(
-              `Đã xác nhận xuất mã ${picked[0]?.sku ?? ""} tại ${sortingZone.name}`,
-            );
+            await runVtSortingDispatch(picked, dispatchVt.locationId);
+            closeDispatchFlow();
             onSelectZone(sortingZone.id);
           }}
         />

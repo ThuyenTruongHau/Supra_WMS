@@ -14,9 +14,10 @@ export function useMasanSortingItemsNeeded(
   const zone = ccZoneCode?.trim() ?? "";
   return useQuery({
     queryKey: masanSortingItemsNeededQueryKey(warehouseId, zone),
-    queryFn: () => getMasanSortingItemsNeededApi(warehouseId, zone),
+    queryFn: ({ signal }) =>
+      getMasanSortingItemsNeededApi(warehouseId, zone, signal),
     enabled: enabled && warehouseId > 0 && zone.length > 0,
-    staleTime: 1_000,
-    refetchInterval: enabled && warehouseId > 0 && zone.length > 0 ? 3_000 : false,
+    staleTime: 4_000,
+    refetchInterval: enabled && warehouseId > 0 && zone.length > 0 ? 5_000 : false,
   });
 }

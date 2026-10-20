@@ -3,6 +3,7 @@ import { ArrowLeftOutlined } from "@ant-design/icons";
 import { Navigate, useNavigate, useParams } from "react-router-dom";
 import { Button, cn } from "@/components/ui";
 import { useOperatorShell } from "@/components/layout/OperatorShellContext";
+import OperatorZoneCrossNavButton from "@/components/outbound/OperatorZoneCrossNavButton";
 import MonitorZoneInteractiveMap from "@/components/monitor/MonitorZoneInteractiveMap";
 import {
   PanelExpandButton,
@@ -69,6 +70,7 @@ export default function OperatorMonitorDetailPage() {
           "!flex !items-center !justify-center !rounded-lg !p-0 [&_.ant-btn-icon]:!m-0",
         )}
       />
+      <OperatorZoneCrossNavButton target="export" displayZoneId={zoneId} />
       {showExpand ? (
         <div className="ml-auto">
           <PanelExpandButton

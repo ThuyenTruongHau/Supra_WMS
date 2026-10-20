@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, Navigate } from "react-router-dom";
 import {
+  DeleteOutlined,
   EyeOutlined,
   FileExcelOutlined,
+  PlayCircleOutlined,
   RobotOutlined,
 } from "@ant-design/icons";
 import WarehouseViewModal from "@/components/inbound/WarehouseViewModal";
@@ -10,33 +12,44 @@ import { Button, Modal, cn, message } from "@/components/ui";
 import { OPERATOR_DESKTOP } from "@/constants/operatorDesktopSizes";
 import { getApiErrorDetail } from "@/types/apiError";
 import {
+  clearMasanOutboundStationCacheApi,
+  exportOutboundOrderReportApi,
+  exportOutboundOrdersReportBulkApi,
   exportOutboundOrderSOApi,
-  masanSortingOutboundDispatchApi,
 } from "@/api/masan";
 import {
   useOutboundTasksByWave,
   useSendOutboundTaskCommands,
-  outboundTasksByWaveQueryKey,
 } from "@/hooks/useOutboundTask";
+import MasanVtLocationPickerModal from "@/components/outbound/MasanVtLocationPickerModal";
+import SortingItemsNeededModal from "@/components/outbound/SortingItemsNeededModal";
+import OperatorZoneCrossNavButton from "@/components/outbound/OperatorZoneCrossNavButton";
 import SortingWaveStationBoard from "@/components/outbound/SortingWaveStationBoard";
-import OperatorOutboundOrderBrowser from "@/components/outbound/OperatorOutboundOrderBrowser";
+import OperatorOutboundOrderBrowser, {
+  type OutboundListFilterExportContext,
+} from "@/components/outbound/OperatorOutboundOrderBrowser";
 import OperatorOutboundLackedPanel from "@/components/outbound/OperatorOutboundLackedPanel";
-import {
-  operatorRecentLackedQueryKey,
-  useOperatorBoardOrders,
-} from "@/hooks/useOutbound";
+import { useOperatorBoardOrders } from "@/hooks/useOutbound";
 import type { OutboundSelectedProductLine } from "@/components/outbound/OperatorOutboundVehicleCards";
-import type { MasanSortingItemNeededRow } from "@/types/masan";
 import { toDisplayInteger } from "@/utils/number";
-import { useQueryClient } from "@tanstack/react-query";
 import { useAppStore } from "@/store/useAppStore";
 import {
   isOutboundDetailZoneId,
+  outboundCcBucketZoneCodeFor,
   outboundClickableZoneIdsFor,
   outboundMapZoneIdsFor,
+  outboundVtSortingZoneCodeFor,
 } from "@/constants/outboundMapZones";
-import { masanSortingItemsNeededQueryKey } from "@/hooks/useMasanSortingItemsNeeded";
+import { useMasanCcLocations } from "@/hooks/useMasanCcLocations";
 import { masanSortingZoneCcLocationsQueryKey } from "@/hooks/useMasanSortingZoneCcLocations";
+import { masanSortingZonePendingStockQueryKey } from "@/hooks/useMasanSortingZonePendingStock";
+import { useMasanVtLocations } from "@/hooks/useMasanVtLocations";
+import { useMasanVtSortingDispatch } from "@/hooks/useMasanVtSortingDispatch";
+import type { MasanVtLocationPick } from "@/components/outbound/MasanVtLocationPickerModal";
+import { useQueryClient } from "@tanstack/react-query";
+import { RobotStatusPanel } from "@/components/layout/OperatorStatusMetricPanels";
+import { useRobotData } from "@/hooks/useRobotData";
+import { buildRobotStatusRows } from "@/utils/robotStatus";
 
 export default function OperatorOutboundDetailPage() {
   const { zoneId: zoneIdStr } = useParams<{ zoneId: string }>();
@@ -52,15 +65,61 @@ export default function OperatorOutboundDetailPage() {
 
   const warehouseId = selectedWarehouseId ?? 0;
 
+  const robotData = useRobotData();
+  const robotRows = buildRobotStatusRows(robotData.data, {
+    isLoading: robotData.isLoading,
+    isError: robotData.isError,
+  });
+
   const [sideExportTab, setSideExportTab] = useState<"session" | "lacked">(
     "session",
   );
   const [isExportingSO, setIsExportingSO] = useState(false);
-  const [isExportingDailyExcel, setIsExportingDailyExcel] = useState(false);
+  const [isExportingReport, setIsExportingReport] = useState(false);
+  const [listFilterExportContext, setListFilterExportContext] =
+    useState<OutboundListFilterExportContext>({
+      visibleOrderIds: [],
+      hasSkuFilter: false,
+      hasDateFilter: false,
+      skuFilterLoading: false,
+    });
+
+  const handleListFilterExportContext = useCallback(
+    (ctx: OutboundListFilterExportContext) => {
+      setListFilterExportContext(ctx);
+    },
+    [],
+  );
+
+  const hasActiveOutboundFilters =
+    listFilterExportContext.hasDateFilter ||
+    listFilterExportContext.hasSkuFilter;
   const [warehouseViewOpen, setWarehouseViewOpen] = useState(false);
+  const [vtPickerOpen, setVtPickerOpen] = useState(false);
+  const [dispatchVt, setDispatchVt] = useState<MasanVtLocationPick | null>(
+    null,
+  );
+  const [sortingItemsModalOpen, setSortingItemsModalOpen] = useState(false);
+  const [isClearingStation, setIsClearingStation] = useState(false);
+
+  const {
+    locations: vtLocations,
+    vtZoneIds,
+    isLoading: vtLocationsLoading,
+    failedZoneIds: vtLocationFailedZoneIds,
+  } = useMasanVtLocations(zoneId);
+  const ccBucketZoneCode = outboundCcBucketZoneCodeFor(zoneId) ?? "";
+  const vtSortingZoneCode = outboundVtSortingZoneCodeFor(zoneId) ?? "";
+  const {
+    locationIds: ccLocationIds,
+    ccZoneIds,
+    isLoading: ccLocationsLoading,
+  } = useMasanCcLocations(zoneId);
+  const runVtSortingDispatch = useMasanVtSortingDispatch(zoneId, warehouseId);
 
   const ordersQuery = useOperatorBoardOrders(warehouseId);
-  const sessionOrderCount = ordersQuery.data?.items.length ?? 0;
+  const boardOrders = ordersQuery.data?.items ?? [];
+  const sessionOrderCount = boardOrders.length;
 
   const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null);
   const [selectedVehicleNumber, setSelectedVehicleNumber] = useState<
@@ -69,6 +128,11 @@ export default function OperatorOutboundDetailPage() {
   const [selectedProductLines, setSelectedProductLines] = useState<
     OutboundSelectedProductLine[]
   >([]);
+
+  const exportSoOrderId = useMemo(
+    () => selectedOrderId ?? boardOrders[0]?.id ?? null,
+    [selectedOrderId, boardOrders],
+  );
 
   useEffect(() => {
     setSelectedOrderId(null);
@@ -88,77 +152,137 @@ export default function OperatorOutboundDetailPage() {
   );
 
   const handleExportMasanSO = async () => {
-    if (!selectedOrderId) return;
+    if (exportSoOrderId == null) {
+      message.warning("Không có đơn xuất nào để xuất SO");
+      return;
+    }
     setIsExportingSO(true);
     try {
-      await exportOutboundOrderSOApi(selectedOrderId);
-      message.success("Đã xuất SO thành công");
+      message.loading({ content: "Đang xuất SO...", key: "masan-outbound-so" });
+      await exportOutboundOrderSOApi(exportSoOrderId);
+      const orderCode =
+        boardOrders.find((o) => o.id === exportSoOrderId)?.order_code ??
+        String(exportSoOrderId);
+      message.success({
+        content: `Đã tải file SO (${orderCode})`,
+        key: "masan-outbound-so",
+      });
     } catch (err: unknown) {
-      message.error(getApiErrorDetail(err, "Không thể xuất SO"));
+      message.error({
+        content: getApiErrorDetail(err, "Không thể xuất SO"),
+        key: "masan-outbound-so",
+      });
     } finally {
       setIsExportingSO(false);
     }
   };
 
-  const handleVtSortingExportConfirm = useCallback(
-    async (
-      picked: MasanSortingItemNeededRow[],
-      context: {
-        warehouseId: number;
-        ccBucketZoneCode: string;
-        toLocationId: number;
+  const handleVtPickerSelect = useCallback((pick: MasanVtLocationPick) => {
+    setDispatchVt(pick);
+    setSortingItemsModalOpen(true);
+  }, []);
+
+  const closeDispatchFlow = useCallback(() => {
+    setSortingItemsModalOpen(false);
+    setDispatchVt(null);
+  }, []);
+
+  const invalidateMasanMapCaches = useCallback(() => {
+    if (warehouseId <= 0 || !ccBucketZoneCode) return;
+    void queryClient.invalidateQueries({
+      queryKey: masanSortingZoneCcLocationsQueryKey(
+        warehouseId,
+        ccBucketZoneCode,
+      ),
+    });
+    void queryClient.invalidateQueries({
+      queryKey: masanSortingZonePendingStockQueryKey(
+        warehouseId,
+        ccBucketZoneCode,
+      ),
+    });
+    void queryClient.invalidateQueries({ queryKey: ["warehouseMap"] });
+    void queryClient.invalidateQueries({ queryKey: ["zone_map_status"] });
+    void queryClient.invalidateQueries({
+      queryKey: ["outbound_operator_board_orders"],
+    });
+  }, [ccBucketZoneCode, queryClient, warehouseId]);
+
+  const handleClearStation = useCallback(() => {
+    if (warehouseId <= 0) {
+      message.warning("Chọn kho trước khi xóa cache station");
+      return;
+    }
+    if (ccLocationsLoading) {
+      message.info("Đang tải danh sách ô CC…");
+      return;
+    }
+    if (ccLocationIds.length === 0) {
+      message.warning(
+        ccZoneIds.length > 0
+          ? `Không có ô CC trên map zone ${ccZoneIds.join(", ")}`
+          : "Khu chia chọn không hợp lệ",
+      );
+      return;
+    }
+
+    Modal.confirm({
+      title: "Xóa cache station xuất",
+      width: OPERATOR_DESKTOP.modal.default,
+      okText: "Xóa cache",
+      okButtonProps: { danger: true },
+      cancelText: "Hủy",
+      content: (
+        <div className="mt-2 space-y-2 text-sm text-slate-600">
+          <p>
+            Xóa cache gán hàng / pending tại{" "}
+            <strong>{ccLocationIds.length}</strong> ô CC
+            {ccBucketZoneCode ? (
+              <>
+                {" "}
+                (<span className="font-mono">{ccBucketZoneCode}</span>)
+              </>
+            ) : null}
+            .
+          </p>
+        </div>
+      ),
+      onOk: async () => {
+        setIsClearingStation(true);
+        try {
+          const result = await clearMasanOutboundStationCacheApi({
+            warehouse_id: warehouseId,
+            cc_location_ids: ccLocationIds,
+          });
+          const total =
+            result.assigned_cc_location +
+            result.assigned_cc_details +
+            result.stock_ready +
+            result.orphan_details;
+          message.success(
+            total > 0
+              ? `Đã xóa cache station (${total} mục)`
+              : "Không còn cache station cho các ô CC này",
+          );
+          invalidateMasanMapCaches();
+        } catch (err: unknown) {
+          message.error(
+            getApiErrorDetail(err, "Không xóa được cache station"),
+          );
+          throw err;
+        } finally {
+          setIsClearingStation(false);
+        }
       },
-    ) => {
-      const row = picked[0];
-      if (!row) return;
-
-      let result;
-      try {
-        result = await masanSortingOutboundDispatchApi({
-          warehouse_id: context.warehouseId,
-          zone: context.ccBucketZoneCode,
-          item_id: row.item_id,
-          to_location_id: context.toLocationId,
-        });
-      } catch (err: unknown) {
-        message.error(getApiErrorDetail(err, "Không gửi được lệnh xuất"));
-        throw err;
-      }
-
-      if (result.lacked.length > 0) {
-        message.warning(
-          `Đã gửi lệnh xuất ${row.sku}; còn thiếu ${result.lacked.length} dòng sau calculate`,
-        );
-      } else {
-        message.success(`Đã gửi lệnh xuất mã ${row.sku}`);
-      }
-
-      void queryClient.invalidateQueries({
-        queryKey: masanSortingItemsNeededQueryKey(
-          context.warehouseId,
-          context.ccBucketZoneCode,
-        ),
-      });
-      void queryClient.invalidateQueries({
-        queryKey: masanSortingZoneCcLocationsQueryKey(
-          context.warehouseId,
-          context.ccBucketZoneCode,
-        ),
-      });
-      void queryClient.invalidateQueries({ queryKey: ["warehouseMap"] });
-      void queryClient.invalidateQueries({
-        queryKey: outboundTasksByWaveQueryKey(zoneId),
-      });
-      void queryClient.invalidateQueries({ queryKey: ["outboundOrders"] });
-      void queryClient.invalidateQueries({
-        queryKey: ["outbound_operator_board_orders"],
-      });
-      void queryClient.invalidateQueries({
-        queryKey: operatorRecentLackedQueryKey(context.warehouseId),
-      });
-    },
-    [queryClient, zoneId],
-  );
+    });
+  }, [
+    ccBucketZoneCode,
+    ccLocationIds,
+    ccLocationsLoading,
+    ccZoneIds,
+    invalidateMasanMapCaches,
+    warehouseId,
+  ]);
 
   const handleCallRobot = () => {
     if (pendingTaskIds.length === 0) {
@@ -192,12 +316,93 @@ export default function OperatorOutboundDetailPage() {
     });
   };
 
-  const handleExportDailyExcel = async () => {
-    setIsExportingDailyExcel(true);
-    await new Promise((r) => setTimeout(r, 1000));
-    setIsExportingDailyExcel(false);
-    message.success("Xuất báo cáo thành công (giả lập)");
+  const handleExportReport = async () => {
+    if (warehouseId <= 0) {
+      message.warning("Vui lòng chọn kho trước khi xuất");
+      return;
+    }
+
+    setIsExportingReport(true);
+    try {
+      message.loading({
+        content: "Đang xuất Excel...",
+        key: "masan-outbound-export",
+      });
+
+      if (selectedOrderId != null) {
+        await exportOutboundOrderReportApi(selectedOrderId);
+        const orderCode =
+          boardOrders.find((o) => o.id === selectedOrderId)?.order_code ??
+          String(selectedOrderId);
+        message.success({
+          content: `Đã tải báo cáo xuất Masan (${orderCode})`,
+          key: "masan-outbound-export",
+        });
+        return;
+      }
+
+      const orderIds = hasActiveOutboundFilters
+        ? listFilterExportContext.visibleOrderIds
+        : listFilterExportContext.visibleOrderIds.length > 0
+          ? listFilterExportContext.visibleOrderIds
+          : boardOrders.map((o) => o.id);
+
+      if (orderIds.length === 0) {
+        message.warning({
+          content: "Không có đơn xuất nào để xuất báo cáo",
+          key: "masan-outbound-export",
+        });
+        return;
+      }
+
+      if (orderIds.length === 1) {
+        await exportOutboundOrderReportApi(orderIds[0]!);
+        const orderCode =
+          boardOrders.find((o) => o.id === orderIds[0])?.order_code ??
+          String(orderIds[0]);
+        message.success({
+          content: `Đã tải báo cáo xuất Masan (${orderCode})`,
+          key: "masan-outbound-export",
+        });
+        return;
+      }
+
+      await exportOutboundOrdersReportBulkApi(orderIds);
+      message.success({
+        content: `Đã tải báo cáo xuất Masan (${orderIds.length} đơn)`,
+        key: "masan-outbound-export",
+      });
+    } catch (err: unknown) {
+      message.error({
+        content: getApiErrorDetail(err, "Không thể xuất báo cáo Excel"),
+        key: "masan-outbound-export",
+      });
+    } finally {
+      setIsExportingReport(false);
+    }
   };
+
+  const exportReportDisabled =
+    isExportingReport ||
+    (selectedOrderId == null &&
+      (hasActiveOutboundFilters
+        ? listFilterExportContext.visibleOrderIds.length === 0 ||
+          listFilterExportContext.skuFilterLoading
+        : boardOrders.length === 0 &&
+          listFilterExportContext.visibleOrderIds.length === 0));
+
+  const exportReportDisabledTitle =
+    selectedOrderId != null
+      ? undefined
+      : listFilterExportContext.skuFilterLoading
+        ? "Đang lọc theo mã hàng..."
+        : hasActiveOutboundFilters &&
+            listFilterExportContext.visibleOrderIds.length === 0
+          ? "Không có đơn khớp bộ lọc"
+          : boardOrders.length === 0 &&
+              listFilterExportContext.visibleOrderIds.length === 0
+            ? "Không có đơn xuất trong phiên"
+            : undefined;
 
   const handleBackToOverview = () => {
     navigate("/export");
@@ -210,7 +415,6 @@ export default function OperatorOutboundDetailPage() {
         mapZoneIds={outboundMapZoneIdsFor(zoneId)}
         warehouseId={selectedWarehouseId}
         clickableZoneIds={outboundClickableZoneIdsFor(zoneId)}
-        onVtSortingExportConfirm={handleVtSortingExportConfirm}
         fillHeight
         className="min-h-0 flex-1"
         selectedWaveId={zoneId}
@@ -218,12 +422,46 @@ export default function OperatorOutboundDetailPage() {
         hideWaveTabs
         onBack={handleBackToOverview}
         mapToolbarTitle={
-          <h3 className="text-3xl font-black text-brand-dark">
-            Bản đồ chia chọn & cửa xuất
-          </h3>
+          <div className="flex min-w-0 flex-wrap items-end gap-x-6 gap-y-2">
+            <h3 className="text-3xl font-black text-brand-dark">
+              Vị trí chia chọn
+            </h3>
+            <div
+              role="status"
+              aria-live="polite"
+              aria-label="Trạng thái robot"
+            >
+              <RobotStatusPanel rows={robotRows} compact inline />
+            </div>
+          </div>
         }
         mapToolbar={
-          <div className="flex w-full flex-wrap justify-end items-center gap-4">
+          <>
+            <Button
+              variant="primary"
+              icon={<PlayCircleOutlined />}
+              onClick={() => setVtPickerOpen(true)}
+              disabled={warehouseId <= 0 || !ccBucketZoneCode}
+              className="!h-10 !px-4 !text-base"
+            >
+              Gọi lệnh
+            </Button>
+            <Button
+              variant="secondary"
+              icon={<DeleteOutlined />}
+              loading={isClearingStation}
+              disabled={
+                warehouseId <= 0 ||
+                !ccBucketZoneCode ||
+                ccLocationsLoading ||
+                ccLocationIds.length === 0
+              }
+              onClick={handleClearStation}
+              className="!h-10 !px-4 !text-base"
+            >
+              Clear station
+            </Button>
+            <OperatorZoneCrossNavButton target="monitor" displayZoneId={zoneId} />
             <Button
               variant="secondary"
               icon={<EyeOutlined />}
@@ -233,17 +471,7 @@ export default function OperatorOutboundDetailPage() {
             >
               Xem kho
             </Button>
-            <Button
-              variant="secondary"
-              icon={<FileExcelOutlined />}
-              onClick={() => void handleExportMasanSO()}
-              loading={isExportingSO}
-              disabled={!selectedOrderId}
-              className="!h-10 !px-4 !text-base"
-            >
-              Xuất SO
-            </Button>
-          </div>
+          </>
         }
         emptyHint={
           <p className="text-sm text-slate-500">
@@ -325,19 +553,33 @@ export default function OperatorOutboundDetailPage() {
                       if (!plate) setSelectedProductLines([]);
                     }}
                     onSelectedProductsChange={setSelectedProductLines}
+                    onListFilterExportContext={handleListFilterExportContext}
                   />
                 </div>
-                <div className="grid shrink-0 grid-cols-2 gap-2 border-t border-stripe-hairline p-3">
-                  <Button
-                    variant="secondary"
-                    icon={<FileExcelOutlined />}
-                    loading={isExportingDailyExcel}
-                    disabled={warehouseId <= 0}
-                    onClick={() => void handleExportDailyExcel()}
-                    className="!h-11 !w-full justify-center !text-base font-bold"
-                  >
-                    Xuất báo cáo
-                  </Button>
+                <div className="shrink-0 space-y-2 border-t border-stripe-hairline p-3">
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button
+                      variant="secondary"
+                      icon={<FileExcelOutlined />}
+                      loading={isExportingReport}
+                      disabled={warehouseId <= 0 || exportReportDisabled}
+                      title={exportReportDisabledTitle}
+                      onClick={() => void handleExportReport()}
+                      className="!h-11 !w-full justify-center !text-base font-bold"
+                    >
+                      Xuất báo cáo
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      icon={<FileExcelOutlined />}
+                      loading={isExportingSO}
+                      disabled={warehouseId <= 0 || exportSoOrderId == null}
+                      onClick={() => void handleExportMasanSO()}
+                      className="!h-11 !w-full justify-center !text-base font-bold"
+                    >
+                      Xuất SO
+                    </Button>
+                  </div>
                   <Button
                     variant="primary"
                     icon={<RobotOutlined />}
@@ -385,6 +627,35 @@ export default function OperatorOutboundDetailPage() {
         warehouseId={warehouseId}
         onClose={() => setWarehouseViewOpen(false)}
       />
+      <MasanVtLocationPickerModal
+        open={vtPickerOpen}
+        onClose={() => setVtPickerOpen(false)}
+        title="Gọi lệnh — chọn vị trí VT"
+        subtitle={
+          ccBucketZoneCode
+            ? `Khu CC Masan: ${ccBucketZoneCode}`
+            : null
+        }
+        locations={vtLocations}
+        vtZoneIds={vtZoneIds}
+        isLoading={vtLocationsLoading}
+        failedZoneIds={vtLocationFailedZoneIds}
+        onSelect={handleVtPickerSelect}
+      />
+      {warehouseId > 0 && ccBucketZoneCode && dispatchVt ? (
+        <SortingItemsNeededModal
+          open={sortingItemsModalOpen}
+          onClose={closeDispatchFlow}
+          warehouseId={warehouseId}
+          ccBucketZoneCode={ccBucketZoneCode}
+          sortingZoneCode={vtSortingZoneCode}
+          title={`Chọn mã hàng — ${dispatchVt.locationName}`}
+          subtitle={`Vị trí VT: ${dispatchVt.locationCode}`}
+          onConfirmExport={async (picked) => {
+            await runVtSortingDispatch(picked, dispatchVt.locationId);
+          }}
+        />
+      ) : null}
     </div>
   );
 }

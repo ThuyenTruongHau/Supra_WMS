@@ -628,9 +628,9 @@ function OperatorInboundPageContent({ warehouseId }: { warehouseId: number }) {
     setIsExportingDailyExcel(true);
     try {
       await exportInboundDailyCapacityApi(warehouseId);
-      message.success("Đã xuất Export Daily (capacity cuối ngày)");
+      message.success("Đã xuất Export Capacity");
     } catch (err: unknown) {
-      message.error(getApiErrorDetail(err, "Không thể xuất Export Daily"));
+      message.error(getApiErrorDetail(err, "Không thể xuất Export Capacity"));
     } finally {
       setIsExportingDailyExcel(false);
     }
@@ -1058,7 +1058,7 @@ function OperatorInboundPageContent({ warehouseId }: { warehouseId: number }) {
                     disabled={warehouseId <= 0}
                     className="!h-10 !px-4 !text-base"
                   >
-                    Export Daily
+                    Export Capacity
                   </Button>
                   <Button
                     variant="secondary"

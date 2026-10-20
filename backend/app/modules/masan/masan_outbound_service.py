@@ -9,6 +9,7 @@ import json
 
 from app.core.config import settings
 from openpyxl import Workbook
+from datetime import datetime
 
 from app.modules.masan.masan_excel_io import load_masan_workbook
 from sqlalchemy.orm import Session, joinedload, selectinload
@@ -18,7 +19,10 @@ from app.modules.masan.masan_outbound_excel import (
     COLUMN_ALIASES,
     DATA_START_ROW,
     HEADER_ROW,
+    OUTBOUND_REPORT_HEADERS,
     TRIP_PLACEHOLDERS,
+    normalize_outbound_report_cell_value,
+    style_outbound_report_worksheet,
 )
 from app.modules.robot.robot_model import RobotTask
 from app.modules.warehouse.outbound_order.outbound_order_schema import (
@@ -657,6 +661,292 @@ def export_outbound_order_so(db: Session, order_id: int) -> tuple[bytes, str]:
     filename = f"{order.order_code}_LayHangSO.xlsx"
     return buffer.getvalue(), filename
 
+
+def _meta_value(meta: dict[str, Any], key: str, default: Any = "") -> Any:
+    value = meta.get(key)
+    if value is None or value == "":
+        return default
+    return value
+
+
+def _format_outbound_report_datetime(dt: datetime | None) -> str:
+    if not dt:
+        return ""
+    return dt.strftime("%d/%m/%Y\n%H:%M")
+
+
+def _location_display_label(loc: Any) -> str:
+    if loc is None:
+        return ""
+    label = loc.location_name or loc.location_code
+    if label is None:
+        return ""
+    cleaned = str(label).strip()
+    return cleaned
+
+
+def _resolve_detail_sorting_location(
+    detail: OutboundOrderDetail,
+    *,
+    db: Session | None = None,
+) -> str:
+    """Sorting/CC label for the detail line — reused on every allocation row."""
+    label = _location_display_label(detail.sorting_location)
+    if label:
+        return label
+    if detail.sorting_location_id is not None and db is not None:
+        loc = db.get(Location, detail.sorting_location_id)
+        label = _location_display_label(loc)
+        if label:
+            return label
+    meta = detail.details if isinstance(detail.details, dict) else {}
+    for key in ("sorting_location", "cc_location", "vi_tri_chia"):
+        raw = meta.get(key)
+        if raw is not None and str(raw).strip():
+            return str(raw).strip()
+    if db is not None:
+        wh_id = detail.outbound_order.warehouse_id if detail.outbound_order else None
+        if wh_id is None and detail.outbound_order_id:
+            wh_id = (
+                db.query(OutboundOrder.warehouse_id)
+                .filter(OutboundOrder.id == detail.outbound_order_id)
+                .scalar()
+            )
+        if wh_id is not None:
+            bucket = cache_get(
+                f"outbound:assigned_cc_details:{wh_id}:{detail.id}"
+            )
+            if isinstance(bucket, dict) and bucket.get("location_id") is not None:
+                loc = db.get(Location, int(bucket["location_id"]))
+                label = _location_display_label(loc)
+                if label:
+                    return label
+    return ""
+
+
+def _resolve_allocation_locator(
+    allocation: OutboundOrderAllocation,
+    detail: OutboundOrderDetail,
+) -> str:
+    label = _location_display_label(allocation.from_location)
+    if label:
+        return label
+    locator = _meta_value(meta=detail.details or {}, key="locator", default="")
+    return str(locator).strip() if locator else ""
+
+
+_OUTBOUND_REPORT_DETAIL_LOAD_OPTIONS = (
+    joinedload(OutboundOrderDetail.item),
+    joinedload(OutboundOrderDetail.outbound_order),
+    joinedload(OutboundOrderDetail.sorting_location),
+    selectinload(OutboundOrderDetail.allocations).joinedload(
+        OutboundOrderAllocation.item_stock
+    ),
+    selectinload(OutboundOrderDetail.allocations).joinedload(
+        OutboundOrderAllocation.from_location
+    ),
+)
+
+
+def _build_outbound_report_row(
+    detail: OutboundOrderDetail,
+    allocation: OutboundOrderAllocation,
+    *,
+    meta: dict[str, Any] | None = None,
+    item: Any | None = None,
+    detail_sorting_location: str,
+) -> list[Any]:
+    meta = meta if meta is not None else (detail.details or {})
+    stock: ItemStock | None = allocation.item_stock
+    if item is None:
+        item = detail.item
+
+    if stock:
+        lot = format_lot_for_masan_excel(
+            lot_number_from=stock.lot_number_from,
+            lot_number_to=stock.lot_number_to,
+        )
+    else:
+        lot = format_lot_for_masan_excel(
+            lot_number=str(_meta_value(meta, "lot_number", default="") or "") or None,
+        )
+
+    lot_status = _meta_value(meta, "lot_status", default="GOOD")
+    if not str(lot_status).strip():
+        lot_status = "GOOD"
+    pallet_count = meta.get("pallet_count")
+
+    return [
+        _meta_value(meta, "vehicle_no"),
+        _meta_value(meta, "customer_name"),
+        _meta_value(meta, "trip"),
+        _meta_value(meta, "nvt"),
+        item.sku if item else "",
+        item.name if item else "",
+        lot,
+        lot_status,
+        allocation.quantity,
+        pallet_count if pallet_count not in (None, "") else None,
+        _resolve_allocation_locator(allocation, detail),
+        allocation.device or None,
+        _format_outbound_report_datetime(allocation.start_time),
+        _format_outbound_report_datetime(allocation.end_time),
+        detail_sorting_location,
+        _format_outbound_report_datetime(allocation.start_sorting_time),
+        _format_outbound_report_datetime(allocation.end_sorting_time),
+    ]
+
+
+def _build_outbound_report_workbook(rows: list[list[Any]]) -> bytes:
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Sheet1"
+
+    for col_idx, header in enumerate(OUTBOUND_REPORT_HEADERS, start=1):
+        ws.cell(row=HEADER_ROW, column=col_idx, value=header)
+
+    last_data_row = DATA_START_ROW - 1
+    for row_idx, row_values in enumerate(rows, start=DATA_START_ROW):
+        last_data_row = row_idx
+        for col_idx, value in enumerate(row_values, start=1):
+            ws.cell(
+                row=row_idx,
+                column=col_idx,
+                value=normalize_outbound_report_cell_value(col_idx, value),
+            )
+
+    style_outbound_report_worksheet(ws, last_data_row=last_data_row)
+
+    buffer = BytesIO()
+    wb.save(buffer)
+    return buffer.getvalue()
+
+
+def _fetch_outbound_report_details_by_order(
+    db: Session,
+    order_ids: list[int],
+) -> dict[int, list[OutboundOrderDetail]]:
+    if not order_ids:
+        return {}
+    details = (
+        db.query(OutboundOrderDetail)
+        .options(*_OUTBOUND_REPORT_DETAIL_LOAD_OPTIONS)
+        .filter(
+            OutboundOrderDetail.outbound_order_id.in_(order_ids),
+            OutboundOrderDetail.status == "completed",
+        )
+        .order_by(
+            OutboundOrderDetail.outbound_order_id,
+            OutboundOrderDetail.id,
+        )
+        .all()
+    )
+    by_order: dict[int, list[OutboundOrderDetail]] = defaultdict(list)
+    for detail in details:
+        by_order[detail.outbound_order_id].append(detail)
+    return dict(by_order)
+
+
+def _iter_outbound_report_rows(
+    details: list[OutboundOrderDetail],
+    *,
+    db: Session | None = None,
+) -> list[list[Any]]:
+    export_rows: list[list[Any]] = []
+    for detail in details:
+        outbound_allocs = [
+            a for a in detail.allocations if a.allocation_type == "outbound"
+        ]
+        outbound_allocs.sort(key=lambda a: a.id)
+        # Same detail sorting label on every allocation row for this line.
+        detail_sorting_location = _resolve_detail_sorting_location(detail, db=db)
+        meta = detail.details or {}
+        item = detail.item
+        for allocation in outbound_allocs:
+            export_rows.append(
+                _build_outbound_report_row(
+                    detail,
+                    allocation,
+                    meta=meta,
+                    item=item,
+                    detail_sorting_location=detail_sorting_location,
+                )
+            )
+    return export_rows
+
+
+def _collect_outbound_report_rows(
+    db: Session, order: OutboundOrder
+) -> list[list[Any]]:
+    by_order = _fetch_outbound_report_details_by_order(db, [order.id])
+    return _iter_outbound_report_rows(by_order.get(order.id, []), db=db)
+
+
+def export_outbound_order_report_masan(
+    db: Session, order_id: int
+) -> tuple[bytes, str]:
+    order = (
+        db.query(OutboundOrder)
+        .filter(OutboundOrder.id == order_id)
+        .first()
+    )
+    if not order:
+        raise ValueError(f"Outbound order {order_id} not found")
+
+    export_rows = _collect_outbound_report_rows(db, order)
+    if not export_rows:
+        raise ValueError(
+            "Outbound order has no completed allocations to export"
+        )
+
+    content = _build_outbound_report_workbook(export_rows)
+    filename = f"{order.order_code}_BaoCaoXuat.xlsx"
+    return content, filename
+
+
+_BULK_OUTBOUND_REPORT_MAX_ORDERS = 100
+
+
+def export_outbound_orders_report_masan(
+    db: Session, order_ids: list[int]
+) -> tuple[bytes, str]:
+    unique_ids = list(dict.fromkeys(order_ids))
+    if not unique_ids:
+        raise ValueError("order_ids must not be empty")
+    if len(unique_ids) > _BULK_OUTBOUND_REPORT_MAX_ORDERS:
+        raise ValueError(
+            f"At most {_BULK_OUTBOUND_REPORT_MAX_ORDERS} orders per export request"
+        )
+
+    orders = (
+        db.query(OutboundOrder)
+        .filter(OutboundOrder.id.in_(unique_ids))
+        .all()
+    )
+    order_by_id = {o.id: o for o in orders}
+    missing = [oid for oid in unique_ids if oid not in order_by_id]
+    if missing:
+        raise ValueError(
+            f"Outbound orders not found: {sorted(missing)}"
+        )
+
+    details_by_order = _fetch_outbound_report_details_by_order(db, unique_ids)
+    export_rows: list[list[Any]] = []
+    for oid in unique_ids:
+        export_rows.extend(
+            _iter_outbound_report_rows(details_by_order.get(oid, []), db=db)
+        )
+
+    if not export_rows:
+        raise ValueError(
+            "No completed outbound allocations to export for the selected orders"
+        )
+
+    content = _build_outbound_report_workbook(export_rows)
+    filename = f"BaoCaoXuat_{len(unique_ids)}don.xlsx"
+    return content, filename
+
+
 def _resolve_line_sku(detail: OutboundOrderDetail, meta: dict[str, Any]) -> str | None:
     raw = meta.get("sku")
     if raw is not None and str(raw).strip() != "":
@@ -909,6 +1199,7 @@ def assign_cc_zone(db: Session, warehouse_id: int) -> None:
         key = f"outbound:assigned_cc_location:{warehouse_id}:{available_locations[i].id}"
         lines = details_by_vehicle[reversed_vehicles_list[i]]
         outbound_order_id = lines[0].get("outbound_order_id")
+        logger.info(f"Outbound order ID: {outbound_order_id}")
         for line in lines:
             cache_data = {
                 "zone": available_locations[i].zone.code,
@@ -920,6 +1211,7 @@ def assign_cc_zone(db: Session, warehouse_id: int) -> None:
 
 def _clear_assigned_cc_location(warehouse_id: int, outbound_order_id: int) -> None:
     keys = cache_scan_keys(f"outbound:assigned_cc_location:{warehouse_id}:*")
+    lines = []
     for key in keys:
         suffix = key.rsplit(":", 1)[-1]
         if suffix.isdigit():
@@ -927,7 +1219,11 @@ def _clear_assigned_cc_location(warehouse_id: int, outbound_order_id: int) -> No
             loc_key = f"outbound:assigned_cc_location:{warehouse_id}:{location_id}"
             bucket = cache_get(loc_key)
             if bucket and bucket.get("outbound_order_id") == outbound_order_id:
+                lines.extend(bucket.get("lines") or [])
                 cache_delete(loc_key)
+
+    for line in lines:
+        cache_delete(f"outbound:assigned_cc_details:{warehouse_id}:{line['detail_id']}")
 
 def _clear_cc_cache_if_order_completed(
     db: Session,
@@ -939,6 +1235,9 @@ def _clear_cc_cache_if_order_completed(
         .filter(OutboundOrder.id == order_id)
         .first()
     )
+    logger.info(f"Order: {order.id}, status: {order.status}")
+    logger.info(f"Warehouse: {warehouse_id}")
+    logger.info(f"Order ID: {order_id}")
     if order and order.status == "completed":
         _clear_assigned_cc_location(warehouse_id, order_id)
 
@@ -1371,6 +1670,34 @@ def _clear_cache_details(db: Session, warehouse_id: int, detail: OutboundOrderDe
         cache_delete(cc_key)
 
 
+def clear_cc_location_caches(warehouse_id: int) -> dict[str, Any]:
+    """
+    Xóa toàn bộ Redis cache liên quan ô CC (assigned + stock_ready pending).
+    Không xóa đơn/ detail trên DB.
+    """
+    if warehouse_id <= 0:
+        raise ValueError("warehouse_id is required")
+
+    assigned_location_keys = cache_delete_pattern(
+        f"outbound:assigned_cc_location:{warehouse_id}:*"
+    )
+    assigned_details_keys = cache_delete_pattern(
+        f"outbound:assigned_cc_details:{warehouse_id}:*"
+    )
+    stock_ready_keys = cache_delete_pattern(
+        f"outbound:masan:stock_ready:{warehouse_id}:*"
+    )
+    total = assigned_location_keys + assigned_details_keys + stock_ready_keys
+    return {
+        "warehouse_id": warehouse_id,
+        "zones": list(settings.zone_cc),
+        "assigned_cc_location_keys": assigned_location_keys,
+        "assigned_cc_details_keys": assigned_details_keys,
+        "stock_ready_keys": stock_ready_keys,
+        "total_keys_deleted": total,
+    }
+
+
 def get_sorting_zone_pending_stock(
     db: Session,
     warehouse_id: int,
@@ -1529,7 +1856,10 @@ def confirm_allocation_outbound(
         _delete_stock_ready_cache_for_allocation(
                 warehouse_id, zone, allocation.id, status="completed", quantity=quantities[allocation.id]
             )
-        
+        if allocation.end_sorting_time is None and allocation.end_time is None:
+            allocation.end_sorting_time = datetime.now()
+            allocation.end_time = datetime.now()
+
         db.flush()
 
         detail = allocation.outbound_order_detail
@@ -1612,6 +1942,8 @@ def _send_taking_stock(db: Session, robot_task_id: int, allocations: list[Outbou
         detail = allocation.outbound_order_detail
         if not detail:
             continue
+        if allocation.start_sorting_time is None:
+            allocation.start_sorting_time = datetime.now()
         warehouse_id = detail.outbound_order.warehouse_id
         sending_payloads[detail.id].append({
             "id": allocation.id,

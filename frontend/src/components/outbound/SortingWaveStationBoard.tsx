@@ -16,7 +16,6 @@ import { getSortingStationAssignmentApi } from "@/api/outbound";
 import type { SortingStationAssignment } from "@/types/outbound";
 import type {
   MasanCcLocationResponse,
-  MasanSortingItemNeededRow,
   MasanSortingZoneCcLocationRow,
 } from "@/types/masan";
 import {
@@ -42,7 +41,6 @@ import {
 import { stripVtKeysFromOverlayLabels } from "@/utils/locationBin";
 import CcLocationLinesModal from "@/components/outbound/CcLocationLinesModal";
 import MasanCcPendingStockConfirmModal from "@/components/outbound/MasanCcPendingStockConfirmModal";
-import SortingItemsNeededModal from "@/components/outbound/SortingItemsNeededModal";
 import {
   outboundCcBucketZoneCodeFor,
   outboundVtClickableZoneIdsFor,
@@ -117,15 +115,6 @@ export type SortingWaveStationBoardProps = {
   warehouseId?: number;
   /** Chỉ ô thuộc các zone này được click. Dùng cùng `warehouseId`. */
   clickableZoneIds?: number[];
-  /** Operator xuất: gọi khi xác nhận tại modal VT (sorting-items-needed). */
-  onVtSortingExportConfirm?: (
-    picked: MasanSortingItemNeededRow[],
-    context: {
-      warehouseId: number;
-      ccBucketZoneCode: string;
-      toLocationId: number;
-    },
-  ) => void | Promise<void>;
 };
 
 const EMPTY_SORTING_WAVES: SortingWave[] = [];
@@ -149,7 +138,6 @@ export default function SortingWaveStationBoard({
   mapZoneIds,
   warehouseId,
   clickableZoneIds = EMPTY_ZONE_IDS,
-  onVtSortingExportConfirm,
 }: SortingWaveStationBoardProps) {
   const { data: sortingWavesData, isLoading: wavesLoading } = useSortingWaves(
     zoneId,
@@ -456,7 +444,6 @@ export default function SortingWaveStationBoard({
     useState<MasanCcLocationResponse | null>(null);
   const [ccLoading, setCcLoading] = useState(false);
   const ccRequestIdRef = useRef(0);
-  const [sortingItemsModalOpen, setSortingItemsModalOpen] = useState(false);
   const [pendingConfirmOpen, setPendingConfirmOpen] = useState(false);
   const [pendingConfirmLocationId, setPendingConfirmLocationId] = useState<
     number | null
@@ -507,27 +494,6 @@ export default function SortingWaveStationBoard({
     vehicle_number: row.vehicle_number,
     lines: row.lines,
   });
-
-  const openVtSortingItems = (locationCode: string, locationId: number) => {
-    if (!warehouseId) {
-      message.warning("Chọn kho để chọn mã hàng xuất");
-      return;
-    }
-    if (!ccBucketZoneCode) return;
-    setSelectedStationCode(locationCode);
-    setSelectedStationLocationId(locationId);
-    const vtLoc = vtLocations.find(
-      (loc) =>
-        loc.id === locationId || loc.location_code === locationCode,
-    );
-    const vtName = (vtLoc?.location_name ?? "").trim();
-    setSelectedStationLocationName(
-      vtName || resolveCcLocationName(locationCode, locationId),
-    );
-    setSelectedStationKind(null);
-    setCcModalOpen(false);
-    setSortingItemsModalOpen(true);
-  };
 
   const openCcLocation = async (
     locationCode: string,
@@ -735,28 +701,12 @@ export default function SortingWaveStationBoard({
     setPendingConfirmOpen(true);
   };
 
-  const handleStationCellDoubleClick = async (payload: {
-    locationCode: string;
-  }) => {
-    if (!restrictToClickableZones || !warehouseId) return;
-    const overlayRefresh = await refreshMasanMapOverlays();
-    const vtLocationId = vtLocationIdByCode.get(payload.locationCode);
-    if (vtLocationId != null) {
-      openPendingStockConfirm(payload.locationCode, vtLocationId);
-      return;
-    }
-    const ccLocationId = clickableLocationIdByCode.get(payload.locationCode);
-    if (ccLocationId != null) {
-      await openCcLocation(payload.locationCode, ccLocationId, overlayRefresh);
-    }
-  };
-
   const handleStationCellClick = async (payload: { locationCode: string }) => {
     const overlayRefresh = await refreshMasanMapOverlays();
     if (restrictToClickableZones) {
       const vtLocationId = vtLocationIdByCode.get(payload.locationCode);
       if (vtLocationId != null) {
-        openVtSortingItems(payload.locationCode, vtLocationId);
+        openPendingStockConfirm(payload.locationCode, vtLocationId);
         return;
       }
       const locationId = clickableLocationIdByCode.get(payload.locationCode);
@@ -833,7 +783,6 @@ export default function SortingWaveStationBoard({
     setCcModalOpen(false);
     setCcLocationData(null);
     setCcLoading(false);
-    setSortingItemsModalOpen(false);
     setPendingConfirmOpen(false);
     setPendingConfirmLocationId(null);
     setPendingConfirmLocationCode(null);
@@ -921,11 +870,7 @@ export default function SortingWaveStationBoard({
             }
             interactiveCodes={clickableCodes}
             onBufferCellClick={handleStationCellClick}
-            onBufferCellDoubleClick={
-              warehouseId && restrictToClickableZones
-                ? handleStationCellDoubleClick
-                : undefined
-            }
+            cellClickDelayMs={restrictToClickableZones ? 0 : undefined}
             className={cn(
               "!h-full",
               fullscreen ? "!min-h-0" : operatorDesktopClass.mapMinHeight,
@@ -1196,36 +1141,6 @@ export default function SortingWaveStationBoard({
         />
       ) : null}
 
-      {warehouseId && ccBucketZoneCode ? (
-        <SortingItemsNeededModal
-          open={sortingItemsModalOpen}
-          onClose={clearStationSelection}
-          warehouseId={warehouseId}
-          ccBucketZoneCode={ccBucketZoneCode}
-          title={`Chọn mã hàng — ${selectedStationLocationName ?? selectedStationCode ?? "VT"}`}
-          subtitle={
-            selectedStationCode
-              ? `Vị trí VT: ${selectedStationCode}`
-              : null
-          }
-          zIndex={mapFullscreen ? 1200 : undefined}
-          onConfirmExport={
-            onVtSortingExportConfirm
-              ? async (picked) => {
-                  if (selectedStationLocationId == null) {
-                    message.error("Không xác định được vị trí VT");
-                    return;
-                  }
-                  await onVtSortingExportConfirm(picked, {
-                    warehouseId,
-                    ccBucketZoneCode,
-                    toLocationId: selectedStationLocationId,
-                  });
-                }
-              : undefined
-          }
-        />
-      ) : null}
     </div>
   );
 }

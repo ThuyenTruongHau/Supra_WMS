@@ -150,6 +150,13 @@ function linesToSelectedProducts(
   }));
 }
 
+export type OutboundListFilterExportContext = {
+  visibleOrderIds: number[];
+  hasSkuFilter: boolean;
+  hasDateFilter: boolean;
+  skuFilterLoading: boolean;
+};
+
 type OperatorOutboundOrderBrowserProps = {
   warehouseId: number;
   selectedOrderId: number | null;
@@ -157,6 +164,7 @@ type OperatorOutboundOrderBrowserProps = {
   selectedVehicleNumber: string | null;
   onSelectVehicle: (vehicleNumber: string | null) => void;
   onSelectedProductsChange?: (rows: OutboundSelectedProductLine[]) => void;
+  onListFilterExportContext?: (ctx: OutboundListFilterExportContext) => void;
 };
 
 export default function OperatorOutboundOrderBrowser({
@@ -166,6 +174,7 @@ export default function OperatorOutboundOrderBrowser({
   selectedVehicleNumber,
   onSelectVehicle,
   onSelectedProductsChange,
+  onListFilterExportContext,
 }: OperatorOutboundOrderBrowserProps) {
   const queryClient = useQueryClient();
   const refetchOperatorBoardAfterPicking = useCallback(async () => {
@@ -210,6 +219,24 @@ export default function OperatorOutboundOrderBrowser({
     item_id: atOrderCardList ? (itemIdFilter ?? undefined) : undefined,
   });
   const orders = ordersQuery.data?.items ?? [];
+
+  useEffect(() => {
+    if (!onListFilterExportContext) return;
+    if (!atOrderCardList) return;
+    onListFilterExportContext({
+      visibleOrderIds: orders.map((order) => order.id),
+      hasSkuFilter: itemIdFilter != null,
+      hasDateFilter: createdRange != null,
+      skuFilterLoading: ordersQuery.isLoading && itemIdFilter != null,
+    });
+  }, [
+    atOrderCardList,
+    orders,
+    itemIdFilter,
+    createdRange,
+    ordersQuery.isLoading,
+    onListFilterExportContext,
+  ]);
 
   const selectedOrder =
     orders.find((order) => order.id === selectedOrderId) ?? null;

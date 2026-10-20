@@ -150,9 +150,9 @@ export default function EntryPointSettingPage() {
         location.location_code,
     });
     setIsMapModalOpen(false);
-    message.success(
-      `Đã chọn buffer: ${location.location_code} (id ${location.id})`,
-    );
+    const locationLabel =
+      location.location_name?.trim() || location.location_code;
+    message.success(`Đã chọn ${locationLabel}`);
   };
 
   const handleFinish = async (values: {

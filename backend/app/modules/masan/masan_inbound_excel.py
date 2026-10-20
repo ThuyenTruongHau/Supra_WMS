@@ -31,10 +31,18 @@ EXPORT_HEADERS: tuple[str, ...] = (
     "Locator",
 )
 
+INBOUND_REPORT_EXTRA_HEADERS: tuple[str, ...] = (
+    "Robot",
+    "Thời gian bắt đầu",
+    "Thời gian kết thúc",
+)
+
+INBOUND_REPORT_HEADERS: tuple[str, ...] = EXPORT_HEADERS + INBOUND_REPORT_EXTRA_HEADERS
+
 HEADER_ROW = 2
 DATA_START_ROW = 3
 
-EXPORT_COLUMN_WIDTHS: tuple[float, ...] = (
+INBOUND_REPORT_COLUMN_WIDTHS: tuple[float, ...] = (
     14.0,  # Ngày/ Giờ chi tiết
     12.0,  # Số xe
     30.0,  # Kho xuất
@@ -49,6 +57,9 @@ EXPORT_COLUMN_WIDTHS: tuple[float, ...] = (
     10.0,  # Số pallet
     14.0,  # Vị trí để
     14.0,  # Locator
+    10.0,  # Robot
+    14.0,  # Thời gian bắt đầu
+    14.0,  # Thời gian kết thúc
 )
 
 TITLE_ROW_HEIGHT = 42.0
@@ -57,7 +68,8 @@ DATA_ROW_HEIGHT = 20.0
 
 # Columns that must stay text (avoid scientific notation / leading-zero loss).
 TEXT_FORMAT_COLUMNS = frozenset({5, 9})  # Delivery, LOT
-WRAP_TEXT_COLUMNS = frozenset({1, 8})  # Ngày/Giờ, Tên Item
+INBOUND_REPORT_QUANTITY_COLUMN = 11
+WRAP_TEXT_COLUMNS = frozenset({1, 8, 16, 17})  # Ngày/Giờ, Tên Item, thời gian robot
 
 _TITLE_FILL = PatternFill("solid", fgColor="FFFF00")
 _HEADER_FONT = Font(bold=True, size=10)
@@ -91,7 +103,7 @@ def apply_export_cell_style(ws: Worksheet, row: int, column: int) -> None:
         cell.number_format = "@"
     if column in WRAP_TEXT_COLUMNS:
         cell.alignment = _LEFT_TOP_WRAP
-    elif column == 11:  # Số lượng
+    elif column == INBOUND_REPORT_QUANTITY_COLUMN:
         cell.alignment = Alignment(horizontal="right", vertical="center")
     else:
         cell.alignment = _LEFT_WRAP
@@ -99,9 +111,9 @@ def apply_export_cell_style(ws: Worksheet, row: int, column: int) -> None:
 
 def style_masan_export_worksheet(ws: Worksheet, *, last_data_row: int) -> None:
     """Apply BM.06-like layout: yellow title row, spaced columns/rows, grid borders."""
-    col_count = len(EXPORT_HEADERS)
+    col_count = len(INBOUND_REPORT_HEADERS)
 
-    for col_idx, width in enumerate(EXPORT_COLUMN_WIDTHS, start=1):
+    for col_idx, width in enumerate(INBOUND_REPORT_COLUMN_WIDTHS, start=1):
         ws.column_dimensions[get_column_letter(col_idx)].width = width
 
     for col_idx in range(1, col_count + 1):
@@ -131,8 +143,9 @@ def style_masan_export_worksheet(ws: Worksheet, *, last_data_row: int) -> None:
 
 
 _DAILY_CAPACITY_SUMMARY_COLS = 2
-_DAILY_CAPACITY_TABLE_COLS = 5
-_DAILY_CAPACITY_LOT_COLUMN = 5
+_DAILY_CAPACITY_TABLE_COLS = 7
+_DAILY_CAPACITY_LOT_COLUMN = 6
+_DAILY_CAPACITY_QTY_COLUMN = 5
 _DAILY_SUMMARY_LABEL_FILL = PatternFill("solid", fgColor="E2EFDA")
 _DAILY_TABLE_HEADER_FILL = PatternFill("solid", fgColor="D9E1F2")
 
@@ -145,20 +158,20 @@ def style_daily_capacity_worksheet(
     table_header_row: int,
     last_data_row: int,
 ) -> None:
-    """Summary (2 cols) + locator table (Locator, Trạng thái, Mã hàng, SL, LOT)."""
+    """Summary (2 cols) + locator table (Locator, Trạng thái, Mã/Tên hàng, SL, LOT, Ngày nhập)."""
     table_width = _DAILY_CAPACITY_TABLE_COLS
+    col_widths = {
+        1: 14.0,
+        2: 14.0,
+        3: 14.0,
+        4: 22.0,
+        5: 10.0,
+        6: 12.0,
+        7: 14.0,
+    }
     for col_idx in range(1, table_width + 1):
         letter = get_column_letter(col_idx)
-        if col_idx == 1:
-            ws.column_dimensions[letter].width = 14.0
-        elif col_idx == 2:
-            ws.column_dimensions[letter].width = 14.0
-        elif col_idx == 3:
-            ws.column_dimensions[letter].width = 14.0
-        elif col_idx == 4:
-            ws.column_dimensions[letter].width = 10.0
-        else:
-            ws.column_dimensions[letter].width = 12.0
+        ws.column_dimensions[letter].width = col_widths.get(col_idx, 12.0)
 
     ws.merge_cells(
         start_row=1,
@@ -200,7 +213,7 @@ def style_daily_capacity_worksheet(
             cell.border = _THIN_BORDER
             if col_idx == 2:
                 cell.alignment = _CENTER_WRAP
-            elif col_idx == 4:
+            elif col_idx == _DAILY_CAPACITY_QTY_COLUMN:
                 cell.alignment = _CENTER_WRAP
             else:
                 cell.alignment = _LEFT_TOP_WRAP

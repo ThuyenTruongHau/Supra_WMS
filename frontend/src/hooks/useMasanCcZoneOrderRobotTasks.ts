@@ -4,7 +4,8 @@ import { getOutboundRobotTasksApi } from "@/api/outboundOrder";
 import type { MasanSortingZoneCcLocationRow } from "@/types/masan";
 import type { OutboundRobotTask } from "@/types/outbound";
 
-const ROBOT_TASK_REFETCH_MS = 3_000;
+const ROBOT_TASK_REFETCH_MS = 5_000;
+const ROBOT_TASK_STALE_MS = 4_000;
 
 export function masanCcZoneOrderIdsFromLocations(
   locations: MasanSortingZoneCcLocationRow[] | undefined,
@@ -25,9 +26,10 @@ export function useMasanCcZoneOrderRobotTasks(
   const taskQueries = useQueries({
     queries: orderIds.map((orderId) => ({
       queryKey: ["outboundRobotTasks", orderId] as const,
-      queryFn: () => getOutboundRobotTasksApi(orderId),
+      queryFn: ({ signal }: { signal: AbortSignal }) =>
+        getOutboundRobotTasksApi(orderId, signal),
       enabled: enabled && orderId > 0,
-      staleTime: 1_000,
+      staleTime: ROBOT_TASK_STALE_MS,
       refetchInterval:
         enabled && orderId > 0 ? ROBOT_TASK_REFETCH_MS : false,
     })),

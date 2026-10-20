@@ -44,10 +44,12 @@ export const getZoneMapLayoutApi = async (
 
 export const getZoneMapStatusApi = async (
   zoneId: number,
+  signal?: AbortSignal,
 ): Promise<FullLocationsResponse> => {
   console.log(`[API CALL] GET /api/v1/locations/zones/${zoneId}/for-map`);
   const response = await axiosInstance.get<FullLocationsResponse>(
     `/api/v1/locations/zones/${zoneId}/for-map`,
+    { signal },
   );
   console.log(`[API RESPONSE] getZoneMapStatusApi for zone ${zoneId}:`, response.data);
   return response.data;
