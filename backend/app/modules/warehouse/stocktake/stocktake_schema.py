@@ -1,6 +1,6 @@
 from datetime import datetime
 from decimal import Decimal
-from typing import Optional
+from typing import Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -102,6 +102,15 @@ class StocktakeRecordCountRequest(BaseModel):
 
 class StocktakeConfirmQuantityRequest(BaseModel):
     note: Optional[str] = None
+
+
+class StocktakeAddItemRequest(StocktakeRecordCountRequest):
+    """A newly found stock row; quantity is applied only after confirmation."""
+
+    item_id: int = Field(..., gt=0)
+    location_id: int = Field(..., gt=0)
+    lot_number: str = Field(..., min_length=1, max_length=50)
+    status: Literal["available", "split", "damaged", "quarantine", "expired"] = "available"
 
 
 class StocktakeItemStockFormData(BaseModel):

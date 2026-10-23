@@ -33,6 +33,8 @@ OUTBOUND_REPORT_TITLE = (
 )
 
 OUTBOUND_REPORT_EXTRA_HEADERS: tuple[str, ...] = (
+    "Người xuất",
+    "Quãng đường (m)",
     "Robot",
     "Thời gian bắt đầu",
     "Thời gian kết thúc",
@@ -41,7 +43,11 @@ OUTBOUND_REPORT_EXTRA_HEADERS: tuple[str, ...] = (
     "Kết thúc chia",
 )
 
-OUTBOUND_REPORT_HEADERS: tuple[str, ...] = EXPORT_HEADERS + OUTBOUND_REPORT_EXTRA_HEADERS
+OUTBOUND_REPORT_HEADERS: tuple[str, ...] = (
+    *EXPORT_HEADERS,
+    "Vị trí xuất",
+    *OUTBOUND_REPORT_EXTRA_HEADERS,
+)
 
 HEADER_ROW = 2
 DATA_START_ROW = 3
@@ -58,6 +64,9 @@ OUTBOUND_REPORT_COLUMN_WIDTHS: tuple[float, ...] = (
     10.0,  # Số lượng
     10.0,  # Số pallet
     14.0,  # Locator
+    16.0,  # Vị trí xuất
+    18.0,  # Người xuất
+    12.0,  # Quãng đường (m)
     10.0,  # Robot
     14.0,  # Thời gian bắt đầu
     14.0,  # Thời gian kết thúc
@@ -73,8 +82,9 @@ DATA_ROW_HEIGHT = 20.0
 # 1-based column indexes for outbound report sheet.
 OUTBOUND_REPORT_LOT_COLUMN = 7
 OUTBOUND_REPORT_QUANTITY_COLUMN = 9
+OUTBOUND_REPORT_DISTANCE_COLUMN = 14
 OUTBOUND_REPORT_TEXT_FORMAT_COLUMNS = frozenset({OUTBOUND_REPORT_LOT_COLUMN})
-OUTBOUND_REPORT_WRAP_TEXT_COLUMNS = frozenset({6, 13, 14, 15, 16, 17})
+OUTBOUND_REPORT_WRAP_TEXT_COLUMNS = frozenset({6, 12, 13, 16, 17, 18, 19, 20})
 
 TRIP_PLACEHOLDERS = frozenset({"…", "...", ".", "-", "—"})
 
@@ -123,7 +133,7 @@ def apply_outbound_report_cell_style(ws: Worksheet, row: int, column: int) -> No
         cell.number_format = "@"
     if column in OUTBOUND_REPORT_WRAP_TEXT_COLUMNS:
         cell.alignment = _LEFT_TOP_WRAP
-    elif column == OUTBOUND_REPORT_QUANTITY_COLUMN:
+    elif column in (OUTBOUND_REPORT_QUANTITY_COLUMN, OUTBOUND_REPORT_DISTANCE_COLUMN):
         cell.alignment = Alignment(horizontal="right", vertical="center")
     else:
         cell.alignment = _LEFT_WRAP

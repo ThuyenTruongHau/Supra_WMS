@@ -2,7 +2,8 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useState } from "react";
 import { Card, Table, Button, Modal, Space, message } from "@/components/ui";
 import type { ColumnsType } from "antd/es/table";
-import { ArrowLeftOutlined, DeleteOutlined, EnvironmentOutlined } from "@ant-design/icons";
+import { ArrowLeftOutlined, DeleteOutlined, EnvironmentOutlined, PlusOutlined } from "@ant-design/icons";
+import StocktakeAddItemModal from "@/pages/components/StocktakeAddItemModal";
 import InboundStatusTag from "@/components/shared/InboundStatusTag";
 import StocktakeMapModal from "@/pages/components/StocktakeMapModal";
 import {
@@ -40,6 +41,7 @@ export default function StocktakeDetailPage() {
   const items = detail?.items ?? [];
   const canDelete = detail?.status === "initialize";
   const [isMapOpen, setIsMapOpen] = useState(false);
+  const [isAddOpen, setIsAddOpen] = useState(false);
 
   const handleDelete = () => {
     if (!stocktakeId) return;
@@ -198,6 +200,9 @@ export default function StocktakeDetailPage() {
           ) : null}
         </div>
         <Space className="shrink-0">
+          <Button variant="primary" icon={<PlusOutlined />} disabled={!detail?.warehouse_id} onClick={() => setIsAddOpen(true)}>
+            Thêm hàng kiểm kê
+          </Button>
           <Button
             icon={<EnvironmentOutlined />}
             disabled={!detail?.warehouse_id || items.length === 0}
@@ -271,10 +276,11 @@ export default function StocktakeDetailPage() {
           }}
           className={TABLE_CLASS}
           size="middle"
-          locale={{ emptyText: "Phiếu này chưa có dòng kiểm kê." }}
+          locale={{ emptyText: "Vị trí chưa có tồn hệ thống. Chọn “Thêm hàng kiểm kê” để ghi nhận SKU/lô và số lượng thực đếm." }}
         />
       </Card>
 
+      <StocktakeAddItemModal open={isAddOpen} stocktakeId={stocktakeId} warehouseId={detail?.warehouse_id ?? 0} onClose={() => setIsAddOpen(false)} />
       <StocktakeMapModal
         open={isMapOpen}
         onClose={() => setIsMapOpen(false)}

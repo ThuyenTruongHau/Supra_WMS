@@ -15,8 +15,10 @@ import type { InboundOrder, InboundOrderDetail } from "@/types/inboundOrder";
 import { formatOperatorSampleVehicle } from "@/utils/operatorOrderVehicleDisplay";
 import { toDisplayInteger } from "@/utils/number";
 import {
+  isOperatorTabletViewport,
   operatorInboundOrderCodeClass,
   operatorInboundOrderMetaClass,
+  operatorInboundRightbarFilterClass,
   useOperatorViewportTier,
 } from "@/utils/operatorViewportTier";
 import OrderCreatedAtRangeFilter from "@/components/shared/OrderCreatedAtRangeFilter";
@@ -273,6 +275,8 @@ export default function OperatorInboundOrderBrowser({
   onCreatedRangeChange,
 }: OperatorInboundOrderBrowserProps) {
   const tier = useOperatorViewportTier();
+  const tabletListUi = isOperatorTabletViewport(tier);
+  const rightbarFilterClass = operatorInboundRightbarFilterClass(tier);
   const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null);
   const [selectedVehicleKey, setSelectedVehicleKey] = useState<string | null>(
     null,
@@ -391,7 +395,7 @@ export default function OperatorInboundOrderBrowser({
       ? (masanDetailsQuery.data ?? [])
       : selectedVehicle.details;
     return (
-      <div className="flex h-full min-h-0 flex-col bg-panel">
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-panel">
         <div className="flex shrink-0 items-center gap-3 border-b border-stripe-hairline px-3 py-2.5">
           <Button
             variant="secondary"
@@ -436,7 +440,7 @@ export default function OperatorInboundOrderBrowser({
 
   if (selectedOrder) {
     return (
-      <div className="flex h-full min-h-0 flex-col bg-panel">
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-panel">
         <div className="flex shrink-0 items-center gap-3 border-b border-stripe-hairline px-3 py-2.5">
           <Button
             variant="secondary"
@@ -562,18 +566,24 @@ export default function OperatorInboundOrderBrowser({
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col bg-panel">
-      <div className="flex shrink-0 flex-col gap-1.5 border-b border-stripe-hairline px-2 py-1.5">
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-panel">
+      <div
+        className={cn(
+          "flex shrink-0 flex-col border-b border-stripe-hairline",
+          tabletListUi ? "gap-2.5 px-2.5 py-3" : "gap-1.5 px-2 py-1.5",
+        )}
+      >
         {onCreatedRangeChange ? (
           <OrderCreatedAtRangeFilter
             value={createdRange}
             onChange={onCreatedRangeChange}
-            className="w-full"
+            className={cn("w-full", rightbarFilterClass)}
           />
         ) : null}
         <SkuSearchSelect
           warehouseId={warehouseId}
           placeholder="Tìm đơn nhập theo mã hàng (SKU)..."
+          className={rightbarFilterClass || undefined}
           onSelectOption={(option) =>
             setSkuFilter(
               option?.item_id != null
@@ -584,7 +594,12 @@ export default function OperatorInboundOrderBrowser({
         />
       </div>
 
-      <div className="operator-panel-scroll grid min-h-0 flex-1 auto-rows-min grid-cols-1 gap-3 p-3 sm:grid-cols-2">
+      <div
+        className={cn(
+          "operator-panel-scroll grid min-h-0 flex-1 auto-rows-min grid-cols-1 sm:grid-cols-2",
+          tabletListUi ? "gap-2 p-2.5" : "gap-3 p-3",
+        )}
+      >
         {skuFilter ? (
           <p className="col-span-full text-xs text-stripe-ink-mute">
             Mã hàng <strong className="text-brand-dark">{skuFilter.sku}</strong>
@@ -621,57 +636,53 @@ export default function OperatorInboundOrderBrowser({
                     if (event.key === "Enter") openOrder(order.id);
                   }}
                   className={cn(
-                    "group relative flex min-h-28 w-full overflow-hidden rounded-xl border p-3 pl-4 text-left shadow-stripe-1 transition duration-200 hover:-translate-y-0.5",
+                    "group relative flex w-full overflow-hidden border text-left shadow-stripe-1 transition duration-200 hover:-translate-y-0.5",
+                    tabletListUi
+                      ? "min-h-[4.25rem] rounded-lg py-2 pl-3.5 pr-2.5"
+                      : "min-h-28 rounded-xl p-3 pl-4",
                     tone.shell,
                   )}
                 >
                   <span
-                    className={cn("absolute inset-y-0 left-0 w-1.5", tone.rail)}
+                    className={cn(
+                      "absolute inset-y-0 left-0",
+                      tabletListUi ? "w-1" : "w-1.5",
+                      tone.rail,
+                    )}
                     aria-hidden
                   />
-                  <span
-                    className="pointer-events-none absolute -right-8 -top-10 h-28 w-28 rounded-full border border-cyan-300/15 shadow-[0_0_32px_rgba(34,211,238,0.12)]"
-                    aria-hidden
-                  />
-                  <span
-                    className="pointer-events-none absolute bottom-0 right-0 h-px w-24 bg-brand-primary/20"
-                    aria-hidden
-                  />
-                  <span className="relative z-10 flex min-w-0 flex-1 flex-col gap-2">
-                    <span className="flex items-center justify-between gap-2">
-                      <span className="text-xs font-bold uppercase tracking-[0.16em] text-stripe-ink-mute">
-                        Mã đơn
-                      </span>
-                      <StatusBadge status={order.status} compact />
-                    </span>
-                    <span
-                      className={cn(
-                        "block break-all font-mono font-extrabold leading-snug tracking-wide text-brand-dark",
-                        operatorInboundOrderCodeClass(tier),
-                      )}
-                    >
-                      {order.order_code}
-                    </span>
-                    <span className="mt-auto grid grid-cols-2 gap-3 border-t border-stripe-hairline pt-2">
-                      <span className="border-r border-stripe-hairline">
+                  {!tabletListUi ? (
+                    <>
+                      <span
+                        className="pointer-events-none absolute -right-8 -top-10 h-28 w-28 rounded-full border border-cyan-300/15 shadow-[0_0_32px_rgba(34,211,238,0.12)]"
+                        aria-hidden
+                      />
+                      <span
+                        className="pointer-events-none absolute bottom-0 right-0 h-px w-24 bg-brand-primary/20"
+                        aria-hidden
+                      />
+                    </>
+                  ) : null}
+                  {tabletListUi ? (
+                    <span className="relative z-10 flex min-w-0 flex-1 flex-col justify-center gap-0.5">
+                      <span className="flex items-center justify-between gap-2">
                         <span
                           className={cn(
-                            "block text-xs font-bold uppercase tracking-wider text-stripe-ink-mute",
-                            operatorInboundOrderMetaClass(tier),
+                            "min-w-0 truncate font-mono font-extrabold leading-tight text-brand-dark",
+                            operatorInboundOrderCodeClass(tier),
                           )}
                         >
-                          Biển số
+                          {order.order_code}
                         </span>
-                        <strong
-                          className={cn(
-                            "mt-0.5 block truncate font-black text-brand-dark",
-                            tier === "tv"
-                              ? "text-lg"
-                              : tier === "narrow"
-                                ? "text-base"
-                                : "text-lg",
-                          )}
-                        >
+                        <StatusBadge status={order.status} compact />
+                      </span>
+                      <span
+                        className={cn(
+                          "truncate leading-snug text-stripe-ink-mute",
+                          operatorInboundOrderMetaClass(tier),
+                        )}
+                      >
+                        <span className="font-semibold text-brand-dark">
                           {vehiclesLoading
                             ? "…"
                             : formatOperatorSampleVehicle(
@@ -679,32 +690,83 @@ export default function OperatorInboundOrderBrowser({
                                 hasMoreVehicles,
                                 NO_VEHICLE_LABEL,
                               )}
-                        </strong>
-                      </span>
-                      <span>
-                        <span
-                          className={cn(
-                            "block text-xs font-bold uppercase tracking-wider text-stripe-ink-mute",
-                            operatorInboundOrderMetaClass(tier),
-                          )}
-                        >
-                          Tạo lúc
                         </span>
-                        <strong
-                          className={cn(
-                            "mt-0.5 block font-black tabular-nums text-brand-dark",
-                            tier === "tv"
-                              ? "text-lg"
-                              : tier === "narrow"
-                                ? "text-sm"
-                                : "text-base",
-                          )}
-                        >
+                        <span className="mx-1.5 text-stripe-hairline">·</span>
+                        <span className="tabular-nums">
                           {formatDateTime(order.created_at)}
-                        </strong>
+                        </span>
                       </span>
                     </span>
-                  </span>
+                  ) : (
+                    <span className="relative z-10 flex min-w-0 flex-1 flex-col gap-2">
+                      <span className="flex items-center justify-between gap-2">
+                        <span className="text-xs font-bold uppercase tracking-[0.16em] text-stripe-ink-mute">
+                          Mã đơn
+                        </span>
+                        <StatusBadge status={order.status} compact />
+                      </span>
+                      <span
+                        className={cn(
+                          "block break-all font-mono font-extrabold leading-snug tracking-wide text-brand-dark",
+                          operatorInboundOrderCodeClass(tier),
+                        )}
+                      >
+                        {order.order_code}
+                      </span>
+                      <span className="mt-auto grid grid-cols-2 gap-3 border-t border-stripe-hairline pt-2">
+                        <span className="border-r border-stripe-hairline">
+                          <span
+                            className={cn(
+                              "block text-xs font-bold uppercase tracking-wider text-stripe-ink-mute",
+                              operatorInboundOrderMetaClass(tier),
+                            )}
+                          >
+                            Biển số
+                          </span>
+                          <strong
+                            className={cn(
+                              "mt-0.5 block truncate font-black text-brand-dark",
+                              tier === "tv"
+                                ? "text-lg"
+                                : tier === "narrow"
+                                  ? "text-base"
+                                  : "text-lg",
+                            )}
+                          >
+                            {vehiclesLoading
+                              ? "…"
+                              : formatOperatorSampleVehicle(
+                                  samplePlate,
+                                  hasMoreVehicles,
+                                  NO_VEHICLE_LABEL,
+                                )}
+                          </strong>
+                        </span>
+                        <span>
+                          <span
+                            className={cn(
+                              "block text-xs font-bold uppercase tracking-wider text-stripe-ink-mute",
+                              operatorInboundOrderMetaClass(tier),
+                            )}
+                          >
+                            Tạo lúc
+                          </span>
+                          <strong
+                            className={cn(
+                              "mt-0.5 block font-black tabular-nums text-brand-dark",
+                              tier === "tv"
+                                ? "text-lg"
+                                : tier === "narrow"
+                                  ? "text-sm"
+                                  : "text-base",
+                            )}
+                          >
+                            {formatDateTime(order.created_at)}
+                          </strong>
+                        </span>
+                      </span>
+                    </span>
+                  )}
                 </button>
               );
             })

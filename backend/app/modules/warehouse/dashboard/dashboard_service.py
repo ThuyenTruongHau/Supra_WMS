@@ -9,7 +9,6 @@ from typing import Literal
 from openpyxl import Workbook
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
-from sqlalchemy import and_, or_
 from sqlalchemy.orm import Session
 
 from app.modules.robot.robot_model import RobotTask, TaskStatus
@@ -32,21 +31,32 @@ from app.modules.warehouse.warehouse_zone.warehouse_model import Warehouse
 from app.modules.warehouse.warehouse_zone.warehouse_service import _ensure_warehouse_exists
 
 RobotReportPeriod = Literal["day", "week"]
-TaskKind = Literal["inbound", "outbound"]
+TaskKind = Literal["inbound", "outbound", "return"]
 
 _TERMINAL_ICS_STATUSES = ("3", "7", "8")
+_TASK_KINDS: tuple[TaskKind, ...] = ("inbound", "outbound", "return")
 
-_ROBOT_REPORT_TITLE = "BÁO CÁO HIỆU SUẤT ROBOT\n(Theo task_status ICS — mã 3/7/8)"
+_ROBOT_REPORT_TITLE = (
+    "BÁO CÁO HIỆU SUẤT ROBOT\n"
+    "(Theo task_status ICS — mã 3/7/8, mỗi lệnh robot tính 1 lần)"
+)
 _ROBOT_REPORT_HEADERS: tuple[str, ...] = (
     "Robot",
     "Số lệnh robot nhập",
     "Số lệnh robot xuất",
+    "Số lệnh robot hoàn trả",
+    "Tổng số lệnh robot",
     "Số lệnh nhập hoàn thành",
     "Số lệnh xuất hoàn thành",
+    "Số lệnh hoàn trả hoàn thành",
     "Số lệnh nhập lỗi",
     "Số lệnh xuất lỗi",
+    "Số lệnh hoàn trả lỗi",
+    "Tổng quãng đường (m)",
 )
-_ROBOT_REPORT_COLUMN_WIDTHS = (14.0, 18.0, 18.0, 22.0, 22.0, 18.0, 18.0)
+_ROBOT_REPORT_COLUMN_WIDTHS = (
+    14.0, 16.0, 16.0, 18.0, 16.0, 20.0, 20.0, 22.0, 16.0, 16.0, 18.0, 18.0,
+)
 _HEADER_ROW = 3
 _DATA_START_ROW = 4
 
@@ -67,9 +77,11 @@ _LEFT_WRAP = Alignment(horizontal="left", vertical="center", wrap_text=True)
 @dataclass(frozen=True)
 class _RobotTerminalRow:
     device_num: str
+    robot_task_id: int
     order_id: str
     task_kind: TaskKind
     ics_status: str
+    distance_m: float | None = None
 
 
 def get_report_kpis(db: Session, *, warehouse_id: int) -> ReportKpiResponse:
@@ -124,6 +136,11 @@ def _robot_report_period_bounds(
     return start_dt, end_dt, label
 
 
+def _max_distance(values: list[float | None]) -> float | None:
+    present = [float(v) for v in values if v is not None]
+    return max(present) if present else None
+
+
 def _query_robot_terminal_rows(
     db: Session,
     *,
@@ -131,143 +148,153 @@ def _query_robot_terminal_rows(
     start: datetime,
     end: datetime,
 ) -> list[_RobotTerminalRow]:
-    """Terminal KPIs from task_status.status only (3/7/8), joined to robot_task for kind/warehouse."""
-    raw_rows = (
+    """One row per robot task (RobotTask.id): its latest terminal status 3/7/8 in the period.
+
+    Allocations/details are only used to classify the task and read its distance, never to
+    multiply the count: several allocations can share one robot task.
+    """
+    status_rows = (
         db.query(
             TaskStatus.device_num,
-            TaskStatus.order_id,
             TaskStatus.status,
-            TaskStatus.created_at,
-            TaskStatus.id,
+            RobotTask.id.label("robot_task_id"),
+            RobotTask.order_id,
             RobotTask.inbound_order_detail_id,
         )
         .join(RobotTask, TaskStatus.order_id == RobotTask.order_id)
-        .outerjoin(
-            InboundOrderDetail,
-            RobotTask.inbound_order_detail_id == InboundOrderDetail.id,
-        )
-        .outerjoin(
-            InboundOrder,
-            InboundOrderDetail.inbound_order_id == InboundOrder.id,
-        )
-        .outerjoin(
-            OutboundOrderAllocation,
-            OutboundOrderAllocation.robot_task_id == RobotTask.id,
-        )
-        .outerjoin(
-            OutboundOrderDetail,
-            OutboundOrderAllocation.outbound_order_detail_id == OutboundOrderDetail.id,
-        )
-        .outerjoin(
-            OutboundOrder,
-            OutboundOrderDetail.outbound_order_id == OutboundOrder.id,
-        )
         .filter(
             TaskStatus.created_at >= start,
             TaskStatus.created_at <= end,
             TaskStatus.status.in_(_TERMINAL_ICS_STATUSES),
-            or_(
-                and_(
-                    RobotTask.inbound_order_detail_id.isnot(None),
-                    InboundOrder.warehouse_id == warehouse_id,
-                ),
-                and_(
-                    RobotTask.inbound_order_detail_id.is_(None),
-                    OutboundOrder.warehouse_id == warehouse_id,
-                    OutboundOrderAllocation.allocation_type == "outbound",
-                ),
-            ),
         )
-        .order_by(
-            TaskStatus.created_at.desc(),
-            TaskStatus.id.desc(),
-        )
+        .order_by(TaskStatus.created_at.desc(), TaskStatus.id.desc())
         .all()
     )
 
-    latest_by_key: dict[tuple[str, str], _RobotTerminalRow] = {}
-    for row in raw_rows:
+    latest: dict[int, tuple[str, str, str, int | None]] = {}
+    for row in status_rows:
+        if row.robot_task_id in latest:
+            continue
         device_num = _normalize_device_num(row.device_num)
-        order_id = (row.order_id or "").strip()
         ics_status = _normalize_ics_status(row.status)
-        if not device_num or not order_id or not ics_status:
+        if not device_num or not ics_status:
             continue
-
-        if row.inbound_order_detail_id is not None:
-            task_kind: TaskKind = "inbound"
-        else:
-            task_kind = "outbound"
-
-        key = (device_num, order_id)
-        if key in latest_by_key:
-            continue
-
-        latest_by_key[key] = _RobotTerminalRow(
-            device_num=device_num,
-            order_id=order_id,
-            task_kind=task_kind,
-            ics_status=ics_status,
+        latest[row.robot_task_id] = (
+            device_num,
+            ics_status,
+            (row.order_id or "").strip(),
+            row.inbound_order_detail_id,
         )
+    if not latest:
+        return []
 
-    return list(latest_by_key.values())
+    inbound_detail_ids = {v[3] for v in latest.values() if v[3] is not None}
+    inbound_info: dict[int, float | None] = {}
+    if inbound_detail_ids:
+        for detail_id, distance in (
+            db.query(InboundOrderDetail.id, InboundOrderDetail.distance)
+            .join(InboundOrder, InboundOrderDetail.inbound_order_id == InboundOrder.id)
+            .filter(
+                InboundOrderDetail.id.in_(inbound_detail_ids),
+                InboundOrder.warehouse_id == warehouse_id,
+            )
+            .all()
+        ):
+            inbound_info[detail_id] = distance
+
+    other_task_ids = [task_id for task_id, v in latest.items() if v[3] is None]
+    allocation_types: dict[int, set[str]] = defaultdict(set)
+    allocation_distances: dict[int, list[float | None]] = defaultdict(list)
+    if other_task_ids:
+        for task_id, allocation_type, distance in (
+            db.query(
+                OutboundOrderAllocation.robot_task_id,
+                OutboundOrderAllocation.allocation_type,
+                OutboundOrderAllocation.distance,
+            )
+            .join(
+                OutboundOrderDetail,
+                OutboundOrderAllocation.outbound_order_detail_id == OutboundOrderDetail.id,
+            )
+            .join(OutboundOrder, OutboundOrderDetail.outbound_order_id == OutboundOrder.id)
+            .filter(
+                OutboundOrderAllocation.robot_task_id.in_(other_task_ids),
+                OutboundOrder.warehouse_id == warehouse_id,
+            )
+            .all()
+        ):
+            allocation_types[task_id].add(allocation_type)
+            allocation_distances[task_id].append(distance)
+
+    rows: list[_RobotTerminalRow] = []
+    for task_id, (device_num, ics_status, order_id, detail_id) in latest.items():
+        if detail_id is not None:
+            if detail_id not in inbound_info:
+                continue
+            task_kind: TaskKind = "inbound"
+            distance_m = inbound_info[detail_id]
+        else:
+            types = allocation_types.get(task_id)
+            if not types:
+                continue
+            if "return" in types:
+                task_kind = "return"
+            elif "outbound" in types:
+                task_kind = "outbound"
+            else:
+                continue
+            distance_m = _max_distance(allocation_distances[task_id])
+        rows.append(
+            _RobotTerminalRow(
+                device_num=device_num,
+                robot_task_id=task_id,
+                order_id=order_id,
+                task_kind=task_kind,
+                ics_status=ics_status,
+                distance_m=distance_m,
+            )
+        )
+    return rows
+
+
+def _empty_robot_bucket() -> dict[str, float]:
+    bucket: dict[str, float] = {"distance_m": 0.0}
+    for kind in _TASK_KINDS:
+        bucket[f"{kind}_count"] = 0
+        bucket[f"{kind}_completed"] = 0
+        bucket[f"{kind}_error_count"] = 0
+    return bucket
 
 
 def _aggregate_robot_report(
     rows: list[_RobotTerminalRow],
-) -> list[dict[str, str | int]]:
-    buckets: dict[str, dict[str, int]] = defaultdict(
-        lambda: {
-            "inbound_count": 0,
-            "outbound_count": 0,
-            "inbound_completed": 0,
-            "outbound_completed": 0,
-            "inbound_error_count": 0,
-            "outbound_error_count": 0,
-        }
-    )
+) -> list[dict[str, str | int | float]]:
+    buckets: dict[str, dict[str, float]] = defaultdict(_empty_robot_bucket)
 
     for row in rows:
         bucket = buckets[row.device_num]
-        if row.task_kind == "inbound":
-            bucket["inbound_count"] += 1
-            if row.ics_status == "8":
-                bucket["inbound_completed"] += 1
-            elif row.ics_status in ("3", "7"):
-                bucket["inbound_error_count"] += 1
-        else:
-            bucket["outbound_count"] += 1
-            if row.ics_status == "8":
-                bucket["outbound_completed"] += 1
-            elif row.ics_status in ("3", "7"):
-                bucket["outbound_error_count"] += 1
+        bucket[f"{row.task_kind}_count"] += 1
+        if row.ics_status == "8":
+            bucket[f"{row.task_kind}_completed"] += 1
+            if row.distance_m is not None:
+                bucket["distance_m"] += row.distance_m
+        elif row.ics_status in ("3", "7"):
+            bucket[f"{row.task_kind}_error_count"] += 1
 
-    result: list[dict[str, str | int]] = []
-    for device_num in sorted(buckets.keys()):
-        b = buckets[device_num]
-        result.append(
-            {
-                "device_num": device_num,
-                "inbound_count": b["inbound_count"],
-                "outbound_count": b["outbound_count"],
-                "inbound_completed": b["inbound_completed"],
-                "outbound_completed": b["outbound_completed"],
-                "inbound_error_count": b["inbound_error_count"],
-                "outbound_error_count": b["outbound_error_count"],
-            }
-        )
+    def finalize(device_num: str, bucket: dict[str, float]) -> dict[str, str | int | float]:
+        out: dict[str, str | int | float] = {"device_num": device_num}
+        for key, value in bucket.items():
+            out[key] = round(value, 3) if key == "distance_m" else int(value)
+        out["total_count"] = sum(int(bucket[f"{kind}_count"]) for kind in _TASK_KINDS)
+        return out
 
+    result = [finalize(device, buckets[device]) for device in sorted(buckets)]
     if result:
-        result.append(
-            {
-                "device_num": "Tổng cộng",
-                "inbound_count": sum(r["inbound_count"] for r in result),  # type: ignore[misc]
-                "outbound_count": sum(r["outbound_count"] for r in result),  # type: ignore[misc]
-                "inbound_completed": sum(r["inbound_completed"] for r in result),  # type: ignore[misc]
-                "outbound_completed": sum(r["outbound_completed"] for r in result),  # type: ignore[misc]
-                "inbound_error_count": sum(r["inbound_error_count"] for r in result),  # type: ignore[misc]
-                "outbound_error_count": sum(r["outbound_error_count"] for r in result),  # type: ignore[misc]
-            }
-        )
+        total = _empty_robot_bucket()
+        for bucket in buckets.values():
+            for key, value in bucket.items():
+                total[key] += value
+        result.append(finalize("Tổng cộng", total))
     return result
 
 
@@ -275,7 +302,7 @@ def _build_robot_performance_workbook(
     *,
     period_label: str,
     warehouse_name: str,
-    rows: list[dict[str, str | int]],
+    rows: list[dict[str, str | int | float]],
 ) -> bytes:
     wb = Workbook()
     ws = wb.active
@@ -316,10 +343,15 @@ def _build_robot_performance_workbook(
             row["device_num"],
             row["inbound_count"],
             row["outbound_count"],
+            row["return_count"],
+            row["total_count"],
             row["inbound_completed"],
             row["outbound_completed"],
+            row["return_completed"],
             row["inbound_error_count"],
             row["outbound_error_count"],
+            row["return_error_count"],
+            row["distance_m"],
         ]
         for col_idx, value in enumerate(values, start=1):
             cell = ws.cell(row=row_idx, column=col_idx, value=value)

@@ -84,6 +84,16 @@ export const OPERATOR_INBOUND_MAP_TUNING = {
   labelTextScale: 1.88,
 } as const;
 
+/** Map đơn nhập — viewport tablet (≤1280px, stage scale). */
+export const OPERATOR_INBOUND_MAP_TUNING_TABLET = {
+  fitPaddingRatio: 0.008,
+  fitScaleFactor: 1.14,
+  fillRatio: 0.78,
+  minGapRatio: 0.07,
+  titleBandRatio: 0.22,
+  labelTextScale: 1.88,
+} as const;
+
 export const OPERATOR_MAP_TUNING = {
   fitPaddingRatio: 0.02,
   fitScaleFactor: 1,
@@ -119,7 +129,19 @@ export const OPERATOR_WAVE_MAP_TUNING = {
   /** CC: cao thêm ~10%, không đổi width. */
   ccCellHeightBoost: 1.1,
   ccLabelTextScale: 1.88,
-} as const
+} as const;
+
+/** Map wave / xuất trực tiếp — viewport tablet. */
+export const OPERATOR_WAVE_MAP_TUNING_TABLET = {
+  fitPaddingRatio: 0.01,
+  fitScaleFactor: 1.1,
+  fillRatio: 0.9,
+  minGapRatio: 0.09,
+  titleBandRatio: 0.26,
+  labelTextScale: 1.7,
+  ccCellHeightBoost: 1.1,
+  ccLabelTextScale: 1.88,
+} as const;
 
 /**
  * Tuning dual-map **Xuất trực tiếp** — fit quanh các điểm buffer của cả 2 cột.

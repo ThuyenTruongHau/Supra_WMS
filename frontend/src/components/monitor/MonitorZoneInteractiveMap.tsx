@@ -1,20 +1,25 @@
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
+import dayjs from "dayjs";
 import { message } from "@/components/ui";
-import CcLocationLinesModal from "@/components/outbound/CcLocationLinesModal";
+import { masanStartSortingTimeApi } from "@/api/masan";
+import MasanCcPendingStockConfirmModal from "@/components/outbound/MasanCcPendingStockConfirmModal";
 import OperatorMapCanvas from "@/components/warehouse/OperatorMapCanvas";
 import type { BufferMapCanvasTuning } from "@/components/warehouse/OperatorMapCanvas";
 import { useOperatorDisplayZoneMasanMap } from "@/hooks/useOperatorDisplayZoneMasanMap";
 import MonitorZoneLocationSidebar from "@/components/monitor/MonitorZoneLocationSidebar";
-import type { MasanCcLocationResponse } from "@/types/masan";
-import {
-  ccLocationLinesFromPendingStock,
-  ccLocationResponseFromPendingAndCache,
-  loadCcLocationModalData,
-} from "@/utils/masanCcLocationModalData";
+import { getApiErrorDetail } from "@/types/apiError";
 import {
   buildCcPendingStockOverlaysForVt,
+  confirmableAllocationsForCcLocationId,
   pendingAllocationsForVtLocationId,
 } from "@/utils/masanPendingStockOverlay";
+
+function formatSortingClock(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const parsed = dayjs(value);
+  if (!parsed.isValid()) return null;
+  return parsed.format("HH:mm:ss DD/MM/YYYY");
+}
 
 type Props = {
   warehouseId: number;
@@ -66,17 +71,19 @@ export default function MonitorZoneInteractiveMap({
   modalZIndex,
 }: Props) {
   const masan = useOperatorDisplayZoneMasanMap(warehouseId, displayZoneId);
-  const ccRequestIdRef = useRef(0);
   const [selectedVtLocationId, setSelectedVtLocationId] = useState<
     number | null
   >(null);
-  const [ccModalOpen, setCcModalOpen] = useState(false);
-  const [ccLocationData, setCcLocationData] =
-    useState<MasanCcLocationResponse | null>(null);
-  const [ccLoading, setCcLoading] = useState(false);
-  const [ccLocationCode, setCcLocationCode] = useState<string | null>(null);
-  const [ccLocationName, setCcLocationName] = useState<string | null>(null);
-  const [ccLocationId, setCcLocationId] = useState<number | null>(null);
+  const [pendingConfirmOpen, setPendingConfirmOpen] = useState(false);
+  const [pendingConfirmLocationId, setPendingConfirmLocationId] = useState<
+    number | null
+  >(null);
+  const [pendingConfirmLocationCode, setPendingConfirmLocationCode] = useState<
+    string | null
+  >(null);
+  const [pendingConfirmLocationName, setPendingConfirmLocationName] = useState<
+    string | null
+  >(null);
 
   const assignedCcCodes = useMemo(
     () => assignedCcCodeSet(masan.locationSubLabelByCode ?? {}),
@@ -132,125 +139,137 @@ export default function MonitorZoneInteractiveMap({
     return code ? [code] : undefined;
   }, [selectedVtLocationId, masan.vtLocationCodeById]);
 
-  const openCcLocation = useCallback(
-    async (locationCode: string, locationId: number, displayLabel: string) => {
-      const requestId = ++ccRequestIdRef.current;
-      setCcLocationCode(locationCode);
-      setCcLocationId(locationId);
-      setCcLocationName(displayLabel);
-      setCcLocationData(null);
-      setCcModalOpen(true);
-
-      const overlayRefresh = await masan.refreshMasanMapOverlays();
-      const pendingStock =
-        overlayRefresh?.pendingStock ?? masan.pendingStock;
-      const ccLocations =
-        overlayRefresh?.ccLocations ?? masan.ccLocations;
-      const cachedRow = ccLocations?.find(
-        (row) =>
-          row.location_id === locationId || row.location_code === locationCode,
-      );
-      const resolvedName =
-        (cachedRow?.location_name ?? displayLabel).trim() || displayLabel;
-      if (resolvedName) setCcLocationName(resolvedName);
-
-      const pendingLines = ccLocationLinesFromPendingStock(
-        pendingStock,
-        locationId,
-        masan.ccLocationCodeById,
-        { locationCode, locationName: resolvedName },
-      );
-      if (pendingLines.length > 0) {
-        setCcLocationData(
-          ccLocationResponseFromPendingAndCache(
-            warehouseId,
-            locationId,
-            resolvedName,
-            pendingLines,
-            cachedRow,
-            masan.ccBucketZoneCode,
-          ),
-        );
-      } else if (cachedRow) {
-        setCcLocationData({
-          warehouse_id: warehouseId,
-          location_id: cachedRow.location_id,
-          assigned: cachedRow.assigned,
-          location_name: cachedRow.location_name,
-          zone: cachedRow.zone,
-          vehicle_number: cachedRow.vehicle_number,
-          lines: cachedRow.lines,
-        });
-      }
-
-      setCcLoading(true);
-      try {
-        const data = await loadCcLocationModalData({
-          warehouseId,
-          locationId,
-          locationCode,
-          locationName: resolvedName,
-          pendingStock,
-          ccLocationIdToCode: masan.ccLocationCodeById,
-          cachedRow,
-          ccBucketZoneCode: masan.ccBucketZoneCode,
-        });
-        if (requestId === ccRequestIdRef.current) {
-          setCcLocationData(data);
-          const apiName = (data.location_name ?? "").trim();
-          if (apiName) setCcLocationName(apiName);
-        }
-      } catch (err) {
-        if (requestId !== ccRequestIdRef.current) return;
-        if (pendingLines.length === 0 && !cachedRow) {
-          const detail =
-            (err as { response?: { data?: { detail?: string } } })?.response
-              ?.data?.detail ??
-            (err instanceof Error
-              ? err.message
-              : "Không tải được hàng đã chia của ô");
-          message.error(detail);
-        }
-      } finally {
-        if (requestId === ccRequestIdRef.current) setCcLoading(false);
-      }
-    },
-    [masan, warehouseId],
-  );
+  const closeConfirmModal = useCallback(() => {
+    setPendingConfirmOpen(false);
+    setPendingConfirmLocationId(null);
+    setPendingConfirmLocationCode(null);
+    setPendingConfirmLocationName(null);
+  }, []);
 
   const handleCellClick = useCallback(
     async (payload: { locationCode: string }) => {
       const vtId = masan.vtLocationIdByCode.get(payload.locationCode);
       if (vtId != null) {
-        setSelectedVtLocationId((prev) => (prev === vtId ? null : vtId));
+        if (selectedVtLocationId === vtId) {
+          setSelectedVtLocationId(null);
+          closeConfirmModal();
+          return;
+        }
+
+        const overlayRefresh = await masan.refreshMasanMapOverlays();
+        const pendingStock =
+          overlayRefresh?.pendingStock ?? masan.pendingStock;
+        const lines = pendingAllocationsForVtLocationId(
+          pendingStock,
+          vtId,
+          masan.ccLocationCodeById,
+        );
+        const allocationIds = lines
+          .map((row) => row.id)
+          .filter((id) => Number.isFinite(id) && id > 0);
+
+        if (allocationIds.length > 0) {
+          try {
+            const result = await masanStartSortingTimeApi({
+              allocation_ids: allocationIds,
+            });
+            const clock = formatSortingClock(result.started_at);
+            if (clock) {
+              if (result.already_started) {
+                message.info(`Đã tính thời gian chia từ ${clock}`);
+              } else {
+                message.success(`Bắt đầu tính thời gian chia từ ${clock}`);
+              }
+            }
+          } catch (err: unknown) {
+            message.error(
+              getApiErrorDetail(err, "Không ghi được thời gian bắt đầu chia"),
+            );
+            return;
+          }
+        }
+
+        setSelectedVtLocationId(vtId);
+        closeConfirmModal();
         return;
       }
+      if (selectedVtLocationId == null) {
+        message.info("Chọn ô VT trên map trước khi xác nhận tại ô CC");
+        return;
+      }
+
+      const ccCode = payload.locationCode.trim();
+      if (!activeSortCcCodes.includes(ccCode)) {
+        message.info("Ô CC này không có hàng chờ cho VT đang chọn");
+        return;
+      }
+
       const ccId = masan.clickableLocationIdByCode.get(payload.locationCode);
       if (ccId == null) return;
       const label =
         masan.ccLocationDisplayLabelById?.get(ccId)?.trim() ||
         payload.locationCode;
-      await openCcLocation(payload.locationCode, ccId, label);
+
+      const zone = (masan.ccBucketZoneCode ?? "").trim();
+      if (warehouseId <= 0 || !zone) {
+        message.error("Thiếu thông tin xác nhận");
+        return;
+      }
+
+      await masan.refreshMasanMapOverlays();
+      setPendingConfirmLocationId(ccId);
+      setPendingConfirmLocationCode(payload.locationCode);
+      setPendingConfirmLocationName(label);
+      setPendingConfirmOpen(true);
     },
     [
-      masan.vtLocationIdByCode,
-      masan.clickableLocationIdByCode,
-      masan.ccLocationDisplayLabelById,
-      openCcLocation,
+      masan,
+      warehouseId,
+      selectedVtLocationId,
+      closeConfirmModal,
+      activeSortCcCodes,
     ],
   );
 
-  const closeCcModal = useCallback(() => {
-    setCcModalOpen(false);
-    setCcLocationData(null);
-    setCcLocationCode(null);
-    setCcLocationName(null);
-    setCcLocationId(null);
-  }, []);
+  const selectedVtDisplayLabel = useMemo(() => {
+    if (selectedVtLocationId == null) return null;
+    return (
+      masan.vtLocationDisplayLabelById?.get(selectedVtLocationId)?.trim() ||
+      masan.vtLocationCodeById.get(selectedVtLocationId)?.trim() ||
+      `#${selectedVtLocationId}`
+    );
+  }, [
+    selectedVtLocationId,
+    masan.vtLocationDisplayLabelById,
+    masan.vtLocationCodeById,
+  ]);
+
+  const pendingConfirmLines = useMemo(() => {
+    if (pendingConfirmLocationId == null || selectedVtLocationId == null) {
+      return [];
+    }
+    return confirmableAllocationsForCcLocationId(
+      masan.pendingStock,
+      pendingConfirmLocationId,
+      masan.ccLocationCodeById,
+      {
+        locationCode: pendingConfirmLocationCode,
+        locationName: pendingConfirmLocationName,
+      },
+      selectedVtLocationId,
+    );
+  }, [
+    masan.pendingStock,
+    masan.ccLocationCodeById,
+    pendingConfirmLocationId,
+    pendingConfirmLocationCode,
+    pendingConfirmLocationName,
+    selectedVtLocationId,
+  ]);
 
   return (
-    <div className="flex h-full min-h-0 w-full">
-      <div className="min-h-0 min-w-0 w-[60%] shrink-0">
+    <div className="flex h-full min-h-0 w-full flex-1">
+      <div className="flex min-h-0 min-w-0 w-[60%] shrink-0 flex-col">
         <OperatorMapCanvas
           zoneId={masan.mapZoneIds}
           tuning={tuning}
@@ -278,31 +297,36 @@ export default function MonitorZoneInteractiveMap({
           ccLocationDisplayLabelById={masan.ccLocationDisplayLabelById}
           selectedVtLocationId={selectedVtLocationId}
           assignedCcCodes={assignedCcCodes}
-          onClearVtSelection={() => setSelectedVtLocationId(null)}
+          onClearVtSelection={() => {
+            setSelectedVtLocationId(null);
+            closeConfirmModal();
+          }}
         />
       ) : null}
 
-      {ccLocationId != null && ccLocationCode ? (
-        <CcLocationLinesModal
-          open={ccModalOpen}
-          locationCode={ccLocationCode}
-          locationName={ccLocationName}
-          locationId={ccLocationId}
+      {warehouseId > 0 &&
+      masan.ccBucketZoneCode &&
+      pendingConfirmLocationId != null &&
+      selectedVtLocationId != null ? (
+        <MasanCcPendingStockConfirmModal
+          open={pendingConfirmOpen}
+          onClose={closeConfirmModal}
           warehouseId={warehouseId}
-          data={ccLocationData}
-          loading={ccLoading}
-          onClose={closeCcModal}
-          onPickingListDownloadComplete={async () => {
-            if (ccLocationCode && ccLocationId != null) {
-              await openCcLocation(
-                ccLocationCode,
-                ccLocationId,
-                ccLocationName ?? ccLocationCode,
-              );
-              return;
-            }
-            await masan.refreshMasanMapOverlays();
-          }}
+          displayZoneId={displayZoneId}
+          ccBucketZoneCode={masan.ccBucketZoneCode}
+          vtLocationId={selectedVtLocationId}
+          vtLocationCode={
+            masan.vtLocationCodeById.get(selectedVtLocationId) ?? null
+          }
+          vtLocationName={selectedVtDisplayLabel}
+          ccLocationCode={pendingConfirmLocationCode}
+          ccLocationName={pendingConfirmLocationName}
+          title="Xác nhận lấy hàng tại CC"
+          locationKindLabel="Vị trí CC"
+          secondaryLocationKindLabel="Vị trí VT"
+          emptyHint="Không còn hàng chờ xác nhận tại CC này cho VT đang chọn."
+          lines={pendingConfirmLines}
+          onConfirmed={masan.invalidateMasanCcCaches}
           zIndex={modalZIndex}
         />
       ) : null}

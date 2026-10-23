@@ -3,8 +3,8 @@ import type {
   MasanSortingZonePendingAllocationRow,
   MasanSortingZonePendingStockResponse,
 } from "@/types/masan";
-import { formatSortingCellLabel } from "@/utils/sortingStationOverlay";
-import { toDisplayInteger } from "@/utils/number";
+import { formatSortingCellLabel } from "./sortingStationOverlay.ts";
+import { toDisplayInteger } from "./number.ts";
 
 export function normalizePendingLocationId(
   id: number | string | null | undefined,
@@ -353,6 +353,28 @@ export function pendingAllocationsForCcLocationId(
   }
 
   return rows;
+}
+
+/** Allocation `pre_completed` thuộc đúng ô CC; tùy chọn thu hẹp theo VT đích. */
+export function confirmableAllocationsForCcLocationId(
+  data: MasanSortingZonePendingStockResponse | undefined,
+  ccLocationId: number,
+  ccLocationIdToCode?: Map<number, string>,
+  match?: PendingCcLocationClickMatch,
+  vtLocationId?: number | null,
+): MasanPendingAllocationWithCc[] {
+  return pendingAllocationsForCcLocationId(
+    data,
+    ccLocationId,
+    ccLocationIdToCode,
+    match,
+  ).filter((row) => {
+    if (!isConfirmablePendingStockAllocation(row)) return false;
+    if (vtLocationId != null) {
+      return allocationMatchesVtDestination(row, vtLocationId);
+    }
+    return true;
+  });
 }
 
 export function mergePendingStockOverlays(

@@ -1,5 +1,6 @@
 /**
- * Xác nhận số lượng lấy hàng tại VT — nhiều dòng theo ô CC (allocation / stock_ready).
+ * Xác nhận số lượng lấy hàng — slider theo allocation.
+ * Tab xuất: click VT (lọc theo đích VT). Monitor: chọn VT rồi click CC (lọc CC + VT).
  */
 import { useEffect, useMemo, useState } from "react";
 import { Slider } from "antd";
@@ -14,18 +15,31 @@ import {
 } from "@/utils/masanPendingStockOverlay";
 import { toDisplayInteger } from "@/utils/number";
 import {
+  operatorModalActionButtonClass,
   operatorModalWidthForTier,
   useOperatorViewportTier,
 } from "@/utils/operatorViewportTier";
+import { useOutboundOperatorAssignees } from "@/store/useOperatorAssigneeStore";
+import { formatOperatorSortingPersons } from "@/utils/operatorSortingPersons";
 
 type Props = {
   open: boolean;
   onClose: () => void;
   warehouseId: number;
+  /** Khu chia chọn (8/9) — lấy người xuất từ store operator. */
+  displayZoneId: number;
   ccBucketZoneCode: string;
-  vtLocationId: number;
+  /** Có giá trị thì chỉ giữ allocation `to_location_id` = VT này. */
+  vtLocationId?: number | null;
   vtLocationCode?: string | null;
   vtLocationName?: string | null;
+  /** Monitor: ô CC đang xác nhận (hiển thị cùng `locationKindLabel`). */
+  ccLocationCode?: string | null;
+  ccLocationName?: string | null;
+  secondaryLocationKindLabel?: string | null;
+  title?: string;
+  locationKindLabel?: string;
+  emptyHint?: string;
   lines: MasanPendingAllocationWithCc[];
   onConfirmed?: () => void;
   zIndex?: number;
@@ -35,14 +49,23 @@ export default function MasanVtPendingStockConfirmModal({
   open,
   onClose,
   warehouseId,
+  displayZoneId,
   ccBucketZoneCode,
-  vtLocationId,
+  vtLocationId = null,
   vtLocationCode = null,
   vtLocationName = null,
+  ccLocationCode = null,
+  ccLocationName = null,
+  secondaryLocationKindLabel = null,
+  title = "Xác nhận lấy hàng tại VT",
+  locationKindLabel = "Vị trí VT",
+  emptyHint = "Không còn hàng chờ xác nhận tại VT này.",
   lines,
   onConfirmed,
   zIndex,
 }: Props) {
+  const { usernames: outboundAssignees } =
+    useOutboundOperatorAssignees(displayZoneId);
   const tier = useOperatorViewportTier();
   const [viewportWidth, setViewportWidth] = useState(
     () => (typeof window !== "undefined" ? window.innerWidth : 1280),
@@ -53,6 +76,7 @@ export default function MasanVtPendingStockConfirmModal({
     return () => window.removeEventListener("resize", onResize);
   }, []);
   const modalWidth = operatorModalWidthForTier(tier, viewportWidth);
+  const modalActionBtn = operatorModalActionButtonClass(tier);
 
   const [qtyByAllocationId, setQtyByAllocationId] = useState<
     Record<number, number>
@@ -61,11 +85,13 @@ export default function MasanVtPendingStockConfirmModal({
 
   const confirmLines = useMemo(
     () =>
-      lines.filter(
-        (row) =>
-          allocationMatchesVtDestination(row, vtLocationId) &&
-          isConfirmablePendingStockAllocation(row),
-      ),
+      lines.filter((row) => {
+        if (!isConfirmablePendingStockAllocation(row)) return false;
+        if (vtLocationId != null) {
+          return allocationMatchesVtDestination(row, vtLocationId);
+        }
+        return true;
+      }),
     [lines, vtLocationId],
   );
 
@@ -81,10 +107,19 @@ export default function MasanVtPendingStockConfirmModal({
     setQtyByAllocationId(initial);
   }, [open, confirmLines]);
 
-  const titleLabel =
+  const primaryLocationLabel =
+    (ccLocationName ?? "").trim() ||
+    (ccLocationCode ?? "").trim() ||
     (vtLocationName ?? "").trim() ||
     (vtLocationCode ?? "").trim() ||
-    `#${vtLocationId}`;
+    (vtLocationId != null ? `#${vtLocationId}` : "");
+
+  const secondaryLocationLabel =
+    (ccLocationCode ?? "").trim() || (ccLocationName ?? "").trim()
+      ? (vtLocationName ?? "").trim() ||
+        (vtLocationCode ?? "").trim() ||
+        (vtLocationId != null ? `#${vtLocationId}` : "")
+      : "";
 
   const handleConfirmAll = async () => {
     if (warehouseId <= 0 || !ccBucketZoneCode.trim()) {
@@ -109,12 +144,21 @@ export default function MasanVtPendingStockConfirmModal({
       return;
     }
 
+    const sortingPersons = formatOperatorSortingPersons(outboundAssignees);
+    if (!sortingPersons) {
+      message.warning(
+        "Chọn người xuất trên thanh công cụ (Monitor) trước khi xác nhận",
+      );
+      return;
+    }
+
     setSubmitting(true);
     try {
       await masanConfirmAllocationOutboundApi({
         warehouse_id: warehouseId,
         zone: ccBucketZoneCode.trim(),
         quantities,
+        sorting_persons: sortingPersons,
       });
       message.success("Đã xác nhận lấy hàng");
       onConfirmed?.();
@@ -142,7 +186,7 @@ export default function MasanVtPendingStockConfirmModal({
     <Modal
       open={open}
       onCancel={onClose}
-      title="Xác nhận lấy hàng tại VT"
+      title={title}
       width={modalWidth}
       centered
       destroyOnHidden
@@ -152,16 +196,27 @@ export default function MasanVtPendingStockConfirmModal({
       <div className="flex flex-col gap-5">
         <div className="rounded-xl border border-sky-200 bg-sky-50 px-5 py-4">
           <p className="text-xs font-semibold uppercase tracking-wider text-sky-700/70">
-            Vị trí VT
+            {locationKindLabel}
           </p>
           <p className="mt-1 font-mono text-2xl font-bold text-brand-dark">
-            {titleLabel}
+            {primaryLocationLabel}
           </p>
         </div>
 
+        {secondaryLocationKindLabel && secondaryLocationLabel ? (
+          <div className="rounded-xl border border-violet-200 bg-violet-50 px-5 py-3">
+            <p className="text-xs font-semibold uppercase tracking-wider text-violet-700/70">
+              {secondaryLocationKindLabel}
+            </p>
+            <p className="mt-1 font-mono text-xl font-bold text-brand-dark">
+              {secondaryLocationLabel}
+            </p>
+          </div>
+        ) : null}
+
         {sortedLines.length === 0 ? (
           <p className="rounded-xl border border-dashed border-slate-200 px-4 py-12 text-center text-base text-slate-400">
-            Không còn hàng chờ xác nhận tại VT này.
+            {emptyHint}
           </p>
         ) : (
           <ul className="space-y-4">
@@ -226,16 +281,20 @@ export default function MasanVtPendingStockConfirmModal({
           </ul>
         )}
 
-        <div className="flex justify-end gap-3 border-t border-slate-200 pt-4">
-          <Button variant="secondary" size="large" onClick={onClose}>
+        <div className="flex flex-wrap justify-end gap-3 border-t border-slate-200 pt-4">
+          <Button
+            variant="secondary"
+            onClick={onClose}
+            className={modalActionBtn}
+          >
             Hủy
           </Button>
           <Button
             variant="primary"
-            size="large"
             loading={submitting}
             onClick={() => void handleConfirmAll()}
             disabled={sortedLines.length === 0}
+            className={modalActionBtn}
           >
             Xác nhận tất cả
           </Button>

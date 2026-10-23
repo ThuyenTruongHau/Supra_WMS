@@ -8,6 +8,7 @@
     "build": "vite build",
     "lint": "eslint .",
     "test:robot": "node --test tests/robotStatus.test.mjs",
+    "test:outbound": "node --test tests/masanSortingReturnTasks.test.mjs tests/masanPendingStockOverlay.test.mjs",
     "preview": "vite preview"
   },
   "dependencies": {

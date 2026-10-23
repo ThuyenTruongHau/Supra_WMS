@@ -33,10 +33,18 @@ import {
 } from "@/utils/orderCreatedAtRangeParams";
 import {
   OPERATOR_DESKTOP,
-  OPERATOR_INBOUND_MAP_TUNING,
   operatorDesktopClass,
   operatorDesktopTableWidths,
 } from "@/constants/operatorDesktopSizes";
+import {
+  isOperatorTabletViewport,
+  operatorInboundFooterButtonClass,
+  operatorInboundMapTuningForTier,
+  operatorInboundSideTabBarClass,
+  operatorInboundSideTabButtonClass,
+  operatorInboundToolbarButtonClass,
+  useOperatorViewportTier,
+} from "@/utils/operatorViewportTier";
 import AssignInboundBufferModal from "@/components/inbound/AssignInboundBufferModal";
 import UnassignInboundBufferModal from "@/components/inbound/UnassignInboundBufferModal";
 import OperatorMapCanvas, {
@@ -65,6 +73,12 @@ import {
 } from "@/hooks/useWarehouseMap";
 
 import { useAppStore } from "@/store/useAppStore";
+import OperatorAssigneeSelect from "@/components/operator/OperatorAssigneeSelect";
+import { useInboundOperatorAssignee } from "@/store/useOperatorAssigneeStore";
+import {
+  hasInboundOperatorAssignee,
+  OPERATOR_ASSIGNEE_REQUIRED_INBOUND,
+} from "@/utils/operatorSortingPersons";
 
 import {
   getInboundBufferAssignmentApi,
@@ -134,6 +148,18 @@ export default function OperatorInboundPage() {
 }
 
 function OperatorInboundPageContent({ warehouseId }: { warehouseId: number }) {
+  const { username: inboundAssignee, setUsername: setInboundAssignee } =
+    useInboundOperatorAssignee(warehouseId);
+  const viewportTier = useOperatorViewportTier();
+  const inboundToolbarButtonClass =
+    operatorInboundToolbarButtonClass(viewportTier);
+  const inboundFooterButtonClass =
+    operatorInboundFooterButtonClass(viewportTier);
+  const inboundMapTuning = operatorInboundMapTuningForTier(viewportTier);
+  const sideListTabBarClass = operatorInboundSideTabBarClass(viewportTier);
+  const sideListTabButtonClass =
+    operatorInboundSideTabButtonClass(viewportTier);
+
   const [orderCreatedRange, setOrderCreatedRange] =
     useState<OrderCreatedAtRange>(null);
   const orderCreatedAtParams = useMemo(
@@ -740,10 +766,12 @@ function OperatorInboundPageContent({ warehouseId }: { warehouseId: number }) {
   const invokeCallerLocations = useCallback(
     (locationIds: number[], robot?: InboundRobot) => {
       if (locationIds.length === 0) return;
+      const sortingPersons = inboundAssignee?.trim() || undefined;
       callerMutation.mutate(
         {
           location_ids: locationIds,
           ...(robot ? { assign_robot_id: robot.deviceCode } : {}),
+          ...(sortingPersons ? { sorting_persons: sortingPersons } : {}),
         },
         {
           onSuccess: (result) => {
@@ -763,7 +791,7 @@ function OperatorInboundPageContent({ warehouseId }: { warehouseId: number }) {
         },
       );
     },
-    [callerMutation],
+    [callerMutation, inboundAssignee],
   );
 
   const applyAutoColumnSelection = (
@@ -848,8 +876,14 @@ function OperatorInboundPageContent({ warehouseId }: { warehouseId: number }) {
     setSelectedBufferLocationId(null);
   };
 
+  const inboundAssigneeReady = hasInboundOperatorAssignee(inboundAssignee);
+
   const handleCallRobot = (robot?: InboundRobot) => {
     if (callerMutation.isPending) return;
+    if (!inboundAssigneeReady) {
+      message.warning(OPERATOR_ASSIGNEE_REQUIRED_INBOUND);
+      return;
+    }
     if (callerLocationIds.length === 0) {
       message.warning("Không có ô buffer nhập nào để gọi robot.");
       return;
@@ -977,7 +1011,7 @@ function OperatorInboundPageContent({ warehouseId }: { warehouseId: number }) {
               icon={<EyeOutlined />}
               onClick={() => setWarehouseViewOpen(true)}
               disabled={warehouseId <= 0}
-              className="!h-10 !px-4 !text-base"
+              className={inboundToolbarButtonClass}
             >
               Xem kho
             </Button>
@@ -1024,19 +1058,31 @@ function OperatorInboundPageContent({ warehouseId }: { warehouseId: number }) {
             />
           </div>
         ) : (
-          <div className="grid min-h-0 flex-1 grid-cols-1 items-stretch @max-[1279px]:operator-panel-scroll @min-[1280px]:grid-cols-5">
+          <div className="grid min-h-0 flex-1 grid-cols-1 items-stretch overflow-hidden @min-[1280px]:grid-cols-5">
             <div className="flex min-h-0 flex-col overflow-hidden @min-[1280px]:col-span-3">
-              <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-stripe-hairline px-4 py-2">
-                <h3 className="text-4xl font-black text-brand-dark">
-                  Sơ đồ nhập hàng
-                </h3>
+              <div className="flex shrink-0 flex-wrap items-end justify-between gap-x-4 gap-y-2 border-b border-stripe-hairline px-4 py-2">
+                <div className="flex min-w-0 flex-wrap items-end gap-x-6 gap-y-2">
+                  <h3 className="text-4xl font-black text-brand-dark">
+                    Sơ đồ nhập hàng
+                  </h3>
+                  <div
+                    role="status"
+                    aria-live="polite"
+                    aria-label="Trạng thái robot nhập kho"
+                  >
+                    <RobotStatusPanel rows={robotRows} compact inline />
+                  </div>
+                </div>
                 <div className="flex flex-wrap items-center gap-2">
                   <Button
                     variant="primary"
                     icon={<ScanOutlined />}
                     onClick={handleQrAssignBufferClick}
                     disabled={warehouseId <= 0}
-                    className="!h-10 !px-4 !text-base !bg-cyan-600 hover:!bg-cyan-700 !border-cyan-600 hover:!border-cyan-700"
+                    className={cn(
+                      inboundToolbarButtonClass,
+                      "!bg-cyan-600 hover:!bg-cyan-700 !border-cyan-600 hover:!border-cyan-700",
+                    )}
                   >
                     Quét QR gán ô
                   </Button>
@@ -1046,7 +1092,7 @@ function OperatorInboundPageContent({ warehouseId }: { warehouseId: number }) {
                     onClick={handleImportClick}
                     loading={isMasanImporting}
                     disabled={warehouseId <= 0}
-                    className="!h-10 !px-4 !text-base"
+                    className={inboundToolbarButtonClass}
                   >
                     Nhập phiên nhập
                   </Button>
@@ -1056,29 +1102,36 @@ function OperatorInboundPageContent({ warehouseId }: { warehouseId: number }) {
                     onClick={() => void handleExportDailyExcel()}
                     loading={isExportingDailyExcel}
                     disabled={warehouseId <= 0}
-                    className="!h-10 !px-4 !text-base"
+                    className={inboundToolbarButtonClass}
                   >
                     Export Capacity
                   </Button>
+                  <OperatorAssigneeSelect
+                    mode="single"
+                    toolbar="inbound"
+                    label="Người nhập"
+                    value={inboundAssignee}
+                    onChange={(next) =>
+                      setInboundAssignee(
+                        typeof next === "string" ? next : undefined,
+                      )
+                    }
+                    disabled={warehouseId <= 0}
+                  />
                   <Button
                     variant="secondary"
                     icon={<ClearOutlined />}
                     onClick={handleClearStation}
                     loading={isClearingStation}
                     disabled={warehouseId <= 0}
-                    className="!h-10 !px-4 !text-base !border-amber-500 !text-amber-800 hover:!border-amber-600 hover:!text-amber-900"
+                    className={cn(
+                      inboundToolbarButtonClass,
+                      "!border-amber-500 !text-amber-800 hover:!border-amber-600 hover:!text-amber-900",
+                    )}
                   >
                     Clear station
                   </Button>
                 </div>
-              </div>
-              <div
-                className="shrink-0 border-b border-stripe-hairline bg-panel-soft px-4 py-2"
-                role="status"
-                aria-live="polite"
-                aria-label="Trạng thái robot nhập kho"
-              >
-                <RobotStatusPanel rows={robotRows} compact inline />
               </div>
               <div
                 className={`relative flex ${operatorDesktopClass.boardFill} flex-col bg-industrial-pattern`}
@@ -1088,7 +1141,7 @@ function OperatorInboundPageContent({ warehouseId }: { warehouseId: number }) {
                     zoneId={[2, 12]}
                     showInboundSeparator={true}
                     className="!h-full"
-                    tuning={OPERATOR_INBOUND_MAP_TUNING}
+                    tuning={inboundMapTuning}
                     selectedCodes={
                       mode === "manual" && selectedBufferCode ? [selectedBufferCode] :
                         mode === "auto" ? selectedAutoColumnCodes : undefined
@@ -1101,7 +1154,12 @@ function OperatorInboundPageContent({ warehouseId }: { warehouseId: number }) {
             </div>
 
             <div className="flex min-h-0 flex-col overflow-hidden border-t border-stripe-hairline @min-[1280px]:col-span-2 @min-[1280px]:border-l @min-[1280px]:border-t-0">
-              <div className="flex shrink-0 items-stretch gap-0 overflow-x-auto border-b border-stripe-hairline bg-panel-soft">
+              <div
+                className={cn(
+                  "flex shrink-0 items-stretch overflow-hidden border-b border-stripe-hairline bg-panel-soft",
+                  sideListTabBarClass,
+                )}
+              >
                 {(
                   [
                     {
@@ -1124,13 +1182,14 @@ function OperatorInboundPageContent({ warehouseId }: { warehouseId: number }) {
                       aria-pressed={active}
                       onClick={() => setSideListTab(tab.key)}
                       className={cn(
-                        "relative flex min-h-12 min-w-[150px] items-center justify-center gap-2 px-4 py-2.5 font-bold transition-all",
+                        "relative flex min-w-0 flex-1 items-center justify-center gap-2 font-bold transition-all",
+                        sideListTabButtonClass,
                         active
-                          ? "z-10 -mb-px border border-stripe-hairline border-b-white bg-white text-brand-primary shadow-[0_1px_0_0_#fff]"
+                          ? "z-10 -mb-px border border-stripe-hairline border-b-panel bg-panel text-brand-primary shadow-[0_1px_0_0_var(--color-panel)]"
                           : "border border-transparent text-stripe-ink-mute hover:bg-white/50 hover:text-brand-dark",
                       )}
                     >
-                      <span className="truncate text-2xl">{tab.label}</span>
+                      <span className="truncate">{tab.label}</span>
                       <span
                         className={cn(
                           "rounded-full px-1.5 py-0.5 text-[11px] font-bold tabular-nums",
@@ -1148,7 +1207,7 @@ function OperatorInboundPageContent({ warehouseId }: { warehouseId: number }) {
 
               <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-panel">
                 {sideListTab === "orders" ? (
-                  <div className="h-full min-h-0 overflow-hidden">
+                  <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
                     <OperatorInboundOrderBrowser
                       key={warehouseId}
                       warehouseId={warehouseId}
@@ -1162,7 +1221,7 @@ function OperatorInboundPageContent({ warehouseId }: { warehouseId: number }) {
                     />
                   </div>
                 ) : (
-                  <div className="operator-panel-scroll min-h-0 flex-1 p-2">
+                  <div className="operator-inbound-commands-table flex min-h-0 flex-1 flex-col overflow-hidden p-2">
                     <Table<InboundAssignedDetail>
                       rowKey="detail_id"
                       size="middle"
@@ -1184,7 +1243,12 @@ function OperatorInboundPageContent({ warehouseId }: { warehouseId: number }) {
                 )}
               </div>
 
-              <div className="grid shrink-0 grid-cols-2 gap-2 border-t border-stripe-hairline p-3">
+              <div
+                className={cn(
+                  "grid shrink-0 grid-cols-2 gap-2 border-t border-stripe-hairline",
+                  isOperatorTabletViewport(viewportTier) ? "p-2.5" : "p-3",
+                )}
+              >
                 <Button
                   variant="secondary"
                   icon={<FileExcelOutlined />}
@@ -1192,17 +1256,32 @@ function OperatorInboundPageContent({ warehouseId }: { warehouseId: number }) {
                   disabled={exportReportDisabled}
                   title={exportReportDisabledTitle}
                   onClick={() => void handleExportDetailReport()}
-                  className="!h-10 !w-full justify-center !text-sm disabled:!border-stripe-hairline disabled:!bg-white disabled:!text-slate-400 disabled:!opacity-100"
+                  className={cn(
+                    inboundFooterButtonClass,
+                    "disabled:!border-stripe-hairline disabled:!bg-white disabled:!text-slate-400 disabled:!opacity-100",
+                  )}
                 >
                   Xuất báo cáo
                 </Button>
                 <Button
                   variant="primary"
                   icon={<RobotOutlined />}
-                  disabled={callerLocationIds.length === 0 || callerMutation.isPending}
+                  disabled={
+                    !inboundAssigneeReady ||
+                    callerLocationIds.length === 0 ||
+                    callerMutation.isPending
+                  }
+                  title={
+                    !inboundAssigneeReady
+                      ? OPERATOR_ASSIGNEE_REQUIRED_INBOUND
+                      : undefined
+                  }
                   loading={callerMutation.isPending}
                   onClick={() => handleCallRobot()}
-                  className="!h-10 !w-full justify-center !text-sm disabled:!bg-brand-primary/45 disabled:!text-white disabled:!opacity-100"
+                  className={cn(
+                    inboundFooterButtonClass,
+                    "disabled:!bg-brand-primary/45 disabled:!text-white disabled:!opacity-100",
+                  )}
                 >
                   Gọi robot nhập
                   {mode === "manual" && selectedBufferLocationId
@@ -1214,7 +1293,14 @@ function OperatorInboundPageContent({ warehouseId }: { warehouseId: number }) {
                         : ""}
                 </Button>
                 <AssignedRobotCallButton
-                  disabled={callerLocationIds.length === 0}
+                  disabled={
+                    !inboundAssigneeReady || callerLocationIds.length === 0
+                  }
+                  disabledTitle={
+                    !inboundAssigneeReady
+                      ? OPERATOR_ASSIGNEE_REQUIRED_INBOUND
+                      : undefined
+                  }
                   loading={callerMutation.isPending}
                   onSelect={handleCallRobot}
                 />

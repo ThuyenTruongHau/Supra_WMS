@@ -15,6 +15,7 @@ from app.modules.warehouse.item.item_model import Item
 from app.modules.warehouse.unit.unit_model import Unit
 from app.modules.warehouse.notificcation.notification_service import check_and_create_notifications_under_over_min_max
 from app.modules.warehouse.outbound_order.outbound_order_model import (
+    IGNORED_ALLOCATION_STATUSES,
     OutboundOrder,
     OutboundOrderDetail,
     OutboundOrderAllocation,
@@ -803,14 +804,17 @@ def _strategy_loading_stocks(db: Session, item_id: int, strategy: str, lot_numbe
         q = q.order_by(ItemStock.created_at.asc(), ItemStock.id.asc())
     return q.all()
 
-def _check_stock_in_task(db: Session, from_location_id: int, outbound_order_id: int) -> bool:
+def _check_stock_in_task(db: Session, from_location_id: int, outbound_order_id: int) -> int | None:
     allocation = (
         db.query(OutboundOrderAllocation)
         .join(OutboundOrderDetail, OutboundOrderDetail.id == OutboundOrderAllocation.outbound_order_detail_id)
+        .join(RobotTask, RobotTask.id == OutboundOrderAllocation.robot_task_id)
         .filter(
             OutboundOrderAllocation.from_location_id == from_location_id,
             # OutboundOrderDetail.outbound_order_id == outbound_order_id,
             OutboundOrderAllocation.status == "initialize",
+            OutboundOrderAllocation.allocation_type == "outbound",
+            RobotTask.status == "initialize",
         )
         .first()
     )
@@ -818,10 +822,11 @@ def _check_stock_in_task(db: Session, from_location_id: int, outbound_order_id: 
         return allocation.robot_task_id
     return None
 
-def _full_stock_in_location(db: Session, location_id: int) -> bool:
+def _full_stock_in_location(db: Session, location_id: int) -> int:
     stocks = (
         db.query(ItemStock)
         .filter(ItemStock.location_id == location_id)
+        .filter(ItemStock.is_active.is_(True), ItemStock.quantity > 0)
         .filter(ItemStock.status.in_(["available", "split"]))
         .all()
     )
@@ -953,7 +958,13 @@ def _pick_allocated_sum():
     return func.coalesce(
         func.sum(
             case(
-                (OutboundOrderAllocation.allocation_type == "return", 0),
+                (
+                    or_(
+                        OutboundOrderAllocation.allocation_type == "return",
+                        OutboundOrderAllocation.status.in_(IGNORED_ALLOCATION_STATUSES),
+                    ),
+                    0,
+                ),
                 else_=OutboundOrderAllocation.quantity,
             )
         ),
@@ -1075,15 +1086,6 @@ def lacked_details(db: Session, order_id: int) -> list[LackedDetailResponse]:
         db.query(OutboundOrderDetail)
         .options(joinedload(OutboundOrderDetail.item))
         .filter(OutboundOrderDetail.outbound_order_id == order_id)
-        .filter(
-            exists(
-                select(1)
-                .where(
-                    OutboundOrderAllocation.outbound_order_detail_id
-                    == OutboundOrderDetail.id
-                )
-            )
-        )
         .order_by(OutboundOrderDetail.id)
         .all()
     )

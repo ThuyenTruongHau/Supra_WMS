@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session, joinedload, selectinload
 from app.modules.warehouse.inbound_order.inbound_celery_task import accept_inbound_task_task
 from sqlalchemy import desc
 from app.core.config import settings
-from app.core.cache import cache_set, cache_get
+from app.core.cache import cache_set
 
 from app.modules.masan.masan_inbound_excel import (
     COLUMN_ALIASES,
@@ -426,6 +426,12 @@ def _format_inbound_report_datetime(dt) -> str:
     return dt.strftime("%d/%m/%Y\n%H:%M")
 
 
+def _format_report_distance_m(distance_m: float | None) -> float | None:
+    if distance_m is None:
+        return None
+    return round(float(distance_m), 3)
+
+
 def _build_export_row(
     order: InboundOrder,
     detail: InboundOrderDetail,
@@ -470,6 +476,8 @@ def _build_export_row(
         _meta_value(meta, "pallet_count"),
         storage_location,
         locator,
+        (detail.sorting_persons or "").strip() or None,
+        _format_report_distance_m(detail.distance),
         detail.device or None,
         _format_inbound_report_datetime(detail.start_time),
         _format_inbound_report_datetime(detail.end_time),
@@ -910,9 +918,8 @@ def _location_name_sort_key(location_name: str | None) -> tuple[int, str]:
     digits = "".join(ch for ch in name if ch.isdigit())
     return (int(digits) if digits else -1, name)
 
-
 def caller_masan_inbound_order(
-    db: Session, location_ids: list[int], *, assign_robot_id: str | None = None
+    db: Session, location_ids: list[int], *, assign_robot_id: str | None = None, sorting_persons: str | None = None
 ) -> dict[str, Any]:
     DEFAULT_GROUP = [0, 3, 2, 1]
     list_details: list[InboundOrderDetail] = []
@@ -928,12 +935,13 @@ def caller_masan_inbound_order(
             .first()
         )
         if detail:
+            warehouse_id = detail.inbound_order.warehouse_id
             name = (
                 db.query(Location.location_name)
                 .filter(Location.id == location_id)
                 .scalar()
             )
-            warehouse_id = detail.inbound_order.warehouse_id
+            detail.sorting_persons = sorting_persons
             name = (name or "").strip()
             m = re.search(r"(\d{2})$", name)
             pos = m.group(1) if m else ""
@@ -941,6 +949,8 @@ def caller_masan_inbound_order(
                 continue  
             point = int(pos) % 4
             group.setdefault(point, []).append(detail.id)
+
+    db.commit()
 
     for point in DEFAULT_GROUP:
         list_details.extend(group.get(point, []))

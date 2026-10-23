@@ -27,6 +27,7 @@ export default function UserLayout() {
   const lockPageScroll =
     pathname === "/import" ||
     pathname === "/export" ||
+    pathname.startsWith("/export/zone/") ||
     pathname === "/monitor" ||
     pathname.startsWith("/monitor/") ||
     pathname === "/control-tower";
@@ -133,6 +134,8 @@ export default function UserLayout() {
             "flex min-h-0 flex-1 flex-col bg-canvas",
             operatorDesktopClass.mainPadding,
             lockPageScroll ? "overflow-hidden" : "overflow-y-auto",
+            lockPageScroll &&
+              "[&>*]:flex [&>*]:min-h-0 [&>*]:flex-1 [&>*]:flex-col",
           )}
         >
           <Outlet />

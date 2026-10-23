@@ -14,7 +14,7 @@ from datetime import datetime
 from app.modules.masan.masan_excel_io import load_masan_workbook
 from sqlalchemy.orm import Session, joinedload, selectinload
 
-from app.core.cache import cache_set, cache_get, cache_scan_keys, cache_delete, cache_delete_pattern
+from app.core.cache import cache_set, cache_get, cache_scan_keys, cache_delete, cache_delete_pattern, cache_replace_if_unchanged
 from app.modules.masan.masan_outbound_excel import (
     COLUMN_ALIASES,
     DATA_START_ROW,
@@ -34,6 +34,8 @@ from app.modules.warehouse.outbound_order.outbound_order_schema import (
 from app.modules.warehouse.outbound_order.outbound_order_service import (
     calculate_outbound_order,
     execute_outbound_task,
+    greedy_allocate_stocks_to_lines,
+    lacked_details,
     _settle_outbound_stock,
 )
 from app.modules.masan.masan_outbound_so_excel import (
@@ -52,7 +54,10 @@ from app.modules.masan.masan_schema import (
 )
 from app.modules.warehouse.location_map.location_model import Location
 from app.modules.warehouse.item.item_model import Item
-from app.modules.warehouse.item_stock.item_stock_model import ItemStock
+from app.modules.warehouse.item_stock.item_stock_model import (
+    ItemStock,
+    countable_stock_level_criterion,
+)
 from app.modules.warehouse.lot_number_utils import (
     coerce_masan_lot_cell,
     format_lot_for_masan_excel,
@@ -675,6 +680,12 @@ def _format_outbound_report_datetime(dt: datetime | None) -> str:
     return dt.strftime("%d/%m/%Y\n%H:%M")
 
 
+def _format_report_distance_m(distance_m: float | None) -> float | None:
+    if distance_m is None:
+        return None
+    return round(float(distance_m), 3)
+
+
 def _location_display_label(loc: Any) -> str:
     if loc is None:
         return ""
@@ -745,6 +756,9 @@ _OUTBOUND_REPORT_DETAIL_LOAD_OPTIONS = (
     selectinload(OutboundOrderDetail.allocations).joinedload(
         OutboundOrderAllocation.from_location
     ),
+    selectinload(OutboundOrderDetail.allocations).joinedload(
+        OutboundOrderAllocation.to_location
+    ),
 )
 
 
@@ -788,6 +802,13 @@ def _build_outbound_report_row(
         allocation.quantity,
         pallet_count if pallet_count not in (None, "") else None,
         _resolve_allocation_locator(allocation, detail),
+        (
+            str(allocation.to_location.location_name).strip()
+            if allocation.to_location and allocation.to_location.location_name
+            else None
+        ),
+        (allocation.sorting_persons or "").strip() or None,
+        _format_report_distance_m(allocation.distance),
         allocation.device or None,
         _format_outbound_report_datetime(allocation.start_time),
         _format_outbound_report_datetime(allocation.end_time),
@@ -1120,6 +1141,101 @@ def _detail_to_cache_line(detail: OutboundOrderDetail) -> dict[str, Any]:
         "locator": meta.get("locator"),
     }
 
+# def assign_cc_zone(db: Session, warehouse_id: int) -> None:                     
+#     # Reconcile even when every CC is occupied or there is no unfinished order.
+#     clear_completed_cc_assignments(db, warehouse_id)
+#     keys = cache_scan_keys(f"outbound:assigned_cc_location:{warehouse_id}:*")
+#     existed_locations: list[str] = []
+#     for key in keys:
+#         suffix = key.rsplit(":", 1)[-1]
+#         if suffix.isdigit():
+#             existed_locations.append(int(suffix))
+
+#     logger.info(f"Existed locations: {existed_locations}")
+
+#     numeric_suffix = cast(
+#         func.nullif(
+#             func.regexp_replace(Location.location_name, r"\D", "", "g"), ""
+#         ),
+#         Integer,
+#     )
+#     available_locations = (
+#         db.query(Location)
+#         .join(Zone, Zone.id == Location.zone_id)
+#         .filter(
+#             Location.warehouse_id == warehouse_id,
+#             Location.is_active.is_(True),
+#             Zone.code.in_(settings.zone_cc),
+#             ~Location.id.in_(existed_locations),
+#         )
+#         .order_by(numeric_suffix.asc().nulls_last(), Location.location_name.asc())
+#         .all()
+#     )
+
+#     logger.info(f"Available locations: {available_locations}")
+
+#     if not available_locations:
+#         return
+    
+#     _ensure_warehouse_exists(db, warehouse_id)
+#     available_orders = db.query(OutboundOrder).filter(
+#         OutboundOrder.status != "completed",
+#         OutboundOrder.warehouse_id == warehouse_id,
+#         # Explicit station resets retain historical orders without reassigning
+#         # their unfinished demand to freshly cleared CC locations.
+#         func.coalesce(OutboundOrder.details["cc_assignment_disabled"].as_boolean(), False).is_(False),
+#     ).all()
+#     if not available_orders:
+#         return
+#     order_ids = [o.id for o in available_orders]
+
+#     keys = cache_scan_keys(f"outbound:assigned_cc_details:{warehouse_id}:*")
+#     assigned_ids: list[int] = []
+#     for key in keys:
+#         suffix = key.rsplit(":", 1)[-1]
+#         if suffix.isdigit():
+#             assigned_ids.append(int(suffix))
+
+#     list_details = (
+#         db.query(OutboundOrderDetail)
+#         .options(joinedload(OutboundOrderDetail.item))
+#         .filter(
+#             OutboundOrderDetail.outbound_order_id.in_(order_ids),
+#             # OutboundOrderDetail.unallocated_quantity > 0,
+#             ~OutboundOrderDetail.id.in_(assigned_ids),
+#         )
+#         .all()
+#     )
+
+#     details_by_vehicle: dict[str, list] = defaultdict(list)
+#     reversed_vehicles_list = []
+#     for detail in list_details:
+#         meta = detail.details if isinstance(detail.details, dict) else {}
+#         raw = meta.get("vehicle_no")
+#         vehicle_number = str(raw).strip() if raw is not None else ""
+#         if not vehicle_number:
+#             vehicle_number = "no_vehicle"
+#         line = _detail_to_cache_line(detail)
+#         line["quantity"] = int(detail.unallocated_quantity)
+#         details_by_vehicle[vehicle_number].append(line)
+#         if vehicle_number not in reversed_vehicles_list:
+#             reversed_vehicles_list.append(vehicle_number)
+
+#     i = 0
+#     while i < len(available_locations) and i < len(reversed_vehicles_list):
+#         key = f"outbound:assigned_cc_location:{warehouse_id}:{available_locations[i].id}"
+#         lines = details_by_vehicle[reversed_vehicles_list[i]]
+#         outbound_order_id = lines[0].get("outbound_order_id")
+#         logger.info(f"Outbound order ID: {outbound_order_id}")
+#         for line in lines:
+#             cache_data = {
+#                 "zone": available_locations[i].zone.code,
+#                 "location_id": available_locations[i].id,
+#             }
+#             cache_set(f"outbound:assigned_cc_details:{warehouse_id}:{line['detail_id']}", cache_data, -1)
+#         cache_set(key, {"outbound_order_id": outbound_order_id, "zone": available_locations[i].zone.code, "vehicle_number": reversed_vehicles_list[i], "lines": lines}, -1)
+#         i += 1
+
 def assign_cc_zone(db: Session, warehouse_id: int) -> None:                     
     keys = cache_scan_keys(f"outbound:assigned_cc_location:{warehouse_id}:*")
     existed_locations: list[str] = []
@@ -1209,6 +1325,97 @@ def assign_cc_zone(db: Session, warehouse_id: int) -> None:
         cache_set(key, {"outbound_order_id": outbound_order_id, "zone": available_locations[i].zone.code, "vehicle_number": reversed_vehicles_list[i], "lines": lines}, -1)
         i += 1
 
+def clear_completed_cc_assignments(
+    db: Session, warehouse_id: int, *, order_id: int | None = None,
+    persist_locations: bool = True,
+) -> dict[str, int]:
+    """Reconcile completed DB details with both CC indexes, including old buckets.
+
+    The periodic caller has no pending DB writes. It commits recovered CC history
+    before deleting cache. Callback callers use persist_locations=False; records
+    still needing history recovery wait for the next periodic pass.
+    """
+    locations: dict[int, dict] = {}
+    assignments: dict[int, dict] = {}
+    candidates: dict[int, set[int]] = defaultdict(set)
+    for scanned in cache_scan_keys(f"outbound:assigned_cc_location:{warehouse_id}:*"):
+        suffix = scanned.rsplit(":", 1)[-1]
+        if not suffix.isdigit():
+            continue
+        loc_id = int(suffix)
+        bucket = cache_get(f"outbound:assigned_cc_location:{warehouse_id}:{loc_id}")
+        if not isinstance(bucket, dict):
+            continue
+        locations[loc_id] = bucket
+        for line in bucket.get("lines") or []:
+            detail_id = str(line.get("detail_id", ""))
+            if detail_id.isdigit():
+                candidates[int(detail_id)].add(loc_id)
+    for scanned in cache_scan_keys(f"outbound:assigned_cc_details:{warehouse_id}:*"):
+        suffix = scanned.rsplit(":", 1)[-1]
+        if not suffix.isdigit():
+            continue
+        detail_id = int(suffix)
+        meta = cache_get(f"outbound:assigned_cc_details:{warehouse_id}:{detail_id}")
+        if isinstance(meta, dict) and str(meta.get("location_id", "")).isdigit():
+            assignments[detail_id] = meta
+            candidates[detail_id].add(int(meta["location_id"]))
+    result = {"locations_deleted": 0, "locations_updated": 0, "details_deleted": 0, "history_saved": 0}
+    if not candidates:
+        return result
+    # Scalar columns bypass stale ORM status values after confirmation/callback.
+    rows = db.query(
+        OutboundOrderDetail.id, OutboundOrderDetail.outbound_order_id,
+        OutboundOrderDetail.status, OutboundOrderDetail.sorting_location_id,
+    ).join(OutboundOrder, OutboundOrder.id == OutboundOrderDetail.outbound_order_id).filter(
+        OutboundOrder.warehouse_id == warehouse_id,
+        OutboundOrderDetail.id.in_(candidates),
+    ).all()
+    order_by_detail = {row.id: row.outbound_order_id for row in rows}
+    completed = {row.id for row in rows if row.status == "completed"
+                 and (order_id is None or row.outbound_order_id == order_id)}
+    valid_locations = {identifier for (identifier,) in db.query(Location.id).filter(
+        Location.warehouse_id == warehouse_id,
+        Location.id.in_({loc for ids in candidates.values() for loc in ids}),
+    ).all()}
+    for row in rows:
+        if row.id not in completed or row.sorting_location_id is not None:
+            continue
+        known_locations = candidates[row.id] & valid_locations
+        if not persist_locations or len(known_locations) != 1:
+            completed.discard(row.id)
+            continue
+        result["history_saved"] += db.query(OutboundOrderDetail).filter(
+            OutboundOrderDetail.id == row.id,
+            OutboundOrderDetail.sorting_location_id.is_(None),
+        ).update({OutboundOrderDetail.sorting_location_id: next(iter(known_locations))}, synchronize_session=False)
+    if result["history_saved"]:
+        db.commit()
+    if not completed:
+        return result
+    for loc_id, bucket in locations.items():
+        lines = bucket.get("lines") or []
+        remaining = [line for line in lines if int(line.get("detail_id") or 0) not in completed]
+        refs = {detail_id for detail_id, ids in candidates.items() if loc_id in ids}
+        if not (refs & completed):
+            continue
+        replacement = None if not remaining and refs <= completed else {**bucket, "lines": remaining}
+        if replacement is not None:
+            replacement["outbound_order_id"] = next((order_by_detail[identifier]
+                for identifier in sorted(refs - completed) if identifier in order_by_detail), bucket.get("outbound_order_id"))
+        if cache_replace_if_unchanged(
+            f"outbound:assigned_cc_location:{warehouse_id}:{loc_id}", bucket, replacement,
+        ):
+            result["locations_deleted" if replacement is None else "locations_updated"] += 1
+    for detail_id, meta in assignments.items():
+        if detail_id in completed and cache_replace_if_unchanged(
+            f"outbound:assigned_cc_details:{warehouse_id}:{detail_id}", meta, None,
+        ):
+            result["details_deleted"] += 1
+    if any(result.values()):
+        logger.info("Cleared completed CC assignments warehouse_id=%s result=%s", warehouse_id, result)
+    return result
+
 def _clear_assigned_cc_location(warehouse_id: int, outbound_order_id: int) -> None:
     keys = cache_scan_keys(f"outbound:assigned_cc_location:{warehouse_id}:*")
     lines = []
@@ -1224,6 +1431,17 @@ def _clear_assigned_cc_location(warehouse_id: int, outbound_order_id: int) -> No
 
     for line in lines:
         cache_delete(f"outbound:assigned_cc_details:{warehouse_id}:{line['detail_id']}")
+
+# def _clear_cc_cache_if_order_completed(
+#     db: Session,
+#     warehouse_id: int,
+#     order_id: int,
+# ) -> None:
+#     status = db.query(OutboundOrder.status).filter(
+#         OutboundOrder.id == order_id, OutboundOrder.warehouse_id == warehouse_id,
+#     ).scalar()
+#     if status == "completed":
+#         clear_completed_cc_assignments(db, warehouse_id, order_id=order_id, persist_locations=False)
 
 def _clear_cc_cache_if_order_completed(
     db: Session,
@@ -1285,6 +1503,100 @@ def get_sorting_data_for_zone(
         "vehicle_number": bucket.get("vehicle_number"),
         "lines": enriched_lines,
     }
+
+# def get_item_needed_to_sorting(
+#     db: Session, warehouse_id: int, zone: str
+# ) -> dict[str, Any]:
+#     keys = cache_scan_keys(f"outbound:assigned_cc_location:{warehouse_id}:*")
+#     list_lines_raw: list[dict[str, Any]] = []
+#     for key in keys:
+#         suffix = key.rsplit(":", 1)[-1]
+#         if suffix.isdigit():
+#             location_id = int(suffix)
+#             bucket = cache_get(f"outbound:assigned_cc_location:{warehouse_id}:{location_id}")
+#             if bucket and bucket.get("zone") == zone:
+#                 lines = bucket.get("lines") or []
+#                 list_item_ids = [line.get("detail_id") for line in lines]
+#                 list_lines_raw.extend(list_item_ids)
+
+#     list_lines_raw = db.query(OutboundOrderDetail).filter(
+#         OutboundOrderDetail.id.in_(list_lines_raw),
+#     ).all()
+
+#     detail_ids = [d.id for d in list_lines_raw]
+
+#     list_lines = [line for line in list_lines_raw if line.unallocated_quantity > 0]
+#     item_ids: list[int] = []
+#     qty_by_item_id: dict[int, int] = defaultdict(int)
+#     for line in list_lines:
+#         item_id = line.item_id
+#         qty_by_item_id[item_id] += int(line.unallocated_quantity)
+#         if item_id not in item_ids:
+#             item_ids.append(item_id)
+
+
+#     if detail_ids:
+#         allocations = (
+#             db.query(OutboundOrderAllocation)
+#             .filter(
+#                 OutboundOrderAllocation.outbound_order_detail_id.in_(detail_ids),
+#                 OutboundOrderAllocation.robot_task_id.isnot(None),
+#             )
+#             .order_by(OutboundOrderAllocation.id)
+#             .all()
+#         )
+    
+#         by_task: dict[int, list[OutboundOrderAllocation]] = defaultdict(list)
+#         excluded_list = []
+#         for alloc in allocations:
+#             if alloc.outbound_order_detail_id in excluded_list:
+#                 continue
+#             if alloc.allocation_type == "outbound" and alloc.status not in ("completed", "failed", "cancelled"):
+#                 excluded_list.append(alloc.outbound_order_detail_id)
+#                 continue
+#             if alloc.allocation_type == "return":
+#                 by_task[alloc.outbound_order_detail_id].append(alloc)
+#     else:
+#         by_task = {}
+
+#     if not item_ids:
+#         return {
+#             "warehouse_id": warehouse_id,
+#             "zone": zone,
+#             "items": [],
+#             "line_count": len(list_lines),
+#             "return_tasks": by_task,
+#         }
+
+#     item_rows = (
+#         db.query(Item)
+#         .filter(Item.id.in_(item_ids), Item.warehouse_id == warehouse_id)
+#         .all()
+#     )
+#     item_by_id = {row.id: row for row in item_rows}
+
+#     items_payload: list[dict[str, Any]] = []
+#     for item_id in item_ids:
+#         item = item_by_id.get(item_id)
+#         if not item:
+#             continue
+#         items_payload.append(
+#             {
+#                 "item_id": item_id,
+#                 "sku": item.sku,
+#                 "item_name": item.name,
+#                 "total_quantity": qty_by_item_id[item_id],
+#             }
+#         )
+
+#     logger.info(f"Items payload: {items_payload}")
+#     return {
+#         "warehouse_id": warehouse_id,
+#         "zone": zone,
+#         "items": items_payload,
+#         "line_count": len(list_lines),
+#         "return_tasks": by_task,
+#     }
 
 def get_item_needed_to_sorting(
     db: Session, warehouse_id: int, zone: str
@@ -1379,6 +1691,173 @@ def get_item_needed_to_sorting(
         "line_count": len(list_lines),
         "return_tasks": by_task,
     }
+
+# def sending_masan_outbound_task(db: Session, warehouse_id: int, zone: str, item_id: int, to_location_id: int):
+#     target = db.query(Location).filter(
+#         Location.id == to_location_id,
+#         Location.warehouse_id == warehouse_id,
+#         Location.is_active.is_(True),
+#     ).first()
+#     if not target:
+#         raise ValueError("Vị trí VT không tồn tại trong kho đang chọn")
+
+#     keys = cache_scan_keys(f"outbound:assigned_cc_location:{warehouse_id}:*")
+#     cached_detail_ids: set[int] = set()
+#     for key in keys:
+#         suffix = key.rsplit(":", 1)[-1]
+#         if suffix.isdigit():
+#             location_id = int(suffix)
+#             bucket = cache_get(f"outbound:assigned_cc_location:{warehouse_id}:{location_id}")
+#             if bucket and bucket.get("zone") == zone:
+#                 lines = bucket.get("lines") or []
+#                 for line in lines:
+#                     if line.get("item_id") == item_id and line.get("detail_id") is not None:
+#                         cached_detail_ids.add(int(line["detail_id"]))
+
+#     # Keep retries for the same detail serialized, including partially picked lines.
+#     details = (
+#         db.query(OutboundOrderDetail)
+#         .join(OutboundOrder, OutboundOrder.id == OutboundOrderDetail.outbound_order_id)
+#         .filter(
+#             OutboundOrderDetail.id.in_(cached_detail_ids),
+#             OutboundOrderDetail.item_id == item_id,
+#             OutboundOrder.warehouse_id == warehouse_id,
+#         )
+#         .order_by(OutboundOrderDetail.id)
+#         .populate_existing()
+#         .with_for_update(of=OutboundOrderDetail)
+#         .all()
+#     )
+#     detail_ids = [detail.id for detail in details]
+#     by_locator: dict[str, list[OutboundOrderDetail]] = defaultdict(list)
+#     list_lines_db: list[OutboundOrderDetail] = []
+#     for detail in details:
+#         # Re-read after acquiring the lock: another call may just have allocated it.
+#         db.refresh(detail, ["unallocated_quantity"])
+#         if detail.unallocated_quantity <= 0:
+#             continue
+#         locator = str((detail.details or {}).get("locator") or "").strip()
+#         if locator:
+#             by_locator[locator].append(detail)
+#         else:
+#             list_lines_db.append(detail)
+
+#     missing_locators: list[str] = []
+#     for locator, locator_details in by_locator.items():
+#         source = (
+#             db.query(Location)
+#             .filter(
+#                 Location.warehouse_id == warehouse_id,
+#                 Location.is_active.is_(True),
+#                 or_(Location.location_name == locator, Location.location_code == locator),
+#             )
+#             .order_by(Location.id)
+#             .with_for_update(of=Location)
+#             .first()
+#         )
+#         stocks = []
+#         if source:
+#             stocks = (
+#                 db.query(ItemStock)
+#                 .filter(
+#                     ItemStock.location_id == source.id,
+#                     ItemStock.item_id == item_id,
+#                     ItemStock.is_active.is_(True),
+#                     ItemStock.status.in_(["available", "split"]),
+#                     ItemStock.quantity > 0,
+#                     countable_stock_level_criterion(),
+#                 )
+#                 .order_by(ItemStock.created_at, ItemStock.id)
+#                 .populate_existing()
+#                 .with_for_update(of=ItemStock)
+#                 .all()
+#             )
+#             for stock in stocks:
+#                 db.refresh(stock, ["available_quantity"])
+#             stocks = [stock for stock in stocks if stock.available_quantity > 0]
+#         if not stocks:
+#             missing_locators.append(locator)
+#             continue
+#         lines = [
+#             DetailForCalculate(
+#                 id=detail.id,
+#                 item_id=detail.item_id,
+#                 quantity=int(detail.unallocated_quantity),
+#                 detail_type=detail.detail_type,
+#                 details=detail.details or {},
+#             )
+#             for detail in locator_details
+#         ]
+#         greedy_allocate_stocks_to_lines(
+#             db, stocks, lines, locator_details[0].outbound_order_id, with_robot_task=True
+#         )
+
+#     if list_lines_db:
+#         details_by_order: dict[int, list[OutboundOrderDetail]] = defaultdict(list)
+#         for detail in list_lines_db:
+#             details_by_order[detail.outbound_order_id].append(detail)
+#         calculate_bodies: list[CalculateOutboundDetail] = []
+#         for order_id, details in details_by_order.items():
+#             line_items = [
+#                 DetailForCalculate(
+#                     id=d.id,
+#                     item_id=d.item_id,
+#                     quantity=int(d.unallocated_quantity),
+#                     detail_type=d.detail_type,
+#                     details=d.details if isinstance(d.details, dict) else {},
+#                 )
+#                 for d in details
+#             ]
+#             calculate_bodies.append(
+#                 CalculateOutboundDetail(
+#                     warehouse_id=warehouse_id,
+#                     outbound_order_id=order_id,
+#                     line_items=line_items,
+#                 )
+#             )
+        
+#         for body in calculate_bodies:
+#             calculate_outbound_order(db, body, strategy="fefo")
+
+#     db.flush()
+#     picked_allocation = (
+#         db.query(OutboundOrderAllocation)
+#         .join(RobotTask, RobotTask.id == OutboundOrderAllocation.robot_task_id)
+#         .options(joinedload(OutboundOrderAllocation.outbound_order_detail))
+#         .filter(
+#             OutboundOrderAllocation.outbound_order_detail_id.in_(detail_ids),
+#             OutboundOrderAllocation.status == "initialize",
+#             OutboundOrderAllocation.allocation_type == "outbound",
+#             OutboundOrderAllocation.robot_task_id.isnot(None),
+#             RobotTask.status == "initialize",
+#         )
+#         .order_by(OutboundOrderAllocation.id)
+#         .first()
+#     )
+
+#     if not picked_allocation:
+#         if missing_locators:
+#             raise ValueError(
+#                 f"Không có tồn khả dụng cho mã hàng tại Locator {', '.join(missing_locators)}. "
+#                 "Hãy kiểm kê/cập nhật tồn đúng Locator trước khi gọi lại."
+#             )
+#         raise ValueError("Không có phần hàng mới để gửi; kiểm tra nhu cầu và các lệnh đang xử lý")
+
+#     robot_task_id = picked_allocation.robot_task_id
+#     _pack_and_execute_robot_task(db, robot_task_id, picked_allocation, to_location_id)
+    
+#     all_lacked = [
+#         row.model_dump()
+#         for order_id in sorted({detail.outbound_order_id for detail in details})
+#         for row in lacked_details(db, order_id)
+#         if row.id in cached_detail_ids
+#     ]
+#     return {
+#         "warehouse_id": warehouse_id,
+#         "zone": zone,
+#         "item_id": item_id,
+#         "lacked": all_lacked,
+#     }    
 
 def sending_masan_outbound_task(db: Session, warehouse_id: int, zone: str, item_id: int, to_location_id: int):
     # Need optimize
@@ -1833,6 +2312,7 @@ def confirm_allocation_outbound(
     warehouse_id: int,
     zone: str,
     quantities: dict[int, int],
+    sorting_persons: str,
 ) -> None:
     allocation_ids = list(quantities.keys())
     if not allocation_ids:
@@ -1853,12 +2333,12 @@ def confirm_allocation_outbound(
     outbound_order = None
     for allocation in target_allocations:
         allocation.status = "confirmed"
+        allocation.sorting_persons = sorting_persons
         _delete_stock_ready_cache_for_allocation(
                 warehouse_id, zone, allocation.id, status="completed", quantity=quantities[allocation.id]
             )
-        if allocation.end_sorting_time is None and allocation.end_time is None:
+        if allocation.end_sorting_time is None:
             allocation.end_sorting_time = datetime.now()
-            allocation.end_time = datetime.now()
 
         db.flush()
 
@@ -1868,7 +2348,7 @@ def confirm_allocation_outbound(
             .filter(
                 OutboundOrderAllocation.outbound_order_detail_id == detail.id,
                 OutboundOrderAllocation.allocation_type == "outbound",
-                OutboundOrderAllocation.status not in ["completed", "confirmed"],
+                OutboundOrderAllocation.status.notin_(["completed", "confirmed", "failed", "cancelled"]),
             )
             .first()
         )
@@ -1882,6 +2362,8 @@ def confirm_allocation_outbound(
         db.commit()
         db.refresh(allocation.outbound_order_detail)
 
+        # db.refresh(detail, ["unallocated_quantity"])
+        # if not still_pending and detail.unallocated_quantity <= 0:
         if not still_pending:
             _clear_cache_details(db, warehouse_id, detail)
             outbound_order = detail.outbound_order
@@ -1931,7 +2413,10 @@ def confirm_allocation_outbound(
             
         db.flush()
 
-    
+    # Persist newly created return allocations before reconciling completion.
+    # db.commit()
+    # clear_completed_cc_assignments(db, warehouse_id)
+
 def _send_taking_stock(db: Session, robot_task_id: int, allocations: list[OutboundOrderAllocation]) -> None:
     logger.info(f"Sending taking stock for robot task {robot_task_id}")
     
@@ -1942,8 +2427,7 @@ def _send_taking_stock(db: Session, robot_task_id: int, allocations: list[Outbou
         detail = allocation.outbound_order_detail
         if not detail:
             continue
-        if allocation.start_sorting_time is None:
-            allocation.start_sorting_time = datetime.now()
+        
         warehouse_id = detail.outbound_order.warehouse_id
         sending_payloads[detail.id].append({
             "id": allocation.id,
@@ -2053,6 +2537,34 @@ def list_sorting_zone_cc_locations(
         "locations": items,
     }
 
+def start_sorting_time(db: Session, allocation_ids: list[int]) -> dict[str, Any]:
+    if not allocation_ids:
+        return {"started_at": None, "already_started": False}
+
+    allocations = (
+        db.query(OutboundOrderAllocation)
+        .filter(
+            OutboundOrderAllocation.id.in_(allocation_ids),
+            OutboundOrderAllocation.allocation_type == "outbound",
+        )
+        .all()
+    )
+    if not allocations:
+        return {"started_at": None, "already_started": False}
+
+    existing = [
+        row.start_sorting_time
+        for row in allocations
+        if row.start_sorting_time is not None
+    ]
+    if existing:
+        return {"started_at": min(existing), "already_started": True}
+
+    started_at = datetime.now()
+    for allocation in allocations:
+        allocation.start_sorting_time = started_at
+    db.commit()
+    return {"started_at": started_at, "already_started": False}
 
 #Fix bấm vị trí gọi lệnh vẫn ra chỗ đã được chọn - NG
 #Fix Chọn được vị trí cho đơn xuất.

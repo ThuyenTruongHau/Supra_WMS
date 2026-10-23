@@ -264,3 +264,53 @@ class LocationQrPrintResponse(BaseModel):
     quantity: int
     page_count: int
     qr_ids: list[str]
+
+
+class MapGraphSummaryResponse(BaseModel):
+    warehouse_id: int
+    source: str
+    loaded_at: datetime
+    node_count: int
+    edge_count: int
+    one_way_edge_count: int
+    shelf_node_count: int
+
+
+class MapRouteRequest(BaseModel):
+    start: str = Field(..., min_length=1, description="Node number/location_code or node name")
+    end: str = Field(..., min_length=1)
+    waypoints: list[str] = Field(default_factory=list, max_length=50)
+    optimize_order: bool = False
+    avoid_shelf_transit: bool = False
+    include_polyline: bool = True
+
+
+class MapDistanceResponse(BaseModel):
+    warehouse_id: int
+    from_location_code: str
+    to_location_code: str
+    distance_mm: float
+    distance_m: float
+    node_count: int
+    nodes: list[str]
+
+
+class MapRouteSegment(BaseModel):
+    from_node: str
+    to_node: str
+    distance_mm: float
+    nodes: list[str]
+
+
+class MapRouteResponse(BaseModel):
+    warehouse_id: int
+    total_distance_mm: float
+    algorithm: str
+    avoid_shelf_transit: bool
+    visit_order: list[str]
+    visit_order_names: list[str]
+    segments: list[MapRouteSegment]
+    nodes: list[str]
+    polyline: Optional[list[list[float]]] = None
+    expanded_nodes: int
+    elapsed_ms: float

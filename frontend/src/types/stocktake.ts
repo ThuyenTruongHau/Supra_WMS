@@ -106,3 +106,17 @@ export interface ConfirmStocktakeItemQuantityParams {
   stocktakeId: number;
   stocktakeItemId: number;
 }
+
+export interface StocktakeAddItemInput {
+  item_id: number;
+  location_id: number;
+  actual_quantity: number;
+  lot_number: string;
+  expiry_date?: string | null;
+  status: "available" | "split" | "damaged" | "quarantine" | "expired";
+}
+
+export interface AddStocktakeItemParams {
+  stocktakeId: number;
+  payload: StocktakeAddItemInput;
+}

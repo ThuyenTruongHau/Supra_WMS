@@ -77,6 +77,10 @@ import {
   PanelExpandButton,
   PanelFullscreenShell,
 } from "@/components/outbound/PanelFullscreen";
+import {
+  operatorZoneActionButtonClass,
+  useOperatorViewportTier,
+} from "@/utils/operatorViewportTier";
 
 export function LiveBadge({ label = "LIVE" }: { label?: string }) {
   return (
@@ -139,6 +143,7 @@ export default function SortingWaveStationBoard({
   warehouseId,
   clickableZoneIds = EMPTY_ZONE_IDS,
 }: SortingWaveStationBoardProps) {
+  const viewportTier = useOperatorViewportTier();
   const { data: sortingWavesData, isLoading: wavesLoading } = useSortingWaves(
     zoneId,
     { enabled: !hideWaveTabs },
@@ -901,7 +906,10 @@ export default function SortingWaveStationBoard({
                 variant="secondary"
                 icon={<ArrowLeftOutlined />}
                 onClick={onBack}
-                className="!h-9 shrink-0 !px-2.5 !text-sm"
+                className={cn(
+                  "shrink-0",
+                  operatorZoneActionButtonClass(viewportTier),
+                )}
               >
                 Chọn vị trí
               </Button>
@@ -1123,6 +1131,7 @@ export default function SortingWaveStationBoard({
             setPendingConfirmLocationName(null);
           }}
           warehouseId={warehouseId}
+          displayZoneId={zoneId}
           ccBucketZoneCode={ccBucketZoneCode}
           vtLocationId={pendingConfirmLocationId}
           vtLocationCode={pendingConfirmLocationCode}

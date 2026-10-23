@@ -3,7 +3,9 @@ import { Button, Loading, Modal, cn } from "@/components/ui";
 import type { FullLocationDetail } from "@/types/warehouseMap";
 import { getLocationDisplayLabel } from "@/utils/locationBin";
 import {
-  operatorModalWidthForTier,
+  operatorCallCommandModalWidthForTier,
+  operatorModalActionButtonClass,
+  operatorVtLocationPickButtonClass,
   useOperatorViewportTier,
 } from "@/utils/operatorViewportTier";
 
@@ -23,6 +25,7 @@ type Props = {
   vtZoneIds?: number[];
   isLoading?: boolean;
   failedZoneIds?: number[];
+  /** Parent opens the next dialog; onClose is reserved for cancelling selection. */
   onSelect: (pick: MasanVtLocationPick) => void;
   zIndex?: number;
 };
@@ -45,12 +48,23 @@ export default function MasanVtLocationPickerModal({
   );
 
   useEffect(() => {
-    const onResize = () => setViewportWidth(window.innerWidth);
+    const onResize = () => {
+      const vv = window.visualViewport;
+      setViewportWidth(Math.round(vv?.width ?? window.innerWidth));
+    };
+    onResize();
     window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
+    window.visualViewport?.addEventListener("resize", onResize);
+    return () => {
+      window.removeEventListener("resize", onResize);
+      window.visualViewport?.removeEventListener("resize", onResize);
+    };
   }, []);
 
-  const modalWidth = operatorModalWidthForTier(tier, viewportWidth);
+  const modalWidth = useMemo(
+    () => operatorCallCommandModalWidthForTier(tier, viewportWidth),
+    [tier, viewportWidth, open],
+  );
 
   const sortedLocations = useMemo(
     () =>
@@ -74,16 +88,13 @@ export default function MasanVtLocationPickerModal({
   }, [failedZoneIds, isLoading, vtZoneIds]);
 
   const handlePick = (loc: FullLocationDetail) => {
-    const name =
-      getLocationDisplayLabel(loc).trim() ||
-      (loc.location_name ?? "").trim() ||
-      loc.location_code;
+    const locationName =
+      (loc.location_name ?? "").trim() || loc.location_code;
     onSelect({
       locationId: loc.id,
       locationCode: loc.location_code,
-      locationName: name,
+      locationName,
     });
-    onClose();
   };
 
   return (
@@ -95,9 +106,14 @@ export default function MasanVtLocationPickerModal({
       centered
       destroyOnHidden
       zIndex={zIndex}
+      className="operator-call-command-modal"
       footer={
         <div className="flex justify-end">
-          <Button variant="secondary" size="large" onClick={onClose}>
+          <Button
+            variant="secondary"
+            onClick={onClose}
+            className={operatorModalActionButtonClass(tier)}
+          >
             Hủy
           </Button>
         </div>
@@ -134,7 +150,10 @@ export default function MasanVtLocationPickerModal({
                   key={loc.id}
                   type="button"
                   onClick={() => handlePick(loc)}
-                  className="flex min-h-[88px] flex-col items-center justify-center rounded-xl border-2 border-slate-200 bg-white px-3 py-4 text-center transition hover:border-brand-primary hover:bg-sky-50/80 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/40"
+                  className={cn(
+                    "flex flex-col items-center justify-center rounded-xl border-2 border-slate-200 bg-white px-3 text-center transition hover:border-brand-primary hover:bg-sky-50/80 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/40",
+                    operatorVtLocationPickButtonClass(tier),
+                  )}
                 >
                   <span className="font-mono text-xl font-black text-brand-dark">
                     {label}

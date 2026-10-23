@@ -9,6 +9,7 @@ import { getApiErrorMessage } from "@/utils/apiErrorMessage";
 import type { OutboundRobotTask } from "@/types/outbound";
 import { getRobotTaskDisplayStatus } from "@/utils/outboundRobotTaskDisplay";
 import { toDisplayInteger } from "@/utils/number";
+import { taskEndpointLocationName } from "@/utils/masanSortingReturnTasks";
 
 type Props = {
   sortingZoneCode: string;
@@ -44,23 +45,49 @@ export default function MasanSortingDispatchHistoryPanel({
       title: "Mã lệnh",
       dataIndex: "order_id",
       key: "order_id",
+      width: 148,
       ellipsis: true,
       render: (value: string) => (
-        <span className="font-mono text-xs">{value}</span>
+        <span className="block truncate font-mono text-xs" title={value}>
+          {value}
+        </span>
       ),
     },
     {
-      title: "Đường đi",
-      dataIndex: "task_path",
-      key: "task_path",
+      title: "Vị trí đầu",
+      key: "from_location",
+      width: 96,
+      align: "center",
       ellipsis: true,
-      render: (value: string | null) => value ?? "—",
+      render: (_value, record) => {
+        const label = taskEndpointLocationName(record, "from");
+        return (
+          <span className="block truncate font-medium" title={label}>
+            {label}
+          </span>
+        );
+      },
+    },
+    {
+      title: "Vị trí đích",
+      key: "to_location",
+      width: 96,
+      align: "center",
+      ellipsis: true,
+      render: (_value, record) => {
+        const label = taskEndpointLocationName(record, "to");
+        return (
+          <span className="block truncate font-medium" title={label}>
+            {label}
+          </span>
+        );
+      },
     },
     {
       title: "SL",
       dataIndex: "quantity",
       key: "quantity",
-      width: 72,
+      width: 56,
       align: "center",
       render: (value: number) => toDisplayInteger(value),
     },
@@ -68,7 +95,7 @@ export default function MasanSortingDispatchHistoryPanel({
       title: "Trạng thái",
       dataIndex: "status",
       key: "status",
-      width: 130,
+      width: 120,
       align: "center",
       render: (_value, record) => (
         <OutboundStatusTag status={getRobotTaskDisplayStatus(record)} />
@@ -110,15 +137,17 @@ export default function MasanSortingDispatchHistoryPanel({
           Chưa có lệnh robot
         </p>
       ) : (
-        <Table<OutboundRobotTask>
-          columns={columns}
-          dataSource={tasks}
-          pagination={false}
-          rowKey="order_id"
-          size="small"
-          scroll={{ x: 520, y: 200 }}
-          className="[&_.ant-table-thead_th]:!bg-slate-50 [&_.ant-table-thead_th]:!text-xs [&_.ant-table-cell]:!py-2"
-        />
+        <div className="w-full min-w-0">
+          <Table<OutboundRobotTask>
+            columns={columns}
+            dataSource={tasks}
+            pagination={false}
+            rowKey="order_id"
+            size="small"
+            tableLayout="fixed"
+            className="w-full [&_.ant-table]:!table-fixed [&_.ant-table-thead_th]:!bg-slate-50 [&_.ant-table-thead_th]:!text-xs [&_.ant-table-cell]:!py-2"
+          />
+        </div>
       )}
     </div>
   );

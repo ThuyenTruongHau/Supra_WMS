@@ -63,6 +63,28 @@ def cache_delete(key: str) -> None:
     get_redis().delete(_prefixed_key(key))
 
 
+def cache_replace_if_unchanged(key: str, expected: Any, value: Any) -> bool:
+    """Replace JSON (or delete for None) without overwriting a concurrent writer."""
+    client = get_redis()
+    prefixed = _prefixed_key(key)
+    raw = client.get(prefixed)
+    if raw is None or json.loads(raw) != expected:
+        return False
+    script = """
+    if redis.call('GET', KEYS[1]) ~= ARGV[1] then return 0 end
+    if ARGV[2] == 'delete' then
+        redis.call('DEL', KEYS[1])
+    else
+        local ttl = redis.call('PTTL', KEYS[1])
+        if ttl > 0 then redis.call('SET', KEYS[1], ARGV[3], 'PX', ttl)
+        else redis.call('SET', KEYS[1], ARGV[3]) end
+    end
+    return 1
+    """
+    return bool(client.eval(script, 1, prefixed, raw,
+        "delete" if value is None else "replace", json.dumps(value, default=str)))
+
+
 def cache_exists(key: str) -> bool:
     return bool(get_redis().exists(_prefixed_key(key)))
 

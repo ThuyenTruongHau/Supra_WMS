@@ -1,10 +1,12 @@
 from sqlalchemy import (
-    Column, Integer, String, Text, DateTime, ForeignKey, Numeric, func, JSON, select, table, column, and_, exists, case, or_
+    Column, Integer, Float, String, Text, DateTime, ForeignKey, Numeric, func, JSON, select, table, column, and_, exists, case, or_
 )
 from sqlalchemy.orm import relationship, column_property
 from sqlalchemy.dialects.postgresql import JSONB
 
 from app.core.database import Base
+
+IGNORED_ALLOCATION_STATUSES = ("failed", "cancelled")
 
 _outbound_order_detail_tbl = table(
     "outbound_order_detail",
@@ -160,6 +162,7 @@ def _outbound_allocated_quantity(detail_id_col):
         )
         .where(
             _outbound_order_allocation_tbl.c.outbound_order_detail_id == detail_id_col,
+            _outbound_order_allocation_tbl.c.status.notin_(IGNORED_ALLOCATION_STATUSES),
         )
         .correlate_except(_outbound_order_allocation_tbl)
         .scalar_subquery()
@@ -170,6 +173,13 @@ def _outbound_order_allocation_exists(detail_id_col, *criteria):
         select(1)
         .where(
             _outbound_order_allocation_tbl.c.outbound_order_detail_id == detail_id_col,
+            or_(
+                _outbound_order_allocation_tbl.c.status.notin_(IGNORED_ALLOCATION_STATUSES),
+                and_(
+                    _outbound_order_allocation_tbl.c.allocation_type == "return",
+                    _outbound_order_allocation_tbl.c.status == "failed",
+                ),
+            ),
             *criteria,
         )
         .correlate_except(_outbound_order_allocation_tbl)
@@ -262,6 +272,7 @@ class OutboundOrderDetail(Base):
     )
 
     status = column_property(_outbound_detail_status_expr(id, quantity))
+    unallocated_quantity = column_property(quantity - _outbound_allocated_quantity(id))
 
 class OutboundOrderAllocation(Base):
     """Outbound order allocation."""
@@ -278,9 +289,13 @@ class OutboundOrderAllocation(Base):
     extracted = Column(Integer, nullable=True, default=0)
     device = Column(String(50), nullable=True, index=True)
     start_time = Column(DateTime(timezone=True), nullable=True)
+    start_battery = Column(String(50), nullable=True)
     end_time = Column(DateTime(timezone=True), nullable=True)
+    end_battery = Column(String(50), nullable=True)
     start_sorting_time = Column(DateTime(timezone=True), nullable=True)
     end_sorting_time = Column(DateTime(timezone=True), nullable=True)
+    sorting_persons = Column(String(255), nullable=True)
+    distance = Column(Float, nullable=True)
     robot_task_id = Column(Integer, ForeignKey("robot_task.id"), nullable=True, index=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())

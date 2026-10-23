@@ -74,6 +74,15 @@ def list_staff_usernames(_current_user: CurrentUser, db: DbSession):
 
 
 @router.get(
+    "/users/staff",
+    response_model=UserListResponse,
+)
+def list_staff_users(_current_user: CurrentUser, db: DbSession):
+    """Active users excluding admin (operator assignee pickers)."""
+    return auth_service.list_staff_users(db)
+
+
+@router.get(
     "/users",
     response_model=UserListResponse,
     dependencies=[Depends(require_permission("user:read"))],

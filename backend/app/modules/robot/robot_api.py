@@ -20,6 +20,7 @@ router = APIRouter(tags=["Robot"])
 def receive_robot_data(payload: list[RobotTelemetry]) -> dict[str, int]:
     """RCS sends a complete fleet snapshot, replacing the previous one."""
     try:
+        # logger.info(f"Payload: {payload}")
         robot_telemetry_service.save_robot_data(payload)
     except RedisError as exc:
         logger.warning("Cannot store robot telemetry: %s", exc)

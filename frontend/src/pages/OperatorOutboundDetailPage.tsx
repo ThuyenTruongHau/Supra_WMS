@@ -50,8 +50,18 @@ import { useQueryClient } from "@tanstack/react-query";
 import { RobotStatusPanel } from "@/components/layout/OperatorStatusMetricPanels";
 import { useRobotData } from "@/hooks/useRobotData";
 import { buildRobotStatusRows } from "@/utils/robotStatus";
-
+import {
+  operatorZoneActionButtonClass,
+  useOperatorViewportTier,
+} from "@/utils/operatorViewportTier";
+import { useOutboundOperatorAssignees } from "@/store/useOperatorAssigneeStore";
+import {
+  hasOutboundOperatorAssignees,
+  OPERATOR_ASSIGNEE_REQUIRED_OUTBOUND,
+} from "@/utils/operatorSortingPersons";
 export default function OperatorOutboundDetailPage() {
+  const viewportTier = useOperatorViewportTier();
+  const outboundActionBtnClass = operatorZoneActionButtonClass(viewportTier);
   const { zoneId: zoneIdStr } = useParams<{ zoneId: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -64,6 +74,8 @@ export default function OperatorOutboundDetailPage() {
   }
 
   const warehouseId = selectedWarehouseId ?? 0;
+  const { usernames: outboundAssignees } = useOutboundOperatorAssignees(zoneId);
+  const outboundAssigneeReady = hasOutboundOperatorAssignees(outboundAssignees);
 
   const robotData = useRobotData();
   const robotRows = buildRobotStatusRows(robotData.data, {
@@ -178,6 +190,7 @@ export default function OperatorOutboundDetailPage() {
   };
 
   const handleVtPickerSelect = useCallback((pick: MasanVtLocationPick) => {
+    setVtPickerOpen(false);
     setDispatchVt(pick);
     setSortingItemsModalOpen(true);
   }, []);
@@ -285,6 +298,10 @@ export default function OperatorOutboundDetailPage() {
   ]);
 
   const handleCallRobot = () => {
+    if (!outboundAssigneeReady) {
+      message.warning(OPERATOR_ASSIGNEE_REQUIRED_OUTBOUND);
+      return;
+    }
     if (pendingTaskIds.length === 0) {
       message.warning("Không có task chờ gửi robot trong khu vực hiện tại.");
       return;
@@ -440,9 +457,24 @@ export default function OperatorOutboundDetailPage() {
             <Button
               variant="primary"
               icon={<PlayCircleOutlined />}
-              onClick={() => setVtPickerOpen(true)}
-              disabled={warehouseId <= 0 || !ccBucketZoneCode}
-              className="!h-10 !px-4 !text-base"
+              onClick={() => {
+                if (!outboundAssigneeReady) {
+                  message.warning(OPERATOR_ASSIGNEE_REQUIRED_OUTBOUND);
+                  return;
+                }
+                setVtPickerOpen(true);
+              }}
+              disabled={
+                warehouseId <= 0 ||
+                !ccBucketZoneCode ||
+                !outboundAssigneeReady
+              }
+              title={
+                !outboundAssigneeReady
+                  ? OPERATOR_ASSIGNEE_REQUIRED_OUTBOUND
+                  : undefined
+              }
+              className={outboundActionBtnClass}
             >
               Gọi lệnh
             </Button>
@@ -457,17 +489,21 @@ export default function OperatorOutboundDetailPage() {
                 ccLocationIds.length === 0
               }
               onClick={handleClearStation}
-              className="!h-10 !px-4 !text-base"
+              className={outboundActionBtnClass}
             >
               Clear station
             </Button>
-            <OperatorZoneCrossNavButton target="monitor" displayZoneId={zoneId} />
+            <OperatorZoneCrossNavButton
+              target="monitor"
+              displayZoneId={zoneId}
+              className={outboundActionBtnClass}
+            />
             <Button
               variant="secondary"
               icon={<EyeOutlined />}
               onClick={() => setWarehouseViewOpen(true)}
               disabled={warehouseId <= 0}
-              className="!h-10 !px-4 !text-base"
+              className={outboundActionBtnClass}
             >
               Xem kho
             </Button>
@@ -583,7 +619,14 @@ export default function OperatorOutboundDetailPage() {
                   <Button
                     variant="primary"
                     icon={<RobotOutlined />}
-                    disabled={pendingTaskIds.length === 0}
+                    disabled={
+                      !outboundAssigneeReady || pendingTaskIds.length === 0
+                    }
+                    title={
+                      !outboundAssigneeReady
+                        ? OPERATOR_ASSIGNEE_REQUIRED_OUTBOUND
+                        : undefined
+                    }
                     loading={sendTaskCommandsMutation.isPending}
                     onClick={handleCallRobot}
                     className="!h-10 !w-full justify-center !text-sm disabled:!bg-brand-primary/45 disabled:!text-white disabled:!opacity-100"
@@ -650,7 +693,8 @@ export default function OperatorOutboundDetailPage() {
           ccBucketZoneCode={ccBucketZoneCode}
           sortingZoneCode={vtSortingZoneCode}
           title={`Chọn mã hàng — ${dispatchVt.locationName}`}
-          subtitle={`Vị trí VT: ${dispatchVt.locationCode}`}
+          subtitle={`Vị trí VT: ${dispatchVt.locationName}`}
+          vtLocationId={dispatchVt.locationId}
           onConfirmExport={async (picked) => {
             await runVtSortingDispatch(picked, dispatchVt.locationId);
           }}

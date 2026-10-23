@@ -1,5 +1,6 @@
 import axiosInstance from "./axiosInstance";
 import type {
+  AddStocktakeItemParams,
   ConfirmStocktakeItemQuantityParams,
   CreateStocktakeInput,
   GetStocktakeItemsParams,
@@ -15,6 +16,15 @@ import type {
 
 const BASE = "/api/v1/stocktakes";
 const ITEMS_BASE = "/api/v1/stocktake-items";
+
+export const addStocktakeItemApi = async ({
+  stocktakeId, payload,
+}: AddStocktakeItemParams): Promise<StocktakeItemStock> => {
+  const { data } = await axiosInstance.post<StocktakeItemStock>(
+    `${BASE}/${stocktakeId}/items`, payload,
+  );
+  return data;
+};
 
 export const listStocktakesApi = async (
   params: GetStocktakesParams,

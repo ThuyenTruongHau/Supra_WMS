@@ -1,5 +1,13 @@
 import { useEffect, useState } from "react";
-import { OPERATOR_TABLET } from "@/constants/operatorDesktopSizes";
+import { operatorStageEl } from "@/components/layout/operatorStage";
+import {
+  OPERATOR_INBOUND_MAP_TUNING,
+  OPERATOR_INBOUND_MAP_TUNING_TABLET,
+  OPERATOR_STAGE,
+  OPERATOR_TABLET,
+  OPERATOR_WAVE_MAP_TUNING,
+  OPERATOR_WAVE_MAP_TUNING_TABLET,
+} from "@/constants/operatorDesktopSizes";
 
 export type OperatorViewportTier = "narrow" | "medium" | "wide" | "tv";
 
@@ -73,9 +81,9 @@ export function operatorPickSkuGridClass(tier: OperatorViewportTier): string {
 export function operatorPickSkuTileClass(tier: OperatorViewportTier): string {
   switch (tier) {
     case "narrow":
-      return "min-h-[4.25rem] rounded-xl border px-3 py-2.5";
+      return "min-h-20 rounded-xl border px-3 py-3";
     case "medium":
-      return "min-h-[4.75rem] rounded-xl border px-4 py-3";
+      return "min-h-20 rounded-xl border px-4 py-3";
     case "tv":
       return "min-h-[6.5rem] rounded-2xl border-2 px-5 py-4";
     default:
@@ -242,14 +250,277 @@ export function monitorSidebarType(tier: OperatorViewportTier) {
 }
 
 export function operatorPickFooterButtonClass(tier: OperatorViewportTier): string {
+  if (isOperatorTabletViewport(tier)) {
+    return operatorZoneActionButtonClass(tier) + " !min-w-[140px]";
+  }
   switch (tier) {
-    case "narrow":
-      return "!h-10 !min-w-[112px] !text-sm";
-    case "medium":
-      return "!h-11 !min-w-[128px] !text-base";
     case "tv":
       return "!h-14 !min-w-[180px] !text-xl !px-6";
     default:
       return "!h-12 !min-w-[148px] !text-lg";
   }
+}
+
+/** Footer modal operator — cùng cỡ nút map (Gọi lệnh, …). */
+export function operatorModalActionButtonClass(
+  tier: OperatorViewportTier,
+): string {
+  return operatorZoneActionButtonClass(tier);
+}
+
+/** Tablet 8" / stage scale — không áp dụng laptop (wide) hay TV. */
+export function isOperatorTabletViewport(tier: OperatorViewportTier): boolean {
+  return tier === "narrow" || tier === "medium";
+}
+
+export function operatorInboundMapTuningForTier(tier: OperatorViewportTier) {
+  return isOperatorTabletViewport(tier)
+    ? OPERATOR_INBOUND_MAP_TUNING_TABLET
+    : OPERATOR_INBOUND_MAP_TUNING;
+}
+
+export function operatorWaveMapTuningForTier(tier: OperatorViewportTier) {
+  return isOperatorTabletViewport(tier)
+    ? OPERATOR_WAVE_MAP_TUNING_TABLET
+    : OPERATOR_WAVE_MAP_TUNING;
+}
+
+/** Nút toolbar trang đơn nhập (map header, footer rightbar). */
+export function operatorInboundToolbarButtonClass(
+  tier: OperatorViewportTier,
+): string {
+  return isOperatorTabletViewport(tier)
+    ? "!h-12 !px-5 !text-base"
+    : "!h-10 !px-4 !text-base";
+}
+
+export function operatorInboundFooterButtonClass(
+  tier: OperatorViewportTier,
+): string {
+  return isOperatorTabletViewport(tier)
+    ? "!h-14 !w-full justify-center !text-lg"
+    : "!h-10 !w-full justify-center !text-sm";
+}
+
+/** Filter SKU + lọc ngày — panel rightbar (tablet). */
+export function operatorInboundRightbarFilterClass(
+  tier: OperatorViewportTier,
+): string {
+  if (!isOperatorTabletViewport(tier)) return "";
+  return operatorRightbarFilterTouchClass;
+}
+
+/** Rightbar xuất kho — cùng kích thước chạm với nhập kho. */
+export function operatorOutboundRightbarFilterClass(
+  tier: OperatorViewportTier,
+): string {
+  return operatorInboundRightbarFilterClass(tier);
+}
+
+const operatorRightbarFilterTouchClass = [
+  "[&_.ant-picker]:!h-14",
+  "[&_.ant-picker-input>input]:!text-lg",
+  "[&_.ant-input-affix-wrapper]:!min-h-14",
+  "[&_.ant-input-affix-wrapper]:!items-center",
+  "[&_.ant-input-affix-wrapper]:!py-2",
+  "[&_.ant-input]:!text-lg",
+  "[&_button]:!h-14",
+  "[&_button]:!min-w-[96px]",
+  "[&_button]:!text-lg",
+].join(" ");
+
+/** Nút thao tác map (Gọi lệnh, Xem kho, …) — xuất + monitor, tablet. */
+export function operatorZoneActionButtonClass(
+  tier: OperatorViewportTier,
+): string {
+  return isOperatorTabletViewport(tier)
+    ? "!h-20 !min-h-20 !px-8 !text-xl !font-bold"
+    : "!h-10 !px-4 !text-base";
+}
+
+/** @deprecated Dùng `operatorZoneActionButtonClass`. */
+export function operatorOutboundOverviewActionButtonClass(
+  tier: OperatorViewportTier,
+): string {
+  return operatorZoneActionButtonClass(tier);
+}
+
+/** Hàng chọn khu / Gọi lệnh trên overview (chỉ cao vùng bấm, giữ chữ). */
+export function operatorZoneOverviewPickRowClass(
+  tier: OperatorViewportTier,
+): string {
+  return isOperatorTabletViewport(tier) ? "min-h-20" : "";
+}
+
+/** @deprecated Dùng `operatorZoneOverviewPickRowClass`. */
+export function operatorOutboundOverviewCallCommandRowClass(
+  tier: OperatorViewportTier,
+): string {
+  return operatorZoneOverviewPickRowClass(tier);
+}
+
+/** Toolbar map — back vuông (monitor / xuất chi tiết). */
+export function operatorZoneToolbarBackButtonClass(
+  tier: OperatorViewportTier,
+): string {
+  return isOperatorTabletViewport(tier)
+    ? "!flex !h-20 !w-20 !min-h-20 !min-w-20 !items-center !justify-center !rounded-lg !p-0 [&_.ant-btn-icon]:!m-0 !text-2xl"
+    : "!flex !h-11 !w-11 !items-center !justify-center !rounded-lg !p-0 [&_.ant-btn-icon]:!m-0";
+}
+
+/** Thanh toolbar map — cao theo nút thao tác tablet. */
+export function operatorZoneToolbarShellClass(
+  tier: OperatorViewportTier,
+): string {
+  return isOperatorTabletViewport(tier)
+    ? "min-h-20 items-center gap-2 py-1"
+    : "!h-11 items-center gap-2";
+}
+
+/** Modal chọn VT (Gọi lệnh xuất / monitor). */
+export function operatorVtLocationPickButtonClass(
+  tier: OperatorViewportTier,
+): string {
+  return isOperatorTabletViewport(tier)
+    ? "min-h-20 py-5"
+    : "min-h-[88px] py-4";
+}
+
+/** Modal mount trong `.operator-stage` (tablet) — toạ độ layout 1920px, không dùng viewport vật lý. */
+export function operatorModalMountedInStage(): boolean {
+  return (
+    typeof document !== "undefined" &&
+    operatorStageEl.current != null &&
+    operatorStageEl.current.isConnected
+  );
+}
+
+/** Modal Gọi lệnh (chọn VT / SKU). */
+export function operatorCallCommandModalWidthForTier(
+  tier: OperatorViewportTier,
+  viewportWidth: number,
+): number {
+  if (operatorModalMountedInStage()) {
+    const stageW =
+      operatorStageEl.current?.clientWidth ?? OPERATOR_STAGE.width;
+    return Math.max(960, Math.round(stageW - 48));
+  }
+  if (tier === "tv") {
+    return Math.min(Math.round(viewportWidth * 0.88), 1600);
+  }
+  if (tier === "wide") {
+    return Math.min(Math.round(viewportWidth * 0.68), 1040);
+  }
+  return Math.min(Math.round(viewportWidth * 0.9), 960);
+}
+
+/** Modal chọn mã hàng — chiều cao body (theo stage hoặc viewport). */
+export function operatorSortingItemsModalBodyMaxHeight(
+  tier: OperatorViewportTier,
+): string {
+  if (operatorModalMountedInStage()) {
+    const stageH =
+      operatorStageEl.current?.clientHeight ?? OPERATOR_STAGE.height;
+    return `${Math.max(440, Math.round(stageH - 300))}px`;
+  }
+  if (isOperatorTabletViewport(tier)) {
+    return "calc(100dvh - 13rem)";
+  }
+  switch (tier) {
+    case "tv":
+      return "calc(100vh - 12.5rem)";
+    default:
+      return "calc(100vh - 11rem)";
+  }
+}
+
+export function operatorInboundSideTabBarClass(
+  tier: OperatorViewportTier,
+): string {
+  return isOperatorTabletViewport(tier) ? "h-14" : "h-12";
+}
+
+export function operatorInboundSideTabButtonClass(
+  tier: OperatorViewportTier,
+): string {
+  return isOperatorTabletViewport(tier)
+    ? "h-14 px-3 text-lg leading-none"
+    : "h-12 px-3 text-2xl leading-none";
+}
+
+/** Menu dropdown chọn robot nhập (FL 01 / FL 02). */
+export function operatorRobotPickerMenuClass(tier: OperatorViewportTier): string {
+  return isOperatorTabletViewport(tier)
+    ? "operator-robot-picker-menu operator-robot-picker-menu--tablet"
+    : "operator-robot-picker-menu";
+}
+
+export function operatorRobotPickerItemLabelClass(
+  tier: OperatorViewportTier,
+): string {
+  return isOperatorTabletViewport(tier)
+    ? "text-2xl font-bold tracking-wide"
+    : "text-lg font-semibold";
+}
+
+export function operatorRobotPickerItemIconClass(
+  tier: OperatorViewportTier,
+): string {
+  return isOperatorTabletViewport(tier) ? "text-2xl" : "text-lg";
+}
+
+export type OperatorAssigneeSelectToolbar = "zone" | "inbound";
+
+/** Class modifier — chiều cao trong operatorTabletScale.css (Ant Design 6: `.ant-select` root). */
+export function operatorAssigneeSelectTriggerModifier(
+  tier: OperatorViewportTier,
+  toolbar: OperatorAssigneeSelectToolbar = "zone",
+): string {
+  const tablet = isOperatorTabletViewport(tier);
+  if (tablet) {
+    return toolbar === "zone"
+      ? "operator-assignee-select-trigger--zone-tablet"
+      : "operator-assignee-select-trigger--inbound-tablet";
+  }
+  return toolbar === "zone"
+    ? "operator-assignee-select-trigger--zone"
+    : "operator-assignee-select-trigger--inbound";
+}
+
+/** Ô chọn người nhập / người xuất — cao khớp nút toolbar cạnh bên. */
+export function operatorAssigneeSelectTriggerClass(
+  tier: OperatorViewportTier,
+  toolbar: OperatorAssigneeSelectToolbar = "zone",
+): string {
+  const tablet = isOperatorTabletViewport(tier);
+  return [
+    "operator-assignee-select-trigger",
+    operatorAssigneeSelectTriggerModifier(tier, toolbar),
+    tablet ? "!min-w-[240px] !max-w-[400px]" : "!min-w-[200px] !max-w-[320px]",
+  ].join(" ");
+}
+
+/** Pixel height khớp `operatorZoneActionButtonClass` / `operatorInboundToolbarButtonClass`. */
+export function operatorAssigneeSelectTriggerHeightPx(
+  tier: OperatorViewportTier,
+  toolbar: OperatorAssigneeSelectToolbar = "zone",
+): number {
+  const tablet = isOperatorTabletViewport(tier);
+  if (tablet) return toolbar === "zone" ? 80 : 48;
+  return 40;
+}
+
+/** Dropdown danh sách nhân viên — style trong operatorTabletScale.css */
+export function operatorAssigneeSelectPopupClass(
+  tier: OperatorViewportTier,
+): string {
+  return isOperatorTabletViewport(tier)
+    ? "operator-assignee-select-popup operator-assignee-select-popup--tablet"
+    : "operator-assignee-select-popup";
+}
+
+export function operatorAssigneeSelectListHeight(
+  tier: OperatorViewportTier,
+): number {
+  return isOperatorTabletViewport(tier) ? 520 : 360;
 }

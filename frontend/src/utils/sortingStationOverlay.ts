@@ -3,7 +3,7 @@ import type {
   SortingStationFillStation,
 } from "@/types/outbound";
 import type { WarehouseLocation } from "@/types/warehouseLocation";
-import { toDisplayInteger } from "@/utils/number";
+import { toDisplayInteger } from "./number.ts";
 
 export function formatSortingCellLabel(
   detailLines: string[],

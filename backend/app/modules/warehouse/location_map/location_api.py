@@ -4,6 +4,7 @@ import json
 from typing import Annotated, Optional
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
+from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import Response
 from pydantic import ValidationError
 from sqlalchemy.orm import Session
@@ -24,9 +25,24 @@ from app.modules.warehouse.location_map.location_schema import (
     LocationsByLogicResponse,
     LocationsForMapResponse,
     MapDataResponse,
+    MapDistanceResponse,
+    MapGraphSummaryResponse,
     MapRemapEntry,
+    MapRouteRequest,
+    MapRouteResponse,
     MapSyncResult,
     ZoneMapLayoutResponse,
+)
+from app.modules.warehouse.location_map.map_graph_service import (
+    MapDistanceNotFound,
+    calculate_distance,
+    map_graph_service,
+)
+from app.modules.warehouse.location_map.map_route_algo import (
+    RouteError,
+    RouteUnreachableError,
+    WarehouseGraph,
+    plan_route,
 )
 
 router = APIRouter(tags=["Location_Map"])
@@ -251,7 +267,7 @@ async def import_warehouse_map(
 ):
     _require_zip(file)
     try:
-        return await location_service.import_warehouse_map(
+        result = await location_service.import_warehouse_map(
             db=db,
             warehouse_id=warehouse_id,
             upload=file,
@@ -260,6 +276,8 @@ async def import_warehouse_map(
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
+    await run_in_threadpool(map_graph_service.reload, warehouse_id)
+    return result
 
 
 @router.get(
@@ -321,6 +339,98 @@ def export_warehouse_map(warehouse_id: int, db: DbSession):
             "Content-Disposition": f'attachment; filename="{filename}"',
         },
     )
+
+
+def _graph_summary(graph: WarehouseGraph) -> MapGraphSummaryResponse:
+    return MapGraphSummaryResponse(
+        warehouse_id=graph.warehouse_id,
+        source=graph.source,
+        loaded_at=graph.loaded_at,
+        node_count=len(graph.graph),
+        edge_count=graph.edge_count,
+        one_way_edge_count=graph.one_way_edge_count,
+        shelf_node_count=len(graph.shelf_nodes),
+    )
+
+
+def _require_graph(warehouse_id: int) -> WarehouseGraph:
+    graph = map_graph_service.get(warehouse_id)
+    if graph is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"No route graph for warehouse_id={warehouse_id} (no active map or map load failed)",
+        )
+    return graph
+
+
+@router.get(
+    "/warehouse-maps/{warehouse_id}/graph",
+    response_model=MapGraphSummaryResponse,
+    dependencies=[Depends(require_warehouse_view_permission("map:read"))],
+)
+def get_map_graph_summary(warehouse_id: int):
+    return _graph_summary(_require_graph(warehouse_id))
+
+
+@router.post(
+    "/warehouse-maps/{warehouse_id}/graph/reload",
+    response_model=MapGraphSummaryResponse,
+    dependencies=[Depends(require_permission("map:import_map"))],
+)
+def reload_map_graph(warehouse_id: int):
+    graph = map_graph_service.reload(warehouse_id)
+    if graph is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"No route graph for warehouse_id={warehouse_id} (no active map or map load failed)",
+        )
+    return _graph_summary(graph)
+
+
+@router.get(
+    "/warehouse-maps/{warehouse_id}/distance",
+    response_model=MapDistanceResponse,
+    dependencies=[Depends(require_warehouse_view_permission("map:read"))],
+)
+def calculate_map_distance(
+    warehouse_id: int,
+    db: DbSession,
+    from_location_code: str = Query(..., min_length=1),
+    to_location_code: str = Query(..., min_length=1),
+):
+    """Travel distance between two location codes along connected map edges (read-only)."""
+    try:
+        return calculate_distance(db, warehouse_id, from_location_code, to_location_code)
+    except MapDistanceNotFound as e:
+        raise HTTPException(status_code=404, detail=str(e)) from e
+    except RouteUnreachableError as e:
+        raise HTTPException(status_code=422, detail=str(e)) from e
+    except RouteError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
+
+@router.post(
+    "/warehouse-maps/{warehouse_id}/route",
+    response_model=MapRouteResponse,
+    dependencies=[Depends(require_warehouse_view_permission("map:read"))],
+)
+def plan_map_route(warehouse_id: int, body: MapRouteRequest):
+    """Shortest route along map edges: start -> waypoints -> end (A*, read-only)."""
+    graph = _require_graph(warehouse_id)
+    try:
+        return plan_route(
+            graph,
+            body.start,
+            body.end,
+            body.waypoints,
+            optimize_order=body.optimize_order,
+            avoid_shelf_transit=body.avoid_shelf_transit,
+            include_polyline=body.include_polyline,
+        )
+    except RouteUnreachableError as e:
+        raise HTTPException(status_code=422, detail=str(e)) from e
+    except RouteError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
 @router.get(
     "/locations/by-logic/storage-area",

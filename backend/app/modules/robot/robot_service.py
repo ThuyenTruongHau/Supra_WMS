@@ -1,10 +1,15 @@
 import httpx
 from sqlalchemy.orm import Session, joinedload
 import json
+from app.modules.warehouse.location_map.location_model import Location
+from app.modules.warehouse.location_map.map_graph_service import (
+    MapDistanceNotFound,
+    calculate_distance,
+)
+from app.modules.warehouse.location_map.map_route_algo import RouteError
 
 from app.core.config import settings
 from app.socket.ws_events import publish_robot_task_completed
-from app.modules.warehouse.lot_number_utils import format_lot_number_display
 from app.modules.robot.robot_model import RobotTask, TaskStatus, MAPPING_STATUS
 from app.modules.warehouse.inbound_order.inbound_order_model import InboundOrderDetail
 from app.modules.warehouse.item_stock.item_stock_model import ItemStock
@@ -13,10 +18,11 @@ from app.modules.warehouse.outbound_order.outbound_order_model import (
     OutboundOrderAllocation,
     OutboundOrderDetail,
 )
+from app.modules.robot.robot_telemetry_service import robot_telemetry
 from app.modules.warehouse.transaction_history.history_model import Transaction, History
 from app.modules.warehouse.notificcation.notification_service import check_and_create_notifications_under_over_min_max
 from app.core.logger import get_logger
-from app.core.cache import cache_set, cache_get
+from app.core.cache import cache_get
 from datetime import datetime
 
 logger = get_logger("main")
@@ -125,6 +131,40 @@ class TaskStatusService:
             db.rollback()
             raise
 
+    def _distance_m(
+        self,
+        db: Session,
+        warehouse_id: int,
+        from_location: Location | None,
+        to_location: Location | None,
+    ) -> float | None:
+        """Never raises: a failure here must not make Celery retry an already settled callback."""
+        if from_location is None or to_location is None:
+            return None
+        try:
+            result = calculate_distance(
+                db,
+                warehouse_id,
+                from_location.location_code,
+                to_location.location_code,
+            )
+        except (MapDistanceNotFound, RouteError) as exc:
+            logger.warning(
+                "Cannot calculate distance %s -> %s: %s",
+                from_location.location_code,
+                to_location.location_code,
+                exc,
+            )
+            return None
+        except Exception:
+            logger.exception(
+                "Distance calculation failed %s -> %s",
+                from_location.location_code,
+                to_location.location_code,
+            )
+            return None
+        return result["distance_m"]
+
     def receive_task_status(self, db: Session, payload: dict) -> TaskStatus:
         order_id = payload.get("orderId")
         if not order_id:
@@ -157,6 +197,9 @@ class TaskStatusService:
                 detail.device = payload.get("deviceNum")
             if detail.start_time is None:
                 detail.start_time = datetime.now()
+                robot_data = robot_telemetry.get_robot_data(payload.get("deviceNum"))
+                if robot_data is not None:
+                    detail.start_battery = robot_data.get("battery")
         elif robot_task.outbound_order_allocations:
             allocations = robot_task.outbound_order_allocations
             outbound_order = allocations[0].outbound_order_detail.outbound_order
@@ -171,14 +214,24 @@ class TaskStatusService:
         if ics_status in MAPPING_STATUS:
             if robot_task.inbound_order_detail_id is not None:
                 detail.status = MAPPING_STATUS[ics_status]
+                warehouse_id = detail.inbound_order.warehouse_id
+
                 if MAPPING_STATUS[ics_status] == "completed":
                     logger.info(f"Receive completed for {order_id}")
+                    # Before settling: _settle_inbound_stock commits, so distance is saved with it.
+                    if detail.distance is None:
+                        detail.distance = self._distance_m(
+                            db, warehouse_id, detail.from_location, detail.to_location
+                        )
                     self._settle_inbound_stock(db, detail)
+
                     if detail.end_time is None:
                         detail.end_time = datetime.now()
+                        robot_data = robot_telemetry.get_robot_data(payload.get("deviceNum"))
+                        if robot_data is not None:
+                            detail.end_battery = robot_data.get("battery")
 
                 if MAPPING_STATUS[ics_status] in ["completed", "cancelled", "failed"]:
-                    warehouse_id = detail.inbound_order.warehouse_id
                     cache_data = cache_get(f"inbound:caller_masan_inbound_order:{warehouse_id}")
                     from app.modules.masan.masan_inbound_service import _run_inbound_task
                     if cache_data:
@@ -186,16 +239,41 @@ class TaskStatusService:
                         assign_robot_id = cache_data.get("assign_robot_id", None)
                         _run_inbound_task(db, warehouse_id, list_details, assign_robot_id=assign_robot_id, number_sending = 1)
             else:
+                distances: dict[tuple[int | None, int | None], float | None] = {}
                 for allocation in allocations:
                     if allocation.device is None:
                         allocation.device = payload.get("deviceNum")
                     if allocation.start_time is None:
                         allocation.start_time = datetime.now()
-                    allocation.status = (
-                        "pre_completed"
-                        if MAPPING_STATUS[ics_status] == "completed" and allocation.allocation_type == "outbound"
-                        else MAPPING_STATUS[ics_status]
-                    )
+                        robot_data = robot_telemetry.get_robot_data(payload.get("deviceNum"))
+                        if robot_data is not None:
+                            allocation.start_battery = robot_data.get("battery")
+
+                    if allocation.distance is None:
+                        key = (allocation.from_location_id, allocation.to_location_id)
+                        if key not in distances:
+                            distances[key] = self._distance_m(
+                                db,
+                                outbound_order.warehouse_id,
+                                allocation.from_location,
+                                allocation.to_location,
+                            )
+                        allocation.distance = distances[key]
+                    # allocation.status = (
+                    #     "pre_completed"
+                    #     if MAPPING_STATUS[ics_status] == "completed" and allocation.allocation_type == "outbound"
+                    #     else MAPPING_STATUS[ics_status]
+                    # )
+                    if MAPPING_STATUS[ics_status] == "completed" and allocation.allocation_type == "outbound":
+                        allocation.status = "pre_completed"
+                        if allocation.end_time is None:
+                            allocation.end_time = datetime.now()
+                            robot_data = robot_telemetry.get_robot_data(payload.get("deviceNum"))
+                            if robot_data is not None:
+                                allocation.end_battery = robot_data.get("battery")
+
+                    else:
+                        allocation.status = MAPPING_STATUS[ics_status]
 
                     if allocation.status == "completed":
                         from app.modules.warehouse.outbound_order.outbound_order_service import (
@@ -204,6 +282,9 @@ class TaskStatusService:
                         _settle_outbound_stock(db, [allocation])
                         if allocation.end_time is None:
                             allocation.end_time = datetime.now()
+                            robot_data = robot_telemetry.get_robot_data(payload.get("deviceNum"))
+                            if robot_data is not None:
+                                allocation.end_battery = robot_data.get("battery")
 
                 if MAPPING_STATUS[ics_status] == "completed":
                     from_location = allocations[0].from_location
@@ -213,8 +294,7 @@ class TaskStatusService:
                     stocks = db.query(ItemStock).filter(ItemStock.location_id == from_location.id, ItemStock.is_active.is_(True)).all()
                     for stock in stocks:
                         stock.location_id = to_location.id
-                        
-
+                    
                     from app.modules.masan.masan_outbound_service import (
                         _send_taking_stock, _clear_cc_cache_if_order_completed,
                     )

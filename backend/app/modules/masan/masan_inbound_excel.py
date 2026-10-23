@@ -32,6 +32,8 @@ EXPORT_HEADERS: tuple[str, ...] = (
 )
 
 INBOUND_REPORT_EXTRA_HEADERS: tuple[str, ...] = (
+    "Người nhập",
+    "Quãng đường (m)",
     "Robot",
     "Thời gian bắt đầu",
     "Thời gian kết thúc",
@@ -57,6 +59,8 @@ INBOUND_REPORT_COLUMN_WIDTHS: tuple[float, ...] = (
     10.0,  # Số pallet
     14.0,  # Vị trí để
     14.0,  # Locator
+    18.0,  # Người nhập
+    12.0,  # Quãng đường (m)
     10.0,  # Robot
     14.0,  # Thời gian bắt đầu
     14.0,  # Thời gian kết thúc
@@ -69,7 +73,8 @@ DATA_ROW_HEIGHT = 20.0
 # Columns that must stay text (avoid scientific notation / leading-zero loss).
 TEXT_FORMAT_COLUMNS = frozenset({5, 9})  # Delivery, LOT
 INBOUND_REPORT_QUANTITY_COLUMN = 11
-WRAP_TEXT_COLUMNS = frozenset({1, 8, 16, 17})  # Ngày/Giờ, Tên Item, thời gian robot
+INBOUND_REPORT_DISTANCE_COLUMN = 16
+WRAP_TEXT_COLUMNS = frozenset({1, 8, 15, 18, 19})  # Ngày/Giờ, Tên Item, người nhập, thời gian robot
 
 _TITLE_FILL = PatternFill("solid", fgColor="FFFF00")
 _HEADER_FONT = Font(bold=True, size=10)
@@ -103,7 +108,7 @@ def apply_export_cell_style(ws: Worksheet, row: int, column: int) -> None:
         cell.number_format = "@"
     if column in WRAP_TEXT_COLUMNS:
         cell.alignment = _LEFT_TOP_WRAP
-    elif column == INBOUND_REPORT_QUANTITY_COLUMN:
+    elif column in (INBOUND_REPORT_QUANTITY_COLUMN, INBOUND_REPORT_DISTANCE_COLUMN):
         cell.alignment = Alignment(horizontal="right", vertical="center")
     else:
         cell.alignment = _LEFT_WRAP

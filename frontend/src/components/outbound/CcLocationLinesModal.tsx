@@ -124,13 +124,20 @@ export default function CcLocationLinesModal({
 }: Props) {
   const [reAssignOpen, setReAssignOpen] = useState(false);
   const [pickingListOpen, setPickingListOpen] = useState(false);
+  const [pickingListSession, setPickingListSession] = useState<{
+    vehicleNo: string;
+    locationId: number | null;
+  } | null>(null);
   const tier = useOperatorViewportTier();
 
   useEffect(() => {
-    if (!open) {
-      setReAssignOpen(false);
+    if (open) {
       setPickingListOpen(false);
+      setPickingListSession(null);
+      setReAssignOpen(false);
+      return;
     }
+    setReAssignOpen(false);
   }, [open]);
 
   const vehicleNumber = (data?.vehicle_number ?? "").trim();
@@ -334,6 +341,7 @@ export default function CcLocationLinesModal({
   };
 
   const reAssignZIndex = zIndex != null ? zIndex + 10 : undefined;
+  const pickingListZIndex = zIndex != null ? zIndex + 20 : undefined;
 
   const modalStyles: ModalProps["styles"] = {
     body: {
@@ -348,7 +356,7 @@ export default function CcLocationLinesModal({
   return (
     <>
     <Modal
-      open={open}
+      open={open && !pickingListOpen}
       onCancel={onClose}
       width={modalWidth}
       styles={modalStyles}
@@ -430,7 +438,14 @@ export default function CcLocationLinesModal({
                 className={cn(
                   tier === "tv" ? "!h-12 !text-base" : tier === "narrow" && "!h-9 !text-sm",
                 )}
-                onClick={() => setPickingListOpen(true)}
+                onClick={() => {
+                  setPickingListSession({
+                    vehicleNo: vehicleNumber,
+                    locationId: locationId ?? null,
+                  });
+                  setPickingListOpen(true);
+                  onClose();
+                }}
               >
                 Picking list PDF
               </Button>
@@ -561,9 +576,13 @@ export default function CcLocationLinesModal({
       <MasanPickingListModal
         open={pickingListOpen}
         warehouseId={warehouseId}
-        vehicleNo={vehicleNumber}
-        locationId={locationId}
-        onClose={() => setPickingListOpen(false)}
+        vehicleNo={pickingListSession?.vehicleNo ?? vehicleNumber}
+        locationId={pickingListSession?.locationId ?? locationId}
+        zIndex={pickingListZIndex}
+        onClose={() => {
+          setPickingListOpen(false);
+          setPickingListSession(null);
+        }}
         onDownloadComplete={onPickingListDownloadComplete}
       />
     </>

@@ -1,3 +1,4 @@
+import asyncio
 import uvicorn
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
@@ -6,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.modules.auth.auth_api import router as auth_router
 from app.modules.warehouse.warehouse_zone.warehouse_api import router as warehouse_router
 from app.modules.warehouse.location_map.location_api import router as location_router
+from app.modules.warehouse.location_map.map_graph_service import map_graph_service
 from app.modules.warehouse.item.item_api import router as item_router
 from app.modules.warehouse.item_stock.item_stock_api import router as item_stock_router
 from app.modules.warehouse.transaction_history.history_api import router as transaction_router
@@ -48,6 +50,11 @@ async def lifespan(app: FastAPI):
     except redis.RedisError as e:
         logger.error("Redis connection failed: %s", e)
         raise RuntimeError("Cannot connect to Redis") from e
+    try:
+        loaded = await asyncio.to_thread(map_graph_service.load_all)
+        logger.info("Route graphs loaded for %s warehouse(s)", loaded)
+    except Exception:
+        logger.exception("Route graph preload failed; graphs load lazily on first use")
     yield
     # stop app
     close_redis()

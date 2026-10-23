@@ -23,8 +23,46 @@ body.operator-ui.operator-stage-active {
   height: 100dvh;
 }
 
+/** Stage scale: con trực tiếp phải fill chiều cao pixel (Monitor / Export full-screen). */
+.operator-stage {
+  display: flex;
+  flex-direction: column;
+}
+
+.operator-stage > .flex.h-full,
+.operator-stage > .flex.w-full {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+}
+
+/** Monitor overview — cùng chuỗi flex như tab Xuất (stage @container 1920px). */
+body.operator-ui.operator-stage-active .operator-monitor-overview-panel {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+}
+
+body.operator-ui.operator-stage-active .operator-monitor-overview-grid {
+  flex: 1 1 auto;
+  min-height: 0;
+  align-content: stretch;
+  /* Một hàng 2 cột trên stage — row phải ăn chiều cao còn lại (auto-rows mặc định không fill). */
+  grid-template-rows: minmax(0, 1fr);
+}
+
+body.operator-ui.operator-stage-active .operator-monitor-overview-grid > * {
+  min-height: 0;
+  height: 100%;
+}
+
 .operator-stage .operator-header-clock {
   display: block !important;
+}
+
+/** Gradient + bg-clip-text hay mất trên stage scale — giữ chữ đậm. */
+body.operator-ui .operator-stage header h1 {
+  color: var(--color-brand-dark);
 }
 
 @media (max-width: 1280px) {
@@ -48,4 +86,167 @@ body.operator-ui.operator-stage-active {
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
   touch-action: pan-x pan-y;
+}
+
+/** Modal trong stage — full khung layout (width prop tính theo 1920px). */
+.operator-stage .ant-modal-wrap .ant-modal {
+  max-width: calc(100% - 3rem) !important;
+}
+
+/** Modal gọi lệnh — một thanh cuộn (modal), không cuộn trong Ant Table. */
+.operator-modal-single-scroll .ant-table-wrapper,
+.operator-modal-single-scroll .ant-table-container,
+.operator-modal-single-scroll .ant-table-content,
+.operator-modal-single-scroll .ant-table-body {
+  overflow: visible !important;
+  max-height: none !important;
+}
+
+/** Tab Lệnh gọi — cuộn trong thân bảng, không đẩy thanh tab. */
+.operator-inbound-commands-table .ant-table-wrapper,
+.operator-inbound-commands-table .ant-spin-nested-loading,
+.operator-inbound-commands-table .ant-spin-container {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+}
+
+.operator-inbound-commands-table .ant-table {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.operator-inbound-commands-table .ant-table-container {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.operator-inbound-commands-table .ant-table-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto !important;
+}
+
+/** Dropdown chọn robot FL — danh sách to, dễ chạm tablet. */
+.operator-robot-picker-menu.ant-dropdown-menu {
+  min-width: 20rem;
+  padding: 0.35rem;
+}
+
+.operator-robot-picker-menu .ant-dropdown-menu-item {
+  align-items: center;
+  min-height: 2.75rem;
+  padding: 0.65rem 1rem !important;
+  font-size: 1.125rem;
+  line-height: 1.35;
+}
+
+.operator-robot-picker-menu .ant-dropdown-menu-item-icon {
+  margin-inline-end: 0.75rem !important;
+  font-size: 1.125rem;
+}
+
+.operator-robot-picker-menu--tablet.ant-dropdown-menu {
+  min-width: 26rem;
+  padding: 0.5rem;
+}
+
+.operator-robot-picker-menu--tablet .ant-dropdown-menu-item {
+  min-height: 3.75rem;
+  padding: 0.85rem 1.15rem !important;
+  font-size: 1.5rem;
+}
+
+.operator-robot-picker-menu--tablet .ant-dropdown-menu-item-icon {
+  margin-inline-end: 1rem !important;
+  font-size: 1.5rem;
+}
+
+/**
+ * Select người nhập / xuất — trigger (Ant Design 6: height trên `.ant-select`, không còn `.ant-select-selector`).
+ * Khớp `!h-20` / `!h-12` / `!h-10` của nút toolbar operator.
+ */
+.operator-assignee-select-trigger.ant-select {
+  display: inline-flex !important;
+  align-items: center !important;
+  max-width: 100%;
+}
+
+.operator-assignee-select-trigger--zone.ant-select {
+  min-height: 2.5rem !important;
+  height: 2.5rem !important;
+  font-size: 1rem !important;
+}
+
+.operator-assignee-select-trigger--zone.ant-select-multiple {
+  height: auto !important;
+  min-height: 2.5rem !important;
+}
+
+.operator-assignee-select-trigger--inbound.ant-select {
+  min-height: 2.5rem !important;
+  height: 2.5rem !important;
+  font-size: 1rem !important;
+}
+
+.operator-assignee-select-trigger--zone-tablet.ant-select {
+  min-height: 5rem !important;
+  height: 5rem !important;
+  font-size: 1.25rem !important;
+  line-height: 1.35 !important;
+}
+
+.operator-assignee-select-trigger--zone-tablet.ant-select-multiple {
+  height: auto !important;
+  min-height: 5rem !important;
+  padding-block: 0.35rem !important;
+}
+
+.operator-assignee-select-trigger--inbound-tablet.ant-select {
+  min-height: 3rem !important;
+  height: 3rem !important;
+  font-size: 1rem !important;
+}
+
+.operator-assignee-select-trigger--zone-tablet.ant-select .ant-select-placeholder,
+.operator-assignee-select-trigger--zone-tablet.ant-select .ant-select-content,
+.operator-assignee-select-trigger--zone-tablet.ant-select .ant-select-content-item,
+.operator-assignee-select-trigger--inbound-tablet.ant-select .ant-select-placeholder {
+  font-size: inherit !important;
+}
+
+/** Select người nhập / người xuất — dropdown rộng, chữ to (desktop + tablet). */
+.operator-assignee-select-popup.ant-select-dropdown {
+  min-width: 22rem;
+  padding: 0.35rem 0;
+}
+
+.operator-assignee-select-popup .ant-select-item {
+  align-items: center;
+  min-height: 2.75rem;
+  padding: 0.65rem 1rem !important;
+  font-size: 1.125rem;
+  line-height: 1.35;
+}
+
+.operator-assignee-select-popup .ant-select-item-option-content {
+  font-size: inherit;
+}
+
+.operator-assignee-select-popup--tablet.ant-select-dropdown {
+  min-width: 30rem;
+  padding: 0.5rem 0;
+}
+
+.operator-assignee-select-popup--tablet .ant-select-item {
+  min-height: 3.75rem;
+  padding: 0.85rem 1.25rem !important;
+  font-size: 1.5rem;
+  line-height: 1.35;
 }

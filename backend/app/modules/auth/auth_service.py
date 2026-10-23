@@ -294,6 +294,15 @@ def authenticate_user(db: Session, username: str, password: str) -> Optional[Use
     return user
 
 
+def _active_non_admin_users(db: Session) -> list[User]:
+    users = _user_query(db).order_by(User.username).all()
+    return [
+        user
+        for user in users
+        if not any(role.name == "admin" for role in (user.roles or []))
+    ]
+
+
 def list_users(db: Session, page: int = 1, page_size: int = 20) -> UserListResponse:
     query = _user_query(db)
     total = query.count()
@@ -313,13 +322,20 @@ def list_users(db: Session, page: int = 1, page_size: int = 20) -> UserListRespo
 
 def list_staff_usernames(db: Session) -> StaffUsernamesResponse:
     """Active non-admin usernames (UI role 'Nhân viên')."""
-    users = _user_query(db).order_by(User.username).all()
-    usernames = [
-        u.username
-        for u in users
-        if not any(r.name == "admin" for r in (u.roles or []))
-    ]
+    usernames = [user.username for user in _active_non_admin_users(db)]
     return StaffUsernamesResponse(usernames=usernames)
+
+
+def list_staff_users(db: Session) -> UserListResponse:
+    """Active non-admin users with roles and access summary."""
+    users = _active_non_admin_users(db)
+    total = len(users)
+    return UserListResponse(
+        items=[user_to_response(db, user) for user in users],
+        total=total,
+        page=1,
+        page_size=max(total, 1),
+    )
 
 
 def get_user_by_id(db: Session, user_id: int) -> Optional[User]:

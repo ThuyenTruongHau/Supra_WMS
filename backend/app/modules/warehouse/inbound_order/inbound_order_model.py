@@ -1,5 +1,5 @@
 from sqlalchemy import (
-    Column, Integer, String, Text, DateTime, ForeignKey, Numeric, func, JSON, select, table, column, and_, exists, case
+    Column, Integer, Float, String, Text, DateTime, ForeignKey, Numeric, func, JSON, select, table, column, and_, exists, case
 )
 from sqlalchemy.orm import relationship, column_property
 from sqlalchemy.dialects.postgresql import JSONB
@@ -85,8 +85,12 @@ class InboundOrderDetail(Base):
         server_default="{}",
     )
     device = Column(String(50), nullable=True, index=True)
+    start_battery = Column(String(50), nullable=True)
     start_time = Column(DateTime(timezone=True), nullable=True)
     end_time = Column(DateTime(timezone=True), nullable=True)
+    end_battery = Column(String(50), nullable=True)
+    sorting_persons = Column(String(255), nullable=True)
+    distance = Column(Float, nullable=True)
     status = Column(String(20), default="initialize", nullable=False, index=True)
     detail_type = Column(String(50), nullable=False, index=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())

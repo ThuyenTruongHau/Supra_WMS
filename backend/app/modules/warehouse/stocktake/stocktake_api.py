@@ -13,6 +13,7 @@ from app.modules.warehouse.stocktake.stocktake_service import stocktake_to_respo
 from app.modules.warehouse.stocktake.stocktake_schema import (
     StocktakeConfirmQuantityRequest,
     StocktakeCreate,
+    StocktakeAddItemRequest,
     StocktakeDetailResponse,
     StocktakeItemStockFormData,
     StocktakeItemStockListResponse,
@@ -161,6 +162,22 @@ def delete_stocktake(stocktake_id: int, db: DbSession):
     if not deleted:
         raise HTTPException(status_code=404, detail="Stocktake not found")
     return None
+
+
+@router.post(
+    "/stocktakes/{stocktake_id}/items",
+    response_model=StocktakeItemStockResponse,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(_STOCKTAKE_UPDATE)],
+)
+def add_stocktake_item(stocktake_id: int, body: StocktakeAddItemRequest, db: DbSession):
+    try:
+        result = stocktake_service.add_stocktake_item(db, stocktake_id, body)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    if not result:
+        raise HTTPException(status_code=404, detail="Stocktake not found")
+    return result
 
 
 @router.post(

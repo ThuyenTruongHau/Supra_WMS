@@ -2,7 +2,7 @@ import type {
   OutboundRobotTask,
   OutboundRobotTaskExecuteRequest,
 } from "@/types/outbound";
-import { getRobotTaskDisplayStatus } from "@/utils/outboundRobotTaskDisplay";
+import { getRobotTaskDisplayStatus } from "./outboundRobotTaskDisplay.ts";
 
 export type MasanSortingReturnTaskRow = {
   outboundOrderId: number;
@@ -20,23 +20,37 @@ export function displayTaskLocationName(
   return "—";
 }
 
+/** Location label for robot task tables — `location_name` only (no code fallback). */
+export function taskEndpointLocationName(
+  task: OutboundRobotTask,
+  endpoint: "from" | "to",
+): string {
+  const first = task.allocations[0];
+  if (!first) return "—";
+  const raw =
+    endpoint === "from"
+      ? first.from_location_name
+      : first.to_location_name;
+  const trimmed = raw?.trim();
+  return trimmed || "—";
+}
+
 function outboundAllocsIncompleteOnDetails(
   allTasks: OutboundRobotTask[],
   detailIds: Set<number>,
 ): boolean {
   if (detailIds.size === 0) return true;
+  const completedDetails = new Set<number>();
   for (const task of allTasks) {
     if (task.task_type !== "outbound") continue;
     for (const alloc of task.allocations) {
-      if (
-        detailIds.has(alloc.outbound_order_detail_id) &&
-        alloc.status !== "completed"
-      ) {
-        return true;
-      }
+      if (!detailIds.has(alloc.outbound_order_detail_id)) continue;
+      if (alloc.status === "completed") {
+        completedDetails.add(alloc.outbound_order_detail_id);
+      } else if (!["failed", "cancelled"].includes(alloc.status)) return true;
     }
   }
-  return false;
+  return [...detailIds].some((id) => !completedDetails.has(id));
 }
 
 export function pickReadyReturnTasks(
@@ -56,6 +70,24 @@ export function pickReadyReturnTasks(
     rows.push({ outboundOrderId, task });
   }
   return rows;
+}
+
+export function returnTaskFromLocationId(
+  task: OutboundRobotTask,
+): number | null {
+  const fromId = task.allocations[0]?.from_location_id;
+  return fromId != null && fromId > 0 ? fromId : null;
+}
+
+/** Giữ lệnh return có `from_location_id` trùng VT; `vtLocationId` null/undefined = không lọc. */
+export function filterReturnTasksByFromLocationId(
+  rows: MasanSortingReturnTaskRow[],
+  vtLocationId: number | null | undefined,
+): MasanSortingReturnTaskRow[] {
+  if (vtLocationId == null || vtLocationId <= 0) return rows;
+  return rows.filter(
+    (row) => returnTaskFromLocationId(row.task) === vtLocationId,
+  );
 }
 
 export function buildReturnExecuteBody(

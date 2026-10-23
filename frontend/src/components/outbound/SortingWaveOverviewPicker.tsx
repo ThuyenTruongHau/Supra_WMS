@@ -41,30 +41,58 @@ import {
   ccVehicleByCodeFromZoneLocations,
   useMasanSortingZoneCcLocations,
 } from "@/hooks/useMasanSortingZoneCcLocations";
+import {
+  operatorZoneActionButtonClass,
+  operatorZoneOverviewPickRowClass,
+  useOperatorViewportTier,
+  type OperatorViewportTier,
+} from "@/utils/operatorViewportTier";
+import { useOperatorAssigneeStore } from "@/store/useOperatorAssigneeStore";
+import {
+  hasOutboundOperatorAssignees,
+  OPERATOR_ASSIGNEE_REQUIRED_OUTBOUND,
+} from "@/utils/operatorSortingPersons";
 
 type SortingWaveOverviewCellProps = {
   zoneIds: readonly number[];
   title: string;
+  callDisabled?: boolean;
+  callDisabledTitle?: string;
   onOpenSorting: () => void;
   onOpenMapDetail: () => void;
   locationSubLabelByCode?: Record<string, string>;
+  viewportTier: OperatorViewportTier;
 };
 
 function SortingWaveOverviewCell({
   zoneIds,
   title,
+  callDisabled = false,
+  callDisabledTitle,
   onOpenSorting,
   onOpenMapDetail,
   locationSubLabelByCode,
+  viewportTier,
 }: SortingWaveOverviewCellProps) {
   return (
     <div className="group relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-xl border border-stripe-hairline bg-panel text-left shadow-stripe-1 transition hover:border-brand-primary/35 hover:shadow-[0_8px_28px_rgba(37,99,235,0.12)]">
       <button
         type="button"
-        title={`Gọi lệnh · ${title}`}
+        disabled={callDisabled}
+        title={
+          callDisabled && callDisabledTitle
+            ? callDisabledTitle
+            : `Gọi lệnh · ${title}`
+        }
         aria-label={`Gọi lệnh xuất tại ${title}`}
         onClick={onOpenSorting}
-        className="flex shrink-0 w-full items-center justify-between gap-2 border-b border-stripe-hairline bg-panel-soft px-4 py-2.5 text-left transition hover:bg-sky-50/80 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/40"
+        className={cn(
+          "flex shrink-0 w-full items-center justify-between gap-2 border-b border-stripe-hairline bg-panel-soft px-4 py-2.5 text-left transition focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/40",
+          callDisabled
+            ? "cursor-not-allowed opacity-55"
+            : "hover:bg-sky-50/80",
+          operatorZoneOverviewPickRowClass(viewportTier),
+        )}
       >
         <div className="flex min-w-0 items-center gap-2">
           <PartitionOutlined className="shrink-0 text-base text-brand-primary" />
@@ -122,6 +150,10 @@ export default React.memo(function SortingWaveOverviewPicker({
   onSelectZone,
   className,
 }: SortingWaveOverviewPickerProps) {
+  const viewportTier = useOperatorViewportTier();
+  const outboundByDisplayZoneId = useOperatorAssigneeStore(
+    (s) => s.outboundByDisplayZoneId,
+  );
   const createOutboundOrderMutation = useCreateOutboundOrder();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -182,14 +214,23 @@ export default React.memo(function SortingWaveOverviewPicker({
     return map;
   }, [ccZoneOne.data?.locations, ccZoneTwo.data?.locations]);
 
-  const openSortingModal = useCallback((zone: OutboundDisplayZone) => {
-    if (!warehouseId) {
-      message.warning("Vui lòng chọn kho trước");
-      return;
-    }
-    setDispatchVt(null);
-    setSortingZone(zone);
-  }, [warehouseId]);
+  const openSortingModal = useCallback(
+    (zone: OutboundDisplayZone) => {
+      if (!warehouseId) {
+        message.warning("Vui lòng chọn kho trước");
+        return;
+      }
+      if (
+        !hasOutboundOperatorAssignees(outboundByDisplayZoneId[zone.id])
+      ) {
+        message.warning(OPERATOR_ASSIGNEE_REQUIRED_OUTBOUND);
+        return;
+      }
+      setDispatchVt(null);
+      setSortingZone(zone);
+    },
+    [warehouseId, outboundByDisplayZoneId],
+  );
 
   const closeDispatchFlow = useCallback(() => {
     setSortingZone(null);
@@ -389,9 +430,6 @@ export default React.memo(function SortingWaveOverviewPicker({
           <h3 className="text-4xl font-black text-brand-dark">
             Chọn vị trí chia chọn
           </h3>
-          <p className="mt-1 text-base text-stripe-ink-mute">
-            Nhấp khu vực để chọn mã hàng · nhấp đúp bản đồ để mở chi tiết
-          </p>
         </div>
         <Space wrap>
           <Button
@@ -399,7 +437,7 @@ export default React.memo(function SortingWaveOverviewPicker({
             icon={<EyeOutlined />}
             onClick={() => setWarehouseViewOpen(true)}
             disabled={warehouseId <= 0}
-            className="!h-10 !px-4 !text-base"
+            className={operatorZoneActionButtonClass(viewportTier)}
           >
             Xem kho
           </Button>
@@ -409,7 +447,7 @@ export default React.memo(function SortingWaveOverviewPicker({
             onClick={handleImportClick}
             loading={isParsingExcel}
             disabled={!warehouseId}
-            className="!h-10 !px-4 !text-base"
+            className={operatorZoneActionButtonClass(viewportTier)}
           >
             Nhập phiên xuất
           </Button>
@@ -422,6 +460,11 @@ export default React.memo(function SortingWaveOverviewPicker({
               key={z.id}
               zoneIds={z.zoneIds}
               title={z.name}
+              viewportTier={viewportTier}
+              callDisabled={
+                !hasOutboundOperatorAssignees(outboundByDisplayZoneId[z.id])
+              }
+              callDisabledTitle={OPERATOR_ASSIGNEE_REQUIRED_OUTBOUND}
               onOpenSorting={() => openSortingModal(z)}
               onOpenMapDetail={() => onSelectZone(z.id)}
               locationSubLabelByCode={
@@ -457,7 +500,8 @@ export default React.memo(function SortingWaveOverviewPicker({
           ccBucketZoneCode={sortingZone.ccBucketZoneCode}
           sortingZoneCode={sortingZone.vtSortingZoneCode}
           title={`Chọn mã hàng — ${dispatchVt.locationName}`}
-          subtitle={`${sortingZone.name} · VT ${dispatchVt.locationCode}`}
+          subtitle={`${sortingZone.name} · VT ${dispatchVt.locationName}`}
+          vtLocationId={dispatchVt.locationId}
           onConfirmExport={async (picked) => {
             await runVtSortingDispatch(picked, dispatchVt.locationId);
             closeDispatchFlow();

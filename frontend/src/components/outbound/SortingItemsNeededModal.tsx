@@ -1,37 +1,24 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { PlayCircleOutlined } from "@ant-design/icons";
-import type { ColumnsType } from "antd/es/table";
-import { Button, Modal, Loading, Table, cn, message } from "@/components/ui";
-import OutboundStatusTag from "@/components/shared/OutboundStatusTag";
+import { Button, Modal, Loading, cn, message } from "@/components/ui";
 import { OPERATOR_DESKTOP } from "@/constants/operatorDesktopSizes";
 import { useMasanSortingItemsNeeded } from "@/hooks/useMasanSortingItemsNeeded";
-import { useMasanSortingZoneReturnTasks } from "@/hooks/useMasanSortingZoneReturnTasks";
-import { useExecuteOutboundRobotTask } from "@/hooks/useOutbound";
 import type { MasanSortingItemNeededRow } from "@/types/masan";
-import { getApiErrorMessage } from "@/utils/apiErrorMessage";
-import {
-  buildReturnExecuteBody,
-  displayTaskLocationName,
-  type MasanSortingReturnTaskRow,
-} from "@/utils/masanSortingReturnTasks";
 import { toDisplayInteger } from "@/utils/number";
-import { getRobotTaskDisplayStatus } from "@/utils/outboundRobotTaskDisplay";
 import MasanSortingDispatchHistoryPanel from "@/components/outbound/MasanSortingDispatchHistoryPanel";
+import MasanSortingReturnTasksSection from "@/components/outbound/MasanSortingReturnTasksSection";
 import {
-  operatorModalWidthForTier,
+  isOperatorTabletViewport,
+  operatorCallCommandModalWidthForTier,
   operatorPickBodyTextClass,
   operatorPickFooterButtonClass,
-  operatorPickGridMaxHeightClass,
   operatorPickModalTitleClass,
   operatorPickSkuGridClass,
   operatorPickSkuQtyClass,
   operatorPickSkuTextClass,
   operatorPickSkuTileClass,
+  operatorSortingItemsModalBodyMaxHeight,
   useOperatorViewportTier,
 } from "@/utils/operatorViewportTier";
-
-const RETURN_TABLE_CLASS =
-  "[&_.ant-table-thead_th]:!bg-slate-50 [&_.ant-table-thead_th]:!text-slate-600 [&_.ant-table-thead_th]:!font-semibold [&_.ant-table-row]:hover:bg-slate-50/50 [&_.ant-table-cell]:!text-center";
 
 type SortingItemsNeededModalProps = {
   open: boolean;
@@ -44,6 +31,8 @@ type SortingItemsNeededModalProps = {
   onConfirmExport?: (items: MasanSortingItemNeededRow[]) => void | Promise<void>;
   /** Zone.code VT (Zone_sorting_1 / _2) — lịch sử robot sau khi chọn vị trí. */
   sortingZoneCode: string;
+  /** Lọc bảng «Hàng quay đầu» theo vị trí đầu (VT đang chọn). */
+  vtLocationId?: number | null;
 };
 
 export default function SortingItemsNeededModal({
@@ -56,6 +45,7 @@ export default function SortingItemsNeededModal({
   zIndex,
   onConfirmExport,
   sortingZoneCode,
+  vtLocationId = null,
 }: SortingItemsNeededModalProps) {
   const tier = useOperatorViewportTier();
   const [viewportWidth, setViewportWidth] = useState(
@@ -63,22 +53,33 @@ export default function SortingItemsNeededModal({
   );
   const [selectedItemId, setSelectedItemId] = useState<number | null>(null);
   const [confirming, setConfirming] = useState(false);
-  const [executingOrderId, setExecutingOrderId] = useState<string | null>(null);
-  const executeReturnMutation = useExecuteOutboundRobotTask();
 
   useEffect(() => {
-    const onResize = () => setViewportWidth(window.innerWidth);
+    const onResize = () => {
+      const vv = window.visualViewport;
+      setViewportWidth(Math.round(vv?.width ?? window.innerWidth));
+    };
+    onResize();
     window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
+    window.visualViewport?.addEventListener("resize", onResize);
+    return () => {
+      window.removeEventListener("resize", onResize);
+      window.visualViewport?.removeEventListener("resize", onResize);
+    };
   }, []);
 
-  const modalWidth = useMemo(
-    () =>
-      open
-        ? operatorModalWidthForTier(tier, viewportWidth)
-        : OPERATOR_DESKTOP.modal.lg,
-    [open, tier, viewportWidth],
-  );
+  const modalLayout = useMemo(() => {
+    if (!open) {
+      return {
+        width: OPERATOR_DESKTOP.modal.lg,
+        bodyMaxHeight: operatorSortingItemsModalBodyMaxHeight(tier),
+      };
+    }
+    return {
+      width: operatorCallCommandModalWidthForTier(tier, viewportWidth),
+      bodyMaxHeight: operatorSortingItemsModalBodyMaxHeight(tier),
+    };
+  }, [open, tier, viewportWidth]);
 
   const {
     data: sortingItemsData,
@@ -86,13 +87,6 @@ export default function SortingItemsNeededModal({
     isError,
     refetch,
   } = useMasanSortingItemsNeeded(warehouseId, ccBucketZoneCode, open);
-
-  const {
-    rows: returnRows,
-    isLoading: returnLoading,
-    isError: returnError,
-    refetch: refetchReturnTasks,
-  } = useMasanSortingZoneReturnTasks(warehouseId, ccBucketZoneCode, open);
 
   const sortingItems = sortingItemsData?.items ?? [];
 
@@ -130,142 +124,37 @@ export default function SortingItemsNeededModal({
     }
   };
 
-  const handleExecuteReturn = useCallback(
-    async (row: MasanSortingReturnTaskRow) => {
-      const body = buildReturnExecuteBody(row.task);
-      if (!body) {
-        message.warning("Lệnh trả thiếu vị trí đầu hoặc đích");
-        return;
-      }
-      setExecutingOrderId(row.task.order_id);
-      message.loading({ content: "Đang gửi lệnh trả...", key: "return-exec" });
-      try {
-        await executeReturnMutation.mutateAsync({
-          orderId: row.outboundOrderId,
-          body,
-          detailType: "auto",
-        });
-        message.success({ content: "Đã gửi lệnh trả", key: "return-exec" });
-        await refetchReturnTasks();
-      } catch (err) {
-        message.error({
-          content: getApiErrorMessage(err),
-          key: "return-exec",
-        });
-      } finally {
-        setExecutingOrderId(null);
-      }
-    },
-    [executeReturnMutation, refetchReturnTasks],
-  );
-
   const bodyText = operatorPickBodyTextClass(tier);
   const titleClass = operatorPickModalTitleClass(tier);
   const footerBtn = operatorPickFooterButtonClass(tier);
   const gridClass = operatorPickSkuGridClass(tier);
-  const gridMaxH = operatorPickGridMaxHeightClass(tier);
   const skuTile = operatorPickSkuTileClass(tier);
   const skuText = operatorPickSkuTextClass(tier);
   const skuQty = operatorPickSkuQtyClass(tier);
-  const compact = tier === "narrow";
-
-  const returnColumns: ColumnsType<MasanSortingReturnTaskRow> = useMemo(
-    () => [
-      {
-        title: "Loại",
-        key: "task_type",
-        width: compact ? 72 : 90,
-        render: () => <span className="font-semibold">TRẢ</span>,
-      },
-      {
-        title: "Mã lệnh",
-        key: "order_id",
-        render: (_, record) => (
-          <span className="font-medium">{record.task.order_id}</span>
-        ),
-      },
-      {
-        title: "Số lượng",
-        key: "quantity",
-        width: compact ? 88 : 110,
-        render: (_, record) => (
-          <span className="font-semibold">
-            {toDisplayInteger(record.task.quantity)}
-          </span>
-        ),
-      },
-      {
-        title: "Vị trí đầu",
-        key: "start_location",
-        render: (_, record) => {
-          const first = record.task.allocations[0];
-          return displayTaskLocationName(
-            first?.from_location_name,
-            first?.from_location_code,
-            first?.from_location_id,
-          );
-        },
-      },
-      {
-        title: "Vị trí cuối",
-        key: "end_location",
-        render: (_, record) => {
-          const first = record.task.allocations[0];
-          return displayTaskLocationName(
-            first?.to_location_name,
-            first?.to_location_code,
-            first?.to_location_id,
-          );
-        },
-      },
-      {
-        title: "Trạng thái",
-        key: "status",
-        width: compact ? 120 : 160,
-        render: (_, record) => {
-          const displayStatus = getRobotTaskDisplayStatus(record.task);
-          const body = buildReturnExecuteBody(record.task);
-          if (displayStatus === "initialize") {
-            return (
-              <Button
-                variant="primary"
-                icon={<PlayCircleOutlined />}
-                loading={executingOrderId === record.task.order_id}
-                disabled={!body}
-                title={!body ? "Thiếu vị trí đầu hoặc đích" : undefined}
-                onClick={() => void handleExecuteReturn(record)}
-              >
-                Execute
-              </Button>
-            );
-          }
-          return <OutboundStatusTag status={displayStatus} size="sm" />;
-        },
-      },
-    ],
-    [compact, executingOrderId, handleExecuteReturn],
-  );
-
   const showSkuEmpty = !isLoading && !isError && sortingItems.length === 0;
-  const showReturnEmpty =
-    !returnLoading && !returnError && returnRows.length === 0;
 
   return (
     <Modal
       open={open}
       onCancel={onClose}
-      width={modalWidth}
+      width={modalLayout.width}
+      centered
       destroyOnHidden
       zIndex={zIndex}
       className={cn(
+        "operator-call-command-modal",
         tier === "tv" && "[&_.ant-modal-content]:!p-1",
-        "[&_.ant-modal-body]:!px-3 sm:[&_.ant-modal-body]:!px-6",
-        "[&_.ant-modal-footer]:!px-4 sm:[&_.ant-modal-footer]:!px-6",
+        "[&_.ant-modal-body]:!flex [&_.ant-modal-body]:!min-h-0 [&_.ant-modal-body]:!flex-col [&_.ant-modal-body]:!overflow-hidden",
+        isOperatorTabletViewport(tier)
+          ? "[&_.ant-modal-body]:!px-3 [&_.ant-modal-footer]:!px-3"
+          : "[&_.ant-modal-body]:!px-3 sm:[&_.ant-modal-body]:!px-6 [&_.ant-modal-footer]:!px-4 sm:[&_.ant-modal-footer]:!px-6",
       )}
       styles={{
         body: {
-          maxHeight: OPERATOR_DESKTOP.modal.ccLocationLines.bodyMaxHeight,
+          maxHeight: modalLayout.bodyMaxHeight,
           overflow: "hidden",
+          display: "flex",
+          flexDirection: "column",
         },
       }}
       title={
@@ -304,7 +193,7 @@ export default function SortingItemsNeededModal({
         </div>
       }
     >
-      <div className="flex min-h-[12rem] min-w-0 flex-col gap-4 overflow-y-auto overscroll-contain sm:gap-5">
+      <div className="operator-panel-scroll operator-modal-single-scroll flex min-h-0 min-w-0 flex-1 flex-col gap-4 sm:gap-5">
         {isLoading ? (
           <div className="flex flex-1 items-center justify-center py-14 sm:py-16">
             <Loading />
@@ -341,13 +230,7 @@ export default function SortingItemsNeededModal({
               Chọn <span className="font-bold text-brand-dark">một</span> mã
               hàng cần xuất.
             </p>
-            <div
-              className={cn(
-                "min-h-0 overflow-y-auto overscroll-contain pr-1",
-                gridMaxH,
-                gridClass,
-              )}
-            >
+            <div className={cn("min-w-0 pr-1", gridClass)}>
               {sortingItems.map((row) => {
                 const selected = selectedItemId === row.item_id;
                 return (
@@ -398,47 +281,21 @@ export default function SortingItemsNeededModal({
         <div className="min-w-0 border-t border-slate-200 pt-4">
           <p className={cn("mb-3 font-semibold text-brand-dark", bodyText)}>
             Hàng quay đầu
+            {vtLocationId != null && subtitle?.trim()
+              ? ` · ${subtitle.trim()}`
+              : null}
           </p>
-          {returnLoading ? (
-            <div className="flex justify-center py-8">
-              <Loading />
-            </div>
-          ) : returnError ? (
-            <div
-              className={cn(
-                "rounded-xl border border-red-200 bg-red-50 px-4 py-6 text-center text-red-700",
-                bodyText,
-              )}
-            >
-              <p className="font-semibold">Không tải được lệnh trả.</p>
-              <Button
-                variant="secondary"
-                className={cn("mt-3", footerBtn)}
-                onClick={() => void refetchReturnTasks()}
-              >
-                Thử lại
-              </Button>
-            </div>
-          ) : showReturnEmpty ? (
-            <p className={cn("py-4 text-center font-medium text-slate-500", bodyText)}>
-              Chưa có pallet dư cần trả về kệ.
-            </p>
-          ) : (
-            <Table<MasanSortingReturnTaskRow>
-              columns={returnColumns}
-              dataSource={returnRows}
-              pagination={false}
-              rowKey={(record) => record.task.order_id}
-              size="middle"
-              scroll={{ x: compact ? 640 : 860 }}
-              className={RETURN_TABLE_CLASS}
-              rowClassName={() => "bg-red-50"}
-            />
-          )}
+          <MasanSortingReturnTasksSection
+            warehouseId={warehouseId}
+            sortingZoneCode={sortingZoneCode}
+            vtLocationId={vtLocationId}
+            enabled={open}
+            compact={false}
+          />
         </div>
 
         {sortingZoneCode.trim().length > 0 ? (
-          <div className="min-w-0 border-t border-slate-200 pt-4">
+          <div className="min-w-0 shrink-0 border-t border-slate-200 pt-4 pb-1">
             <MasanSortingDispatchHistoryPanel
               sortingZoneCode={sortingZoneCode}
               enabled={open}

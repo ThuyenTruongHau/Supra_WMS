@@ -22,9 +22,9 @@ export default function OperatorMonitorPage() {
   );
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-hidden p-1 sm:p-2">
+    <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-hidden">
       <MonitorZoneOverviewPicker
-        warehouseId={selectedWarehouseId}
+        warehouseId={selectedWarehouseId ?? 0}
         onSelectZone={handleEnterZone}
         className="min-h-0 flex-1"
       />

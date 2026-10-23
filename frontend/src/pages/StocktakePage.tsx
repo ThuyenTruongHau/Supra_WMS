@@ -327,10 +327,11 @@ export default function StocktakePage() {
         open={isCreateOpen}
         warehouseId={warehouseId}
         onCancel={() => setIsCreateOpen(false)}
-        onSuccess={() => {
+        onSuccess={(stocktakeId) => {
           setIsCreateOpen(false);
           setEventPage(1);
           void refetchEvents();
+          navigate(`/inventory/${stocktakeId}`);
         }}
       />
 

@@ -44,6 +44,10 @@ import {
   orderCreatedAtQueryParams,
   type OrderCreatedAtRange,
 } from "@/utils/orderCreatedAtRangeParams";
+import {
+  operatorOutboundRightbarFilterClass,
+  useOperatorViewportTier,
+} from "@/utils/operatorViewportTier";
 
 const EMPTY_SELECTED_LINES: OutboundSelectedProductLine[] = [];
 
@@ -176,6 +180,8 @@ export default function OperatorOutboundOrderBrowser({
   onSelectedProductsChange,
   onListFilterExportContext,
 }: OperatorOutboundOrderBrowserProps) {
+  const viewportTier = useOperatorViewportTier();
+  const rightbarFilterClass = operatorOutboundRightbarFilterClass(viewportTier);
   const queryClient = useQueryClient();
   const refetchOperatorBoardAfterPicking = useCallback(async () => {
     await queryClient.invalidateQueries({
@@ -608,7 +614,12 @@ export default function OperatorOutboundOrderBrowser({
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-panel">
-      <div className="flex shrink-0 flex-col gap-1.5 border-b border-stripe-hairline px-2 py-1.5">
+      <div
+        className={cn(
+          "flex shrink-0 flex-col gap-1.5 border-b border-stripe-hairline px-2 py-1.5",
+          rightbarFilterClass,
+        )}
+      >
         <OrderCreatedAtRangeFilter
           value={createdRange}
           onChange={setCreatedRange}

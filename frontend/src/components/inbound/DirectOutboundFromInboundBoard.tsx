@@ -10,11 +10,14 @@ import {
   UploadOutlined,
 } from "@ant-design/icons";
 import { Button, Input, Modal, Select, message } from "@/components/ui";
+import { OPERATOR_DESKTOP } from "@/constants/operatorDesktopSizes";
 import {
-  OPERATOR_DESKTOP,
-  OPERATOR_INBOUND_MAP_TUNING,
-  OPERATOR_WAVE_MAP_TUNING,
-} from "@/constants/operatorDesktopSizes";
+  isOperatorTabletViewport,
+  operatorInboundMapTuningForTier,
+  operatorWaveMapTuningForTier,
+  useOperatorViewportTier,
+} from "@/utils/operatorViewportTier";
+import { cn } from "@/components/ui";
 import OperatorMapCanvas from "@/components/warehouse/OperatorMapCanvas";
 import { WAVE_STATION_LOCATION_TYPES } from "@/api/warehouseMap";
 import {
@@ -40,6 +43,12 @@ import { toDisplayInteger } from "@/utils/number";
 import { getLocationDisplayLabel } from "@/utils/locationBin";
 import { OUTBOUND_MAP_ZONE_IDS } from "@/constants/outboundMapZones";
 import type { SortingWave } from "@/types/sortingWave";
+import OperatorAssigneeSelect from "@/components/operator/OperatorAssigneeSelect";
+import { useInboundOperatorAssignee } from "@/store/useOperatorAssigneeStore";
+import {
+  hasInboundOperatorAssignee,
+  OPERATOR_ASSIGNEE_REQUIRED_INBOUND,
+} from "@/utils/operatorSortingPersons";
 
 const EMPTY_SORTING_WAVES: SortingWave[] = [];
 
@@ -90,6 +99,13 @@ export default function DirectOutboundFromInboundBoard({
   importLoading,
   importDisabled,
 }: DirectOutboundFromInboundBoardProps) {
+  const { username: inboundAssignee, setUsername: setInboundAssignee } =
+    useInboundOperatorAssignee(zoneId);
+  const viewportTier = useOperatorViewportTier();
+  const inboundMapTuning = operatorInboundMapTuningForTier(viewportTier);
+  const waveMapTuning = operatorWaveMapTuningForTier(viewportTier);
+  const tabletControls = isOperatorTabletViewport(viewportTier);
+
   const { data: sortingWavesData } = useSortingWaves(zoneId);
   const sortingWaves = sortingWavesData ?? EMPTY_SORTING_WAVES;
   const waveIdsKey = useMemo(
@@ -379,7 +395,13 @@ export default function DirectOutboundFromInboundBoard({
 
 
 
+  const inboundAssigneeReady = hasInboundOperatorAssignee(inboundAssignee);
+
   const handleSendCommand = () => {
+    if (!inboundAssigneeReady) {
+      message.warning(OPERATOR_ASSIGNEE_REQUIRED_INBOUND);
+      return;
+    }
     const resolvedWaveId =
       waveId ??
       (outboundLocationId != null
@@ -480,6 +502,7 @@ export default function DirectOutboundFromInboundBoard({
   };
 
   const canSend =
+    inboundAssigneeReady &&
     inboundReady &&
     outboundLocationId != null &&
     selectedProduct != null &&
@@ -543,8 +566,13 @@ export default function DirectOutboundFromInboundBoard({
           icon={<RobotOutlined />}
           onClick={handleSendCommand}
           disabled={!canSend}
+          title={
+            !inboundAssigneeReady
+              ? OPERATOR_ASSIGNEE_REQUIRED_INBOUND
+              : undefined
+          }
           loading={sendMutation.isPending}
-          className="!h-12 !text-sm"
+          className={cn("!h-12", tabletControls ? "!text-base" : "!text-sm")}
         >
           Gửi lệnh
         </Button>
@@ -552,17 +580,29 @@ export default function DirectOutboundFromInboundBoard({
 
       <div className="grid min-h-0 flex-1 grid-cols-1 overflow-hidden @min-[1280px]:grid-cols-2">
         <div className="flex min-h-0 min-w-0 flex-col overflow-hidden @min-[1280px]:border-r @min-[1280px]:border-stripe-hairline">
-          <div className="flex shrink-0 items-center border-b border-stripe-hairline px-3 py-2">
+          <div className="flex shrink-0 flex-wrap items-end justify-between gap-2 border-b border-stripe-hairline px-3 py-2">
             <h4 className="text-sm font-semibold text-brand-dark">
               Sơ đồ điểm nhập
             </h4>
+            <OperatorAssigneeSelect
+              mode="single"
+              toolbar="inbound"
+              label="Người nhập"
+              value={inboundAssignee}
+              onChange={(next) =>
+                setInboundAssignee(
+                  typeof next === "string" ? next : undefined,
+                )
+              }
+              disabled={zoneId <= 0}
+            />
           </div>
           <div className="relative min-h-0 flex-1 overflow-hidden bg-industrial-pattern p-2">
             {zoneId > 0 ? (
               <OperatorMapCanvas
                 zoneId={[2, 12]}
                 showInboundSeparator={true}
-                tuning={OPERATOR_INBOUND_MAP_TUNING}
+                tuning={inboundMapTuning}
                 selectedCodes={inboundLocationCode ? [inboundLocationCode] : undefined}
                 interactiveCodes={inboundInteractiveCodes}
                 onBufferCellClick={handleInboundMapClick}
@@ -587,7 +627,7 @@ export default function DirectOutboundFromInboundBoard({
               <OperatorMapCanvas
                 key={`wave-all-${allWaveStationIds.join(",") || "zone"}`}
                 zoneId={[...OUTBOUND_MAP_ZONE_IDS]}
-                tuning={OPERATOR_WAVE_MAP_TUNING}
+                tuning={waveMapTuning}
                 selectedCodes={outboundLocationCode ? [outboundLocationCode] : undefined}
                 interactiveCodes={waveInteractiveCodes}
                 onBufferCellClick={handleWaveMapClick}

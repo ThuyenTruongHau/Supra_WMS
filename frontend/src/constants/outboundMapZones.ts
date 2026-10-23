@@ -29,7 +29,8 @@ export const OUTBOUND_DISPLAY_ZONES: OutboundDisplayZone[] = [
     vtZoneId: 8,
     ccZoneId: 11,
     ccBucketZoneCode: "Zone_CC_02",
-    vtSortingZoneCode: "Zone_sorting_2",
+    // DB zone 8 contains VT21–VT24; code numbering differs from the display title.
+    vtSortingZoneCode: "Zone_sorting_1",
   },
   {
     id: 9,
@@ -38,7 +39,8 @@ export const OUTBOUND_DISPLAY_ZONES: OutboundDisplayZone[] = [
     vtZoneId: 9,
     ccZoneId: 10,
     ccBucketZoneCode: "Zone_CC_01",
-    vtSortingZoneCode: "Zone_sorting_1",
+    // DB zone 9 contains VT11–VT14.
+    vtSortingZoneCode: "Zone_sorting_2",
   },
 ];
 

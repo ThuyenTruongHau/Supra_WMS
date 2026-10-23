@@ -38,29 +38,30 @@ export default function LoginPage() {
 
   return (
     <div
-      className="relative flex h-screen w-full items-center justify-center overflow-hidden bg-cover bg-center"
+      className="relative min-h-dvh w-full overflow-x-hidden overflow-y-auto bg-cover bg-center"
       style={{ backgroundImage: `url(${loginBg})` }}
     >
       {/* Background Overlay */}
-      <div className="absolute inset-0 z-10 bg-canvas/35" />
+      <div className="pointer-events-none fixed inset-0 z-10 bg-canvas/35" />
 
       {/* Industrial Pattern Overlay */}
-      <div className="bg-industrial-pattern pointer-events-none absolute inset-0 z-20" />
+      <div className="bg-industrial-pattern pointer-events-none fixed inset-0 z-20" />
 
-      <div className="relative z-30 w-full max-w-[420px] px-4 md:max-w-[90%] lg:max-w-[420px]">
-        <div className="rounded-[10px] bg-panel px-6 py-8 shadow-stripe-2 sm:px-9 sm:pt-10 sm:pb-8">
-          <div className="mb-5 flex justify-center">
+      <div className="relative z-30 flex min-h-dvh w-full items-center justify-center px-4 py-5 sm:py-8">
+        <div className="my-auto w-full max-w-[420px]">
+          <div className="rounded-[10px] bg-panel px-6 py-7 shadow-stripe-2 sm:px-9 sm:py-8 [@media(max-height:740px)]:px-5 [@media(max-height:740px)]:py-5">
+          <div className="mb-4 flex justify-center [@media(max-height:740px)]:mb-3">
             <img
               src={thadoLogo}
               alt="thado_logo"
-              className="h-auto w-auto object-contain"
+              className="h-auto max-h-16 w-auto object-contain [@media(max-height:740px)]:max-h-12"
             />
           </div>
 
-          <h1 className="mb-1 text-center text-2xl font-bold text-brand-dark sm:text-[26px]">
+          <h1 className="mb-1 text-center text-2xl font-bold text-brand-dark sm:text-[26px] [@media(max-height:740px)]:text-xl">
             Đăng nhập
           </h1>
-          <p className="mb-8 text-center text-sm text-gray-500">
+          <p className="mb-6 text-center text-sm text-gray-500 [@media(max-height:740px)]:mb-4">
             Chào mừng đến hệ thống quản lý kho
           </p>
 
@@ -71,7 +72,7 @@ export default function LoginPage() {
           )}
 
           <form
-            className="space-y-5"
+            className="space-y-4 [@media(max-height:740px)]:space-y-3"
             onSubmit={handleSubmit(Login)}
           >
             <div className="flex flex-col gap-1.5">
@@ -141,13 +142,14 @@ export default function LoginPage() {
             </button>
           </form>
 
-          <div className="mt-[18px] text-center">
+          <div className="mt-4 text-center [@media(max-height:740px)]:mt-3">
             <a
               href="#"
               className="text-[13px] text-brand-primary transition-colors hover:text-brand-dark hover:underline"
             >
               Quên mật khẩu
             </a>
+          </div>
           </div>
         </div>
       </div>

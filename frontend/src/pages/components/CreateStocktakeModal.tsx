@@ -43,7 +43,7 @@ interface CreateStocktakeModalProps {
   open: boolean;
   warehouseId: number;
   onCancel: () => void;
-  onSuccess: () => void;
+  onSuccess: (stocktakeId: number) => void;
 }
 
 export default function CreateStocktakeModal({
@@ -168,9 +168,9 @@ export default function CreateStocktakeModal({
     }
 
     try {
-      await createMutation.mutateAsync(payload);
+      const created = await createMutation.mutateAsync(payload);
       message.success("Đã tạo sự kiện kiểm kê.");
-      onSuccess();
+      onSuccess(created.id);
     } catch (err) {
       message.error(getApiErrorMessage(err, "Không tạo được sự kiện kiểm kê."));
     }
@@ -291,7 +291,7 @@ export default function CreateStocktakeModal({
               </Space>
               <p className="mt-2 text-xs text-slate-400">
                 Click kệ trên map để thêm/bỏ. Checklist chỉ gồm tồn tại các ô đã
-                chọn.
+                chọn. Ô trống vẫn tạo được phiếu; thêm SKU/lô và số lượng thực đếm ở trang chi tiết.
               </p>
             </Card>
           )}

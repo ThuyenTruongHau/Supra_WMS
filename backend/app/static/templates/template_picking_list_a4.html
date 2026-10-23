@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <title>Phiếu lấy hàng - Picking List A4</title>
   <!--
-    Template in Picking List A4 — 1 phiếu / trang (bảng chi tiết, phân trang khi nhiều dòng).
+    Template in Picking List A4 ngang — 1 phiếu / trang (bảng chi tiết, phân trang khi nhiều dòng).
 
     Backend / FE truyền dữ liệu qua window.__PICKING_LIST_PRINT_DATA__ rồi gọi PickingListPrint.init().
 
@@ -12,40 +12,43 @@
     {
       "vehicle_number": "51F-123.45",
       "assigned_location": "CC23",
-      "zone": "Zone_CC_02",              // tùy chọn
-      "printed_at": "16/10/2026",       // tùy chọn — thiếu thì lấy ngày hiện tại (local)
-      "lines": [
+      "zone": "Zone_CC_02",
+      "printed_at": "16/10/2026",
+      "extracted": 1,
+      "form_code": "Pallet 1",
+      "sheets": [
         {
-          "sku": "02KK00361",
-          "item_name": "Tên hàng",
-          "quantity": 120,
-          "unit": "Thùng",
-          "lot_number": "190826",
-          "locator": "A-01-02"
+          "customer_name": "WinMart+ Q.1",
+          "nvt": "NVT01, NVT02",
+          "trip": "T01, T02",
+          "lines": [
+            { "sku", "item_name", "quantity", "unit", "lot_number", "locator" }
+          ]
         }
       ]
     }
 
-    Số trang = Math.ceil(lines.length / ROWS_PER_PAGE)
+    Mỗi sheet = một khách; phân trang global ROWS_PER_PAGE; chữ ký trang cuối PDF.
     In PDF: Scale 100%, margin theo @page.
   -->
   <style>
     :root {
-      --page-width: 194mm;
-      --page-height: 281mm;
+      --page-width: 281mm;
+      --page-height: 194mm;
       --page-margin: 7mm;
-      --sheet-padding: 6mm 8mm;
-      --rows-per-page: 18;
-      --font-base: 12px;
+      --sheet-padding: 5mm 7mm;
+      --rows-per-page: 12;
+      --font-base: 13px;
       --font-small: 11px;
-      --font-meta: 13px;
-      --font-table: 13px;
-      --font-table-head: 12px;
+      --font-meta: 16px;
+      --font-meta-value: 18px;
+      --font-table: 11px;
+      --font-table-head: 11px;
       --border: 1px solid #000;
     }
 
     @page {
-      size: A4 portrait;
+      size: A4 landscape;
       margin: var(--page-margin);
     }
 
@@ -98,6 +101,7 @@
 
     .sheet-page {
       width: var(--page-width);
+      height: var(--page-height);
       min-height: var(--page-height);
       background: #fff;
       padding: var(--sheet-padding);
@@ -122,7 +126,7 @@
 
     .doc-header h1 {
       margin: 0 0 0.5mm;
-      font-size: 17px;
+      font-size: 20px;
       font-weight: 700;
       letter-spacing: 0.02em;
       text-transform: uppercase;
@@ -130,7 +134,8 @@
 
     .doc-header p {
       margin: 0;
-      font-size: 12px;
+      font-size: 14px;
+      font-weight: 700;
       font-style: italic;
     }
 
@@ -140,42 +145,62 @@
       gap: 1.5mm 6mm;
       margin-bottom: 3mm;
       font-size: var(--font-meta);
+      font-weight: 700;
+      text-align: center;
     }
 
     .meta-row {
       display: flex;
       gap: 2mm;
-      align-items: baseline;
+      align-items: center;
+      justify-content: center;
     }
 
     .meta-row .label {
       font-weight: 700;
       white-space: nowrap;
-      min-width: 26mm;
     }
 
     .meta-row .value {
-      flex: 1;
       border-bottom: 1px dotted #666;
       min-height: 1.2em;
-      font-weight: 600;
+      font-weight: 700;
+      font-size: var(--font-meta-value);
+    }
+
+    .meta-row--span {
+      grid-column: 1 / -1;
+    }
+
+    .sheet-page--customer-start {
+      page-break-before: always;
+      break-before: page;
+    }
+
+    .sheet-body {
+      flex: 1;
+      min-height: 0;
     }
 
     .lines-table {
       width: 100%;
       border-collapse: collapse;
       table-layout: fixed;
-      flex: 1;
+    }
+
+    .lines-table--fill {
+      height: 100%;
     }
 
     .lines-table th,
     .lines-table td {
       border: var(--border);
       padding: 1.6mm 0.8mm;
-      vertical-align: middle;
+      vertical-align: top;
       word-wrap: break-word;
       overflow-wrap: anywhere;
       font-size: var(--font-table);
+      font-weight: 700;
       line-height: 1.3;
       text-align: center;
       font-variant-numeric: tabular-nums;
@@ -189,13 +214,9 @@
       padding: 1.8mm 0.6mm;
     }
 
-    .lines-table td.qty {
-      font-weight: 700;
-    }
-
     .lines-table td.sku {
       font-family: "Courier New", Courier, monospace;
-      font-size: 12px;
+      font-size: var(--font-table);
       letter-spacing: -0.01em;
     }
 
@@ -204,26 +225,54 @@
       break-inside: avoid;
     }
 
-    .col-stt { width: 6%; }
-    .col-sku { width: 13%; }
-    .col-name { width: 26%; }
-    .col-lot { width: 13%; }
-    .col-qty { width: 8%; }
+    /* Dòng có dữ liệu: cao theo nội dung; dòng trống pad: hấp thụ phần cao còn lại của bảng. */
+    .lines-table tbody tr.row-data {
+      height: 1px;
+    }
+
+    .lines-table tbody tr.row-data td {
+      height: auto;
+    }
+
+    .lines-table tbody tr.row-filler td {
+      vertical-align: middle;
+    }
+
+    .col-stt { width: 5%; }
+    .col-sku { width: 12%; }
+    .col-name { width: 28%; }
+    .col-lot { width: 10%; }
+    .col-qty { width: 7%; }
     .col-unit { width: 8%; }
-    .col-locator { width: 16%; }
+    .col-locator { width: 30%; }
 
     .sheet-footer {
       margin-top: auto;
       padding-top: 4mm;
       display: flex;
-      justify-content: space-between;
       align-items: flex-end;
       font-size: var(--font-small);
+      font-weight: 700;
+    }
+
+    .sheet-footer--compact {
+      justify-content: center;
+    }
+
+    .sheet-footer--last {
+      justify-content: flex-start;
+      gap: 4mm;
+    }
+
+    .sheet-footer--last .page-num {
+      flex: 1;
+      text-align: center;
     }
 
     .sign-block {
       width: 30%;
       text-align: center;
+      flex-shrink: 0;
     }
 
     .sign-block .title {
@@ -256,6 +305,8 @@
       .sheet-page {
         box-shadow: none;
         margin: 0;
+        height: var(--page-height);
+        min-height: var(--page-height);
       }
     }
   </style>
@@ -277,46 +328,52 @@
       zone: "Zone_CC_02",
       extracted: 1,
       form_code: "Pallet 1",
-      lines: [
+      sheets: [
         {
-          sku: "02KK00361",
-          item_name: "Omachi sườn hầm 92g x 30 gói",
-          quantity: 120,
-          unit: "Thùng",
-          lot_number: "040526",
-          locator: "R01-L05",
+          customer_name: "WinMart+ Q.1",
+          nvt: "NVT01",
+          trip: "T01, T02",
+          lines: [
+            {
+              sku: "02KK00361",
+              item_name: "Omachi sườn hầm 92g x 30 gói",
+              quantity: 120,
+              unit: "Thùng",
+              lot_number: "040526",
+              locator: "R01-L05",
+            },
+            {
+              sku: "01PH00073",
+              item_name: "Phở Omachi bò 75g x 30",
+              quantity: 200,
+              unit: "Thùng",
+              lot_number: "060526",
+              locator: "R02-L01",
+            },
+          ],
         },
         {
-          sku: "02OM00858",
-          item_name: "Mì Omachi bò hầm 80g x 30",
-          quantity: 75,
-          unit: "Thùng",
-          lot_number: "050526",
-          locator: "R01-L06",
-        },
-        {
-          sku: "01PH00073",
-          item_name: "Phở Omachi bò 75g x 30",
-          quantity: 200,
-          unit: "Thùng",
-          lot_number: "060526",
-          locator: "R02-L01",
-        },
-        {
-          sku: "02KK00410",
-          item_name: "Omachi lẩu thái tom yum 91g x 30",
-          quantity: 48,
-          unit: "Thùng",
-          lot_number: "070526",
-          locator: "R02-L02",
-        },
-        {
-          sku: "02KK00500",
-          item_name: "Omachi chua cay Hàn Quốc 95g x 30",
-          quantity: 36,
-          unit: "Thùng",
-          lot_number: "080526",
-          locator: "R03-L01",
+          customer_name: "Co.opmart Bình Thạnh",
+          nvt: "NVT02",
+          trip: "T01, T03",
+          lines: [
+            {
+              sku: "02OM00858",
+              item_name: "Mì Omachi bò hầm 80g x 30",
+              quantity: 75,
+              unit: "Thùng",
+              lot_number: "050526",
+              locator: "R01-L06",
+            },
+            {
+              sku: "02KK00500",
+              item_name: "Omachi chua cay Hàn Quốc 95g x 30",
+              quantity: 36,
+              unit: "Thùng",
+              lot_number: "080526",
+              locator: "R03-L01",
+            },
+          ],
         },
       ],
     };
@@ -346,7 +403,7 @@
     (function () {
       "use strict";
 
-      const ROWS_PER_PAGE = 18;
+      const ROWS_PER_PAGE = 12;
       const DOCUMENT_CODE_FALLBACK = "Pallet —";
 
       function escapeHtml(value) {
@@ -377,12 +434,70 @@
         return n.toLocaleString("vi-VN", { maximumFractionDigits: 3 });
       }
 
+      function normalizeLineRow(row, stt) {
+        return {
+          stt,
+          sku: String(row?.sku ?? "").trim(),
+          item_name: String(row?.item_name ?? "").trim(),
+          quantity: row?.quantity,
+          unit: String(row?.unit ?? "").trim(),
+          lot_number: String(row?.lot_number ?? "").trim(),
+          locator: String(row?.locator ?? "").trim(),
+        };
+      }
+
+      function uniqueKeepOrder(values) {
+        const seen = new Set();
+        const out = [];
+        for (const raw of values) {
+          const cleaned = String(raw ?? "").trim();
+          if (!cleaned || seen.has(cleaned)) continue;
+          seen.add(cleaned);
+          out.push(cleaned);
+        }
+        return out;
+      }
+
+      function normalizeSheet(rawSheet) {
+        const rawLines = Array.isArray(rawSheet?.lines) ? rawSheet.lines : [];
+        return {
+          customer_name: String(rawSheet?.customer_name ?? "").trim(),
+          nvt: String(rawSheet?.nvt ?? "").trim(),
+          trip: String(rawSheet?.trip ?? "").trim(),
+          lines: rawLines.map((row, index) => normalizeLineRow(row, index + 1)),
+        };
+      }
+
+      function legacySheetsFromFlatLines(lines) {
+        if (!lines.length) return [];
+        const nvts = [];
+        const trips = [];
+        let customerName = "";
+        for (const row of lines) {
+          if (!customerName) {
+            customerName = String(row?.customer_name ?? "").trim();
+          }
+          const nvt = String(row?.nvt ?? "").trim();
+          if (nvt) nvts.push(nvt);
+          const trip = String(row?.trip ?? "").trim();
+          if (trip) trips.push(trip);
+        }
+        return [
+          {
+            customer_name: customerName,
+            nvt: uniqueKeepOrder(nvts).join(", "),
+            trip: uniqueKeepOrder(trips).join(", "),
+            lines: lines.map((row, index) =>
+              normalizeLineRow(row, index + 1),
+            ),
+          },
+        ];
+      }
+
       /**
        * @param {object} data
-       * @returns {{ vehicle_number: string, assigned_location: string, zone: string, printed_at: string, lines: object[] }}
        */
       function normalizePayload(data) {
-        const lines = Array.isArray(data?.lines) ? data.lines : [];
         const extractedRaw = data?.extracted;
         const extractedNum = Number(extractedRaw);
         const formFromBatch =
@@ -391,22 +506,30 @@
             : "";
         const formCode =
           String(data?.form_code ?? "").trim() || formFromBatch;
+
+        let sheets = Array.isArray(data?.sheets)
+          ? data.sheets.map(normalizeSheet)
+          : [];
+        if (!sheets.length) {
+          const legacyLines = Array.isArray(data?.lines) ? data.lines : [];
+          sheets = legacySheetsFromFlatLines(legacyLines);
+        }
+
         return {
           vehicle_number: String(data?.vehicle_number ?? "").trim(),
           assigned_location: String(data?.assigned_location ?? "").trim(),
           zone: String(data?.zone ?? "").trim(),
           printed_at: String(data?.printed_at ?? "").trim() || formatTodayVi(),
           form_code: formCode,
-          lines: lines.map((row, index) => ({
-            stt: index + 1,
-            sku: String(row?.sku ?? "").trim(),
-            item_name: String(row?.item_name ?? "").trim(),
-            quantity: row?.quantity,
-            unit: String(row?.unit ?? "").trim(),
-            lot_number: String(row?.lot_number ?? "").trim(),
-            locator: String(row?.locator ?? "").trim(),
-          })),
+          sheets,
         };
+      }
+
+      function payloadLineCount(payload) {
+        return (payload.sheets ?? []).reduce(
+          (total, sheet) => total + (sheet.lines?.length ?? 0),
+          0,
+        );
       }
 
       function metaCcLabel(payload) {
@@ -418,7 +541,7 @@
         return loc || zone;
       }
 
-      function renderMeta(payload) {
+      function renderMeta(payload, sheet) {
         return `
           <div class="meta-grid">
             <div class="meta-row">
@@ -436,6 +559,18 @@
             <div class="meta-row">
               <span class="label">Mã biểu mẫu:</span>
               <span class="value">${displayText(payload.form_code || DOCUMENT_CODE_FALLBACK)}</span>
+            </div>
+            <div class="meta-row">
+              <span class="label">Khách hàng:</span>
+              <span class="value">${displayText(sheet.customer_name)}</span>
+            </div>
+            <div class="meta-row">
+              <span class="label">NVT:</span>
+              <span class="value">${displayText(sheet.nvt)}</span>
+            </div>
+            <div class="meta-row meta-row--span">
+              <span class="label">Trip:</span>
+              <span class="value">${displayText(sheet.trip)}</span>
             </div>
           </div>
         `;
@@ -457,9 +592,13 @@
         `;
       }
 
+      function renderEmptyTableRow() {
+        return `<tr class="row-filler"><td class="num">&nbsp;</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>`;
+      }
+
       function renderTableRow(row) {
         return `
-          <tr>
+          <tr class="row-data">
             <td class="num">${row.stt}</td>
             <td class="sku">${displayText(row.sku)}</td>
             <td>${displayText(row.item_name)}</td>
@@ -471,69 +610,112 @@
         `;
       }
 
-      function renderPage(payload, chunk, pageIndex, pageCount) {
+      function renderFooter(pageIndex, pageCount, isLastPage) {
+        const pageLabel = `<div class="page-num">Trang ${pageIndex + 1} / ${pageCount}</div>`;
+        if (!isLastPage) {
+          return `<footer class="sheet-footer sheet-footer--compact">${pageLabel}</footer>`;
+        }
+        return `
+          <footer class="sheet-footer sheet-footer--last">
+            <div class="sign-block">
+              <div class="title">Người chia hàng</div>
+              <div class="sign-line">&nbsp;</div>
+            </div>
+            ${pageLabel}
+          </footer>
+        `;
+      }
+
+      function renderPage(
+        payload,
+        sheet,
+        chunk,
+        pageIndex,
+        pageCount,
+        isLastPage,
+        isCustomerStart,
+      ) {
         const rowsHtml = chunk.map(renderTableRow).join("");
-        const emptyRows =
-          chunk.length < ROWS_PER_PAGE
-            ? Array.from({ length: ROWS_PER_PAGE - chunk.length }, () =>
-                `<tr><td class="num">&nbsp;</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>`,
-              ).join("")
+        const fillerCount = Math.max(0, ROWS_PER_PAGE - chunk.length);
+        const fillerRows =
+          fillerCount > 0
+            ? Array.from({ length: fillerCount }, renderEmptyTableRow).join("")
             : "";
+        const pageClass = isCustomerStart
+          ? "sheet-page sheet-page--customer-start"
+          : "sheet-page";
 
         return `
-          <div class="sheet-page">
+          <div class="${pageClass}">
             <header class="doc-header">
               <h1>Phiếu lấy hàng</h1>
               <p>Picking List</p>
             </header>
-            ${renderMeta(payload)}
-            <table class="lines-table">
-              ${renderTableHead()}
-              <tbody>${rowsHtml}${emptyRows}</tbody>
-            </table>
-            <footer class="sheet-footer">
-              <div class="sign-block">
-                <div class="title">Người lấy hàng</div>
-                <div class="sign-line">&nbsp;</div>
-              </div>
-              <div class="page-num">Trang ${pageIndex + 1} / ${pageCount}</div>
-              <div class="sign-block">
-                <div class="title">Giám sát</div>
-                <div class="sign-line">&nbsp;</div>
-              </div>
-            </footer>
+            ${renderMeta(payload, sheet)}
+            <div class="sheet-body">
+              <table class="lines-table${fillerCount ? " lines-table--fill" : ""}">
+                ${renderTableHead()}
+                <tbody>${rowsHtml}${fillerRows}</tbody>
+              </table>
+            </div>
+            ${renderFooter(pageIndex, pageCount, isLastPage)}
           </div>
         `;
       }
 
-      function renderPages(payload) {
-        const lines = payload.lines;
-        if (!lines.length) return "";
-
-        const pageCount = Math.max(1, Math.ceil(lines.length / ROWS_PER_PAGE));
-        const pages = [];
-        for (let i = 0; i < lines.length; i += ROWS_PER_PAGE) {
-          const chunk = lines.slice(i, i + ROWS_PER_PAGE);
-          pages.push(renderPage(payload, chunk, pages.length, pageCount));
+      function buildPageJobs(payload) {
+        const jobs = [];
+        const sheets = payload.sheets ?? [];
+        for (let sheetIndex = 0; sheetIndex < sheets.length; sheetIndex++) {
+          const sheet = sheets[sheetIndex];
+          const lines = sheet.lines ?? [];
+          for (let i = 0; i < lines.length; i += ROWS_PER_PAGE) {
+            jobs.push({
+              sheet,
+              chunk: lines.slice(i, i + ROWS_PER_PAGE),
+              isCustomerStart: sheetIndex > 0 && i === 0,
+            });
+          }
         }
-        return pages.join("");
+        return jobs;
       }
 
-      function countPages(lineCount) {
-        if (lineCount <= 0) return 0;
-        return Math.ceil(lineCount / ROWS_PER_PAGE);
+      function renderPages(payload) {
+        const jobs = buildPageJobs(payload);
+        if (!jobs.length) return "";
+
+        const pageCount = jobs.length;
+        return jobs
+          .map((job, pageIndex) =>
+            renderPage(
+              payload,
+              job.sheet,
+              job.chunk,
+              pageIndex,
+              pageCount,
+              pageIndex === pageCount - 1,
+              job.isCustomerStart,
+            ),
+          )
+          .join("");
       }
 
-      function updatePageInfo(lineCount) {
+      function countPagesForPayload(payload) {
+        return buildPageJobs(payload).length;
+      }
+
+      function updatePageInfo(payload) {
         const pageInfo = document.getElementById("page-info");
         if (!pageInfo) return;
+        const lineCount = payloadLineCount(payload);
         if (lineCount === 0) {
           pageInfo.textContent = "Chưa có dữ liệu in";
           return;
         }
-        const pages = countPages(lineCount);
+        const sheetCount = payload.sheets?.length ?? 0;
+        const pages = countPagesForPayload(payload);
         pageInfo.textContent =
-          `${lineCount} dòng · ${pages} trang A4 (${ROWS_PER_PAGE} dòng/trang)`;
+          `${sheetCount} khách · ${lineCount} dòng · ${pages} trang A4 ngang (${ROWS_PER_PAGE} dòng/trang)`;
       }
 
       /**
@@ -545,17 +727,18 @@
         const html = renderPages(payload);
         const root = document.getElementById("print-root");
 
+        const lineCount = payloadLineCount(payload);
         if (root) {
-          root.classList.toggle("is-empty", payload.lines.length === 0);
+          root.classList.toggle("is-empty", lineCount === 0);
           root.innerHTML =
-            payload.lines.length === 0 ? "Chưa có dữ liệu in." : html;
+            lineCount === 0 ? "Chưa có dữ liệu in." : html;
         }
 
-        updatePageInfo(payload.lines.length);
+        updatePageInfo(payload);
 
         return {
           payload,
-          pageCount: countPages(payload.lines.length),
+          pageCount: countPagesForPayload(payload),
           html,
         };
       }

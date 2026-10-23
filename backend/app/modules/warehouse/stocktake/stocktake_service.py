@@ -17,6 +17,7 @@ from app.modules.warehouse.item_stock.item_stock_model import ItemStock
 from app.modules.warehouse.location_map.location_model import Location
 from app.modules.warehouse.stocktake.stocktake_schema import (
     StocktakeCreate,
+    StocktakeAddItemRequest,
     StocktakeDetailResponse,
     StocktakeItemStockFormData,
     StocktakeItemStockListResponse,
@@ -207,6 +208,16 @@ def create_stocktake(
     created_by_id: int,
 ) -> Stocktake:
     _ensure_warehouse_exists(db, body.warehouse_id)
+    if location_ids:
+        valid_ids = {
+            loc_id for (loc_id,) in db.query(Location.id).filter(
+                Location.id.in_(location_ids),
+                Location.warehouse_id == body.warehouse_id,
+                Location.is_active.is_(True),
+            ).all()
+        }
+        if valid_ids != set(location_ids):
+            raise ValueError("Vị trí không tồn tại, đã ngừng hoạt động hoặc không thuộc kho kiểm kê")
     stocktake = Stocktake(
         warehouse_id=body.warehouse_id,
         created_by_id=created_by_id,
@@ -253,14 +264,14 @@ def create_stocktake(
             query = query.filter(ItemStock.item_id.in_(item_ids))
 
     item_stocks = query.all()
-    if not item_stocks:
+    # An empty location is a valid counting scope. Newly found stock can be
+    # added explicitly; never resurrect historical, inactive stock rows.
+    if not item_stocks and not (location_ids and not item_ids and not lot_numbers):
         db.rollback()
         if lot_numbers:
             raise ValueError("No stock found for the selected lots")
         if item_ids:
             raise ValueError("No stock found for the selected product codes")
-        if location_ids:
-            raise ValueError("Selected locations have no stock")
         raise ValueError("No stock found in this warehouse")
     
     for item_stock in item_stocks:
@@ -289,6 +300,74 @@ def create_stocktake(
         db.rollback()
         raise ValueError(f"Database conflict: {e.orig}") from e
     return stocktake
+
+
+def _lock_count_location(db: Session, location_id: int, warehouse_id: int) -> None:
+    location = db.query(Location.id).filter(
+        Location.id == location_id,
+        Location.warehouse_id == warehouse_id,
+        Location.is_active.is_(True),
+    ).with_for_update().first()
+    if not location:
+        raise ValueError("Vị trí không tồn tại, đã ngừng hoạt động hoặc không thuộc kho kiểm kê")
+
+
+def _matching_stock(db: Session, stock: ItemStock):
+    return db.query(ItemStock.id).filter(
+        ItemStock.location_id == stock.location_id,
+        ItemStock.item_id == stock.item_id,
+        ItemStock.lot_number_from == stock.lot_number_from,
+        ItemStock.lot_number_to == stock.lot_number_to,
+        ItemStock.expiry_date == stock.expiry_date,
+        ItemStock.id != stock.id if stock.id else True,
+    )
+
+
+def add_stocktake_item(
+    db: Session, stocktake_id: int, body: StocktakeAddItemRequest,
+) -> Optional[StocktakeItemStockResponse]:
+    stocktake = get_stocktake_by_id(db, stocktake_id)
+    if not stocktake:
+        return None
+    _lock_count_location(db, body.location_id, stocktake.warehouse_id)
+    item = db.query(Item).filter(
+        Item.id == body.item_id,
+        Item.warehouse_id == stocktake.warehouse_id,
+        Item.is_active.is_(True),
+    ).first()
+    if not item:
+        raise ValueError("Sản phẩm không tồn tại, đã ngừng hoạt động hoặc không thuộc kho kiểm kê")
+    stock = ItemStock(
+        item_id=item.id, location_id=body.location_id, unit_id=item.base_unit_id,
+        quantity=0, is_active=False, status=body.status,
+        lot_number_from=body.lot_number_from, lot_number_to=body.lot_number_to,
+        expiry_date=body.expiry_date,
+    )
+    matching = _matching_stock(db, stock)
+    if matching.filter(ItemStock.is_active.is_(True), ItemStock.quantity > 0).first():
+        raise ValueError("SKU/lô này đã có tồn tại vị trí; hãy kiểm kê dòng tồn hiện có")
+    if db.query(StocktakeItemStock.id).filter(
+        StocktakeItemStock.item_stock_id.in_(matching.filter(ItemStock.quantity == 0)),
+        StocktakeItemStock.desired_quantity == 0,
+        StocktakeItemStock.status.in_(["initialize", "in_progress"]),
+    ).first():
+        raise ValueError("SKU/lô tại vị trí này đang có dòng kiểm kê chưa xác nhận")
+    try:
+        db.add(stock)
+        db.flush()
+        row = StocktakeItemStock(
+            stocktake_id=stocktake_id, item_stock_id=stock.id,
+            location_id=body.location_id, desired_quantity=0,
+            actual_quantity=body.actual_quantity, status="in_progress",
+            lot_number=format_lot_number_display(stock.lot_number_from, stock.lot_number_to) or "",
+        )
+        db.add(row)
+        db.commit()
+        row = _get_stocktake_item_row(db, stocktake_id, row.id)
+    except IntegrityError as e:
+        db.rollback()
+        raise ValueError(f"Database conflict: {e.orig}") from e
+    return stocktake_item_to_response(row)
 
 
 def update_stocktake(
@@ -433,6 +512,7 @@ def record_stocktake_item_count(
     if not item_stock:
         raise ValueError("Item stock not found")
 
+    _lock_count_location(db, body.location_id or item_stock.location_id, row.stocktake.warehouse_id)
     _apply_item_stock_metadata(db, item_stock, body)
     row.actual_quantity = body.actual_quantity
     row.status = "in_progress"
@@ -467,9 +547,22 @@ def confirm_quantity_for_stock(
     if not item_stock:
         raise ValueError("Item stock not found")
 
+    _lock_count_location(db, item_stock.location_id, row.stocktake.warehouse_id)
+    # Serialize confirmations of this exact count, including repeated clicks.
+    db.query(StocktakeItemStock.id).filter(StocktakeItemStock.id == row.id).with_for_update().one()
+    db.refresh(row)
+    db.refresh(item_stock)
+    if row.status != "in_progress":
+        raise ValueError("Item is not pending admin confirmation")
+    if not item_stock.is_active and (row.desired_quantity != 0 or item_stock.quantity != 0):
+        raise ValueError("Dòng tồn đã được clear hoặc ngừng hoạt động; hãy tạo dòng kiểm kê mới theo thực đếm")
+    if not item_stock.is_active and row.actual_quantity > 0:
+        if _matching_stock(db, item_stock).filter(
+            ItemStock.is_active.is_(True), ItemStock.quantity > 0,
+        ).first():
+            raise ValueError("SKU/lô đã có tồn mới tại vị trí; vui lòng kiểm tra lại trước khi xác nhận")
     item_stock.quantity = row.actual_quantity
-    if item_stock.quantity == 0:
-        item_stock.is_active = False
+    item_stock.is_active = row.actual_quantity > 0
     row.status = (
         "completed"
         if row.actual_quantity == row.desired_quantity

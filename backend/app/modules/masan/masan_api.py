@@ -16,6 +16,7 @@ from app.modules.masan import (
     masan_picking_list_service,
 )
 from app.modules.masan.masan_celery_task import sending_masan_outbound_task_task
+from app.modules.masan.masan_sorting_return_service import list_sorting_zone_return_tasks
 from app.modules.masan.masan_oubound_auto_service import (
     clear_outbound_station_cache,
     robot_task_for_zone,
@@ -52,8 +53,12 @@ from app.modules.masan.masan_schema import (
     MasanSortingOutboundDispatchResponse,
     MasanConfirmAllocationOutboundRequest,
     MasanConfirmAllocationOutboundResponse,
+    MasanStartSortingTimeRequest,
+    MasanStartSortingTimeResponse,
     MasanSortingZonePendingStockResponse,
     MasanSortingZoneRobotTasksResponse,
+    MasanSortingZoneReturnTasksResponse,
+    MasanPickingListAvailableLine,
     MasanPickingListCreateRequest,
     MasanPickingListListResponse,
     MasanPickingListSummary,
@@ -354,11 +359,9 @@ def masan_sorting_outbound_dispatch(
         ) from exc
 
     if payload is None:
-        return MasanSortingOutboundDispatchResponse(
-            warehouse_id=body.warehouse_id,
-            zone=body.zone.strip(),
-            item_id=body.item_id,
-            lacked=[],
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Không có lệnh xuất mới được gửi; kiểm tra phần còn thiếu và tồn khả dụng",
         )
     return MasanSortingOutboundDispatchResponse.model_validate(payload)
 
@@ -395,6 +398,22 @@ def get_masan_sorting_zone_pending_stock(
             detail=str(exc),
         ) from exc
     return MasanSortingZonePendingStockResponse.model_validate(payload)
+
+
+@router.get(
+    "/masan/outbound-orders/sorting-zone/return-tasks",
+    response_model=MasanSortingZoneReturnTasksResponse,
+    dependencies=[Depends(require_permission("outbound:read"))],
+)
+def get_masan_sorting_zone_return_tasks(
+    db: DbSession,
+    warehouse_id: int = Query(..., gt=0),
+    zone: str = Query(
+        ..., min_length=1, max_length=50, pattern=r"\S",
+        description="Zone.code khu VT chứa pallet cần trả (vd. Zone_sorting_2)",
+    ),
+):
+    return list_sorting_zone_return_tasks(db, warehouse_id, zone)
 
 
 def _masan_robot_tasks_for_sorting_zone_payload(
@@ -481,14 +500,21 @@ def list_masan_picking_lists(
 ):
     vehicle = vehicle_no.strip()
     try:
-        items = masan_picking_list_service.list_picking_lists_for_vehicle(
+        context = masan_picking_list_service.list_picking_list_context(
             db, vehicle, warehouse_id=warehouse_id
         )
     except ValueError as exc:
         raise _picking_list_http_error(exc) from exc
     return MasanPickingListListResponse(
-        vehicle_number=vehicle,
-        items=[MasanPickingListSummary.model_validate(row) for row in items],
+        vehicle_number=context["vehicle_number"],
+        items=[
+            MasanPickingListSummary.model_validate(row)
+            for row in context["items"]
+        ],
+        available_lines=[
+            MasanPickingListAvailableLine.model_validate(row)
+            for row in context["available_lines"]
+        ],
     )
 
 
@@ -506,6 +532,7 @@ def create_masan_picking_list_pdf(
             body.vehicle_no.strip(),
             warehouse_id=body.warehouse_id,
             location_id=body.location_id,
+            detail_ids=body.detail_ids,
         )
     except (ValueError, RuntimeError, NotImplementedError) as exc:
         raise _picking_list_http_error(exc) from exc
@@ -545,6 +572,23 @@ def download_masan_picking_list_pdf(
 
 
 @router.post(
+    "/masan/outbound-orders/start-sorting-time",
+    response_model=MasanStartSortingTimeResponse,
+    dependencies=[Depends(require_permission("outbound:update"))],
+)
+def masan_start_sorting_time(
+    db: DbSession,
+    body: MasanStartSortingTimeRequest,
+):
+    """Ghi mốc bắt đầu chia; nếu đã có thì trả giờ cũ, không ghi đè."""
+    result = masan_outbound_service.start_sorting_time(db, body.allocation_ids)
+    return MasanStartSortingTimeResponse(
+        started_at=result.get("started_at"),
+        already_started=bool(result.get("already_started")),
+    )
+
+
+@router.post(
     "/masan/outbound-orders/confirm-allocation",
     response_model=MasanConfirmAllocationOutboundResponse,
     dependencies=[Depends(require_permission("outbound:update"))],
@@ -561,6 +605,7 @@ def masan_confirm_allocation_outbound(
             body.warehouse_id,
             zone,
             body.quantities,
+            body.sorting_persons.strip(),
         )
     except ValueError as exc:
         message = str(exc)
@@ -683,6 +728,7 @@ def caller_masan_inbound_order(db: DbSession, body: MasanInboundCallerRequest):
             db,
             body.location_ids,
             assign_robot_id=body.assign_robot_id,
+            sorting_persons=body.sorting_persons,
         )
     except ValueError as exc:
         raise HTTPException(

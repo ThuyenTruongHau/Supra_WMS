@@ -1,10 +1,11 @@
 {
-  "orderId": "TDS_Inbound_505cc4fa",
+  "orderId": "TDS_Inbound_505cc4fa111",
   "modelProcessCode": "Supra_to_storage",
   "fromSystem": "Thadosoft",
   "taskOrderDetail": [
     {
-      "taskPath": "10002643,10000861"
+      "taskPath": "10002643,10000861",
+      "assignRobotIds": "EE49822BAK00001"
     }
   ]
 }

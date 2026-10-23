@@ -15,8 +15,11 @@ import type {
   MasanSortingZoneCcLocationsResponse,
   MasanConfirmAllocationOutboundRequest,
   MasanConfirmAllocationOutboundResponse,
+  MasanStartSortingTimeRequest,
+  MasanStartSortingTimeResponse,
   MasanSortingZonePendingStockResponse,
   MasanSortingZoneRobotTasksResponse,
+  MasanSortingZoneReturnTasksResponse,
   MasanPickingListListResponse,
   MasanPickingListCreateRequest,
 } from "@/types/masan";
@@ -228,6 +231,18 @@ export const getMasanSortingZoneRobotTasksApi = async (
   };
 };
 
+export const getMasanSortingZoneReturnTasksApi = async (
+  warehouseId: number,
+  sortingZoneCode: string,
+  signal?: AbortSignal,
+): Promise<MasanSortingZoneReturnTasksResponse> => {
+  const { data } = await axiosInstance.get<MasanSortingZoneReturnTasksResponse>(
+    "/api/v1/masan/outbound-orders/sorting-zone/return-tasks",
+    { params: { warehouse_id: warehouseId, zone: sortingZoneCode.trim() }, signal },
+  );
+  return data;
+};
+
 export const getMasanSortingZonePendingStockApi = async (
   warehouseId: number,
   zone: string,
@@ -244,6 +259,16 @@ export const getMasanSortingZonePendingStockApi = async (
       },
       signal,
     },
+  );
+  return data;
+};
+
+export const masanStartSortingTimeApi = async (
+  body: MasanStartSortingTimeRequest,
+): Promise<MasanStartSortingTimeResponse> => {
+  const { data } = await axiosInstance.post<MasanStartSortingTimeResponse>(
+    "/api/v1/masan/outbound-orders/start-sorting-time",
+    body,
   );
   return data;
 };

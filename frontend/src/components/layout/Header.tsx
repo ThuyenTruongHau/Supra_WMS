@@ -3,6 +3,11 @@ import { SettingOutlined } from "@ant-design/icons";
 import { useAppStore } from "@/store/useAppStore";
 import { useLocation } from "react-router-dom";
 import WarehouseSelector from "@/components/shared/WarehouseSelector";
+import { cn } from "@/components/ui";
+import {
+  isOperatorTabletViewport,
+  useOperatorViewportTier,
+} from "@/utils/operatorViewportTier";
 
 function formatHeaderDateTime(date: Date, lang: string): string {
   const locale = lang === "EN" ? "en-GB" : "vi-VN";
@@ -22,6 +27,8 @@ export default function Header() {
   const location = useLocation();
   const isSettingPage = location.pathname.startsWith('/setting');
   const { lang, setLang } = useAppStore();
+  const viewportTier = useOperatorViewportTier();
+  const tabletTitle = isOperatorTabletViewport(viewportTier);
   
   const [now, setNow] = useState(() => new Date());
 
@@ -39,7 +46,14 @@ export default function Header() {
 
   return (
     <div className="flex flex-row justify-between h-full items-center px-4 w-full gap-4">
-      <h1 className="font-extrabold text-3xl sm:text-4xl bg-gradient-to-r from-brand-primary to-brand-dark bg-clip-text text-transparent leading-tight">
+      <h1
+        className={cn(
+          "font-extrabold text-3xl leading-tight sm:text-4xl",
+          tabletTitle
+            ? "text-brand-dark"
+            : "bg-gradient-to-r from-brand-primary to-brand-dark bg-clip-text text-transparent",
+        )}
+      >
         Hệ thống quản lý kho
       </h1>
       <div

@@ -42,6 +42,8 @@ export type MasanInboundDetailFilter =
 export interface MasanInboundCallerRequest {
   location_ids: number[];
   assign_robot_id?: string;
+  /** Username người nhập — gán `inbound_order_detail.sorting_persons`. */
+  sorting_persons?: string | null;
 }
 
 export interface MasanInboundCallerResponse {
@@ -151,20 +153,36 @@ export interface MasanSortingZoneCcLocationsResponse {
 export interface MasanPickingListSummary {
   extracted: number;
   line_count: number;
+  customer_count?: number;
   assigned_location: string;
   zone: string;
   vehicle_number: string;
 }
 
+export interface MasanPickingListAvailableLine {
+  detail_id: number;
+  sku: string;
+  item_name: string;
+  customer_name: string;
+  nvt: string;
+  trip: string;
+  quantity: number;
+  unit: string;
+  lot_number: string;
+  extracted: number;
+}
+
 export interface MasanPickingListListResponse {
   vehicle_number: string;
   items: MasanPickingListSummary[];
+  available_lines?: MasanPickingListAvailableLine[];
 }
 
 export interface MasanPickingListCreateRequest {
   warehouse_id: number;
   vehicle_no: string;
   location_id?: number | null;
+  detail_ids?: number[];
 }
 
 export interface MasanSortingItemNeededRow {
@@ -213,6 +231,12 @@ export interface MasanSortingZoneRobotTasksResponse {
   tasks: OutboundRobotTask[];
 }
 
+export interface MasanSortingZoneReturnTasksResponse {
+  warehouse_id: number;
+  zone: string;
+  rows: { outbound_order_id: number; task: OutboundRobotTask }[];
+}
+
 export interface MasanSortingZonePendingAllocationRow {
   id: number;
   outbound_order_detail_id: number;
@@ -252,10 +276,21 @@ export interface MasanSortingZonePendingStockResponse {
   published_events?: number;
 }
 
+export interface MasanStartSortingTimeRequest {
+  allocation_ids: number[];
+}
+
+export interface MasanStartSortingTimeResponse {
+  started_at: string | null;
+  already_started: boolean;
+}
+
 export interface MasanConfirmAllocationOutboundRequest {
   warehouse_id: number;
   zone: string;
   quantities: Record<number, number>;
+  /** Username người xuất; nhiều người nối bằng dấu phẩy. */
+  sorting_persons: string;
 }
 
 export interface MasanConfirmAllocationOutboundResponse {

@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  addStocktakeItemApi,
   confirmStocktakeItemQuantityApi,
   createStocktakeApi,
   deleteStocktakeApi,
@@ -10,6 +11,7 @@ import {
   recordStocktakeItemCountApi,
 } from "@/api/stocktake";
 import type {
+  AddStocktakeItemParams,
   ConfirmStocktakeItemQuantityParams,
   CreateStocktakeInput,
   GetStocktakeItemsParams,
@@ -21,6 +23,18 @@ import type {
 import { LIVE_QUERY_OPTIONS } from "@/utils/liveQueryOptions";
 import type { AxiosError } from "axios";
 import type { ApiErrorResponse } from "@/types/apiError";
+
+export const useAddStocktakeItem = () => {
+  const queryClient = useQueryClient();
+  return useMutation<StocktakeItemStock, AxiosError<ApiErrorResponse>, AddStocktakeItemParams>({
+    mutationFn: addStocktakeItemApi,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["stocktakes"] });
+      queryClient.invalidateQueries({ queryKey: ["stocktakeItems"] });
+      queryClient.invalidateQueries({ queryKey: ["stocktakeDetail"] });
+    },
+  });
+};
 
 export const useGetStocktakes = (params: GetStocktakesParams) => {
   return useQuery({
@@ -117,6 +131,9 @@ export const useConfirmStocktakeItemQuantity = () => {
       queryClient.invalidateQueries({ queryKey: ["stocktakes"] });
       queryClient.invalidateQueries({ queryKey: ["stocktakeItems"] });
       queryClient.invalidateQueries({ queryKey: ["stocktakeDetail"] });
+      for (const key of ["full-locations", "location-detail", "zone_map_status", "items", "item", "item_stock_by_zone"]) {
+        queryClient.invalidateQueries({ queryKey: [key] });
+      }
     },
   });
 };

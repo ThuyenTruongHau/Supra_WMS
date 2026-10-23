@@ -6,6 +6,7 @@ import asyncio
 import json
 import re
 import sys
+from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from pathlib import Path
@@ -194,6 +195,17 @@ def _validate_pending_cc_locations(
             raise ValueError("Vị trí CC không khớp với dữ liệu picking list của xe.")
 
 
+def _meta_field(meta: dict[str, Any], *keys: str) -> str:
+    for key in keys:
+        raw = meta.get(key)
+        if raw is None:
+            continue
+        cleaned = str(raw).strip()
+        if cleaned:
+            return cleaned
+    return ""
+
+
 def _picking_locator_label(detail: OutboundOrderDetail) -> str:
     outbound_allocs = [
         alloc
@@ -236,12 +248,73 @@ def _detail_to_picking_line(detail: OutboundOrderDetail) -> dict[str, Any]:
     }
 
 
+def _customer_group_key(detail: OutboundOrderDetail) -> str:
+    meta = detail.details if isinstance(detail.details, dict) else {}
+    name = str(meta.get("customer_name") or "").strip()
+    return name or "Unknown"
+
+
+def _unique_keep_order(values: list[str]) -> list[str]:
+    seen: set[str] = set()
+    ordered: list[str] = []
+    for raw in values:
+        cleaned = str(raw).strip()
+        if not cleaned or cleaned in seen:
+            continue
+        seen.add(cleaned)
+        ordered.append(cleaned)
+    return ordered
+
+
+def _aggregate_meta_for_details(
+    details: list[OutboundOrderDetail],
+) -> tuple[str, str]:
+    nvts: list[str] = []
+    trips: list[str] = []
+    for detail in details:
+        meta = detail.details if isinstance(detail.details, dict) else {}
+        nvt = _meta_field(meta, "nvt")
+        if nvt:
+            nvts.append(nvt)
+        trip = _meta_field(meta, "trip", "trip_code")
+        if trip:
+            trips.append(trip)
+    nvt_text = ", ".join(_unique_keep_order(nvts))
+    trip_text = ", ".join(_unique_keep_order(trips))
+    return nvt_text, trip_text
+
+
+def _build_picking_sheets(pending: list[OutboundOrderDetail]) -> list[dict[str, Any]]:
+    grouped: dict[str, list[OutboundOrderDetail]] = defaultdict(list)
+    for detail in pending:
+        grouped[_customer_group_key(detail)].append(detail)
+
+    sheets: list[dict[str, Any]] = []
+    for customer_name in sorted(
+        grouped.keys(),
+        key=lambda name: (name == "Unknown", name),
+    ):
+        customer_details = sorted(grouped[customer_name], key=lambda row: row.id)
+        nvt_text, trip_text = _aggregate_meta_for_details(customer_details)
+        lines = [_detail_to_picking_line(d) for d in customer_details]
+        sheets.append(
+            {
+                "customer_name": customer_name,
+                "nvt": nvt_text,
+                "trip": trip_text,
+                "lines": lines,
+            }
+        )
+    return sheets
+
+
 def build_picking_list_payload(
     db: Session,
     vehicle_no: str,
     pending: list[OutboundOrderDetail],
     *,
     extracted: int,
+    form_code: str | None = None,
 ) -> dict[str, Any]:
     if not pending:
         raise ValueError("Không có dòng hàng cho picking list.")
@@ -250,15 +323,104 @@ def build_picking_list_payload(
     if loc is not None and loc.zone is not None:
         zone = (loc.zone.code or "").strip()
     batch = int(extracted)
+    resolved_form_code = (form_code or "").strip()
+    if not resolved_form_code:
+        resolved_form_code = f"Pallet {batch}" if batch > 0 else "In chọn lọc"
     return {
         "vehicle_number": (vehicle_no or "").strip(),
         "assigned_location": _assigned_location_label(loc),
         "zone": zone,
         "printed_at": datetime.now().strftime("%d/%m/%Y"),
         "extracted": batch,
-        "form_code": f"Pallet {batch}",
-        "lines": [_detail_to_picking_line(d) for d in pending],
+        "form_code": resolved_form_code,
+        "sheets": _build_picking_sheets(pending),
     }
+
+
+def _filter_details_for_warehouse(
+    details: list[OutboundOrderDetail],
+    warehouse_id: int | None,
+) -> list[OutboundOrderDetail]:
+    if warehouse_id is None:
+        return details
+    return [
+        d
+        for d in details
+        if d.outbound_order is not None
+        and d.outbound_order.warehouse_id == warehouse_id
+    ]
+
+
+def _detail_to_picking_list_option(detail: OutboundOrderDetail) -> dict[str, Any]:
+    meta = detail.details if isinstance(detail.details, dict) else {}
+    sku = _resolve_line_sku(detail, meta)
+    item = detail.item
+    item_name = (item.name if item is not None else None) or ""
+    lot_raw = meta.get("lot_number")
+    lot_number = format_lot_compact_ddmmyy(
+        str(lot_raw).strip() if lot_raw is not None else None,
+    )
+    ext = detail.extracted
+    return {
+        "detail_id": int(detail.id),
+        "sku": sku or "",
+        "item_name": str(item_name).strip(),
+        "customer_name": _meta_field(meta, "customer_name"),
+        "nvt": _meta_field(meta, "nvt"),
+        "trip": _meta_field(meta, "trip", "trip_code"),
+        "quantity": int(detail.quantity or 0),
+        "unit": (detail.unit or "").strip(),
+        "lot_number": lot_number or "",
+        "extracted": int(ext) if ext is not None and int(ext) > 0 else 0,
+    }
+
+
+def _resolve_details_by_ids(
+    details_pool: list[OutboundOrderDetail],
+    detail_ids: list[int],
+) -> list[OutboundOrderDetail]:
+    if not detail_ids:
+        raise ValueError("Cần chọn ít nhất một dòng để in picking list.")
+    unique_ids = list(dict.fromkeys(int(i) for i in detail_ids))
+    by_id = {int(d.id): d for d in details_pool}
+    missing = [detail_id for detail_id in unique_ids if detail_id not in by_id]
+    if missing:
+        raise ValueError(
+            f"Không tìm thấy dòng completed #{missing[0]} cho xe này."
+        )
+    return [by_id[detail_id] for detail_id in unique_ids]
+
+
+def prepare_picking_list_custom(
+    db: Session,
+    vehicle_no: str,
+    detail_ids: list[int],
+    *,
+    location_id: int | None = None,
+    warehouse_id: int | None = None,
+) -> tuple[dict[str, Any], int]:
+    details = _query_completed_details_for_vehicle(db, vehicle_no)
+    if not details:
+        raise ValueError("Không tìm thấy dòng xuất completed cho xe này.")
+    details = _filter_details_for_warehouse(details, warehouse_id)
+    pending = _resolve_details_by_ids(details, detail_ids)
+    _ensure_sorting_locations(
+        db,
+        pending,
+        warehouse_id=warehouse_id,
+        vehicle_no=vehicle_no,
+        hint_location_id=location_id,
+    )
+    _validate_pending_cc_locations(pending, location_id=location_id)
+    _assert_details_warehouse(pending, warehouse_id)
+    payload = build_picking_list_payload(
+        db,
+        vehicle_no,
+        pending,
+        extracted=0,
+        form_code="In chọn lọc",
+    )
+    return payload, 0
 
 
 def _assert_details_warehouse(
@@ -332,20 +494,41 @@ def prepare_picking_list(
     return payload, batch
 
 
+def list_picking_list_context(
+    db: Session,
+    vehicle_no: str,
+    *,
+    warehouse_id: int | None = None,
+) -> dict[str, Any]:
+    details = _query_completed_details_for_vehicle(db, vehicle_no)
+    details = _filter_details_for_warehouse(details, warehouse_id)
+    vehicle = (vehicle_no or "").strip()
+    return {
+        "vehicle_number": vehicle,
+        "items": list_picking_lists_for_vehicle(
+            db,
+            vehicle_no,
+            warehouse_id=warehouse_id,
+            details_override=details,
+        ),
+        "available_lines": [
+            _detail_to_picking_list_option(d) for d in sorted(details, key=lambda row: row.id)
+        ],
+    }
+
+
 def list_picking_lists_for_vehicle(
     db: Session,
     vehicle_no: str,
     *,
     warehouse_id: int | None = None,
+    details_override: list[OutboundOrderDetail] | None = None,
 ) -> list[dict[str, Any]]:
-    details = _query_completed_details_for_vehicle(db, vehicle_no)
-    if warehouse_id is not None:
-        details = [
-            d
-            for d in details
-            if d.outbound_order is not None
-            and d.outbound_order.warehouse_id == warehouse_id
-        ]
+    if details_override is not None:
+        details = details_override
+    else:
+        details = _query_completed_details_for_vehicle(db, vehicle_no)
+        details = _filter_details_for_warehouse(details, warehouse_id)
     by_batch: dict[int, list[OutboundOrderDetail]] = {}
     for d in details:
         ext = d.extracted
@@ -361,10 +544,12 @@ def list_picking_lists_for_vehicle(
         zone = ""
         if loc is not None and loc.zone is not None:
             zone = (loc.zone.code or "").strip()
+        customer_keys = {_customer_group_key(d) for d in group}
         items.append(
             {
                 "extracted": ext,
                 "line_count": len(group),
+                "customer_count": len(customer_keys),
                 "assigned_location": _assigned_location_label(loc),
                 "zone": zone,
                 "vehicle_number": vehicle,
@@ -376,6 +561,11 @@ def list_picking_lists_for_vehicle(
 def picking_list_pdf_filename(vehicle_no: str, extracted: int) -> str:
     safe = re.sub(r"[^\w\-.]+", "_", (vehicle_no or "").strip())[:40]
     return f"picking_list_{safe}_{extracted}.pdf"
+
+
+def picking_list_custom_pdf_filename(vehicle_no: str) -> str:
+    safe = re.sub(r"[^\w\-.]+", "_", (vehicle_no or "").strip())[:40]
+    return f"picking_list_{safe}_chon_loc.pdf"
 
 
 def render_picking_list_html(payload: dict[str, Any]) -> str:
@@ -457,17 +647,33 @@ def create_picking_list_pdf(
     *,
     warehouse_id: int | None = None,
     location_id: int | None = None,
+    detail_ids: list[int] | None = None,
 ) -> tuple[bytes, str, int]:
-    payload, batch = prepare_picking_list(
-        db,
-        vehicle_no,
-        create_new=True,
-        location_id=location_id,
-        warehouse_id=warehouse_id,
-    )
+    normalized_ids = [
+        int(detail_id)
+        for detail_id in (detail_ids or [])
+        if detail_id is not None
+    ]
+    if normalized_ids:
+        payload, batch = prepare_picking_list_custom(
+            db,
+            vehicle_no,
+            normalized_ids,
+            location_id=location_id,
+            warehouse_id=warehouse_id,
+        )
+        filename = picking_list_custom_pdf_filename(vehicle_no)
+    else:
+        payload, batch = prepare_picking_list(
+            db,
+            vehicle_no,
+            create_new=True,
+            location_id=location_id,
+            warehouse_id=warehouse_id,
+        )
+        filename = picking_list_pdf_filename(vehicle_no, batch)
     html = render_picking_list_html(payload)
     pdf_bytes = render_picking_list_pdf(html)
-    filename = picking_list_pdf_filename(vehicle_no, batch)
     return pdf_bytes, filename, batch
 
 

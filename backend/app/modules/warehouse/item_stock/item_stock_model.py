@@ -23,7 +23,7 @@ import uuid
 from app.core.database import Base
 from app.modules.warehouse.outbound_order.outbound_order_model import OutboundOrderAllocation
 
-_NON_COUNTABLE_ALLOCATION_STATUSES = ("completed", "failed")
+_NON_COUNTABLE_ALLOCATION_STATUSES = ("completed", "failed", "cancelled")
 def countable_allocation_quantity():
     return case(
         (

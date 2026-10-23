@@ -12,7 +12,6 @@ import {
   monitorSidebarType,
   useOperatorViewportTier,
 } from "@/utils/operatorViewportTier";
-
 type Props = {
   zoneTitle: string;
   pendingStock: MasanSortingZonePendingStockResponse | undefined;
@@ -91,7 +90,6 @@ export default function MonitorZoneLocationSidebar({
   const loading = pendingStockLoading && sections.length === 0;
   const viewportTier = useOperatorViewportTier();
   const type = monitorSidebarType(viewportTier);
-
   return (
     <aside
       className={cn(

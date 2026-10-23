@@ -47,6 +47,14 @@ export const getStaffUsernamesApi = async (): Promise<string[]> => {
   return response.data.usernames;
 };
 
+/** Active non-admin users (roles + access) for operator assignee pickers */
+export const getStaffUsersApi = async (): Promise<UserListResponse> => {
+  const response = await axiosInstance.get<UserListResponse>(
+    '/api/v1/users/staff',
+  );
+  return response.data;
+};
+
 /** @deprecated use getUsersApi — kept for older callers expecting an array */
 export const getUserApi = async (): Promise<User[]> => {
   const data = await getUsersApi();

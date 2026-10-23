@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Any, Literal, Optional
 
 from pydantic import BaseModel, Field, field_validator
@@ -51,6 +52,11 @@ class MasanInboundCallerRequest(BaseModel):
     location_ids: list[int] = Field(..., min_length=1)
     assign_robot_id: Optional[Literal["EE49822BAK00001", "EE49822BAK00002"]] = Field(
         None, description="Robot được chỉ định: FL 01 hoặc FL 02; bỏ trống để RCS tự chọn."
+    )
+    sorting_persons: Optional[str] = Field(
+        None,
+        max_length=255,
+        description="Người nhập (username) gán lên inbound_order_detail.sorting_persons.",
     )
 
 
@@ -265,6 +271,17 @@ class MasanSortingZoneRobotTasksResponse(BaseModel):
     tasks: list[OutboundRobotTaskResponse] = Field(default_factory=list)
 
 
+class MasanSortingReturnTaskRow(BaseModel):
+    outbound_order_id: int
+    task: OutboundRobotTaskResponse
+
+
+class MasanSortingZoneReturnTasksResponse(BaseModel):
+    warehouse_id: int
+    zone: str
+    rows: list[MasanSortingReturnTaskRow] = Field(default_factory=list)
+
+
 class MasanConfirmAllocationOutboundRequest(BaseModel):
     warehouse_id: int = Field(..., gt=0)
     zone: str = Field(
@@ -277,6 +294,12 @@ class MasanConfirmAllocationOutboundRequest(BaseModel):
         ...,
         min_length=1,
         description="allocation_id -> số lượng xác nhận",
+    )
+    sorting_persons: str = Field(
+        ...,
+        min_length=1,
+        max_length=255,
+        description="Người xuất (username; nhiều người cách nhau dấu phẩy) → outbound_order_allocation.sorting_persons.",
     )
 
     @field_validator("quantities", mode="before")
@@ -292,6 +315,32 @@ class MasanConfirmAllocationOutboundRequest(BaseModel):
                 raise ValueError(f"quantity for allocation {alloc_id} must be > 0")
             out[alloc_id] = quantity
         return out
+
+
+class MasanStartSortingTimeRequest(BaseModel):
+    allocation_ids: list[int] = Field(..., min_length=1)
+
+    @field_validator("allocation_ids")
+    @classmethod
+    def coerce_allocation_ids(cls, value: list[int]) -> list[int]:
+        out: list[int] = []
+        seen: set[int] = set()
+        for raw in value:
+            alloc_id = int(raw)
+            if alloc_id <= 0:
+                raise ValueError("allocation_id must be > 0")
+            if alloc_id in seen:
+                continue
+            seen.add(alloc_id)
+            out.append(alloc_id)
+        if not out:
+            raise ValueError("allocation_ids must contain at least one allocation")
+        return out
+
+
+class MasanStartSortingTimeResponse(BaseModel):
+    started_at: Optional[datetime] = None
+    already_started: bool = False
 
 
 class MasanConfirmAllocationOutboundResponse(BaseModel):
@@ -367,11 +416,37 @@ class MasanPickingListCreateRequest(BaseModel):
         ge=1,
         description="Ô CC đang mở (validate khớp sorting_location của xe)",
     )
+    detail_ids: Optional[list[int]] = Field(
+        None,
+        description="In subset; nếu không rỗng thì không gán extracted",
+    )
+
+
+class MasanPickingListAvailableLine(BaseModel):
+    detail_id: int
+    sku: str = ""
+    item_name: str = ""
+    customer_name: str = ""
+    nvt: str = ""
+    trip: str = ""
+    quantity: int = 0
+    unit: str = ""
+    lot_number: str = ""
+    extracted: int = Field(
+        0,
+        ge=0,
+        description="Lượt in đã gán; 0 nếu chưa in",
+    )
 
 
 class MasanPickingListSummary(BaseModel):
     extracted: int
     line_count: int
+    customer_count: int = Field(
+        0,
+        ge=0,
+        description="Số khách hàng distinct trong lượt in",
+    )
     assigned_location: str = ""
     zone: str = ""
     vehicle_number: str
@@ -380,3 +455,6 @@ class MasanPickingListSummary(BaseModel):
 class MasanPickingListListResponse(BaseModel):
     vehicle_number: str
     items: list[MasanPickingListSummary] = Field(default_factory=list)
+    available_lines: list[MasanPickingListAvailableLine] = Field(
+        default_factory=list,
+    )
