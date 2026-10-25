@@ -37,6 +37,8 @@ INBOUND_REPORT_EXTRA_HEADERS: tuple[str, ...] = (
     "Robot",
     "Thời gian bắt đầu",
     "Thời gian kết thúc",
+    "Pin bắt đầu",
+    "Pin kết thúc",
 )
 
 INBOUND_REPORT_HEADERS: tuple[str, ...] = EXPORT_HEADERS + INBOUND_REPORT_EXTRA_HEADERS
@@ -64,6 +66,8 @@ INBOUND_REPORT_COLUMN_WIDTHS: tuple[float, ...] = (
     10.0,  # Robot
     14.0,  # Thời gian bắt đầu
     14.0,  # Thời gian kết thúc
+    12.0,  # Pin bắt đầu
+    12.0,  # Pin kết thúc
 )
 
 TITLE_ROW_HEIGHT = 42.0

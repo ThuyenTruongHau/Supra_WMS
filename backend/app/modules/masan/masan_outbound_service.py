@@ -12,6 +12,7 @@ from openpyxl import Workbook
 from datetime import datetime
 
 from app.modules.masan.masan_excel_io import load_masan_workbook
+from app.modules.masan.masan_oubound_auto_service import _exist_robot_task
 from sqlalchemy.orm import Session, joinedload, selectinload
 
 from app.core.cache import cache_set, cache_get, cache_scan_keys, cache_delete, cache_delete_pattern, cache_replace_if_unchanged
@@ -686,6 +687,12 @@ def _format_report_distance_m(distance_m: float | None) -> float | None:
     return round(float(distance_m), 3)
 
 
+def _format_report_battery(battery: Any) -> str | None:
+    if battery is None:
+        return None
+    return str(battery).strip() or None
+
+
 def _location_display_label(loc: Any) -> str:
     if loc is None:
         return ""
@@ -812,6 +819,8 @@ def _build_outbound_report_row(
         allocation.device or None,
         _format_outbound_report_datetime(allocation.start_time),
         _format_outbound_report_datetime(allocation.end_time),
+        _format_report_battery(allocation.start_battery),
+        _format_report_battery(allocation.end_battery),
         detail_sorting_location,
         _format_outbound_report_datetime(allocation.start_sorting_time),
         _format_outbound_report_datetime(allocation.end_sorting_time),
@@ -1861,6 +1870,9 @@ def get_item_needed_to_sorting(
 
 def sending_masan_outbound_task(db: Session, warehouse_id: int, zone: str, item_id: int, to_location_id: int):
     # Need optimize
+    if _exist_robot_task(db, to_location_id):
+        raise ValueError(f"Vị trí đích {to_location_id} đang có robot task chạy tới")
+
     keys = cache_scan_keys(f"outbound:assigned_cc_location:{warehouse_id}:*")
     list_lines: list[dict[str, Any]] = []
     has_lo_lines: list[dict[str, Any]] = []
@@ -2565,6 +2577,8 @@ def start_sorting_time(db: Session, allocation_ids: list[int]) -> dict[str, Any]
         allocation.start_sorting_time = started_at
     db.commit()
     return {"started_at": started_at, "already_started": False}
+
+
 
 #Fix bấm vị trí gọi lệnh vẫn ra chỗ đã được chọn - NG
 #Fix Chọn được vị trí cho đơn xuất.

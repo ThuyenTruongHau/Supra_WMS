@@ -31,6 +31,8 @@ class MasanReportColumnTests(unittest.TestCase):
             end_time=None,
             sorting_persons="Nguyen A",
             distance=25.0084,
+            start_battery="85",
+            end_battery=80,
         )
         allocation = SimpleNamespace(
             quantity=10,
@@ -44,6 +46,8 @@ class MasanReportColumnTests(unittest.TestCase):
         self.assertEqual(len(row), len(INBOUND_REPORT_HEADERS))
         self.assertEqual(row[14], "Nguyen A")
         self.assertEqual(row[15], 25.008)
+        self.assertEqual(row[19], "85")
+        self.assertEqual(row[20], "80")
         self.assertEqual(_format_report_distance_m(None), None)
 
     def test_outbound_row_matches_headers(self):
@@ -67,6 +71,8 @@ class MasanReportColumnTests(unittest.TestCase):
             end_sorting_time=None,
             sorting_persons="Tran B",
             distance=25.0,
+            start_battery="90",
+            end_battery=None,
         )
         row = _build_outbound_report_row(
             detail, allocation, detail_sorting_location="CC01"
@@ -74,6 +80,9 @@ class MasanReportColumnTests(unittest.TestCase):
         self.assertEqual(len(row), len(OUTBOUND_REPORT_HEADERS))
         self.assertEqual(row[12], "Tran B")
         self.assertEqual(row[13], 25.0)
+        self.assertEqual(row[17], "90")
+        self.assertIsNone(row[18])
+        self.assertEqual(row[19], "CC01")
 
 
 if __name__ == "__main__":

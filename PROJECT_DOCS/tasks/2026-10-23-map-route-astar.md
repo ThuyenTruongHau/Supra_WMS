@@ -32,6 +32,7 @@ Nhánh và commit bắt đầu: `masan_prd` @ `50d2dd44cbb08b193c80bc62bba84f308
 | `python -m unittest test.test_map_route_algo -v` | host, không DB/Redis | 15/15 đạt | API test dùng graph giả lập |
 | `python -m unittest test.test_warehouse_view_access` | host | 10/10 đạt | — |
 | Log uvicorn `--reload` | dev server đang chạy | nạp warehouse 1: 1257 node, 3312 cạnh | chưa gọi route trên server |
+| `backend/.recovery/export_reports_20261023.py` | host, DB READ ONLY | 1 file nhập + 4 file xuất trong `23_10/`; tính bù distance 11 + 131 dòng (chỉ ghi vào file); thêm cột thời gian/vận tốc + dòng trung bình | chạy một lần, không đổi template; DB vẫn 0 distance khác NULL |
 
 ## Bàn giao phiên tiếp theo
 - Đã làm: `map_route_algo.py`, `map_graph_service.py`, 3 endpoint, reload sau import, preload ở lifespan, test, docs.

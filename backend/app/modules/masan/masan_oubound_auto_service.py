@@ -6,6 +6,7 @@ from typing import Any, Optional
 from sqlalchemy import func, Integer, cast, or_
 import uuid
 import json
+from sqlalchemy import or_
 
 from app.core.config import settings
 from openpyxl import Workbook
@@ -138,15 +139,34 @@ def clear_outbound_station_cache(
         "orphan_details": orphan_details,
         "zones_seen": list(zones_seen),
     }
-def robot_task_for_zone(db:Session, zone_str:str) -> list[RobotTask]:
-    ACTIVE_ALLOC_STATUSES = ("issued", "in_progress")  
+
+ACTIVE_ALLOC_STATUSES = ("issued", "in_progress") 
+
+def _exist_robot_task(db: Session, to_location_id: int) -> bool:
+    return (
+        db.query(OutboundOrderAllocation.id)
+        .filter(
+            OutboundOrderAllocation.to_location_id == to_location_id,
+            OutboundOrderAllocation.status.in_(ACTIVE_ALLOC_STATUSES),
+            OutboundOrderAllocation.robot_task_id.isnot(None),
+        )
+        .first()
+        is not None
+    )
+
+def robot_task_for_zone(db:Session, zone_str:str) -> list[RobotTask]: 
     allocations = (
         db.query(OutboundOrderAllocation)
-        .join(Location, OutboundOrderAllocation.to_location_id == Location.id)
+        .join(
+            Location,
+            or_(
+                OutboundOrderAllocation.to_location_id == Location.id,
+                OutboundOrderAllocation.from_location_id == Location.id,
+            ),
+        )
         .join(Zone, Location.zone_id == Zone.id)
         .filter(
             Zone.code == zone_str.strip(),
-            OutboundOrderAllocation.allocation_type == "outbound",
             OutboundOrderAllocation.status.in_(ACTIVE_ALLOC_STATUSES),
             OutboundOrderAllocation.robot_task_id.isnot(None),
         )

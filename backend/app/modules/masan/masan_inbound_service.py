@@ -432,6 +432,12 @@ def _format_report_distance_m(distance_m: float | None) -> float | None:
     return round(float(distance_m), 3)
 
 
+def _format_report_battery(battery: Any) -> str | None:
+    if battery is None:
+        return None
+    return str(battery).strip() or None
+
+
 def _build_export_row(
     order: InboundOrder,
     detail: InboundOrderDetail,
@@ -481,6 +487,8 @@ def _build_export_row(
         detail.device or None,
         _format_inbound_report_datetime(detail.start_time),
         _format_inbound_report_datetime(detail.end_time),
+        _format_report_battery(detail.start_battery),
+        _format_report_battery(detail.end_battery),
     ]
 
 

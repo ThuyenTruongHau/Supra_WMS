@@ -33,11 +33,13 @@ OUTBOUND_REPORT_TITLE = (
 )
 
 OUTBOUND_REPORT_EXTRA_HEADERS: tuple[str, ...] = (
-    "Người xuất",
+    "Người chia",
     "Quãng đường (m)",
     "Robot",
     "Thời gian bắt đầu",
     "Thời gian kết thúc",
+    "Pin bắt đầu",
+    "Pin kết thúc",
     "Vị trí chia",
     "Bắt đầu chia",
     "Kết thúc chia",
@@ -65,11 +67,13 @@ OUTBOUND_REPORT_COLUMN_WIDTHS: tuple[float, ...] = (
     10.0,  # Số pallet
     14.0,  # Locator
     16.0,  # Vị trí xuất
-    18.0,  # Người xuất
+    18.0,  # Người chia
     12.0,  # Quãng đường (m)
     10.0,  # Robot
     14.0,  # Thời gian bắt đầu
     14.0,  # Thời gian kết thúc
+    12.0,  # Pin bắt đầu
+    12.0,  # Pin kết thúc
     16.0,  # Vị trí chia
     14.0,  # Bắt đầu chia
     14.0,  # Kết thúc chia
@@ -84,7 +88,7 @@ OUTBOUND_REPORT_LOT_COLUMN = 7
 OUTBOUND_REPORT_QUANTITY_COLUMN = 9
 OUTBOUND_REPORT_DISTANCE_COLUMN = 14
 OUTBOUND_REPORT_TEXT_FORMAT_COLUMNS = frozenset({OUTBOUND_REPORT_LOT_COLUMN})
-OUTBOUND_REPORT_WRAP_TEXT_COLUMNS = frozenset({6, 12, 13, 16, 17, 18, 19, 20})
+OUTBOUND_REPORT_WRAP_TEXT_COLUMNS = frozenset({6, 12, 13, 16, 17, 20, 21, 22})
 
 TRIP_PLACEHOLDERS = frozenset({"…", "...", ".", "-", "—"})
 

@@ -185,7 +185,10 @@ robot data, warehouse view access — tổng **56/56 đạt**. `test.test_outbou
 có sẵn trong `masan_outbound_service.py` (sửa lúc 15:11, trước tác vụ này); chưa xử lý.
 
 Báo cáo Excel nhập/xuất Masan: `test.test_masan_report_columns` **2/2 đạt** — số cột khớp header,
-cột **Người nhập/xuất** và **Quãng đường (m)**.
+cột **Người nhập/xuất** và **Quãng đường (m)**. 24/10/2026 thêm cột **Pin bắt đầu/Pin kết thúc**
+(sau "Thời gian kết thúc"; nhập lấy `inbound_order_detail.start_battery/end_battery`, xuất lấy
+`outbound_order_allocation.start_battery/end_battery`) — vẫn **2/2 đạt**. Cột "Người xuất" của
+báo cáo xuất đổi tên thành **Người chia** (dữ liệu vẫn từ `sorting_persons`).
 
 Đổi `distance` lưu DB sang mét (trước đó chưa có bản ghi nào khác NULL, kiểm tra READ ONLY) và
 báo cáo robot đếm theo lệnh robot, thêm lệnh hoàn trả: `test.test_robot_performance_report`
