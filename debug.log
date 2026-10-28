@@ -42,3 +42,23 @@
 [1021/142610.810:ERROR:net\socket\ssl_client_socket_impl.cc:949] handshake failed; returned -1, SSL error code 1, net_error -202
 [1021/142611.700:ERROR:net\socket\ssl_client_socket_impl.cc:949] handshake failed; returned -1, SSL error code 1, net_error -202
 [1021/142611.726:ERROR:net\socket\ssl_client_socket_impl.cc:949] handshake failed; returned -1, SSL error code 1, net_error -202
+[1028/081935.569:ERROR:net\base\network_change_notifier_win.cc:224] WSALookupServiceBegin failed with: -1
+[1028/081935.618:ERROR:net\socket\ssl_client_socket_impl.cc:949] handshake failed; returned -1, SSL error code 1, net_error -202
+[1028/081936.391:ERROR:net\socket\ssl_client_socket_impl.cc:949] handshake failed; returned -1, SSL error code 1, net_error -202
+[1028/081942.803:ERROR:net\socket\ssl_client_socket_impl.cc:949] handshake failed; returned -1, SSL error code 1, net_error -202
+[1028/081942.842:ERROR:net\socket\ssl_client_socket_impl.cc:949] handshake failed; returned -1, SSL error code 1, net_error -202
+[1028/081943.566:ERROR:net\socket\ssl_client_socket_impl.cc:949] handshake failed; returned -1, SSL error code 1, net_error -202
+[1028/081943.597:ERROR:net\socket\ssl_client_socket_impl.cc:949] handshake failed; returned -1, SSL error code 1, net_error -202
+[1028/081944.608:ERROR:net\socket\ssl_client_socket_impl.cc:949] handshake failed; returned -1, SSL error code 1, net_error -202
+[1028/081944.639:ERROR:net\socket\ssl_client_socket_impl.cc:949] handshake failed; returned -1, SSL error code 1, net_error -202
+[1028/081945.508:ERROR:net\socket\ssl_client_socket_impl.cc:949] handshake failed; returned -1, SSL error code 1, net_error -202
+[1028/081945.541:ERROR:net\socket\ssl_client_socket_impl.cc:949] handshake failed; returned -1, SSL error code 1, net_error -202
+[1028/081946.649:ERROR:net\socket\ssl_client_socket_impl.cc:949] handshake failed; returned -1, SSL error code 1, net_error -202
+[1028/081946.673:ERROR:net\socket\ssl_client_socket_impl.cc:949] handshake failed; returned -1, SSL error code 1, net_error -202
+[1028/081947.431:ERROR:net\socket\ssl_client_socket_impl.cc:949] handshake failed; returned -1, SSL error code 1, net_error -202
+[1028/081947.456:ERROR:net\socket\ssl_client_socket_impl.cc:949] handshake failed; returned -1, SSL error code 1, net_error -202
+[1028/081948.511:ERROR:net\socket\ssl_client_socket_impl.cc:949] handshake failed; returned -1, SSL error code 1, net_error -202
+[1028/081949.174:ERROR:net\socket\ssl_client_socket_impl.cc:949] handshake failed; returned -1, SSL error code 1, net_error -202
+[1028/081949.205:ERROR:net\socket\ssl_client_socket_impl.cc:949] handshake failed; returned -1, SSL error code 1, net_error -202
+[1028/081950.834:ERROR:net\socket\ssl_client_socket_impl.cc:949] handshake failed; returned -1, SSL error code 1, net_error -202
+[1028/081950.864:ERROR:net\socket\ssl_client_socket_impl.cc:949] handshake failed; returned -1, SSL error code 1, net_error -202

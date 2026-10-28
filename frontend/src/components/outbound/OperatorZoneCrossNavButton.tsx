@@ -27,13 +27,12 @@ export default function OperatorZoneCrossNavButton({
 
   const disabled = !isOutboundDetailZoneId(displayZoneId);
 
-  const label =
-    target === "monitor" ? "View CC" : "Xác nhận/ Gửi lệnh";
+  const label = target === "monitor" ? "Monitor" : "Xuất kho";
 
   const ariaLabel =
     target === "monitor"
-      ? `Mở giám sát ${zoneName}`
-      : `Mở đơn xuất và gửi lệnh — ${zoneName}`;
+      ? `Chuyển sang Monitor — ${zoneName}`
+      : `Chuyển sang xuất kho — ${zoneName}`;
 
   const icon =
     target === "monitor" ? (

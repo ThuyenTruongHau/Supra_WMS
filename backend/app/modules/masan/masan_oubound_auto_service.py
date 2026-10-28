@@ -132,6 +132,10 @@ def clear_outbound_station_cache(
             f"outbound:masan:stock_ready:{warehouse_id}:*:{cc_id}"
         )
 
+    logger.info(f"Deleted stock ready: {deleted_stock}")
+    logger.info(f"Deleted location: {deleted_location}")
+    logger.info(f"Deleted details: {deleted_details}")
+
     return {
         "assigned_cc_location": deleted_location,
         "assigned_cc_details": deleted_details,

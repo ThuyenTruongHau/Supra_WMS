@@ -287,11 +287,16 @@ export const masanConfirmAllocationOutboundApi = async (
 export const listMasanPickingListsApi = async (
   warehouseId: number,
   vehicleNo: string,
+  locationId?: number | null,
 ): Promise<MasanPickingListListResponse> => {
   const { data } = await axiosInstance.get<MasanPickingListListResponse>(
     "/api/v1/masan/outbound/picking-lists",
     {
-      params: { warehouse_id: warehouseId, vehicle_no: vehicleNo },
+      params: {
+        warehouse_id: warehouseId,
+        vehicle_no: vehicleNo,
+        ...(locationId != null ? { location_id: locationId } : {}),
+      },
     },
   );
   return data;

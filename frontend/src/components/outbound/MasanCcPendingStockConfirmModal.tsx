@@ -2,7 +2,7 @@
  * Xác nhận số lượng lấy hàng — slider theo allocation.
  * Tab xuất: click VT (lọc theo đích VT). Monitor: chọn VT rồi click CC (lọc CC + VT).
  */
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Slider } from "antd";
 import { Button, Modal, message } from "@/components/ui";
 import { masanConfirmAllocationOutboundApi } from "@/api/masan";
@@ -81,6 +81,7 @@ export default function MasanVtPendingStockConfirmModal({
   const [qtyByAllocationId, setQtyByAllocationId] = useState<
     Record<number, number>
   >({});
+  const qtySignatureRef = useRef("");
   const [submitting, setSubmitting] = useState(false);
 
   const confirmLines = useMemo(
@@ -97,9 +98,16 @@ export default function MasanVtPendingStockConfirmModal({
 
   useEffect(() => {
     if (!open) {
+      qtySignatureRef.current = "";
       setQtyByAllocationId({});
       return;
     }
+    const signature = confirmLines
+      .map((row) => `${row.id}:${Math.round(Number(row.quantity || 0))}`)
+      .sort()
+      .join("|");
+    if (signature === qtySignatureRef.current) return;
+    qtySignatureRef.current = signature;
     const initial: Record<number, number> = {};
     for (const row of confirmLines) {
       initial[row.id] = Math.round(Number(row.quantity || 0));

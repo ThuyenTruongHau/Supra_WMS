@@ -497,11 +497,19 @@ def list_masan_picking_lists(
     db: DbSession,
     vehicle_no: str = Query(..., min_length=1, max_length=100),
     warehouse_id: int | None = Query(None, ge=1),
+    location_id: int | None = Query(
+        None,
+        ge=1,
+        description="Ô CC đang mở; chỉ lấy đơn đang gán tại ô này",
+    ),
 ):
     vehicle = vehicle_no.strip()
     try:
         context = masan_picking_list_service.list_picking_list_context(
-            db, vehicle, warehouse_id=warehouse_id
+            db,
+            vehicle,
+            warehouse_id=warehouse_id,
+            location_id=location_id,
         )
     except ValueError as exc:
         raise _picking_list_http_error(exc) from exc
@@ -682,9 +690,12 @@ def masan_clear_inbound_zone(db: DbSession, body: MasanClearInboundZoneRequest):
     response_model=MasanClearCcCacheResponse,
     dependencies=[Depends(require_permission("outbound:update"))],
 )
-def masan_clear_cc_cache(body: MasanClearCcCacheRequest):
+def masan_clear_cc_cache(body: MasanClearCcCacheRequest, db: DbSession):
     try:
-        payload = masan_outbound_service.clear_cc_location_caches(body.warehouse_id)
+        from app.modules.masan.masan_auto_service import warehouse_lock, guard_station_cache_clear
+        with warehouse_lock(db, body.warehouse_id):
+            guard_station_cache_clear(db, body.warehouse_id)
+            payload = masan_outbound_service.clear_cc_location_caches(body.warehouse_id)
     except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -700,12 +711,13 @@ def masan_clear_cc_cache(body: MasanClearCcCacheRequest):
 )
 def masan_clear_outbound_station_cache(
     body: MasanClearOutboundStationCacheRequest,
+    db: DbSession,
 ):
     try:
-        payload = clear_outbound_station_cache(
-            body.warehouse_id,
-            body.cc_location_ids,
-        )
+        from app.modules.masan.masan_auto_service import warehouse_lock, guard_station_cache_clear
+        with warehouse_lock(db, body.warehouse_id):
+            guard_station_cache_clear(db, body.warehouse_id, body.cc_location_ids)
+            payload = clear_outbound_station_cache(body.warehouse_id, body.cc_location_ids)
     except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

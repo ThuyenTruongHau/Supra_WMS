@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import dayjs from "dayjs";
 import { message } from "@/components/ui";
 import { masanStartSortingTimeApi } from "@/api/masan";
@@ -71,6 +71,7 @@ export default function MonitorZoneInteractiveMap({
   modalZIndex,
 }: Props) {
   const masan = useOperatorDisplayZoneMasanMap(warehouseId, displayZoneId);
+  const vtClickGenRef = useRef(0);
   const [selectedVtLocationId, setSelectedVtLocationId] = useState<
     number | null
   >(null);
@@ -146,17 +147,28 @@ export default function MonitorZoneInteractiveMap({
     setPendingConfirmLocationName(null);
   }, []);
 
+  const clearVtSelection = useCallback(() => {
+    vtClickGenRef.current += 1;
+    setSelectedVtLocationId(null);
+    closeConfirmModal();
+  }, [closeConfirmModal]);
+
   const handleCellClick = useCallback(
     async (payload: { locationCode: string }) => {
       const vtId = masan.vtLocationIdByCode.get(payload.locationCode);
       if (vtId != null) {
         if (selectedVtLocationId === vtId) {
-          setSelectedVtLocationId(null);
-          closeConfirmModal();
+          clearVtSelection();
           return;
         }
 
+        const clickGen = ++vtClickGenRef.current;
+        setSelectedVtLocationId(vtId);
+        closeConfirmModal();
+
         const overlayRefresh = await masan.refreshMasanMapOverlays();
+        if (vtClickGenRef.current !== clickGen) return;
+
         const pendingStock =
           overlayRefresh?.pendingStock ?? masan.pendingStock;
         const lines = pendingAllocationsForVtLocationId(
@@ -173,6 +185,7 @@ export default function MonitorZoneInteractiveMap({
             const result = await masanStartSortingTimeApi({
               allocation_ids: allocationIds,
             });
+            if (vtClickGenRef.current !== clickGen) return;
             const clock = formatSortingClock(result.started_at);
             if (clock) {
               if (result.already_started) {
@@ -182,15 +195,14 @@ export default function MonitorZoneInteractiveMap({
               }
             }
           } catch (err: unknown) {
+            if (vtClickGenRef.current !== clickGen) return;
             message.error(
               getApiErrorDetail(err, "Không ghi được thời gian bắt đầu chia"),
             );
-            return;
+            setSelectedVtLocationId(null);
+            closeConfirmModal();
           }
         }
-
-        setSelectedVtLocationId(vtId);
-        closeConfirmModal();
         return;
       }
       if (selectedVtLocationId == null) {
@@ -216,17 +228,18 @@ export default function MonitorZoneInteractiveMap({
         return;
       }
 
-      await masan.refreshMasanMapOverlays();
       setPendingConfirmLocationId(ccId);
       setPendingConfirmLocationCode(payload.locationCode);
       setPendingConfirmLocationName(label);
       setPendingConfirmOpen(true);
+      void masan.refreshMasanMapOverlays();
     },
     [
       masan,
       warehouseId,
       selectedVtLocationId,
       closeConfirmModal,
+      clearVtSelection,
       activeSortCcCodes,
     ],
   );
@@ -297,10 +310,7 @@ export default function MonitorZoneInteractiveMap({
           ccLocationDisplayLabelById={masan.ccLocationDisplayLabelById}
           selectedVtLocationId={selectedVtLocationId}
           assignedCcCodes={assignedCcCodes}
-          onClearVtSelection={() => {
-            setSelectedVtLocationId(null);
-            closeConfirmModal();
-          }}
+          onClearVtSelection={clearVtSelection}
         />
       ) : null}
 

@@ -802,7 +802,8 @@ def _strategy_loading_stocks(db: Session, item_id: int, strategy: str, lot_numbe
         q = q.order_by(ItemStock.created_at.asc(), ItemStock.id.asc())
     else:
         q = q.order_by(ItemStock.created_at.asc(), ItemStock.id.asc())
-    return q.all()
+    from app.modules.masan.masan_auto_manual_service import filter_stocks
+    return filter_stocks(db, q.all())
 
 def _check_stock_in_task(db: Session, from_location_id: int, outbound_order_id: int) -> int | None:
     allocation = (
@@ -1346,6 +1347,34 @@ def _build_manual_allocation_task_from_group(
 def execute_outbound_task(
     db: Session, body: OutboundRobotTaskCreate, detail_type
 ) -> None:
+    from app.modules.masan.masan_auto_service import warehouse_lock, guard_manual_locations
+    source = db.get(Location, body.from_location_id)
+    if source is None:
+        raise ValueError("From location not found")
+    with warehouse_lock(db, source.warehouse_id):
+        task = db.query(RobotTask).filter_by(order_id=body.order_id).first()
+        from app.modules.masan.masan_auto_service import cycle_for_task, manual_return
+        from app.modules.masan.masan_auto_manual_service import context, is_shared
+        cycle = cycle_for_task(db, task.id) if task else None
+        if is_shared(cycle) and context(db) is None:
+            from app.modules.masan.masan_auto_model import OutboundAutoZone
+            control = db.get(OutboundAutoZone, cycle.zone_id)
+            if task.id != cycle.return_task_id:
+                raise ValueError("Lượt tự động chỉ cho Execute return sau khi dừng")
+            owned_rows = db.query(OutboundOrderAllocation).filter_by(robot_task_id=task.id, status="initialize").all()
+            if (body.from_location_id != cycle.vt_location_id or body.to_location_id != cycle.source_location_id
+                or {a.allocation_id for a in body.allocations} != {a.id for a in owned_rows}):
+                raise ValueError("Request return không khớp lượt tự động")
+            manual_return(db, control.warehouse_id, control.display_zone_id, cycle.id)
+            return None
+        guard_manual_locations(db, source.warehouse_id, {body.from_location_id, body.to_location_id}, task.id if task else None)
+        if context(db) is None:
+            from app.modules.masan.masan_return_journal import execute as journal_execute
+            return journal_execute(db, task, lambda: _execute_outbound_task(db, body, detail_type))
+        return _execute_outbound_task(db, body, detail_type)
+
+
+def _execute_outbound_task(db: Session, body: OutboundRobotTaskCreate, detail_type) -> None:
     detail_type = _resolve_execute_detail_type(db, body, detail_type)
     if detail_type == "manual":
         _execute_outbound_task_manual(db, body)
@@ -1431,7 +1460,10 @@ def execute_outbound_task(
     return_quantity = 0
     if full_quantity > taken:
         return_quantity = full_quantity - taken
-    if return_quantity > 0:
+    from app.modules.masan.masan_auto_manual_service import context
+    ctx = context(db)
+    reused_return = db.get(RobotTask, ctx.cycle.return_task_id) if ctx and ctx.cycle and ctx.cycle.return_task_id else None
+    if return_quantity > 0 and not reused_return:
         order_id = f"TDS_Return_{uuid.uuid4().hex[:8]}"
         return_task = RobotTask(
             order_id=order_id,
@@ -1454,6 +1486,11 @@ def execute_outbound_task(
         )
         db.add(return_allocation)
         db.flush()
+        from app.modules.masan.masan_return_journal import register
+        register(db, return_task)
+
+    from app.modules.masan.masan_auto_manual_service import tasks_prepared
+    tasks_prepared(db, robot_task, reused_return or (return_task if return_quantity > 0 else None))
 
     if last_allocation is not None:
         outbound_order = last_allocation.outbound_order_detail.outbound_order
@@ -1480,6 +1517,15 @@ def _settle_outbound_stock(
 ) -> dict[str, int] | None:
     if not allocations:
         return
+    from app.modules.masan.masan_auto_manual_service import context
+    ctx = context(db)
+    if ctx and ctx.action == "callback":
+        allocations = [row for row in allocations if row.id not in ctx.settled_ids]
+        if not allocations:
+            return
+    from app.modules.masan.masan_auto_manual_service import allows_settlement
+    if any(allocation.auto_cycle_id is not None for allocation in allocations) and not allows_settlement(db, allocations):
+        raise ValueError("Lượt tự động phải xác nhận bằng luồng CC, không dùng xác nhận QR/không QR")
 
     allocation_rows = []
     flag = 0
@@ -1628,6 +1674,10 @@ def execute_qr_manual(
     qr_code: str,
     to_location_id: Optional[int] = None,
 ) -> dict:
+    if db.query(OutboundOrderAllocation.id).filter(
+        OutboundOrderAllocation.id.in_(allocation_ids), OutboundOrderAllocation.auto_cycle_id.isnot(None),
+    ).first():
+        raise ValueError("Lượt tự động phải xác nhận bằng luồng CC")
     if not qr_code:
         raise ValueError("QR code is required")
 

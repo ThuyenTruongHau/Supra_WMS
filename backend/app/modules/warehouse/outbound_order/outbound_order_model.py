@@ -279,6 +279,7 @@ class OutboundOrderAllocation(Base):
 
     __tablename__ = "outbound_order_allocation"
     id = Column(Integer, primary_key=True, index=True)
+    auto_cycle_id = Column(Integer, ForeignKey("outbound_auto_cycle.id"), nullable=True, index=True)
     outbound_order_detail_id = Column(Integer, ForeignKey("outbound_order_detail.id"), nullable=False, index=True)
     item_stock_id = Column(Integer, ForeignKey("item_stock.id"), nullable=False, index=True)
     quantity = Column(Integer, nullable=False, default=0)

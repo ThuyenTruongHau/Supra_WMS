@@ -706,18 +706,91 @@ export default function SortingWaveStationBoard({
     setPendingConfirmOpen(true);
   };
 
-  const handleStationCellClick = async (payload: { locationCode: string }) => {
+  /** Refetch zone sau khi modal CC đã mở; bỏ qua nếu user đã chuyển ô hoặc đóng modal. */
+  const refreshOpenCcModal = async (
+    locationCode: string,
+    locationId: number,
+    openedForRequestId: number,
+  ) => {
     const overlayRefresh = await refreshMasanMapOverlays();
+    if (!warehouseId || ccRequestIdRef.current !== openedForRequestId) return;
+
+    const requestId = ++ccRequestIdRef.current;
+    const locationName =
+      resolveCcLocationName(locationCode, locationId) || locationCode;
+    const locationPool = overlayRefresh?.ccLocations ?? [];
+    const pendingStock = overlayRefresh?.pendingStock;
+    const cachedRow = locationPool.find(
+      (row) =>
+        row.location_id === locationId || row.location_code === locationCode,
+    );
+    const cachedName = (cachedRow?.location_name ?? "").trim();
+    const displayName = cachedName || locationName;
+    if (cachedName) setSelectedStationLocationName(cachedName);
+
+    const pendingLines = ccLocationLinesFromPendingStock(
+      pendingStock,
+      locationId,
+      clickableLocationCodeById,
+      { locationCode, locationName: displayName },
+    );
+    if (pendingLines.length > 0) {
+      setCcLocationData(
+        ccLocationResponseFromPendingAndCache(
+          warehouseId,
+          locationId,
+          displayName,
+          pendingLines,
+          cachedRow,
+          ccBucketZoneCode,
+        ),
+      );
+    } else if (cachedRow) {
+      setCcLocationData(ccRowToLocationResponse(cachedRow));
+    }
+
+    setCcLoading(true);
+    try {
+      const data = await loadCcLocationModalData({
+        warehouseId,
+        locationId,
+        locationCode,
+        locationName: displayName,
+        pendingStock,
+        ccLocationIdToCode: clickableLocationCodeById,
+        cachedRow,
+        ccBucketZoneCode,
+      });
+      if (requestId === ccRequestIdRef.current) {
+        setCcLocationData(data);
+        const apiName = (data.location_name ?? "").trim();
+        if (apiName) setSelectedStationLocationName(apiName);
+      }
+    } catch {
+      /* giữ dữ liệu hiện tại nếu API lỗi */
+    } finally {
+      if (requestId === ccRequestIdRef.current) setCcLoading(false);
+    }
+  };
+
+  const openCcLocationFromClick = (locationCode: string, locationId: number) => {
+    void openCcLocation(locationCode, locationId);
+    const openedForRequestId = ccRequestIdRef.current;
+    void refreshOpenCcModal(locationCode, locationId, openedForRequestId);
+  };
+
+  const handleStationCellClick = async (payload: { locationCode: string }) => {
     if (restrictToClickableZones) {
       const vtLocationId = vtLocationIdByCode.get(payload.locationCode);
       if (vtLocationId != null) {
         openPendingStockConfirm(payload.locationCode, vtLocationId);
+        void refreshMasanMapOverlays();
         return;
       }
       const locationId = clickableLocationIdByCode.get(payload.locationCode);
       if (locationId == null) return;
       if (warehouseId) {
-        await openCcLocation(payload.locationCode, locationId, overlayRefresh);
+        openCcLocationFromClick(payload.locationCode, locationId);
       }
       return;
     }
@@ -731,7 +804,7 @@ export default function SortingWaveStationBoard({
     }
 
     if (warehouseId) {
-      await openCcLocation(payload.locationCode, location.id, overlayRefresh);
+      openCcLocationFromClick(payload.locationCode, location.id);
       return;
     }
 
@@ -875,6 +948,7 @@ export default function SortingWaveStationBoard({
             }
             interactiveCodes={clickableCodes}
             onBufferCellClick={handleStationCellClick}
+            refetchStatusOnCellClick={false}
             cellClickDelayMs={restrictToClickableZones ? 0 : undefined}
             className={cn(
               "!h-full",

@@ -68,6 +68,11 @@ celery_app.conf.update(
         "masan.*": {"queue": QUEUE_LOGIC},
     },
     beat_schedule={
+        "coordinate-outbound-auto-every-5s": {
+            "task": "masan.coordinate_outbound_auto",
+            "schedule": 5.0,
+            "options": {"expires": 5},
+        },
         "check-long-holding-stock-daily": {
             "task": "notification.check_long_holding_stock",
             "schedule": crontab(hour=11, minute=59),

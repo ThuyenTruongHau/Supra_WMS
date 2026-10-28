@@ -1,6 +1,7 @@
 """Read ready return tasks from VT allocations, independently of CC assignments."""
 
 from collections import defaultdict
+from dataclasses import dataclass
 
 from sqlalchemy import or_
 from sqlalchemy.orm import Session, joinedload
@@ -21,12 +22,16 @@ from app.modules.warehouse.outbound_order.outbound_order_service import (
 from app.modules.warehouse.warehouse_zone.warehouse_model import Zone
 
 
-def list_sorting_zone_return_tasks(
-    db: Session, warehouse_id: int, zone: str
-) -> MasanSortingZoneReturnTasksResponse:
-    zone = zone.strip()
-    result = MasanSortingZoneReturnTasksResponse(warehouse_id=warehouse_id, zone=zone)
-    tasks = (
+@dataclass
+class ReturnEvaluation:
+    task: RobotTask
+    allocations: list
+    reason: str | None = None
+    reason_code: str | None = None
+
+
+def sorting_return_tasks(db, warehouse_id, zone, *, include_noninitial=False):
+    query = (
         db.query(RobotTask)
         .join(OutboundOrderAllocation, OutboundOrderAllocation.robot_task_id == RobotTask.id)
         .join(Location, Location.id == OutboundOrderAllocation.from_location_id)
@@ -37,14 +42,19 @@ def list_sorting_zone_return_tasks(
             Zone.code == zone,
             OutboundOrderAllocation.allocation_type == "return",
             OutboundOrderAllocation.status == "initialize",
-            RobotTask.status == "initialize",
         )
         .order_by(RobotTask.id)
         .distinct()
-        .all()
     )
+    if not include_noninitial:
+        query = query.filter(RobotTask.status == "initialize")
+    return query.all()
+
+
+def evaluate_return_tasks(db, warehouse_id, zone, tasks):
+    """The manual readiness contract, with reasons; no writes or route guards."""
     if not tasks:
-        return result
+        return {}
 
     # Fetch the whole task, including allocations shared across outbound orders.
     allocations = (
@@ -91,12 +101,14 @@ def list_sorting_zone_return_tasks(
             pending_details.add(detail_id)
             pending_pallets.add((stock_id, to_id))
 
+    evaluations = {}
     for task in tasks:
         rows = by_task[task.id]
-        if not rows:
+        result = evaluations[task.id] = ReturnEvaluation(task, rows)
+        if task.status != "initialize" or not rows:
+            result.reason_code, result.reason = "task_status", "Task return không còn initialize hoặc thiếu allocation"
             continue
         route = (rows[0].from_location_id, rows[0].to_location_id)
-        ready = True
         for allocation in rows:
             source, target = allocation.from_location, allocation.to_location
             stock, detail = allocation.item_stock, allocation.outbound_order_detail
@@ -107,19 +119,37 @@ def list_sorting_zone_return_tasks(
                 or source.warehouse_id != warehouse_id
                 or target.warehouse_id != warehouse_id
                 or not source.zone or source.zone.code != zone
-                or detail.outbound_order.warehouse_id != warehouse_id
+                or not detail.outbound_order or detail.outbound_order.warehouse_id != warehouse_id
                 or (source.id, target.id) != route
-                or not stock.is_active or stock.quantity <= 0
-                or stock.location_id != source.id
-                or allocation.quantity <= 0 or allocation.quantity > stock.quantity
-                or (detail.id, stock.id, source.id) not in completed
-                or detail.id in pending_details
-                or (stock.id, source.id) in pending_pallets
             ):
-                ready = False
+                result.reason_code, result.reason = "structure", "Allocation return không đồng nhất tuyến hoặc không thuộc kho/zone"
                 break
-        if not ready:
+            if (not stock.is_active or stock.quantity <= 0 or stock.location_id != source.id
+                or allocation.quantity <= 0 or allocation.quantity > stock.quantity):
+                result.reason_code, result.reason = "stock", "Tồn chưa hợp lệ hoặc chưa ở VT của return"
+                break
+            if (detail.id, stock.id, source.id) not in completed:
+                result.reason_code, result.reason = "confirmation", "Chờ xác nhận chia CC của pallet"
+                break
+            if detail.id in pending_details:
+                result.reason_code, result.reason = "detail_pending", "Chờ allocation cùng detail hoàn tất"
+                break
+            if (stock.id, source.id) in pending_pallets:
+                result.reason_code, result.reason = "pallet_pending", "Chờ allocation cùng pallet hoàn tất"
+                break
+    return evaluations
+
+
+def list_sorting_zone_return_tasks(
+    db: Session, warehouse_id: int, zone: str
+) -> MasanSortingZoneReturnTasksResponse:
+    zone = zone.strip()
+    result = MasanSortingZoneReturnTasksResponse(warehouse_id=warehouse_id, zone=zone)
+    tasks = sorting_return_tasks(db, warehouse_id, zone)
+    for evaluation in evaluate_return_tasks(db, warehouse_id, zone, tasks).values():
+        if evaluation.reason:
             continue
+        task, rows = evaluation.task, evaluation.allocations
         result.rows.append(MasanSortingReturnTaskRow(
             outbound_order_id=rows[0].outbound_order_detail.outbound_order_id,
             task=OutboundRobotTaskResponse(

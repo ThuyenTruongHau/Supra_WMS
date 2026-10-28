@@ -5,6 +5,9 @@ import React, {
   useCallback,
   type ChangeEvent,
 } from "react";
+import OutboundAutoControl from '@/components/outbound/OutboundAutoControl';
+import OutboundAutoStatus from '@/components/outbound/OutboundAutoStatus';
+import { useOutboundAuto } from '@/hooks/useOutboundAuto';
 import { EyeOutlined, PartitionOutlined, UploadOutlined } from "@ant-design/icons";
 import WarehouseViewModal from "@/components/inbound/WarehouseViewModal";
 import type { ColumnsType } from "antd/es/table";
@@ -54,6 +57,8 @@ import {
 } from "@/utils/operatorSortingPersons";
 
 type SortingWaveOverviewCellProps = {
+  warehouseId: number;
+  displayZoneId: number;
   zoneIds: readonly number[];
   title: string;
   callDisabled?: boolean;
@@ -65,6 +70,8 @@ type SortingWaveOverviewCellProps = {
 };
 
 function SortingWaveOverviewCell({
+  warehouseId,
+  displayZoneId,
   zoneIds,
   title,
   callDisabled = false,
@@ -74,11 +81,16 @@ function SortingWaveOverviewCell({
   locationSubLabelByCode,
   viewportTier,
 }: SortingWaveOverviewCellProps) {
+  const auto = useOutboundAuto(warehouseId, displayZoneId);
   return (
     <div className="group relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-xl border border-stripe-hairline bg-panel text-left shadow-stripe-1 transition hover:border-brand-primary/35 hover:shadow-[0_8px_28px_rgba(37,99,235,0.12)]">
+      <div className="border-b border-stripe-hairline px-4 py-2">
+        <OutboundAutoControl warehouseId={warehouseId} displayZoneId={displayZoneId} />
+        <OutboundAutoStatus warehouseId={warehouseId} displayZoneId={displayZoneId} />
+      </div>
       <button
         type="button"
-        disabled={callDisabled}
+        disabled={callDisabled || auto.manualBlocked}
         title={
           callDisabled && callDisabledTitle
             ? callDisabledTitle
@@ -458,6 +470,8 @@ export default React.memo(function SortingWaveOverviewPicker({
           DISPLAY_ZONES.map((z) => (
             <SortingWaveOverviewCell
               key={z.id}
+              warehouseId={warehouseId}
+              displayZoneId={z.id}
               zoneIds={z.zoneIds}
               title={z.name}
               viewportTier={viewportTier}

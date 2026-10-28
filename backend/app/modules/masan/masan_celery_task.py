@@ -13,6 +13,21 @@ from app.modules.warehouse.warehouse_zone.warehouse_model import Warehouse
 logger = get_logger("main")
 
 
+@celery_app.task(name="masan.coordinate_outbound_auto", acks_late=True)
+def coordinate_outbound_auto_task() -> None:
+    from app.modules.masan.masan_auto_model import OutboundAutoZone
+    from app.modules.masan.masan_auto_service import tick_zone
+
+    with db_session() as db:
+        zones = [(row.warehouse_id, row.display_zone_id) for row in db.query(OutboundAutoZone).all()]
+    for warehouse_id, display_zone_id in zones:
+        try:
+            with db_session() as db:
+                tick_zone(db, warehouse_id, display_zone_id)
+        except Exception:
+            logger.exception("Automatic outbound reconciliation failed warehouse=%s zone=%s", warehouse_id, display_zone_id)
+
+
 def _dump(result: Any) -> Any:
     if result is None:
         return None

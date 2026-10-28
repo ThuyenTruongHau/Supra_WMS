@@ -76,8 +76,8 @@ export default function MasanPickingListModal({
 
   const vehicle = vehicleNo.trim();
   const listQuery = useQuery({
-    queryKey: ["masanPickingLists", warehouseId, vehicle],
-    queryFn: () => listMasanPickingListsApi(warehouseId, vehicle),
+    queryKey: ["masanPickingLists", warehouseId, vehicle, locationId],
+    queryFn: () => listMasanPickingListsApi(warehouseId, vehicle, locationId),
     enabled: open && warehouseId > 0 && vehicle.length > 0,
   });
 

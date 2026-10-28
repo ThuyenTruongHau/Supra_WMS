@@ -1,4 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import OutboundAutoControl from '@/components/outbound/OutboundAutoControl';
+import OutboundAutoStatus from '@/components/outbound/OutboundAutoStatus';
+import { useOutboundAuto } from '@/hooks/useOutboundAuto';
 import { useNavigate, useParams, Navigate } from "react-router-dom";
 import {
   DeleteOutlined,
@@ -74,6 +77,7 @@ export default function OperatorOutboundDetailPage() {
   }
 
   const warehouseId = selectedWarehouseId ?? 0;
+  const autoDispatch = useOutboundAuto(warehouseId, zoneId);
   const { usernames: outboundAssignees } = useOutboundOperatorAssignees(zoneId);
   const outboundAssigneeReady = hasOutboundOperatorAssignees(outboundAssignees);
 
@@ -454,6 +458,10 @@ export default function OperatorOutboundDetailPage() {
         }
         mapToolbar={
           <>
+            <div className="min-w-0">
+              <OutboundAutoControl warehouseId={warehouseId} displayZoneId={zoneId} className={outboundActionBtnClass} />
+              <OutboundAutoStatus warehouseId={warehouseId} displayZoneId={zoneId} />
+            </div>
             <Button
               variant="primary"
               icon={<PlayCircleOutlined />}
@@ -467,6 +475,7 @@ export default function OperatorOutboundDetailPage() {
               disabled={
                 warehouseId <= 0 ||
                 !ccBucketZoneCode ||
+                autoDispatch.manualBlocked ||
                 !outboundAssigneeReady
               }
               title={
@@ -485,6 +494,7 @@ export default function OperatorOutboundDetailPage() {
               disabled={
                 warehouseId <= 0 ||
                 !ccBucketZoneCode ||
+                autoDispatch.data?.enabled || autoDispatch.data?.vts.some((vt) => vt.cycle_id != null) ||
                 ccLocationsLoading ||
                 ccLocationIds.length === 0
               }
@@ -493,11 +503,6 @@ export default function OperatorOutboundDetailPage() {
             >
               Clear station
             </Button>
-            <OperatorZoneCrossNavButton
-              target="monitor"
-              displayZoneId={zoneId}
-              className={outboundActionBtnClass}
-            />
             <Button
               variant="secondary"
               icon={<EyeOutlined />}
@@ -507,6 +512,11 @@ export default function OperatorOutboundDetailPage() {
             >
               Xem kho
             </Button>
+            <OperatorZoneCrossNavButton
+              target="monitor"
+              displayZoneId={zoneId}
+              className={outboundActionBtnClass}
+            />
           </>
         }
         emptyHint={

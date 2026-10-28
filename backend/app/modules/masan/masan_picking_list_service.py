@@ -39,14 +39,102 @@ PLAYWRIGHT_INSTALL_HINT = (
 _PDF_EXECUTOR = ThreadPoolExecutor(max_workers=2, thread_name_prefix="masan-picking-pdf")
 
 
+def _order_recency_key(detail: OutboundOrderDetail) -> tuple[int, float, int]:
+    order = detail.outbound_order
+    created = order.created_at if order is not None else None
+    order_id = int(detail.outbound_order_id or 0)
+    if created is None:
+        return (0, 0.0, order_id)
+    return (1, created.timestamp(), order_id)
+
+
+def _latest_order_id(details: list[OutboundOrderDetail]) -> int | None:
+    if not details:
+        return None
+    latest = max(details, key=_order_recency_key)
+    if latest.outbound_order_id is None:
+        return None
+    return int(latest.outbound_order_id)
+
+
+def _order_id_assigned_to_cc(
+    warehouse_id: int | None,
+    location_id: int | None,
+    vehicle_no: str,
+) -> int | None:
+    """Đơn outbound đang gán trên ô CC (Redis), chỉ khi đúng biển số."""
+    if warehouse_id is None or location_id is None:
+        return None
+    vehicle = (vehicle_no or "").strip()
+    bucket = cache_get(f"outbound:assigned_cc_location:{warehouse_id}:{int(location_id)}")
+    if not bucket:
+        return None
+    if (bucket.get("vehicle_number") or "").strip() != vehicle:
+        return None
+    raw = bucket.get("outbound_order_id")
+    if raw is None:
+        return None
+    try:
+        return int(raw)
+    except (TypeError, ValueError):
+        return None
+
+
+def _lines_for_order(
+    details: list[OutboundOrderDetail],
+    order_id: int,
+    location_id: int | None,
+) -> list[OutboundOrderDetail]:
+    """Dòng của một đơn. Có ô CC thì bỏ dòng đã gán ô khác; dòng chưa gán ô vẫn giữ."""
+    rows = [d for d in details if d.outbound_order_id == order_id]
+    if location_id is None:
+        return rows
+    loc = int(location_id)
+    return [
+        d
+        for d in rows
+        if d.sorting_location_id is None or int(d.sorting_location_id) == loc
+    ]
+
+
+def _scope_details_to_current_order(
+    details: list[OutboundOrderDetail],
+    *,
+    vehicle_no: str,
+    warehouse_id: int | None = None,
+    location_id: int | None = None,
+) -> list[OutboundOrderDetail]:
+    """Chỉ giữ dòng completed của một đơn: đơn đang gán ở ô, hoặc đơn gần nhất của ô."""
+    assigned_order_id = _order_id_assigned_to_cc(warehouse_id, location_id, vehicle_no)
+    if assigned_order_id is not None:
+        return _lines_for_order(details, assigned_order_id, location_id)
+
+    if location_id is not None:
+        at_cell = [
+            d for d in details if d.sorting_location_id == int(location_id)
+        ]
+        latest_order_id = _latest_order_id(at_cell)
+        if latest_order_id is None:
+            return []
+        return _lines_for_order(details, latest_order_id, location_id)
+
+    latest_order_id = _latest_order_id(details)
+    if latest_order_id is None:
+        return []
+    return _lines_for_order(details, latest_order_id, None)
+
+
 def _query_completed_details_for_vehicle(
     db: Session,
     vehicle_no: str,
+    *,
+    warehouse_id: int | None = None,
+    location_id: int | None = None,
 ) -> list[OutboundOrderDetail]:
     vehicle = (vehicle_no or "").strip()
     if not vehicle:
         raise ValueError("vehicle_no is required")
-    return (
+    rows = (
         db.query(OutboundOrderDetail)
         .options(
             joinedload(OutboundOrderDetail.item),
@@ -62,6 +150,13 @@ def _query_completed_details_for_vehicle(
         )
         .order_by(OutboundOrderDetail.id)
         .all()
+    )
+    rows = _filter_details_for_warehouse(rows, warehouse_id)
+    return _scope_details_to_current_order(
+        rows,
+        vehicle_no=vehicle,
+        warehouse_id=warehouse_id,
+        location_id=location_id,
     )
 
 
@@ -399,10 +494,14 @@ def prepare_picking_list_custom(
     location_id: int | None = None,
     warehouse_id: int | None = None,
 ) -> tuple[dict[str, Any], int]:
-    details = _query_completed_details_for_vehicle(db, vehicle_no)
+    details = _query_completed_details_for_vehicle(
+        db,
+        vehicle_no,
+        warehouse_id=warehouse_id,
+        location_id=location_id,
+    )
     if not details:
         raise ValueError("Không tìm thấy dòng xuất completed cho xe này.")
-    details = _filter_details_for_warehouse(details, warehouse_id)
     pending = _resolve_details_by_ids(details, detail_ids)
     _ensure_sorting_locations(
         db,
@@ -448,7 +547,12 @@ def prepare_picking_list(
     Resolve pending lines and optionally assign new extracted batch.
     Returns (payload, extracted_batch_number).
     """
-    details = _query_completed_details_for_vehicle(db, vehicle_no)
+    details = _query_completed_details_for_vehicle(
+        db,
+        vehicle_no,
+        warehouse_id=warehouse_id,
+        location_id=location_id,
+    )
     if not details:
         raise ValueError("Không tìm thấy dòng xuất completed cho xe này.")
 
@@ -499,9 +603,14 @@ def list_picking_list_context(
     vehicle_no: str,
     *,
     warehouse_id: int | None = None,
+    location_id: int | None = None,
 ) -> dict[str, Any]:
-    details = _query_completed_details_for_vehicle(db, vehicle_no)
-    details = _filter_details_for_warehouse(details, warehouse_id)
+    details = _query_completed_details_for_vehicle(
+        db,
+        vehicle_no,
+        warehouse_id=warehouse_id,
+        location_id=location_id,
+    )
     vehicle = (vehicle_no or "").strip()
     return {
         "vehicle_number": vehicle,
@@ -509,6 +618,7 @@ def list_picking_list_context(
             db,
             vehicle_no,
             warehouse_id=warehouse_id,
+            location_id=location_id,
             details_override=details,
         ),
         "available_lines": [
@@ -522,13 +632,18 @@ def list_picking_lists_for_vehicle(
     vehicle_no: str,
     *,
     warehouse_id: int | None = None,
+    location_id: int | None = None,
     details_override: list[OutboundOrderDetail] | None = None,
 ) -> list[dict[str, Any]]:
     if details_override is not None:
         details = details_override
     else:
-        details = _query_completed_details_for_vehicle(db, vehicle_no)
-        details = _filter_details_for_warehouse(details, warehouse_id)
+        details = _query_completed_details_for_vehicle(
+            db,
+            vehicle_no,
+            warehouse_id=warehouse_id,
+            location_id=location_id,
+        )
     by_batch: dict[int, list[OutboundOrderDetail]] = {}
     for d in details:
         ext = d.extracted

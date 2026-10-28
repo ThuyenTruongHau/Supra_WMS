@@ -1,4 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import OutboundAutoReturns from '@/components/outbound/OutboundAutoReturns';
+import { useOutboundAuto } from '@/hooks/useOutboundAuto';
+import { OUTBOUND_DISPLAY_ZONES } from '@/constants/outboundMapZones';
 import { Button, Modal, Loading, cn, message } from "@/components/ui";
 import { OPERATOR_DESKTOP } from "@/constants/operatorDesktopSizes";
 import { useMasanSortingItemsNeeded } from "@/hooks/useMasanSortingItemsNeeded";
@@ -47,6 +50,8 @@ export default function SortingItemsNeededModal({
   sortingZoneCode,
   vtLocationId = null,
 }: SortingItemsNeededModalProps) {
+  const displayZoneId = OUTBOUND_DISPLAY_ZONES.find((zone) => zone.ccBucketZoneCode === ccBucketZoneCode)?.id ?? 0;
+  const auto = useOutboundAuto(warehouseId, displayZoneId);
   const tier = useOperatorViewportTier();
   const [viewportWidth, setViewportWidth] = useState(
     () => (typeof window !== "undefined" ? window.innerWidth : 1280),
@@ -101,6 +106,10 @@ export default function SortingItemsNeededModal({
   }, []);
 
   const handleConfirm = async () => {
+    if (auto.manualBlocked) {
+      message.warning('Dừng tự động trước khi gọi lệnh thủ công');
+      return;
+    }
     if (selectedItemId == null) {
       message.warning("Chọn một mã hàng");
       return;
@@ -183,7 +192,7 @@ export default function SortingItemsNeededModal({
             variant="primary"
             loading={confirming}
             disabled={
-              isLoading || sortingItems.length === 0 || selectedItemId == null
+              isLoading || sortingItems.length === 0 || selectedItemId == null || auto.manualBlocked
             }
             onClick={() => void handleConfirm()}
             className={footerBtn}
@@ -285,6 +294,7 @@ export default function SortingItemsNeededModal({
               ? ` · ${subtitle.trim()}`
               : null}
           </p>
+          <OutboundAutoReturns warehouseId={warehouseId} displayZoneId={displayZoneId} vtLocationId={vtLocationId} />
           <MasanSortingReturnTasksSection
             warehouseId={warehouseId}
             sortingZoneCode={sortingZoneCode}

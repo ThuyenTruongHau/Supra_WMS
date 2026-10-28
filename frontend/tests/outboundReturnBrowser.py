@@ -48,6 +48,9 @@ class OutboundReturnBrowserTests(unittest.TestCase):
         self.context.add_init_script(
             "localStorage.setItem('access_token', 'isolated-browser-test');"
             "localStorage.setItem('user_data', " + json.dumps(json.dumps(USER)) + ");"
+            "localStorage.setItem('operator-assignee-store', " + json.dumps(json.dumps({
+                "state": {"outboundByDisplayZoneId": {"8": ["browser-test"], "9": ["browser-test"]}}, "version": 0,
+            })) + ");"
         )
         self.page = self.context.new_page()
         self.page.set_default_timeout(8000)
@@ -64,7 +67,10 @@ class OutboundReturnBrowserTests(unittest.TestCase):
             return
         data = {"items": [], "total": 0, "page": 1, "page_size": 20,
                 "locations": [], "tasks": [], "allocations": [], "warehouse_id": 1}
-        if ("/outbound-tasks/by-wave/" in url.path
+        if url.path.endswith("/auto-dispatch/status"):
+            data = {"warehouse_id": 1, "display_zone_id": int(query.get("display_zone_id", [9])[0]),
+                    "enabled": False, "state": "stopped", "message": "Chưa bật tự động", "vts": []}
+        elif ("/outbound-tasks/by-wave/" in url.path
                 or url.path.endswith(("/robot_data", "/sorting-waves/"))):
             data = []
         elif url.path.endswith("/incomplete-vehicles"):
@@ -128,7 +134,7 @@ class OutboundReturnBrowserTests(unittest.TestCase):
 
     def test_other_zone_does_not_show_vt14_return(self):
         self.open_detail(8)
-        expect(self.page.get_by_text("Chưa có pallet dư cần trả về kệ.")).to_be_visible()
+        expect(self.page.get_by_text(re.compile("Chưa có pallet dư cần trả về kệ"))).to_be_visible()
         self.assertFalse(self.page.get_by_text("TDS_Return_378f2e81").count())
         queries = [q for _, path, q in self.calls if path.endswith("/return-tasks")]
         self.assertTrue(queries)

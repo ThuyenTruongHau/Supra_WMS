@@ -67,6 +67,11 @@ class TaskStatusService:
             raise IcsError("Cannot reach ICS server", retryable=True) from e
 
     def create_robot_task(self, db: Session, task: RobotTask, not_inserted: bool = True) -> RobotTask:
+        from app.modules.masan.masan_auto_service import guarded_robot_submission
+
+        return guarded_robot_submission(db, task, lambda: self._create_robot_task(db, task, not_inserted))
+
+    def _create_robot_task(self, db: Session, task: RobotTask, not_inserted: bool = True) -> RobotTask:
         payload = {
             "orderId": task.order_id,
             "priority": 4,
@@ -75,7 +80,12 @@ class TaskStatusService:
             "taskOrderDetail": json.loads(task.task_order_detail),
         }
         try:
-            self.add_task(payload)
+            from app.modules.masan.masan_return_journal import http_started, http_response
+            http_started(db, task)
+            response = self.add_task(payload)
+            http_response(db, task, response)
+            from app.modules.masan.masan_auto_manual_service import validate_ack
+            validate_ack(db, response)
             if not_inserted:
                 db.add(task)
                 db.commit()
@@ -166,6 +176,34 @@ class TaskStatusService:
         return result["distance_m"]
 
     def receive_task_status(self, db: Session, payload: dict) -> TaskStatus:
+        from app.modules.masan.masan_auto_service import cycle_for_task, warehouse_lock, wake
+        from app.modules.masan.masan_auto_manual_service import is_shared, callback
+        task = db.query(RobotTask).filter_by(order_id=payload.get("orderId")).first()
+        if task and is_shared(cycle_for_task(db, task.id)):
+            return callback(db, task, payload, lambda: self._receive_task_status(db, payload))
+        if task and task.outbound_order_allocations:
+            from app.modules.masan import masan_return_adoption_service as adoption
+            from app.modules.masan.masan_return_journal import callback as journal_callback
+            warehouse_id = task.outbound_order_allocations[0].outbound_order_detail.outbound_order.warehouse_id
+            with warehouse_lock(db, warehouse_id):
+                protected = adoption.protected_pick_rows(db, task)
+                if protected[0] and protected[0] == {row.id for row in task.outbound_order_allocations}:
+                    return None
+                previous = db.info.get(adoption._CALLBACK_KEY)
+                db.info[adoption._CALLBACK_KEY] = protected
+                try:
+                    result = self._receive_task_status(db, payload)
+                    journal_callback(db, task, MAPPING_STATUS.get(str(payload.get("status"))))
+                finally:
+                    if previous is None:
+                        db.info.pop(adoption._CALLBACK_KEY, None)
+                    else:
+                        db.info[adoption._CALLBACK_KEY] = previous
+            wake()
+            return result
+        return self._receive_task_status(db, payload)
+
+    def _receive_task_status(self, db: Session, payload: dict) -> TaskStatus:
         order_id = payload.get("orderId")
         if not order_id:
             raise ValueError("orderId is required")
@@ -186,6 +224,11 @@ class TaskStatusService:
         if not robot_task:
             raise ValueError("Robot task not found")
 
+        from app.modules.masan.masan_auto_service import receive_callback
+        handled, automatic_record = receive_callback(db, robot_task, payload)
+        if handled:
+            return automatic_record
+
         if robot_task.status == "completed":
             return
 
@@ -193,15 +236,24 @@ class TaskStatusService:
 
         if robot_task.inbound_order_detail_id is not None:
             detail = robot_task.inbound_order_detail
+            sub_task_status = payload.get("subTaskStatus")
+            sub_task_sequence = payload.get("subTaskSeq")
             if detail.device is None:
                 detail.device = payload.get("deviceNum")
-            if detail.start_time is None:
-                detail.start_time = datetime.now()
-                robot_data = robot_telemetry.get_robot_data(payload.get("deviceNum"))
-                if robot_data is not None:
-                    detail.start_battery = robot_data.get("battery")
+            
+            if sub_task_status == "2" and sub_task_sequence == "2":
+                if detail.start_time is None:
+                    detail.start_time = datetime.now()
+                    robot_data = robot_telemetry.get_robot_data(payload.get("deviceNum"))
+                    if robot_data is not None:
+                        detail.start_battery = robot_data.get("battery")
+
         elif robot_task.outbound_order_allocations:
             allocations = robot_task.outbound_order_allocations
+            from app.modules.masan.masan_return_adoption_service import protected_callback
+            protected_ids, _ = protected_callback(db)
+            if protected_ids:
+                allocations = [row for row in allocations if row.id not in protected_ids]
             outbound_order = allocations[0].outbound_order_detail.outbound_order
         else:
             raise ValueError("Order not found")
@@ -239,15 +291,18 @@ class TaskStatusService:
                         assign_robot_id = cache_data.get("assign_robot_id", None)
                         _run_inbound_task(db, warehouse_id, list_details, assign_robot_id=assign_robot_id, number_sending = 1)
             else:
+                sub_task_status = payload.get("subTaskStatus")
+                sub_task_sequence = payload.get("subTaskSeq")
                 distances: dict[tuple[int | None, int | None], float | None] = {}
                 for allocation in allocations:
                     if allocation.device is None:
                         allocation.device = payload.get("deviceNum")
-                    if allocation.start_time is None:
-                        allocation.start_time = datetime.now()
-                        robot_data = robot_telemetry.get_robot_data(payload.get("deviceNum"))
-                        if robot_data is not None:
-                            allocation.start_battery = robot_data.get("battery")
+                    if sub_task_status == "2" and sub_task_sequence == "2":
+                        if allocation.start_time is None:
+                            allocation.start_time = datetime.now()
+                            robot_data = robot_telemetry.get_robot_data(payload.get("deviceNum"))
+                            if robot_data is not None:
+                                allocation.start_battery = robot_data.get("battery")
 
                     if allocation.distance is None:
                         key = (allocation.from_location_id, allocation.to_location_id)
@@ -292,6 +347,14 @@ class TaskStatusService:
                     if not from_location or not to_location:
                         raise ValueError("From location or to location not found")
                     stocks = db.query(ItemStock).filter(ItemStock.location_id == from_location.id, ItemStock.is_active.is_(True)).all()
+                    from app.modules.masan.masan_return_adoption_service import protected_callback
+                    _, protected_stocks = protected_callback(db)
+                    if protected_stocks:
+                        stocks = [stock for stock in stocks if stock.id not in protected_stocks]
+                    from app.modules.masan.masan_auto_manual_service import context
+                    ctx = context(db)
+                    if ctx and ctx.action == "callback" and ctx.cycle:
+                        stocks = [stock for stock in stocks if stock.id in ctx.cycle.stock_ids]
                     for stock in stocks:
                         stock.location_id = to_location.id
                     

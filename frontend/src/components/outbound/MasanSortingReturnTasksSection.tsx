@@ -1,4 +1,6 @@
 import { useCallback, useMemo, useState } from "react";
+import { useOutboundAuto } from '@/hooks/useOutboundAuto';
+import { OUTBOUND_DISPLAY_ZONES } from '@/constants/outboundMapZones';
 import { PlayCircleOutlined } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import { Button, Loading, Table, cn, message } from "@/components/ui";
@@ -43,6 +45,8 @@ export default function MasanSortingReturnTasksSection({
   className,
   emptyHint,
 }: Props) {
+  const displayZoneId = OUTBOUND_DISPLAY_ZONES.find((item) => item.vtSortingZoneCode === sortingZoneCode)?.id ?? 0;
+  const auto = useOutboundAuto(warehouseId, displayZoneId);
   const tier = useOperatorViewportTier();
   const compact = compactProp ?? tier === "narrow";
   const bodyText = operatorPickBodyTextClass(tier);
@@ -61,12 +65,18 @@ export default function MasanSortingReturnTasksSection({
   } = useMasanSortingZoneReturnTasks(warehouseId, zone, queryEnabled);
 
   const returnRows = useMemo(
-    () => filterReturnTasksByFromLocationId(allReturnRows, vtLocationId),
-    [allReturnRows, vtLocationId],
+    () => filterReturnTasksByFromLocationId(allReturnRows, vtLocationId).filter((row) =>
+      !auto.data?.vts.some((vt) => vt.execution_mode === 'native'
+        && vt.return_order_id === row.task.order_id)),
+    [allReturnRows, vtLocationId, auto.data],
   );
 
   const handleExecuteReturn = useCallback(
     async (row: MasanSortingReturnTaskRow) => {
+      if (auto.manualBlocked) {
+        message.warning('Dừng tự động trước khi gọi return thủ công');
+        return;
+      }
       const body = buildReturnExecuteBody(row.task);
       if (!body) {
         message.error("Thiếu vị trí đầu hoặc đích trên lệnh trả");
@@ -75,11 +85,17 @@ export default function MasanSortingReturnTasksSection({
       setExecutingOrderId(row.task.order_id);
       message.loading({ content: "Đang gửi lệnh trả...", key: "return-exec" });
       try {
-        await executeReturnMutation.mutateAsync({
-          orderId: row.outboundOrderId,
-          body,
-          detailType: "auto",
-        });
+        const owned = auto.data?.vts.find((vt) => ['manual_services', 'adopted_return'].includes(vt.execution_mode ?? '')
+          && vt.return_order_id === row.task.order_id);
+        if (owned?.cycle_id) {
+          await auto.returnCycle.mutateAsync(owned.cycle_id);
+        } else {
+          await executeReturnMutation.mutateAsync({
+            orderId: row.outboundOrderId,
+            body,
+            detailType: "auto",
+          });
+        }
         message.success({ content: "Đã gửi lệnh trả", key: "return-exec" });
         await refetchReturnTasks();
       } catch (err) {
@@ -91,7 +107,7 @@ export default function MasanSortingReturnTasksSection({
         setExecutingOrderId(null);
       }
     },
-    [executeReturnMutation, refetchReturnTasks],
+    [auto.manualBlocked, auto.data, auto.returnCycle, executeReturnMutation, refetchReturnTasks],
   );
 
   const returnColumns: ColumnsType<MasanSortingReturnTaskRow> = useMemo(
@@ -167,7 +183,7 @@ export default function MasanSortingReturnTasksSection({
                 variant="primary"
                 icon={<PlayCircleOutlined />}
                 loading={executingOrderId === record.task.order_id}
-                disabled={!body}
+                disabled={!body || auto.manualBlocked}
                 title={!body ? "Thiếu vị trí đầu hoặc đích" : undefined}
                 onClick={() => void handleExecuteReturn(record)}
               >
@@ -179,7 +195,7 @@ export default function MasanSortingReturnTasksSection({
         },
       },
     ],
-    [compact, executingOrderId, handleExecuteReturn],
+    [auto.manualBlocked, compact, executingOrderId, handleExecuteReturn],
   );
 
   const showReturnEmpty =

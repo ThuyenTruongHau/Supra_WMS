@@ -1150,100 +1150,6 @@ def _detail_to_cache_line(detail: OutboundOrderDetail) -> dict[str, Any]:
         "locator": meta.get("locator"),
     }
 
-# def assign_cc_zone(db: Session, warehouse_id: int) -> None:                     
-#     # Reconcile even when every CC is occupied or there is no unfinished order.
-#     clear_completed_cc_assignments(db, warehouse_id)
-#     keys = cache_scan_keys(f"outbound:assigned_cc_location:{warehouse_id}:*")
-#     existed_locations: list[str] = []
-#     for key in keys:
-#         suffix = key.rsplit(":", 1)[-1]
-#         if suffix.isdigit():
-#             existed_locations.append(int(suffix))
-
-#     logger.info(f"Existed locations: {existed_locations}")
-
-#     numeric_suffix = cast(
-#         func.nullif(
-#             func.regexp_replace(Location.location_name, r"\D", "", "g"), ""
-#         ),
-#         Integer,
-#     )
-#     available_locations = (
-#         db.query(Location)
-#         .join(Zone, Zone.id == Location.zone_id)
-#         .filter(
-#             Location.warehouse_id == warehouse_id,
-#             Location.is_active.is_(True),
-#             Zone.code.in_(settings.zone_cc),
-#             ~Location.id.in_(existed_locations),
-#         )
-#         .order_by(numeric_suffix.asc().nulls_last(), Location.location_name.asc())
-#         .all()
-#     )
-
-#     logger.info(f"Available locations: {available_locations}")
-
-#     if not available_locations:
-#         return
-    
-#     _ensure_warehouse_exists(db, warehouse_id)
-#     available_orders = db.query(OutboundOrder).filter(
-#         OutboundOrder.status != "completed",
-#         OutboundOrder.warehouse_id == warehouse_id,
-#         # Explicit station resets retain historical orders without reassigning
-#         # their unfinished demand to freshly cleared CC locations.
-#         func.coalesce(OutboundOrder.details["cc_assignment_disabled"].as_boolean(), False).is_(False),
-#     ).all()
-#     if not available_orders:
-#         return
-#     order_ids = [o.id for o in available_orders]
-
-#     keys = cache_scan_keys(f"outbound:assigned_cc_details:{warehouse_id}:*")
-#     assigned_ids: list[int] = []
-#     for key in keys:
-#         suffix = key.rsplit(":", 1)[-1]
-#         if suffix.isdigit():
-#             assigned_ids.append(int(suffix))
-
-#     list_details = (
-#         db.query(OutboundOrderDetail)
-#         .options(joinedload(OutboundOrderDetail.item))
-#         .filter(
-#             OutboundOrderDetail.outbound_order_id.in_(order_ids),
-#             # OutboundOrderDetail.unallocated_quantity > 0,
-#             ~OutboundOrderDetail.id.in_(assigned_ids),
-#         )
-#         .all()
-#     )
-
-#     details_by_vehicle: dict[str, list] = defaultdict(list)
-#     reversed_vehicles_list = []
-#     for detail in list_details:
-#         meta = detail.details if isinstance(detail.details, dict) else {}
-#         raw = meta.get("vehicle_no")
-#         vehicle_number = str(raw).strip() if raw is not None else ""
-#         if not vehicle_number:
-#             vehicle_number = "no_vehicle"
-#         line = _detail_to_cache_line(detail)
-#         line["quantity"] = int(detail.unallocated_quantity)
-#         details_by_vehicle[vehicle_number].append(line)
-#         if vehicle_number not in reversed_vehicles_list:
-#             reversed_vehicles_list.append(vehicle_number)
-
-#     i = 0
-#     while i < len(available_locations) and i < len(reversed_vehicles_list):
-#         key = f"outbound:assigned_cc_location:{warehouse_id}:{available_locations[i].id}"
-#         lines = details_by_vehicle[reversed_vehicles_list[i]]
-#         outbound_order_id = lines[0].get("outbound_order_id")
-#         logger.info(f"Outbound order ID: {outbound_order_id}")
-#         for line in lines:
-#             cache_data = {
-#                 "zone": available_locations[i].zone.code,
-#                 "location_id": available_locations[i].id,
-#             }
-#             cache_set(f"outbound:assigned_cc_details:{warehouse_id}:{line['detail_id']}", cache_data, -1)
-#         cache_set(key, {"outbound_order_id": outbound_order_id, "zone": available_locations[i].zone.code, "vehicle_number": reversed_vehicles_list[i], "lines": lines}, -1)
-#         i += 1
 
 def assign_cc_zone(db: Session, warehouse_id: int) -> None:                     
     keys = cache_scan_keys(f"outbound:assigned_cc_location:{warehouse_id}:*")
@@ -1333,6 +1239,34 @@ def assign_cc_zone(db: Session, warehouse_id: int) -> None:
             cache_set(f"outbound:assigned_cc_details:{warehouse_id}:{line['detail_id']}", cache_data, -1)
         cache_set(key, {"outbound_order_id": outbound_order_id, "zone": available_locations[i].zone.code, "vehicle_number": reversed_vehicles_list[i], "lines": lines}, -1)
         i += 1
+
+# def _assigning_algorithm(db: Session, list_details: list[OutboundOrderDetail]) -> None:
+#     zone_ccs = settings.zone_cc
+
+#     assign_cc_by_zone: dict[str, dict[str, list]] = defaultdict(lambda: defaultdict(list))
+#     quantity_by_item_id: dict[int, int] = defaultdict(int)
+#     details_by_item_id: dict[int, list] = defaultdict(list)
+
+#     temp = {zone: 0 for zone in zone_ccs}
+
+#     for detail in list_details:
+#         quantity_by_item_id[detail.item_id] += detail.quantity
+
+#         meta = detail.details if isinstance(detail.details, dict) else {}
+#         raw = meta.get("vehicle_no")
+#         vehicle_number = str(raw).strip() if raw is not None else ""
+#         if not vehicle_number:
+#             vehicle_number = "no_vehicle"
+#         line = _detail_to_cache_line(detail)
+
+#         details_by_item_id[detail.item_id][vehicle_number].append(line)
+
+#     for item_id, quantity in quantity_by_item_id.items():
+#         lowest_zone = min(temp, key=temp.get)
+#         temp[lowest_zone] += quantity
+#         for vehicle_number, lines in details_by_item_id[item_id].items():
+#             assign_cc_by_zone[lowest_zone][vehicle_number].extend(lines)
+
 
 def clear_completed_cc_assignments(
     db: Session, warehouse_id: int, *, order_id: int | None = None,
@@ -1437,20 +1371,11 @@ def _clear_assigned_cc_location(warehouse_id: int, outbound_order_id: int) -> No
             if bucket and bucket.get("outbound_order_id") == outbound_order_id:
                 lines.extend(bucket.get("lines") or [])
                 cache_delete(loc_key)
+                cache_delete_pattern(f"outbound:masan:stock_ready:{warehouse_id}:*:{location_id}")
 
     for line in lines:
         cache_delete(f"outbound:assigned_cc_details:{warehouse_id}:{line['detail_id']}")
 
-# def _clear_cc_cache_if_order_completed(
-#     db: Session,
-#     warehouse_id: int,
-#     order_id: int,
-# ) -> None:
-#     status = db.query(OutboundOrder.status).filter(
-#         OutboundOrder.id == order_id, OutboundOrder.warehouse_id == warehouse_id,
-#     ).scalar()
-#     if status == "completed":
-#         clear_completed_cc_assignments(db, warehouse_id, order_id=order_id, persist_locations=False)
 
 def _clear_cc_cache_if_order_completed(
     db: Session,
@@ -1869,6 +1794,16 @@ def get_item_needed_to_sorting(
 #     }    
 
 def sending_masan_outbound_task(db: Session, warehouse_id: int, zone: str, item_id: int, to_location_id: int):
+    from app.modules.masan.masan_auto_service import warehouse_lock, guard_manual_locations
+    with warehouse_lock(db, warehouse_id):
+        guard_manual_locations(db, warehouse_id, {to_location_id})
+        return _sending_masan_outbound_task(db, warehouse_id, zone, item_id, to_location_id)
+
+
+def _sending_masan_outbound_task(db: Session, warehouse_id: int, zone: str, item_id: int, to_location_id: int):
+    from app.modules.masan.masan_auto_manual_service import context, prepare_dispatch
+    if context(db) is not None:
+        return prepare_dispatch(db, warehouse_id, zone, item_id, to_location_id)
     # Need optimize
     if _exist_robot_task(db, to_location_id):
         raise ValueError(f"Vị trí đích {to_location_id} đang có robot task chạy tới")
@@ -2326,6 +2261,20 @@ def confirm_allocation_outbound(
     quantities: dict[int, int],
     sorting_persons: str,
 ) -> None:
+    from app.modules.masan.masan_auto_service import confirm as confirm_automatic
+    if confirm_automatic(db, warehouse_id, zone, quantities, sorting_persons):
+        return
+
+    from app.modules.masan.masan_auto_service import warehouse_lock, wake
+    with warehouse_lock(db, warehouse_id):
+        result = _confirm_allocation_outbound(db, warehouse_id, zone, quantities, sorting_persons)
+    wake()
+    return result
+
+
+def _confirm_allocation_outbound(db: Session, warehouse_id: int, zone: str,
+                                 quantities: dict[int, int], sorting_persons: str) -> None:
+
     allocation_ids = list(quantities.keys())
     if not allocation_ids:
         raise ValueError("quantities must contain at least one allocation")
@@ -2418,6 +2367,8 @@ def confirm_allocation_outbound(
                 allocation_type="return",
             )
             db.add(return_allocation)
+            from app.modules.masan.masan_return_journal import register
+            register(db, return_task)
             
 
         else:
