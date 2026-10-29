@@ -70,13 +70,13 @@ OUTBOUND_REPORT_COLUMN_WIDTHS: tuple[float, ...] = (
     18.0,  # Người chia
     12.0,  # Quãng đường (m)
     10.0,  # Robot
-    14.0,  # Thời gian bắt đầu
-    14.0,  # Thời gian kết thúc
+    18.0,  # Thời gian bắt đầu
+    18.0,  # Thời gian kết thúc
     12.0,  # Pin bắt đầu
     12.0,  # Pin kết thúc
     16.0,  # Vị trí chia
-    14.0,  # Bắt đầu chia
-    14.0,  # Kết thúc chia
+    18.0,  # Bắt đầu chia
+    18.0,  # Kết thúc chia
 )
 
 TITLE_ROW_HEIGHT = 42.0

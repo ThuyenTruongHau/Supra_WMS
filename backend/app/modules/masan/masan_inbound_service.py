@@ -423,7 +423,7 @@ def _format_inbound_datetime(order: InboundOrder, meta: dict[str, Any]) -> str:
 def _format_inbound_report_datetime(dt) -> str:
     if not dt:
         return ""
-    return dt.strftime("%d/%m/%Y\n%H:%M")
+    return dt.strftime("%d/%m/%Y\n%H:%M:%S")
 
 
 def _format_report_distance_m(distance_m: float | None) -> float | None:

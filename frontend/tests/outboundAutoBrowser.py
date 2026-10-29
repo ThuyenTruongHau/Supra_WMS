@@ -26,6 +26,29 @@ class OutboundAutoBrowserTests(legacy.OutboundReturnBrowserTests):
             "state": "stopped", "message": "Đã dừng", "vts": [],
         })
 
+    def expand_status(self, display_id=9):
+        self.page.get_by_test_id(f"outbound-auto-toggle-{display_id}").click()
+        expect(self.page.get_by_test_id(f"outbound-auto-details-{display_id}")).to_be_visible()
+
+    def open_detail_with_status(self, display_id=9):
+        self.page.goto(f"{BASE_URL}/export/zone/{display_id}")
+        self.expand_status(display_id)
+        self.page.get_by_role("button", name=re.compile(r"Gọi lệnh$")).click()
+        self.page.get_by_role("button", name=re.compile(VT_ZONES[display_id][1])).click()
+
+    def seed_status(self, display_id=9, count=2):
+        state = self.state(display_id)
+        state.update(enabled=True, state="waiting", message="Chờ chia chọn")
+        state["vts"] = [{
+            "location_id": VT_ZONES[display_id][2] + index,
+            "name": f"VT{index + 1:02d}", "location_status": "reserved",
+            "cycle_id": 123 + index, "phase": "supplying",
+            "message": "Đang cấp hàng về vị trí chia chọn",
+            "pick_order_id": f"PICK-{index}", "return_order_id": f"RETURN-{index}",
+            "remaining_quantity": 5,
+        } for index in range(count)]
+        return state
+
     def mock_api(self, route):
         url = urlparse(route.request.url)
         if "/auto-dispatch/" not in url.path:
@@ -135,7 +158,7 @@ class OutboundAutoBrowserTests(legacy.OutboundReturnBrowserTests):
             "cycle_id": 123, "execution_mode": "manual_services", "phase": "ready_to_return",
             "message": "Chờ điều kiện return thủ công", "pick_order_id": "PICK-123",
             "return_order_id": "TDS_Return_378f2e81", "remaining_quantity": 5}]
-        self.open_detail(9)
+        self.open_detail_with_status(9)
         expect(self.page.get_by_role("button", name="Return", exact=True)).to_have_count(0)
         expect(self.page.get_by_role("button", name=re.compile("Execute$"))).to_have_count(1)
         expect(self.page.get_by_test_id("outbound-auto-status-9")).to_contain_text("Chờ điều kiện return thủ công")
@@ -154,6 +177,7 @@ class OutboundAutoBrowserTests(legacy.OutboundReturnBrowserTests):
     def test_legacy_verification_requires_note_and_does_not_execute_return(self):
         self.legacy_candidate()
         self.page.goto(f"{BASE_URL}/export/zone/9")
+        self.expand_status()
         self.page.get_by_role('button',name='Xác nhận chưa gửi ICS',exact=True).click()
         dialog=self.page.get_by_role('dialog',name='Xác nhận chưa gửi ICS')
         expect(dialog.get_by_role('button',name='Xác nhận chưa gửi',exact=True)).to_be_disabled()
@@ -166,6 +190,7 @@ class OutboundAutoBrowserTests(legacy.OutboundReturnBrowserTests):
         self.assertTrue(path.endswith('/returns/500/verify-unsent'))
         self.assertEqual(body,{'warehouse_id':1,'display_zone_id':9,'note':'Đã đối chiếu ICS, chưa nhận mã lệnh'})
         self.page.reload()
+        self.expand_status()
         expect(self.page.get_by_role('button',name='Xác nhận chưa gửi ICS',exact=True)).to_have_count(0)
         self.assertEqual(self.errors,[])
 
@@ -173,6 +198,7 @@ class OutboundAutoBrowserTests(legacy.OutboundReturnBrowserTests):
         self.legacy_candidate()
         self.state(9).update(enabled=True,state='waiting',message='Chờ đối soát')
         self.page.goto(f"{BASE_URL}/export/zone/9")
+        self.expand_status()
         row=self.page.get_by_test_id('return-candidate-500')
         expect(row).to_contain_text('Dừng tự động để đối soát lệnh này')
         expect(row.get_by_role('button',name='Xác nhận chưa gửi ICS')).to_have_count(0)
@@ -181,6 +207,7 @@ class OutboundAutoBrowserTests(legacy.OutboundReturnBrowserTests):
     def test_verification_conflict_keeps_dialog_and_does_not_execute(self):
         self.legacy_candidate(); self.verify_error=True
         self.page.goto(f"{BASE_URL}/export/zone/9")
+        self.expand_status()
         self.page.get_by_role('button',name='Xác nhận chưa gửi ICS',exact=True).click()
         dialog=self.page.get_by_role('dialog',name='Xác nhận chưa gửi ICS')
         dialog.get_by_role('textbox',name='Ghi chú đối soát ICS').fill('Đã kiểm tra ICS')
@@ -194,7 +221,7 @@ class OutboundAutoBrowserTests(legacy.OutboundReturnBrowserTests):
             "cycle_id":124,"execution_mode":"adopted_return","phase":"ready_to_return",
             "message":"Đã tiếp quản return thủ công","pick_order_id":None,
             "return_order_id":"TDS_Return_378f2e81","remaining_quantity":5}]
-        self.open_detail(9)
+        self.open_detail_with_status(9)
         expect(self.page.get_by_role('button',name='Return',exact=True)).to_have_count(0)
         expect(self.page.get_by_role('button',name=re.compile('Execute$'))).to_have_count(1)
         expect(self.page.get_by_test_id('outbound-auto-status-9')).to_contain_text('tiếp quản return')
@@ -206,8 +233,139 @@ class OutboundAutoBrowserTests(legacy.OutboundReturnBrowserTests):
         candidate=self.legacy_candidate()
         candidate.update(state='waiting_conditions',message='Chờ allocation cùng detail hoàn tất',can_verify=False,business_ready=False)
         self.page.goto(f"{BASE_URL}/export/zone/9")
+        self.expand_status()
         expect(self.page.get_by_test_id('return-candidate-500')).to_contain_text('Chờ allocation cùng detail hoàn tất')
         expect(self.page.get_by_role('button',name='Xác nhận chưa gửi ICS',exact=True)).to_have_count(0)
+
+    def test_status_toggle_supports_keyboard_and_preserves_state_during_polling(self):
+        state = self.seed_status()
+        self.page.goto(f"{BASE_URL}/export/zone/9")
+        status = self.page.get_by_test_id("outbound-auto-status-9")
+        toggle = self.page.get_by_test_id("outbound-auto-toggle-9")
+        details = self.page.get_by_test_id("outbound-auto-details-9")
+        expect(toggle).to_have_attribute("aria-expanded", "false")
+        expect(toggle).to_have_attribute("title", "Hiện thông tin VT")
+        expect(details).to_be_hidden()
+        expect(toggle).to_have_text("▶")
+        bounds = toggle.bounding_box()
+        self.assertGreaterEqual(bounds["width"], 40)
+        self.assertGreaterEqual(bounds["height"], 40)
+        toggle.focus()
+        toggle.press("Enter")
+        expect(toggle).to_have_attribute("aria-expanded", "true")
+        expect(toggle).to_have_attribute("title", "Ẩn thông tin VT")
+        expect(toggle).to_have_text("▼")
+        expect(details).to_be_visible()
+        expect(details).to_contain_text("VT01 · Đang cấp hàng")
+        expect(details.locator('[title="PICK-0 · RETURN-0"]')).to_be_visible()
+        state["vts"][0].update(phase="awaiting_confirmation", message="Đã cập nhật lượt mới")
+        expect(details).to_contain_text("Đã cập nhật lượt mới", timeout=15000)
+        expect(toggle).to_have_attribute("aria-expanded", "true")
+        toggle.press("Space")
+        expect(details).to_be_hidden()
+        state.update(state="error", message="Cần đối soát mới")
+        expect(details).to_contain_text("Cần đối soát mới", timeout=15000)
+        expect(toggle).to_have_attribute("aria-expanded", "false")
+        self.assertEqual(self.auto_writes, [])
+        self.assertEqual(self.errors, [])
+
+    def test_overview_status_expands_independently_and_resets_on_navigation(self):
+        self.seed_status(8)
+        self.seed_status(9)
+        self.page.goto(f"{BASE_URL}/export")
+        self.expand_status(8)
+        expect(self.page.get_by_test_id("outbound-auto-details-9")).to_be_hidden()
+        self.expand_status(9)
+        self.page.get_by_test_id("outbound-auto-toggle-8").click()
+        expect(self.page.get_by_test_id("outbound-auto-details-8")).to_be_hidden()
+        expect(self.page.get_by_test_id("outbound-auto-details-9")).to_be_visible()
+        # The map wrapper already supports double-click navigation to zone detail.
+        card = self.page.get_by_test_id("outbound-auto-status-9").locator("../..")
+        card.locator(":scope > div").last.dblclick(position={"x": 20, "y": 20})
+        expect(self.page).to_have_url(f"{BASE_URL}/export/zone/9")
+        expect(self.page.get_by_test_id("outbound-auto-details-9")).to_be_hidden()
+        self.expand_status(9)
+        self.page.get_by_role("button", name=re.compile("Chọn vị trí$")).click()
+        expect(self.page).to_have_url(f"{BASE_URL}/export")
+        expect(self.page.get_by_test_id("outbound-auto-details-9")).to_be_hidden()
+        self.assertEqual(self.auto_writes, [])
+        self.assertEqual(self.errors, [])
+
+    def test_status_is_absent_when_no_displayable_information(self):
+        for path in ("/export", "/export/zone/9"):
+            with self.subTest(path=path):
+                self.page.goto(f"{BASE_URL}{path}")
+                expect(self.page.get_by_test_id("outbound-auto-9").get_by_role("button")).to_be_enabled()
+                expect(self.page.get_by_test_id("outbound-auto-status-9")).to_have_count(0)
+                expect(self.page.get_by_test_id("outbound-auto-toggle-9")).to_have_count(0)
+                expect(self.page.get_by_test_id("outbound-auto-separator-9")).to_have_count(0)
+        self.assertEqual(self.auto_writes, [])
+
+    def test_long_status_scrolls_without_horizontal_overflow_or_hiding_map(self):
+        state = self.seed_status(count=10)
+        state["vts"][0]["message"] = "Thông báo rất dài " * 30 + "ORDER_" + "X" * 300
+        for width, height in ((1440, 1000), (1024, 768)):
+            self.page.set_viewport_size({"width": width, "height": height})
+            for path in ("/export", "/export/zone/9"):
+                with self.subTest(width=width, path=path):
+                    self.page.goto(f"{BASE_URL}{path}")
+                    status = self.page.get_by_test_id("outbound-auto-status-9")
+                    expect(status).to_be_visible()
+                    auto_button = self.page.get_by_test_id("outbound-auto-9").get_by_role("button").bounding_box()
+                    toggle_button = self.page.get_by_test_id("outbound-auto-toggle-9")
+                    toggle = toggle_button.bounding_box()
+                    self.assertAlmostEqual(toggle["y"] + toggle["height"] / 2, auto_button["y"] + auto_button["height"] / 2, delta=1)
+                    self.assertGreaterEqual(toggle["x"] - auto_button["x"] - auto_button["width"], 16)
+                    self.assertAlmostEqual(toggle["width"], 40, delta=1)
+                    self.assertAlmostEqual(toggle["height"], 40, delta=1)
+                    if path == "/export":
+                        map_area = status.locator("../..").locator(":scope > div").last
+                    else:
+                        map_area = status.locator("../../..").locator(":scope > div").last
+                    before = map_area.bounding_box()
+                    self.expand_status()
+                    details = self.page.get_by_test_id("outbound-auto-details-9")
+                    self.assertAlmostEqual(details.bounding_box()["width"], status.bounding_box()["width"], delta=1)
+                    toolbar = status.locator(":scope > div").first.bounding_box()
+                    self.assertGreaterEqual(details.bounding_box()["y"], toolbar["y"] + toolbar["height"])
+                    size = details.evaluate("el => ({height: el.clientHeight, scrollHeight: el.scrollHeight, width: el.clientWidth, scrollWidth: el.scrollWidth})")
+                    self.assertLessEqual(size["height"], 240)
+                    self.assertGreater(size["scrollHeight"], size["height"])
+                    self.assertLessEqual(size["scrollWidth"], size["width"] + 1)
+                    after = map_area.bounding_box()
+                    self.assertGreater(after["height"], 0)
+                    self.assertLess(after["height"], before["height"])
+                    self.assertLess(after["y"], height)
+                    toggle_button.click()
+                    expect(details).to_be_hidden()
+                    self.assertAlmostEqual(map_area.bounding_box()["height"], before["height"], delta=1)
+        self.assertEqual(self.auto_writes, [])
+        self.assertEqual(self.errors, [])
+
+    def test_status_gap_and_divider_do_not_trigger_automatic_commands(self):
+        state = self.seed_status()
+        for enabled in (False, True):
+            state["enabled"] = enabled
+            for path in ("/export", "/export/zone/9"):
+                with self.subTest(enabled=enabled, path=path):
+                    self.page.goto(f"{BASE_URL}{path}")
+                    toggle = self.page.get_by_test_id("outbound-auto-toggle-9")
+                    expect(toggle).to_be_visible()
+                    auto = self.page.get_by_test_id("outbound-auto-9").get_by_role("button")
+                    auto_bounds = auto.bounding_box()
+                    toggle_bounds = toggle.bounding_box()
+                    gap_start = auto_bounds["x"] + auto_bounds["width"]
+                    gap_end = toggle_bounds["x"]
+                    middle_y = toggle_bounds["y"] + toggle_bounds["height"] / 2
+                    separator = self.page.get_by_test_id("outbound-auto-separator-9").bounding_box()
+                    for x in (gap_start + 3, separator["x"] + 0.5, gap_end - 3):
+                        self.page.mouse.click(x, middle_y)
+                        expect(toggle).to_have_attribute("aria-expanded", "false")
+                    toggle.click()
+                    expect(toggle).to_have_attribute("aria-expanded", "true")
+                    expect(auto).to_have_text("Dừng tự động" if enabled else "Gọi tự động")
+                    self.assertEqual(self.auto_writes, [])
+        self.assertEqual(self.errors, [])
 
 
 if __name__ == "__main__":

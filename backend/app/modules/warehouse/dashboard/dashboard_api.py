@@ -1,3 +1,4 @@
+from datetime import date
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -43,13 +44,17 @@ def get_report_kpis(
 def export_report_robot_performance(
     db: DbSession,
     warehouse_id: int = Query(..., gt=0),
-    period: Literal["day", "week"] = Query("day"),
+    period: Literal["day", "week", "timeline"] = Query("day"),
+    start_date: date | None = Query(None),
+    end_date: date | None = Query(None),
 ):
     try:
         content, filename = dashboard_service.export_robot_performance_report(
             db,
             warehouse_id=warehouse_id,
             period=period,
+            start_date=start_date,
+            end_date=end_date,
         )
     except ValueError as exc:
         raise HTTPException(

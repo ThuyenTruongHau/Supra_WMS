@@ -2,7 +2,7 @@
 
 import os
 import unittest
-from datetime import datetime
+from datetime import date, datetime
 from io import BytesIO
 
 os.environ.update(
@@ -121,6 +121,26 @@ class RobotPerformanceReportTests(unittest.TestCase):
         self.assertEqual(tuple(headers), svc._ROBOT_REPORT_HEADERS)
         r1 = [c.value for c in ws[svc._DATA_START_ROW]]
         self.assertEqual(r1, ["R1", 1, 1, 0, 2, 1, 1, 0, 0, 0, 0, 30.5])
+
+    def test_timeline_bounds_are_inclusive_calendar_days(self):
+        start, end, label = svc._robot_report_period_bounds(
+            "timeline",
+            start_date=date(2026, 10, 1),
+            end_date=date(2026, 10, 3),
+        )
+        self.assertEqual(label, "Từ 01/10/2026 đến 03/10/2026")
+        self.assertEqual((start.hour, start.minute, start.second), (0, 0, 0))
+        self.assertEqual((end.hour, end.minute, end.second), (23, 59, 59))
+        self.assertEqual(start.date(), date(2026, 10, 1))
+        self.assertEqual(end.date(), date(2026, 10, 3))
+        with self.assertRaises(ValueError):
+            svc._robot_report_period_bounds("timeline")
+        with self.assertRaises(ValueError):
+            svc._robot_report_period_bounds(
+                "timeline",
+                start_date=date(2026, 10, 3),
+                end_date=date(2026, 10, 1),
+            )
 
 
 if __name__ == "__main__":

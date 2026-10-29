@@ -28,7 +28,7 @@ export type GoodsStatusLegend = {
 };
 
 type PanelShellProps = {
-  title: string;
+  title?: string;
   children: ReactNode;
   compact?: boolean;
 };
@@ -36,15 +36,18 @@ type PanelShellProps = {
 function PanelShell({ title, children, compact }: PanelShellProps) {
   return (
     <div className="min-w-0">
-      <p
-        className={cn(
-          "truncate font-bold uppercase tracking-wider text-stripe-ink-mute",
-          compact ? "text-sm" : "text-base",
-        )}
-      >
-        {title}
-      </p>
-      <div className={cn("space-y-1", compact ? "mt-1" : "mt-1.5")}>
+      {title && (
+        <p
+          className={cn(
+            "truncate font-bold uppercase tracking-wider text-stripe-ink-mute",
+            compact ? "text-sm" : "text-base",
+          )}
+        >
+          {title}
+        </p>
+      )}
+
+      <div className={cn("space-y-1", title ? (compact ? "mt-1" : "mt-1.5") : "")}>
         {children}
       </div>
     </div>
@@ -83,7 +86,7 @@ export function RobotStatusPanel({
   inline?: boolean;
 }) {
   return (
-    <PanelShell title="Trạng thái robot" compact={compact}>
+    <PanelShell compact={compact}>
       <div
         className={
           inline ? "flex flex-wrap items-center gap-x-6 gap-y-1" : "space-y-1"

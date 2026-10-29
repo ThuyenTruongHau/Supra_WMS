@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import {
   OPERATOR_STAGE,
@@ -157,11 +157,12 @@ export default function UserLayout() {
             }}
             className="operator-stage @container absolute top-0 left-0"
             style={{
+              '--operator-stage-scale': stageLayout.scale,
               width: stageLayout.width,
               height: stageLayout.height,
               transform: `translate(${stageLayout.offsetX}px, ${stageLayout.offsetY}px) scale(${stageLayout.scale})`,
               transformOrigin: "top left",
-            }}
+            } as CSSProperties}
           >
             {shell}
           </div>

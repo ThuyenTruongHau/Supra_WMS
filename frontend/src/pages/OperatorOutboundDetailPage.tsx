@@ -457,67 +457,71 @@ export default function OperatorOutboundDetailPage() {
           </div>
         }
         mapToolbar={
-          <>
-            <div className="min-w-0">
-              <OutboundAutoControl warehouseId={warehouseId} displayZoneId={zoneId} className={outboundActionBtnClass} />
-              <OutboundAutoStatus warehouseId={warehouseId} displayZoneId={zoneId} />
-            </div>
-            <Button
-              variant="primary"
-              icon={<PlayCircleOutlined />}
-              onClick={() => {
-                if (!outboundAssigneeReady) {
-                  message.warning(OPERATOR_ASSIGNEE_REQUIRED_OUTBOUND);
-                  return;
-                }
-                setVtPickerOpen(true);
-              }}
-              disabled={
-                warehouseId <= 0 ||
-                !ccBucketZoneCode ||
-                autoDispatch.manualBlocked ||
-                !outboundAssigneeReady
-              }
-              title={
-                !outboundAssigneeReady
-                  ? OPERATOR_ASSIGNEE_REQUIRED_OUTBOUND
-                  : undefined
-              }
-              className={outboundActionBtnClass}
-            >
-              Gọi lệnh
-            </Button>
-            <Button
-              variant="secondary"
-              icon={<DeleteOutlined />}
-              loading={isClearingStation}
-              disabled={
-                warehouseId <= 0 ||
-                !ccBucketZoneCode ||
-                autoDispatch.data?.enabled || autoDispatch.data?.vts.some((vt) => vt.cycle_id != null) ||
-                ccLocationsLoading ||
-                ccLocationIds.length === 0
-              }
-              onClick={handleClearStation}
-              className={outboundActionBtnClass}
-            >
-              Clear station
-            </Button>
-            <Button
-              variant="secondary"
-              icon={<EyeOutlined />}
-              onClick={() => setWarehouseViewOpen(true)}
-              disabled={warehouseId <= 0}
-              className={outboundActionBtnClass}
-            >
-              Xem kho
-            </Button>
-            <OperatorZoneCrossNavButton
-              target="monitor"
-              displayZoneId={zoneId}
-              className={outboundActionBtnClass}
-            />
-          </>
+          <OutboundAutoStatus warehouseId={warehouseId} displayZoneId={zoneId}
+            renderToolbar={(toggle) => (
+              <div className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-2">
+                <div className="flex shrink-0 items-center">
+                  <OutboundAutoControl warehouseId={warehouseId} displayZoneId={zoneId} className={outboundActionBtnClass} />
+                  {toggle}
+                </div>
+                <Button
+                  variant="primary"
+                  icon={<PlayCircleOutlined />}
+                  onClick={() => {
+                    if (!outboundAssigneeReady) {
+                      message.warning(OPERATOR_ASSIGNEE_REQUIRED_OUTBOUND);
+                      return;
+                    }
+                    setVtPickerOpen(true);
+                  }}
+                  disabled={
+                    warehouseId <= 0 ||
+                    !ccBucketZoneCode ||
+                    autoDispatch.manualBlocked ||
+                    !outboundAssigneeReady
+                  }
+                  title={
+                    !outboundAssigneeReady
+                      ? OPERATOR_ASSIGNEE_REQUIRED_OUTBOUND
+                      : undefined
+                  }
+                  className={outboundActionBtnClass}
+                >
+                  Gọi lệnh
+                </Button>
+                <Button
+                  variant="secondary"
+                  icon={<DeleteOutlined />}
+                  loading={isClearingStation}
+                  disabled={
+                    warehouseId <= 0 ||
+                    !ccBucketZoneCode ||
+                    autoDispatch.data?.enabled || autoDispatch.data?.vts.some((vt) => vt.cycle_id != null) ||
+                    ccLocationsLoading ||
+                    ccLocationIds.length === 0
+                  }
+                  onClick={handleClearStation}
+                  className={outboundActionBtnClass}
+                >
+                  Clear station
+                </Button>
+                <Button
+                  variant="secondary"
+                  icon={<EyeOutlined />}
+                  onClick={() => setWarehouseViewOpen(true)}
+                  disabled={warehouseId <= 0}
+                  className={outboundActionBtnClass}
+                >
+                  Xem kho
+                </Button>
+                <OperatorZoneCrossNavButton
+                  target="monitor"
+                  displayZoneId={zoneId}
+                  className={outboundActionBtnClass}
+                />
+              </div>
+            )}
+          />
         }
         emptyHint={
           <p className="text-sm text-slate-500">

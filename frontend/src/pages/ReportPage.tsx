@@ -18,7 +18,8 @@ import {
 import { useEffect, useMemo, useState } from 'react'
 import { NavLink } from 'react-router-dom'
 import { FileExcelOutlined } from '@ant-design/icons'
-import { Segmented, Spin } from 'antd'
+import type { Dayjs } from 'dayjs'
+import { DatePicker, Segmented, Spin } from 'antd'
 import { Button, Card, Modal, message } from '@/components/ui'
 import { useAppStore } from '@/store/useAppStore'
 import {
@@ -386,11 +387,21 @@ export default function ReportPage() {
   const [robotReportModalOpen, setRobotReportModalOpen] = useState(false)
   const [robotReportPeriod, setRobotReportPeriod] =
     useState<RobotReportPeriod>('day')
+  const [robotTimelineRange, setRobotTimelineRange] = useState<
+    [Dayjs, Dayjs] | null
+  >(null)
   const [isExportingRobotReport, setIsExportingRobotReport] = useState(false)
+  const timelineIncomplete =
+    robotReportPeriod === 'timeline' &&
+    (!robotTimelineRange?.[0] || !robotTimelineRange?.[1])
 
   const handleExportRobotReport = async () => {
     if (warehouseId <= 0) {
       message.warning('Vui lòng chọn kho trước khi xuất báo cáo robot')
+      return
+    }
+    if (timelineIncomplete) {
+      message.warning('Vui lòng chọn khoảng ngày timeline')
       return
     }
     setIsExportingRobotReport(true)
@@ -399,7 +410,16 @@ export default function ReportPage() {
         content: 'Đang xuất Excel...',
         key: 'robot-performance-export',
       })
-      await exportRobotPerformanceReportApi(warehouseId, robotReportPeriod)
+      await exportRobotPerformanceReportApi(
+        warehouseId,
+        robotReportPeriod,
+        robotReportPeriod === 'timeline' && robotTimelineRange
+          ? {
+              startDate: robotTimelineRange[0].format('YYYY-MM-DD'),
+              endDate: robotTimelineRange[1].format('YYYY-MM-DD'),
+            }
+          : undefined,
+      )
       message.success({
         content: 'Đã tải báo cáo hiệu suất robot',
         key: 'robot-performance-export',
@@ -501,7 +521,7 @@ export default function ReportPage() {
         open={robotReportModalOpen}
         onCancel={() => setRobotReportModalOpen(false)}
         footer={null}
-        width={420}
+        width={520}
       >
         <p className="mb-4 text-sm text-slate-600">
           Thống kê theo robot (deviceNum) từ task_status với mã 3 (hủy), 7
@@ -515,14 +535,33 @@ export default function ReportPage() {
             options={[
               { label: 'Ngày', value: 'day' },
               { label: 'Tuần (7 ngày)', value: 'week' },
+              { label: 'Timeline', value: 'timeline' },
             ]}
           />
         </div>
+        {robotReportPeriod === 'timeline' && (
+          <div className="mb-6">
+            <DatePicker.RangePicker
+              allowClear
+              format="DD/MM/YYYY"
+              placeholder={['Từ ngày', 'Đến ngày']}
+              className="w-full"
+              value={robotTimelineRange}
+              onChange={(dates) => {
+                if (!dates?.[0] || !dates[1]) {
+                  setRobotTimelineRange(null)
+                  return
+                }
+                setRobotTimelineRange([dates[0], dates[1]])
+              }}
+            />
+          </div>
+        )}
         <Button
           variant="primary"
           icon={<FileExcelOutlined />}
           loading={isExportingRobotReport}
-          disabled={warehouseId <= 0}
+          disabled={warehouseId <= 0 || timelineIncomplete}
           onClick={() => void handleExportRobotReport()}
           className="!w-full justify-center"
         >

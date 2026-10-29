@@ -66,16 +66,23 @@ export const getReportStockAgingBucketApi = async (
   return data;
 };
 
-export type RobotReportPeriod = "day" | "week";
+export type RobotReportPeriod = "day" | "week" | "timeline";
 
 export const exportRobotPerformanceReportApi = async (
   warehouseId: number,
   period: RobotReportPeriod,
+  range?: { startDate: string; endDate: string },
 ): Promise<void> => {
   const response = await axiosInstance.get(
     `${BASE}/report-robot-performance/export`,
     {
-      params: { warehouse_id: warehouseId, period },
+      params: {
+        warehouse_id: warehouseId,
+        period,
+        ...(range
+          ? { start_date: range.startDate, end_date: range.endDate }
+          : {}),
+      },
       responseType: "blob",
     },
   );

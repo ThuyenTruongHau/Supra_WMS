@@ -2,6 +2,7 @@
 
 import os
 import unittest
+from datetime import datetime
 from types import SimpleNamespace
 
 os.environ.update(
@@ -27,8 +28,8 @@ class MasanReportColumnTests(unittest.TestCase):
             from_location=SimpleNamespace(location_name="VT01"),
             to_location=SimpleNamespace(location_name="G100"),
             device="R1",
-            start_time=None,
-            end_time=None,
+            start_time=datetime(2026, 10, 28, 14, 40, 15),
+            end_time=datetime(2026, 10, 28, 14, 55, 7),
             sorting_persons="Nguyen A",
             distance=25.0084,
             start_battery="85",
@@ -46,6 +47,8 @@ class MasanReportColumnTests(unittest.TestCase):
         self.assertEqual(len(row), len(INBOUND_REPORT_HEADERS))
         self.assertEqual(row[14], "Nguyen A")
         self.assertEqual(row[15], 25.008)
+        self.assertEqual(row[17], "28/10/2026\n14:40:15")
+        self.assertEqual(row[18], "28/10/2026\n14:55:07")
         self.assertEqual(row[19], "85")
         self.assertEqual(row[20], "80")
         self.assertEqual(_format_report_distance_m(None), None)
@@ -65,10 +68,10 @@ class MasanReportColumnTests(unittest.TestCase):
             from_location=SimpleNamespace(location_name="G417", location_code="G417"),
             to_location=SimpleNamespace(location_name="VT14"),
             device="R2",
-            start_time=None,
-            end_time=None,
-            start_sorting_time=None,
-            end_sorting_time=None,
+            start_time=datetime(2026, 10, 28, 9, 1, 2),
+            end_time=datetime(2026, 10, 28, 9, 8, 9),
+            start_sorting_time=datetime(2026, 10, 28, 9, 10, 11),
+            end_sorting_time=datetime(2026, 10, 28, 9, 20, 30),
             sorting_persons="Tran B",
             distance=25.0,
             start_battery="90",
@@ -80,7 +83,11 @@ class MasanReportColumnTests(unittest.TestCase):
         self.assertEqual(len(row), len(OUTBOUND_REPORT_HEADERS))
         self.assertEqual(row[12], "Tran B")
         self.assertEqual(row[13], 25.0)
+        self.assertEqual(row[15], "28/10/2026\n09:01:02")
+        self.assertEqual(row[16], "28/10/2026\n09:08:09")
         self.assertEqual(row[17], "90")
+        self.assertEqual(row[20], "28/10/2026\n09:10:11")
+        self.assertEqual(row[21], "28/10/2026\n09:20:30")
         self.assertIsNone(row[18])
         self.assertEqual(row[19], "CC01")
 

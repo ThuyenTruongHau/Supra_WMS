@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from dataclasses import dataclass
-from datetime import datetime, time, timedelta
+from datetime import date, datetime, time, timedelta
 from io import BytesIO
 from typing import Literal
 
@@ -30,7 +30,7 @@ from app.modules.warehouse.outbound_order.outbound_order_model import (
 from app.modules.warehouse.warehouse_zone.warehouse_model import Warehouse
 from app.modules.warehouse.warehouse_zone.warehouse_service import _ensure_warehouse_exists
 
-RobotReportPeriod = Literal["day", "week"]
+RobotReportPeriod = Literal["day", "week", "timeline"]
 TaskKind = Literal["inbound", "outbound", "return"]
 
 _TERMINAL_ICS_STATUSES = ("3", "7", "8")
@@ -118,15 +118,27 @@ def _normalize_ics_status(raw: str | None) -> str | None:
 
 def _robot_report_period_bounds(
     period: RobotReportPeriod,
+    *,
+    start_date: date | None = None,
+    end_date: date | None = None,
 ) -> tuple[datetime, datetime, str]:
     today = vn_today()
     if period == "day":
         start_date = today
         end_date = today
         label = f"Ngày {today.strftime('%d/%m/%Y')}"
-    else:
+    elif period == "week":
         start_date = today - timedelta(days=6)
         end_date = today
+        label = (
+            f"Từ {start_date.strftime('%d/%m/%Y')} "
+            f"đến {end_date.strftime('%d/%m/%Y')}"
+        )
+    else:
+        if start_date is None or end_date is None:
+            raise ValueError("Timeline cần ngày bắt đầu và ngày kết thúc")
+        if start_date > end_date:
+            raise ValueError("Ngày bắt đầu không được sau ngày kết thúc")
         label = (
             f"Từ {start_date.strftime('%d/%m/%Y')} "
             f"đến {end_date.strftime('%d/%m/%Y')}"
@@ -380,6 +392,8 @@ def export_robot_performance_report(
     *,
     warehouse_id: int,
     period: RobotReportPeriod,
+    start_date: date | None = None,
+    end_date: date | None = None,
 ) -> tuple[bytes, str]:
     _ensure_warehouse_exists(db, warehouse_id)
     warehouse = db.query(Warehouse).filter(Warehouse.id == warehouse_id).first()
@@ -390,7 +404,11 @@ def export_robot_performance_report(
     )
     warehouse_name = warehouse.name if warehouse and warehouse.name else warehouse_label
 
-    start_dt, end_dt, period_label = _robot_report_period_bounds(period)
+    start_dt, end_dt, period_label = _robot_report_period_bounds(
+        period,
+        start_date=start_date,
+        end_date=end_date,
+    )
     terminal_rows = _query_robot_terminal_rows(
         db,
         warehouse_id=warehouse_id,
@@ -408,9 +426,13 @@ def export_robot_performance_report(
         warehouse_name=warehouse_name,
         rows=aggregated,
     )
-    period_suffix = "ngay" if period == "day" else "tuan"
-    filename = (
-        f"BaoCaoRobot_{warehouse_label}_{period_suffix}_"
-        f"{vn_today().isoformat()}.xlsx"
-    )
+    if period == "day":
+        period_suffix = f"ngay_{vn_today().isoformat()}"
+    elif period == "week":
+        period_suffix = f"tuan_{vn_today().isoformat()}"
+    else:
+        if start_date is None or end_date is None:
+            raise ValueError("Timeline cần ngày bắt đầu và ngày kết thúc")
+        period_suffix = f"timeline_{start_date.isoformat()}_{end_date.isoformat()}"
+    filename = f"BaoCaoRobot_{warehouse_label}_{period_suffix}.xlsx"
     return content, filename

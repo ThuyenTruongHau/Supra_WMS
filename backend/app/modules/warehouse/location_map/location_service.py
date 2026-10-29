@@ -686,7 +686,7 @@ async def import_warehouse_map(
             MapCreate(
                 warehouse_id=warehouse_id,
                 zone_id=zone_id,
-                source=str(source_path.relative_to(BACKEND_ROOT)),
+                source=source_path.relative_to(BACKEND_ROOT).as_posix(),
                 is_active=True,
             ),
         )
@@ -1261,7 +1261,9 @@ def extract_shelf_nodes_from_zip(raw: bytes) -> list[dict]:
 #Get map
     
 def resolve_map_zip_path(source: str) -> Path:
-    path = Path(source)
+    # Stored paths may use Windows separators. Path on Linux treats "\" as part of the name.
+    normalized = source.replace("\\", "/")
+    path = Path(normalized)
     if not path.is_absolute():
         path = BACKEND_ROOT / path
     return path

@@ -64,8 +64,8 @@ INBOUND_REPORT_COLUMN_WIDTHS: tuple[float, ...] = (
     18.0,  # Người nhập
     12.0,  # Quãng đường (m)
     10.0,  # Robot
-    14.0,  # Thời gian bắt đầu
-    14.0,  # Thời gian kết thúc
+    18.0,  # Thời gian bắt đầu
+    18.0,  # Thời gian kết thúc
     12.0,  # Pin bắt đầu
     12.0,  # Pin kết thúc
 )

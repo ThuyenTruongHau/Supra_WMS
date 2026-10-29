@@ -330,6 +330,23 @@ def _latest_map_zips():
     return result
 
 
+class MapZipPathTests(unittest.TestCase):
+    def test_windows_separators_resolve_under_backend_root(self):
+        from app.modules.warehouse.location_map.location_service import (
+            BACKEND_ROOT,
+            resolve_map_zip_path,
+        )
+
+        resolved = resolve_map_zip_path(
+            r"static\warehouse_maps\warehouse_1\map.zip"
+        )
+        self.assertEqual(
+            resolved,
+            BACKEND_ROOT / "static" / "warehouse_maps" / "warehouse_1" / "map.zip",
+        )
+        self.assertNotIn("\\", resolved.name)
+
+
 class RealMapTests(unittest.TestCase):
     def test_astar_matches_dijkstra_on_map_files(self):
         zips = _latest_map_zips()

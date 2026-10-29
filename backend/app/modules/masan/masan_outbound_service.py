@@ -678,7 +678,7 @@ def _meta_value(meta: dict[str, Any], key: str, default: Any = "") -> Any:
 def _format_outbound_report_datetime(dt: datetime | None) -> str:
     if not dt:
         return ""
-    return dt.strftime("%d/%m/%Y\n%H:%M")
+    return dt.strftime("%d/%m/%Y\n%H:%M:%S")
 
 
 def _format_report_distance_m(distance_m: float | None) -> float | None:
