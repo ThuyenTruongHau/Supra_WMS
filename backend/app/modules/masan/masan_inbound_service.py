@@ -11,10 +11,7 @@ import re
 from app.modules.masan.masan_excel_io import load_masan_workbook
 from sqlalchemy import Integer, cast, func, or_
 from sqlalchemy.orm import Session, joinedload, selectinload
-from app.modules.warehouse.inbound_order.inbound_celery_task import accept_inbound_task_task
-from sqlalchemy import desc
 from app.core.config import settings
-from app.core.cache import cache_set
 
 from app.modules.masan.masan_inbound_excel import (
     COLUMN_ALIASES,
@@ -929,90 +926,8 @@ def _location_name_sort_key(location_name: str | None) -> tuple[int, str]:
 def caller_masan_inbound_order(
     db: Session, location_ids: list[int], *, assign_robot_id: str | None = None, sorting_persons: str | None = None
 ) -> dict[str, Any]:
-    DEFAULT_GROUP = [0, 3, 2, 1]
-    list_details: list[InboundOrderDetail] = []
-    group = {}
-    for location_id in location_ids:
-        detail = (
-            db.query(InboundOrderDetail)
-            .filter(
-                InboundOrderDetail.from_location_id == location_id,
-                InboundOrderDetail.status == "initialize",
-            )
-            .order_by(desc(InboundOrderDetail.id))
-            .first()
-        )
-        if detail:
-            warehouse_id = detail.inbound_order.warehouse_id
-            name = (
-                db.query(Location.location_name)
-                .filter(Location.id == location_id)
-                .scalar()
-            )
-            detail.sorting_persons = sorting_persons
-            name = (name or "").strip()
-            m = re.search(r"(\d{2})$", name)
-            pos = m.group(1) if m else ""
-            if not pos:
-                continue  
-            point = int(pos) % 4
-            group.setdefault(point, []).append(detail.id)
-
-    db.commit()
-
-    for point in DEFAULT_GROUP:
-        list_details.extend(group.get(point, []))
-
-    if list_details:
-        result = _run_inbound_task(db, warehouse_id, list_details, assign_robot_id=assign_robot_id)
-        return result
-    # detail_ids = list_details[:2]
-    # list_details = list_details[2:]
-    # cache_data = {
-    #     "assign_robot_id": assign_robot_id,
-    #     "list_details": list_details,
-    # }
-    # cache_set(f"inbound:caller_masan_inbound_order:{warehouse_id}", cache_data, -1)
-
-    # job_ids = [
-    #     accept_inbound_task_task.apply_async(
-    #         kwargs={
-    #             "detail_id": detail_id,
-    #             **({"assign_robot_id": assign_robot_id} if assign_robot_id else {}),
-    #         },
-    #     ).id
-    #     for detail_id in detail_ids
-    # ]
-    # return {
-    #     "queued": len(detail_ids),
-    #     "detail_ids": detail_ids,
-    #     "job_ids": job_ids,
-    # }
-
-def _run_inbound_task(db: Session, warehouse_id: int, list_details: list[int], *, assign_robot_id: str | None = None, number_sending: int = 2) -> None:
-    detail_ids = list_details[:number_sending]
-    list_details = list_details[number_sending:]
-    cache_data = {
-        "assign_robot_id": assign_robot_id,
-        "list_details": list_details,
-    }
-    cache_set(f"inbound:caller_masan_inbound_order:{warehouse_id}", cache_data, -1)
-
-    job_ids = [
-        accept_inbound_task_task.apply_async(
-            kwargs={
-                "detail_id": detail_id,
-                **({"assign_robot_id": assign_robot_id} if assign_robot_id else {}),
-            },
-        ).id
-        for detail_id in detail_ids
-    ]
-    return {
-        "queued": len(detail_ids),
-        "detail_ids": detail_ids,
-        "job_ids": job_ids,
-    }
-
+    from app.modules.masan.masan_inbound_dispatch_service import create_batch
+    return create_batch(db, location_ids, assign_robot_id, sorting_persons)
 
 
 def _product_fields_from_detail(

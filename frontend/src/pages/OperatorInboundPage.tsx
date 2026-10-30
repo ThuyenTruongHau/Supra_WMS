@@ -57,6 +57,8 @@ import DirectOutboundFromInboundBoard from "@/components/inbound/DirectOutboundF
 import InboundLocationInfoModal from "@/components/inbound/InboundLocationInfoModal";
 import WarehouseViewModal from "@/components/inbound/WarehouseViewModal";
 import AssignedRobotCallButton from "@/components/inbound/AssignedRobotCallButton";
+import InboundDispatchControl from "@/components/inbound/InboundDispatchControl";
+import { useInboundDispatch } from "@/hooks/useInboundDispatch";
 import { RobotStatusPanel } from "@/components/layout/OperatorStatusMetricPanels";
 import { useRobotData } from "@/hooks/useRobotData";
 import { buildRobotStatusRows, type InboundRobot } from "@/utils/robotStatus";
@@ -148,6 +150,7 @@ export default function OperatorInboundPage() {
 }
 
 function OperatorInboundPageContent({ warehouseId }: { warehouseId: number }) {
+  const inboundDispatch = useInboundDispatch(warehouseId);
   const { username: inboundAssignee, setUsername: setInboundAssignee } =
     useInboundOperatorAssignee(warehouseId);
   const viewportTier = useOperatorViewportTier();
@@ -775,7 +778,9 @@ function OperatorInboundPageContent({ warehouseId }: { warehouseId: number }) {
         },
         {
           onSuccess: (result) => {
-            if (result.queued > 0) {
+            if (result.batch_id) {
+              message.success(`Đã tiếp nhận đợt nhập với ${result.waiting_count ?? result.queued} dòng; đang cấp tối đa 2 lệnh.`);
+            } else if (result.queued > 0) {
               message.success(
                 robot
                   ? `Đã tiếp nhận ${result.queued} lệnh cho ${robot.name}.`
@@ -879,6 +884,10 @@ function OperatorInboundPageContent({ warehouseId }: { warehouseId: number }) {
   const inboundAssigneeReady = hasInboundOperatorAssignee(inboundAssignee);
 
   const handleCallRobot = (robot?: InboundRobot) => {
+    if (inboundDispatch.blocked) {
+      message.warning("Kho đang tạm dừng hoặc còn đợt nhập chưa kết thúc.");
+      return;
+    }
     if (callerMutation.isPending) return;
     if (!inboundAssigneeReady) {
       message.warning(OPERATOR_ASSIGNEE_REQUIRED_INBOUND);
@@ -1074,6 +1083,7 @@ function OperatorInboundPageContent({ warehouseId }: { warehouseId: number }) {
                   </div>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
+                  <InboundDispatchControl dispatch={inboundDispatch} className={inboundToolbarButtonClass} />
                   <Button
                     variant="primary"
                     icon={<ScanOutlined />}
@@ -1267,6 +1277,7 @@ function OperatorInboundPageContent({ warehouseId }: { warehouseId: number }) {
                   variant="primary"
                   icon={<RobotOutlined />}
                   disabled={
+                    inboundDispatch.blocked ||
                     !inboundAssigneeReady ||
                     callerLocationIds.length === 0 ||
                     callerMutation.isPending
@@ -1294,7 +1305,7 @@ function OperatorInboundPageContent({ warehouseId }: { warehouseId: number }) {
                 </Button>
                 <AssignedRobotCallButton
                   disabled={
-                    !inboundAssigneeReady || callerLocationIds.length === 0
+                    inboundDispatch.blocked || !inboundAssigneeReady || callerLocationIds.length === 0
                   }
                   disabledTitle={
                     !inboundAssigneeReady

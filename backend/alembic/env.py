@@ -63,6 +63,7 @@ from app.modules.warehouse.notificcation.notification_model import Notification 
 from app.modules.warehouse.dashboard.dashboard_model import InventoryDailySnapshot  # noqa: F401
 from app.modules.robot.robot_model import RobotTask, TaskStatus  # noqa: F401
 from app.modules.masan.masan_auto_model import OutboundAutoZone, OutboundAutoCycle, OutboundAutoCommand  # noqa: F401
+from app.modules.masan.masan_inbound_dispatch_model import InboundDispatchControl, InboundDispatchBatch, InboundDispatchCommand  # noqa: F401
 
 target_metadata = Base.metadata
 

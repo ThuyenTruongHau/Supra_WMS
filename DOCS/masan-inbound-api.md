@@ -558,7 +558,7 @@ Content-Type: application/json
 |-------|------|----------|-------|
 | `location_ids` | int[] | Có (≥ 1 phần tử) | ID các ô buffer nhập (= `from_location_id` của detail) |
 
-**Cách chọn detail:** với mỗi `location_id`, lấy detail có `from_location_id = location_id` và `status = "initialize"`, **id nhỏ nhất** (cũ nhất). Ô không có detail chờ → bỏ qua, không báo lỗi.
+**Cách chọn detail:** với mỗi `location_id`, lấy detail có `from_location_id = location_id` và `status = "initialize"`, **id lớn nhất** (mới nhất). Ô không có detail chờ → bỏ qua. Xếp theo hai số cuối tên ô, nhóm chia dư 4 theo thứ tự 0 → 3 → 2 → 1.
 
 ### Response `202`
 
@@ -572,13 +572,15 @@ Content-Type: application/json
 
 | Field | Mô tả |
 |-------|-------|
-| `queued` | Số detail đã đẩy vào hàng đợi (`0` = không ô nào có dòng chờ) |
+| `queued` | Số detail được giữ chỗ cho lượt đầu, tối đa 2; có thể bằng 0 khi lệnh cũ còn chiếm đủ chỗ |
 | `detail_ids` | Các `InboundOrderDetail.id` được gọi |
 | `job_ids` | Celery task id tương ứng |
+| `batch_id` | Đợt nhập được lưu bền vững; null nếu không có dòng chờ |
+| `waiting_count` | Tổng số dòng của đợt vừa tiếp nhận, gồm lượt đầu chưa gửi |
 
-> API chỉ **xếp hàng**; lỗi ICS/robot xảy ra sau đó không trả về ở response này (Celery tự retry lỗi ICS tạm thời tối đa 3 lần — xem log worker).
+> API tiếp nhận đợt và giữ danh sách chờ trong DB. Timeout RCS chuyển thành chưa rõ kết quả, dừng gửi và yêu cầu đối soát; không tự gửi lại HTTP. Xem [Dừng/Tiếp tục phiên](../backend/docs/inbound_dispatch_pause.md).
 
-**Frontend operator:** mặc định gửi toàn bộ ô buffer nhập trên sơ đồ (zone 2, 3); nếu operator double-click chọn một cột thì chỉ gửi các ô của cột đó.
+**Frontend operator:** tự động mặc định lấy toàn bộ ô trên sơ đồ nhập (zone 2, 12); chạm chọn cột để giới hạn phạm vi. Thủ công chọn một ô. Tạm dừng theo kho chặn mọi đường gọi nhập mới lên RCS.
 
 ---
 

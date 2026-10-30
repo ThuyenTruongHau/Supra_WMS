@@ -18,6 +18,7 @@ from app.modules.warehouse.stocktake.stocktake_api import router as stocktake_ro
 from app.modules.robot.robot_api import router as robot_router
 from app.modules.masan.masan_api import router as masan_router
 from app.modules.masan.masan_auto_api import router as masan_auto_router
+from app.modules.masan.masan_inbound_dispatch_api import router as inbound_dispatch_router
 from app.modules.warehouse.notificcation.notification_api import router as notification_router
 from app.modules.warehouse.dashboard.dashboard_api import router as dashboard_router
 from app.core.logger import setup_logger
@@ -94,6 +95,7 @@ app.include_router(unit_router, prefix="/api/v1")
 app.include_router(robot_router, prefix="/api/v1")
 app.include_router(masan_router, prefix="/api/v1")
 app.include_router(masan_auto_router, prefix="/api/v1")
+app.include_router(inbound_dispatch_router, prefix="/api/v1")
 app.include_router(notification_router, prefix="/api/v1")
 app.include_router(dashboard_router, prefix="/api/v1")
 app.include_router(ws_router, prefix="/api/v1")

@@ -1,5 +1,8 @@
 # Giao lệnh nhập kho cho robot cụ thể
 
+Điều phối hiện tại có danh sách chờ bền vững, giới hạn 2 lệnh và nút dừng/tiếp tục
+theo kho. Xem [Dừng và Tiếp tục phiên](inbound_dispatch_pause.md).
+
 Trên `/import` của operator, nút **Gọi robot** mở danh sách:
 
 | Tên hiển thị | Mã RCS |

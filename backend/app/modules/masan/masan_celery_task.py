@@ -13,6 +13,19 @@ from app.modules.warehouse.warehouse_zone.warehouse_model import Warehouse
 logger = get_logger("main")
 
 
+@celery_app.task(name="masan.coordinate_inbound_dispatch", acks_late=True)
+def coordinate_inbound_dispatch_task():
+    from app.modules.masan.masan_inbound_dispatch_service import tick
+    with db_session() as db:
+        identifiers = [identifier for (identifier,) in db.query(Warehouse.id).all()]
+    for warehouse_id in identifiers:
+        try:
+            with db_session() as db:
+                tick(db, warehouse_id)
+        except Exception:
+            logger.exception("inbound.dispatch event=reconcile_failed warehouse=%s", warehouse_id)
+
+
 @celery_app.task(name="masan.coordinate_outbound_auto", acks_late=True)
 def coordinate_outbound_auto_task() -> None:
     from app.modules.masan.masan_auto_model import OutboundAutoZone

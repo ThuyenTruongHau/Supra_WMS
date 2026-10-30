@@ -64,6 +64,8 @@ class MasanInboundCallerResponse(BaseModel):
     queued: int
     detail_ids: list[int]
     job_ids: list[str]
+    batch_id: Optional[int] = None
+    waiting_count: int = 0
 
 
 class MasanInboundBulkExportRequest(BaseModel):

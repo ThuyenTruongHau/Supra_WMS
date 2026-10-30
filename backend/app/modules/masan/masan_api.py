@@ -743,6 +743,9 @@ def caller_masan_inbound_order(db: DbSession, body: MasanInboundCallerRequest):
             sorting_persons=body.sorting_persons,
         )
     except ValueError as exc:
+        from app.modules.masan.masan_inbound_dispatch_service import DispatchConflict
+        if isinstance(exc, DispatchConflict):
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(exc),

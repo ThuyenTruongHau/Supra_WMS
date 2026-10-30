@@ -70,9 +70,16 @@ def get_inbound_order_details_task(order_code: str) -> Optional[Any]:
         return _dump(details)
 
 
-@celery_app.task(name="inbound.accept_task", bind=True, max_retries=3, acks_late=True)
+@celery_app.task(name="inbound.dispatch_command", acks_late=True)
+def dispatch_inbound_command_task(command_id: int, token: str):
+    from app.modules.masan.masan_inbound_dispatch_service import dispatch_one
+    with db_session() as db:
+        dispatch_one(db, command_id, token)
+
+
+@celery_app.task(name="inbound.accept_task", bind=True, acks_late=True)
 def accept_inbound_task_task(
-    self, detail_id: int, assign_robot_id: str | None = None
+    self, detail_id: int, assign_robot_id: str | None = None, preserve_if_paused: bool = True
 ) -> Any:
     logger.info(
         "inbound.accept_task detail_id=%s assign_robot_id=%s job_id=%s",
@@ -87,11 +94,12 @@ def accept_inbound_task_task(
             )
             return _dump(result)
     except Exception as exc:
-        from app.modules.robot.robot_service import IcsError
-
-        if isinstance(exc, IcsError) and exc.retryable and self.request.retries < self.max_retries:
-            countdown = 10 * (2 ** self.request.retries)
-            raise self.retry(exc=exc, countdown=countdown)
+        from app.modules.masan.masan_inbound_dispatch_service import DispatchConflict, retain_legacy_job
+        if isinstance(exc, DispatchConflict) and preserve_if_paused:
+            with db_session() as db:
+                if retain_legacy_job(db, detail_id, assign_robot_id):
+                    return {"deferred": True, "detail_id": detail_id}
+        # The durable send journal owns uncertainty. Never retry an HTTP send here.
         raise
 
 
@@ -100,6 +108,7 @@ def caller_inbound_order_task(
     body: dict,
     user_id: int,
     inbound_type: str,
+    preserve_if_paused: bool = True,
 ) -> Any:
     logger.info("inbound.caller_order order_code=%s", body.get("order_code"))
     with db_session() as db:
@@ -108,5 +117,6 @@ def caller_inbound_order_task(
             InboundOrderCreate.model_validate(body),
             user_id=user_id,
             inbound_type=inbound_type,
+            preserve_if_paused=preserve_if_paused,
         )
         return _dump(order)

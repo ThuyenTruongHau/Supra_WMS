@@ -50,6 +50,8 @@ export interface MasanInboundCallerResponse {
   queued: number;
   detail_ids: number[];
   job_ids: string[];
+  batch_id?: number | null;
+  waiting_count?: number;
 }
 
 export interface MasanClearInboundZoneRequest {

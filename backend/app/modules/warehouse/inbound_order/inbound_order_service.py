@@ -905,6 +905,13 @@ def get_inbound_order_detail(db: Session, order_code: str) -> Optional[list[Inbo
 def execute_inbound_task(
     db: Session, detail_id: int, *, assign_robot_id: Optional[str] = None
 ) -> InboundExecuteDetailResult:
+    from app.modules.masan.masan_inbound_dispatch_service import execute_detail
+    return execute_detail(db, detail_id, lambda: _execute_inbound_task(db, detail_id, assign_robot_id=assign_robot_id))
+
+
+def _execute_inbound_task(
+    db: Session, detail_id: int, *, assign_robot_id: Optional[str] = None
+) -> InboundExecuteDetailResult:
     from app.modules.warehouse.inbound_order.inbound_lock import lock_inbound_detail
     lock_inbound_detail(db, detail_id)
     detail = (
@@ -969,7 +976,8 @@ def execute_inbound_task(
         if assign_robot_id:
             task_order_detail["assignRobotIds"] = assign_robot_id
         order_id = f"TDS_Inbound_{uuid.uuid4().hex[:8]}"
-        robot_task = RobotTask(
+        from app.modules.masan.masan_inbound_dispatch_service import prepared_task
+        robot_task = prepared_task(db) or RobotTask(
             inbound_order_detail_id=detail.id,
             order_id=order_id,
             quantity=sum(int(a.quantity) for a in detail.allocations),
@@ -978,18 +986,18 @@ def execute_inbound_task(
             task_order_detail=json.dumps([task_order_detail]),
         )
 
-        db.add(History(
-            inbound_order_id=detail.inbound_order_id,
-            old_status=detail.status,
-            new_status="issued",
-            description=f"Inbound order detail {detail.id} issued",
-            details=_build_detail_response(detail).model_dump(mode="json"),
-            created_by_id=detail.inbound_order.created_by_id,
-        ))
-
         try:
             task_status_service.create_robot_task(db, robot_task)
-            detail.status = "issued"
+            db.refresh(detail)
+            if detail.status == "initialize":
+                db.add(History(
+                    inbound_order_id=detail.inbound_order_id,
+                    old_status=detail.status, new_status="issued",
+                    description=f"Inbound order detail {detail.id} issued",
+                    details=_build_detail_response(detail).model_dump(mode="json"),
+                    created_by_id=detail.inbound_order.created_by_id,
+                ))
+                detail.status = "issued"
             db.commit()
             db.refresh(detail)
         except Exception:
@@ -1082,7 +1090,15 @@ def get_inbound_order(
 
 
 def caller_inbound_order(
-    db: Session, body: InboundOrderCreate, user_id: int, inbound_type: str
+    db: Session, body: InboundOrderCreate, user_id: int, inbound_type: str, *, preserve_if_paused: bool = False
+) -> InboundCallerResponse:
+    from app.modules.masan.masan_inbound_dispatch_service import execute_caller
+    return execute_caller(db, body.warehouse_id,
+        lambda paused: _caller_inbound_order(db, body, user_id, inbound_type, paused), preserve_if_paused)
+
+
+def _caller_inbound_order(
+    db: Session, body: InboundOrderCreate, user_id: int, inbound_type: str, paused: bool
 ) -> InboundCallerResponse:
     try:
         inbound_order = create_inbound_order(db, body, user_id, inbound_type)
@@ -1096,7 +1112,11 @@ def caller_inbound_order(
 
         line_items: list[InboundExecuteDetailResult] = []
         for detail in details:
-            line_items.append(execute_inbound_task(db, detail.id))
+            if paused:
+                from app.modules.masan.masan_inbound_dispatch_service import retain_legacy_job
+                retain_legacy_job(db, detail.id)
+            else:
+                line_items.append(execute_inbound_task(db, detail.id))
 
         db.refresh(inbound_order)
 
@@ -1108,6 +1128,9 @@ def caller_inbound_order(
             ],
         )
     except Exception as e:
+        from app.modules.masan.masan_inbound_dispatch_service import DispatchConflict
+        if isinstance(e, DispatchConflict):
+            raise
         raise ValueError(f"Error calling inbound order: {e}") from e
 
 

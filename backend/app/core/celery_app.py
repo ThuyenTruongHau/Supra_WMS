@@ -68,6 +68,11 @@ celery_app.conf.update(
         "masan.*": {"queue": QUEUE_LOGIC},
     },
     beat_schedule={
+        "coordinate-inbound-dispatch-every-5s": {
+            "task": "masan.coordinate_inbound_dispatch",
+            "schedule": 5.0,
+            "options": {"expires": 5},
+        },
         "coordinate-outbound-auto-every-5s": {
             "task": "masan.coordinate_outbound_auto",
             "schedule": 5.0,

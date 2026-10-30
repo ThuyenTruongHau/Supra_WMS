@@ -33,6 +33,7 @@ export const useCallerMasanInbound = () => {
   >({
     mutationFn: callerMasanInboundApi,
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["inboundDispatch"] });
       queryClient.invalidateQueries({ queryKey: ["masanInboundDetails"] });
       queryClient.invalidateQueries({ queryKey: ["inboundOrderDetails"] });
       queryClient.invalidateQueries({ queryKey: ["inbound_orders"] });

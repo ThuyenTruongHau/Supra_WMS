@@ -219,8 +219,11 @@ def get_inbound_order_details(order_code: str):
 )
 def accept_inbound_task(detail_id: int):
     try:
-        task = run_logic_task(accept_inbound_task_task, detail_id=detail_id)
+        task = run_logic_task(accept_inbound_task_task, detail_id=detail_id, preserve_if_paused=False)
     except ValueError as e:
+        from app.modules.masan.masan_inbound_dispatch_service import DispatchConflict
+        if isinstance(e, DispatchConflict):
+            raise HTTPException(status_code=409, detail=str(e)) from e
         raise HTTPException(status_code=404, detail=str(e)) from e 
     except IcsError as e:
         raise HTTPException(status_code=503 if "reach" in str(e).lower() else 502, detail=str(e)) from e
@@ -283,8 +286,12 @@ def caller_inbound_order(
             body=body.model_dump(mode="json"),
             user_id=1,
             inbound_type=inbound_type,
+            preserve_if_paused=False,
         )
     except ValueError as e:
+        from app.modules.masan.masan_inbound_dispatch_service import DispatchConflict
+        if isinstance(e, DispatchConflict):
+            raise HTTPException(status_code=409, detail=str(e)) from e
         raise HTTPException(status_code=400, detail=str(e)) from e
     return InboundCallerResponse.model_validate(order)
 

@@ -22,7 +22,6 @@ from app.modules.robot.robot_telemetry_service import robot_telemetry
 from app.modules.warehouse.transaction_history.history_model import Transaction, History
 from app.modules.warehouse.notificcation.notification_service import check_and_create_notifications_under_over_min_max
 from app.core.logger import get_logger
-from app.core.cache import cache_get
 from datetime import datetime
 
 logger = get_logger("main")
@@ -68,7 +67,10 @@ class TaskStatusService:
 
     def create_robot_task(self, db: Session, task: RobotTask, not_inserted: bool = True) -> RobotTask:
         from app.modules.masan.masan_auto_service import guarded_robot_submission
-
+        if task.inbound_order_detail_id:
+            from app.modules.masan.masan_inbound_dispatch_service import guarded_submission
+            return guarded_submission(db, task, lambda: guarded_robot_submission(
+                db, task, lambda: self._create_robot_task(db, task, False)))
         return guarded_robot_submission(db, task, lambda: self._create_robot_task(db, task, not_inserted))
 
     def _create_robot_task(self, db: Session, task: RobotTask, not_inserted: bool = True) -> RobotTask:
@@ -81,8 +83,11 @@ class TaskStatusService:
         }
         try:
             from app.modules.masan.masan_return_journal import http_started, http_response
+            from app.modules.masan import masan_inbound_dispatch_service as inbound_dispatch
+            inbound_dispatch.http_started(db, task)
             http_started(db, task)
             response = self.add_task(payload)
+            inbound_dispatch.validate_ack(task, response)
             http_response(db, task, response)
             from app.modules.masan.masan_auto_manual_service import validate_ack
             validate_ack(db, response)
@@ -235,7 +240,11 @@ class TaskStatusService:
         if handled:
             return automatic_record
 
-        if robot_task.status == "completed":
+        if robot_task.status == "completed" or (robot_task.inbound_order_detail_id and robot_task.status in {"failed", "cancelled"}):
+            if robot_task.inbound_order_detail_id:
+                db.commit()
+                from app.modules.masan.masan_inbound_dispatch_service import record_callback
+                record_callback(db, robot_task, robot_task.status)
             return
 
         notify_ws: tuple[int, str] | None = None
@@ -289,13 +298,6 @@ class TaskStatusService:
                         if robot_data is not None:
                             detail.end_battery = robot_data.get("battery")
 
-                if MAPPING_STATUS[ics_status] in ["completed", "cancelled", "failed"]:
-                    cache_data = cache_get(f"inbound:caller_masan_inbound_order:{warehouse_id}")
-                    from app.modules.masan.masan_inbound_service import _run_inbound_task
-                    if cache_data:
-                        list_details = cache_data.get("list_details", [])
-                        assign_robot_id = cache_data.get("assign_robot_id", None)
-                        _run_inbound_task(db, warehouse_id, list_details, assign_robot_id=assign_robot_id, number_sending = 1)
             else:
                 sub_task_status = payload.get("subTaskStatus")
                 sub_task_sequence = payload.get("subTaskSeq")
@@ -396,6 +398,9 @@ class TaskStatusService:
             db.add(record)
             db.commit()
             db.refresh(record)
+            if robot_task.inbound_order_detail_id:
+                from app.modules.masan.masan_inbound_dispatch_service import record_callback
+                record_callback(db, robot_task, MAPPING_STATUS.get(str(payload.get("status"))))
             if notify_ws is not None:
                 publish_robot_task_completed(
                     notify_ws[0],
