@@ -1317,7 +1317,9 @@ function OperatorInboundPageContent({ warehouseId }: { warehouseId: number }) {
       />
 
       <InboundLocationInfoModal
+        key={`${locationInfoOpen}:${infoLocationId ?? ""}`}
         open={locationInfoOpen}
+        allowStockEdit={inboundMapStatus.items.some((cell) => cell.id === infoLocationId)}
         zoneId={warehouseId}
         locationId={infoLocationId}
         onClose={() => {

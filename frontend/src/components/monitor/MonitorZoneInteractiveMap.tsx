@@ -293,6 +293,7 @@ export default function MonitorZoneInteractiveMap({
           pendingConfirmOverlayCodes={activeSortCcCodes}
           ccSortingActiveCodes={ccSortingActiveCodes}
           vtLocationCodes={masan.vtLocationCodes}
+          vtPendingSortingQuantityByCode={masan.vtPendingSortingQuantityByCode}
           refetchStatusOnCellClick={false}
           cellClickDelayMs={0}
           onBufferCellClick={masan.masanEnabled ? handleCellClick : undefined}

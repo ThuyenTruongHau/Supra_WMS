@@ -905,6 +905,8 @@ def get_inbound_order_detail(db: Session, order_code: str) -> Optional[list[Inbo
 def execute_inbound_task(
     db: Session, detail_id: int, *, assign_robot_id: Optional[str] = None
 ) -> InboundExecuteDetailResult:
+    from app.modules.warehouse.inbound_order.inbound_lock import lock_inbound_detail
+    lock_inbound_detail(db, detail_id)
     detail = (
         db.query(InboundOrderDetail)
         .options(
@@ -919,6 +921,7 @@ def execute_inbound_task(
             joinedload(InboundOrderDetail.inbound_order),
         )
         .filter(InboundOrderDetail.id == detail_id)
+        .populate_existing()
         .first()
     )
     if not detail:

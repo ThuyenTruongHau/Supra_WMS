@@ -63,6 +63,8 @@ function MonitorZoneCell({
             tuning={waveMapTuning}
             overlayLabelByCode={masan.overlayLabelByCode}
             locationSubLabelByCode={masan.locationSubLabelByCode}
+            vtLocationCodes={masan.vtLocationCodes}
+            vtPendingSortingQuantityByCode={masan.vtPendingSortingQuantityByCode}
             className="pointer-events-none !h-full !min-h-0"
           />
         </div>

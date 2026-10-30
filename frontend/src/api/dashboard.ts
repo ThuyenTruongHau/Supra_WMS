@@ -9,9 +9,23 @@ import type {
   StockAgingBucketKey,
   TopProductsPeriod,
   TrendGranularity,
+  RobotPerformanceFilters,
+  RobotPerformanceResponse,
 } from "@/types/dashboard";
 
 const BASE = "/api/v1/dashboard";
+
+export const getRobotPerformanceApi = async (
+  warehouseId: number,
+  filters: RobotPerformanceFilters,
+  signal?: AbortSignal,
+): Promise<RobotPerformanceResponse> => {
+  const { data } = await axiosInstance.get<RobotPerformanceResponse>(
+    `${BASE}/report-robot-performance`,
+    { params: { warehouse_id: warehouseId, ...filters }, signal },
+  );
+  return data;
+};
 
 export const getReportKpisApi = async (
   warehouseId: number,

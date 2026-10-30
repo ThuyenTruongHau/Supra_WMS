@@ -644,6 +644,7 @@ export function drawShelfStockLabel(
   highlighted = false,
   highlightOutbound = false,
   externalVehiclePlate?: string,
+  pendingSortingQuantity?: number,
 ) {
   if (!label) return
 
@@ -703,7 +704,9 @@ export function drawShelfStockLabel(
     Number.isInteger(label.quantity) || Math.abs(label.quantity % 1) < 1e-6
       ? String(Math.round(label.quantity))
       : String(label.quantity)
-  const lineSl = qty
+  const lineSl = pendingSortingQuantity != null && Number.isFinite(pendingSortingQuantity)
+    ? `${qty} (-${pendingSortingQuantity})`
+    : qty
 
   const preferredSku = half * 0.27 * scale
   const minSku = Math.max(5, half * 0.13 * scale)
@@ -764,7 +767,7 @@ export function drawShelfStockLabel(
   cursorY += skuStep / 2 + qtyStep / 2 + lineGap
 
   // SL (Quantity)
-  ctx.font = `800 ${qtySize}px ${sans}` // Bolder and larger
+  fitFontSize(ctx, lineSl, maxW, qtySize, Math.max(4.5, half * 0.12 * scale), '800', sans)
   ctx.fillStyle = highlighted ? '#D7ECEB' : SHELF_TECH.labelPrimary
   ctx.fillText(fitLabelText(ctx, lineSl, maxW), x, cursorY)
 

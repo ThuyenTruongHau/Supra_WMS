@@ -19,3 +19,10 @@ export interface ItemStockSplitListResponse {
   items: ItemStockResponse[];
   total: number;
 }
+
+export interface InboundBufferStockUpdate {
+  quantity?: number;
+  lot_number_from?: string | null;
+  lot_number_to?: string | null;
+  expiry_date?: string | null;
+}

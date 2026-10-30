@@ -179,6 +179,32 @@ export function pendingAllocationsForVtLocationId(
   );
 }
 
+/** Tổng lượng còn chờ chia từ từng VT sang tất cả CC trong zone. */
+export function pendingSortingQuantityByVtCode(
+  data: MasanSortingZonePendingStockResponse | undefined,
+  vtLocationIdToCode: Map<number, string>,
+): Record<string, number> {
+  const quantities: Record<string, number> = {};
+  if (!data) return quantities;
+  for (const code of vtLocationIdToCode.values()) {
+    if (code.trim()) quantities[code.trim()] = 0;
+  }
+  const seen = new Set<number>();
+  for (const row of flattenPendingAllocations(data)) {
+    if (
+      row.allocation_type !== "outbound" ||
+      !isConfirmablePendingStockAllocation(row) ||
+      seen.has(row.id)
+    ) continue;
+    const vtId = normalizePendingLocationId(row.to_location_id);
+    const code = vtId == null ? undefined : vtLocationIdToCode.get(vtId)?.trim();
+    if (!code) continue;
+    seen.add(row.id);
+    quantities[code] += Number(row.quantity);
+  }
+  return quantities;
+}
+
 function skuLabelForAllocation(row: MasanSortingZonePendingAllocationRow): string {
   const sku = row.sku != null ? String(row.sku).trim() : "";
   if (sku) return sku;

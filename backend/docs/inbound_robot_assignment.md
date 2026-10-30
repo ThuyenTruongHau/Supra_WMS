@@ -36,7 +36,7 @@ Backend lấy một dòng `initialize` cho mỗi ô (hiện sắp xếp ID giả
 ```json
 {
   "orderId": "TDS_Inbound_a1b2c3d4",
-  "priority": 4,
+  "priority": 6,
   "modelProcessCode": "Supra_to_storage",
   "fromSystem": "Thadosoft",
   "taskOrderDetail": [

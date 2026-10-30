@@ -5,15 +5,32 @@ import {
   getReportStockAgingOverviewApi,
   getReportTopProductsApi,
   getReportTrendsApi,
+  getRobotPerformanceApi,
 } from "@/api/dashboard";
 import type {
   StockAgingBucketKey,
   TopProductsPeriod,
   TrendGranularity,
+  RobotPerformanceFilters,
 } from "@/types/dashboard";
 import { LIVE_QUERY_OPTIONS } from "@/utils/liveQueryOptions";
+import { robotReportShouldPoll } from "@/utils/robotPerformance";
 
 export const REPORT_KPI_POLL_INTERVAL_MS = 30_000;
+
+export const useRobotPerformance = (
+  warehouseId: number,
+  filters: RobotPerformanceFilters,
+  enabled = true,
+) => useQuery({
+  queryKey: ['dashboard', 'robot-performance', warehouseId, filters],
+  queryFn: ({ signal }) => getRobotPerformanceApi(warehouseId, filters, signal),
+  enabled: warehouseId > 0 && enabled,
+  refetchInterval: () => robotReportShouldPoll(filters) ? 30_000 : false,
+  refetchIntervalInBackground: false,
+  refetchOnWindowFocus: true,
+  ...LIVE_QUERY_OPTIONS,
+});
 
 export const useReportKpis = (warehouseId: number) => {
   return useQuery({

@@ -132,7 +132,7 @@ export function invalidateOperatorInboundAfterRobotCompleted(
   warehouseId: number,
 ) {
   if (warehouseId <= 0) return;
-  void queryClient.invalidateQueries({
+  return queryClient.invalidateQueries({
     predicate: (query) =>
       operatorInboundQueryMatches(query.queryKey, warehouseId),
   });

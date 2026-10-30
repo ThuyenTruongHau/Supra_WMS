@@ -127,7 +127,7 @@ class InboundRobotAssignmentPayloadTests(unittest.TestCase):
                     allocations=[SimpleNamespace(quantity=25)],
                     inbound_order=SimpleNamespace(created_by_id=1),
                 )
-                db.query.return_value.options.return_value.filter.return_value.first.return_value = detail
+                db.query.return_value.options.return_value.filter.return_value.populate_existing.return_value.first.return_value = detail
                 detail_response = InboundOrderDetailResponse(
                     id=10, inbound_order_id=1, status="initialize", detail_type=detail_type
                 )
@@ -159,7 +159,7 @@ class InboundRobotAssignmentPayloadTests(unittest.TestCase):
                     task_detail["assignRobotIds"] = robot_code
                 send_rcs.assert_called_once_with({
                     "orderId": "TDS_Inbound_a1b2c3d4",
-                    "priority": 4,
+                    "priority": 6,
                     "modelProcessCode": "Supra_to_storage",
                     "fromSystem": "Thadosoft",
                     "taskOrderDetail": [task_detail],
@@ -171,7 +171,7 @@ class InboundRobotAssignmentPayloadTests(unittest.TestCase):
     def test_manual_detail_without_assignment_still_completes_without_rcs(self):
         db = MagicMock()
         detail = SimpleNamespace(id=10, detail_type="manual", status="initialize")
-        db.query.return_value.options.return_value.filter.return_value.first.return_value = detail
+        db.query.return_value.options.return_value.filter.return_value.populate_existing.return_value.first.return_value = detail
         db.query.return_value.filter.return_value.all.return_value = []
         detail_response = InboundOrderDetailResponse(
             id=10, inbound_order_id=1, status="completed", detail_type="manual"

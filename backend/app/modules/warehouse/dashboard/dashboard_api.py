@@ -11,6 +11,7 @@ from app.modules.warehouse.dashboard import dashboard_service
 from app.modules.warehouse.dashboard import dashboard_trend_service
 from app.modules.warehouse.dashboard import dashboard_top_products_service
 from app.modules.warehouse.dashboard import dashboard_stock_aging_service
+from app.modules.warehouse.dashboard import dashboard_robot_performance_service
 from app.modules.warehouse.dashboard.dashboard_schema import (
     ReportKpiResponse,
     ReportStockAgingBucketResponse,
@@ -18,6 +19,8 @@ from app.modules.warehouse.dashboard.dashboard_schema import (
     ReportTopProductsResponse,
     ReportTrendResponse,
     StockAgingBucketKey,
+    RobotPerformanceResponse,
+    RobotTaskKind,
 )
 
 router = APIRouter(tags=["Dashboard"])
@@ -35,6 +38,28 @@ def get_report_kpis(
     warehouse_id: int = Query(..., gt=0),
 ):
     return dashboard_service.get_report_kpis(db, warehouse_id=warehouse_id)
+
+
+@router.get(
+    "/dashboard/report-robot-performance",
+    response_model=RobotPerformanceResponse,
+    dependencies=[Depends(get_current_user)],
+)
+def get_report_robot_performance(
+    db: DbSession,
+    warehouse_id: int = Query(..., gt=0),
+    start_date: date = Query(...),
+    end_date: date = Query(...),
+    device_num: str | None = Query(None, min_length=1, max_length=50),
+    task_kind: RobotTaskKind | None = Query(None),
+):
+    try:
+        return dashboard_robot_performance_service.get_robot_performance(
+            db, warehouse_id=warehouse_id, start_date=start_date, end_date=end_date,
+            device_num=device_num, task_kind=task_kind,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
 
 @router.get(

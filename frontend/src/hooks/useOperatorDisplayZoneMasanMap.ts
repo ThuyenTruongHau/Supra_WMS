@@ -24,6 +24,7 @@ import {
   pendingAllocationsByLocationId,
   pendingAllocationsByToLocationId,
   pendingConfirmOverlayCodes,
+  pendingSortingQuantityByVtCode,
 } from "@/utils/masanPendingStockOverlay";
 
 /** Masan CC + pending-stock + WS cho một khu display (8 hoặc 9) — dùng Monitor và board xuất. */
@@ -171,6 +172,11 @@ export function useOperatorDisplayZoneMasanMap(
     [pendingQuery.data],
   );
 
+  const vtPendingSortingQuantityByCode = useMemo(
+    () => pendingSortingQuantityByVtCode(pendingQuery.data, vtLocationCodeById),
+    [pendingQuery.data, vtLocationCodeById],
+  );
+
   const pendingByToLocationId = useMemo(
     () =>
       pendingAllocationsByToLocationId(
@@ -245,6 +251,7 @@ export function useOperatorDisplayZoneMasanMap(
     vtLocationIdByCode,
     vtLocationCodeById,
     vtLocationCodes,
+    vtPendingSortingQuantityByCode,
     vtLocationDisplayLabelById,
     ccLocationDisplayLabelById,
     pendingByLocationId,

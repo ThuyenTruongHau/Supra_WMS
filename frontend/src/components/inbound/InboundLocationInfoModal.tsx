@@ -1,14 +1,20 @@
-import { Modal } from "@/components/ui";
+import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { Button, Modal } from "@/components/ui";
 import { useLocationDetail } from "@/hooks/useWarehouseMap";
 import { useProduct } from "@/hooks/useProduct";
-import { formatDisplayBin, getLocationDisplayLabel } from "@/utils/locationBin";
+import { getLocationDisplayLabel } from "@/utils/locationBin";
 import { toDisplayInteger } from "@/utils/number";
+import type { ItemStockDetail } from "@/types/warehouseMap";
+import EditInboundBufferStockModal from "./EditInboundBufferStockModal";
+import { invalidateOperatorInboundAfterRobotCompleted } from "@/utils/invalidateWarehouseRealtimeQueries";
 
 type Props = {
   open: boolean;
   zoneId: number;
   locationId: number | null;
   onClose: () => void;
+  allowStockEdit?: boolean;
 };
 
 function displayValue(value: string | number | null | undefined) {
@@ -21,12 +27,15 @@ export default function InboundLocationInfoModal({
   zoneId,
   locationId,
   onClose,
+  allowStockEdit = false,
 }: Props) {
-  const {
-    data,
-    isLoading,
-    isError,
-  } = useLocationDetail(open ? locationId ?? undefined : undefined);
+  const [editingStock, setEditingStock] = useState<ItemStockDetail | null>(
+    null,
+  );
+  const queryClient = useQueryClient();
+  const { data, isLoading, isError } = useLocationDetail(
+    open ? (locationId ?? undefined) : undefined,
+  );
   const { data: products = [] } = useProduct(zoneId);
   const productById = new Map(products.map((product) => [product.id, product]));
 
@@ -42,10 +51,18 @@ export default function InboundLocationInfoModal({
       )
     : "";
 
+  const refreshAfterEdit = async () => {
+    setEditingStock(null);
+    await invalidateOperatorInboundAfterRobotCompleted(queryClient, zoneId);
+  };
+
   return (
     <Modal
       open={open}
-      onCancel={onClose}
+      onCancel={() => {
+        setEditingStock(null);
+        onClose();
+      }}
       footer={null}
       width="92vw"
       style={{ maxWidth: 1200, top: 28 }}
@@ -116,7 +133,10 @@ export default function InboundLocationInfoModal({
                       .map(displayValue)
                       .join(" / "),
                   ],
-                  ["Bin", locationName || displayValue(data.location.location_name)],
+                  [
+                    "Bin",
+                    locationName || displayValue(data.location.location_name),
+                  ],
                   ["Trạng thái", data.location.status],
                 ].map(([label, value]) => (
                   <div
@@ -168,6 +188,15 @@ export default function InboundLocationInfoModal({
                             </p>
                           </div>
                           <div className="shrink-0 text-right">
+                            {allowStockEdit && stock.id > 0 ? (
+                              <Button
+                                variant="secondary"
+                                size="small"
+                                onClick={() => setEditingStock(stock)}
+                              >
+                                Chỉnh sửa
+                              </Button>
+                            ) : null}
                             <p className="text-2xl font-bold tabular-nums text-brand-dark">
                               {toDisplayInteger(Number(stock.quantity || 0))}
                             </p>
@@ -206,6 +235,17 @@ export default function InboundLocationInfoModal({
           </div>
         </div>
       )}
+      {open && editingStock && locationId != null ? (
+        <EditInboundBufferStockModal
+          key={`${locationId}:${editingStock.id}`}
+          stock={editingStock}
+          locationId={locationId}
+          locationName={locationName}
+          onClose={() => setEditingStock(null)}
+          onSaved={refreshAfterEdit}
+          onBufferChanged={refreshAfterEdit}
+        />
+      ) : null}
     </Modal>
   );
 }

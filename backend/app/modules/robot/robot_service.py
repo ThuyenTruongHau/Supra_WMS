@@ -74,7 +74,7 @@ class TaskStatusService:
     def _create_robot_task(self, db: Session, task: RobotTask, not_inserted: bool = True) -> RobotTask:
         payload = {
             "orderId": task.order_id,
-            "priority": 4,
+            "priority": 6,
             "modelProcessCode": task.process_code,
             "fromSystem": task.system_code,
             "taskOrderDetail": json.loads(task.task_order_detail),
@@ -106,6 +106,7 @@ class TaskStatusService:
                 ItemStock.is_active.is_(True),
                 ItemStock.status != "virtual",
             )
+            .populate_existing()
             .all()
         )
 
@@ -223,6 +224,11 @@ class TaskStatusService:
         )
         if not robot_task:
             raise ValueError("Robot task not found")
+
+        if robot_task.inbound_order_detail_id is not None:
+            from app.modules.warehouse.inbound_order.inbound_lock import lock_inbound_detail
+            lock_inbound_detail(db, robot_task.inbound_order_detail_id)
+            db.refresh(robot_task, attribute_names=["quantity", "status"])
 
         from app.modules.masan.masan_auto_service import receive_callback
         handled, automatic_record = receive_callback(db, robot_task, payload)

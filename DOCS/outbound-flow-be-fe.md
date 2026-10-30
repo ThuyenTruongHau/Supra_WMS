@@ -397,6 +397,8 @@ Sau callback completed, allocation outbound thành pre_completed. BE lưu stock-
 
 Thao tác chính tại **Monitor**:
 
+Trên `/monitor` và `/monitor/zone/:zoneId`, ô VT hiển thị **mã hàng | tồn tại VT (-tổng lượng còn cần chia CC) | lot**, ví dụ `02xx132 | 98 (-12) | 141026`. Số trong ngoặc là tổng quantity của các allocation outbound `pre_completed` có đích là VT đó trên tất cả ô CC của zone; không tính allocation đã confirmed/completed. Số này giảm sau khi xác nhận chia CC và bằng `(-0)` khi không còn lượng chờ chia. Tồn tại VT vẫn lấy từ API map status.
+
 1. Chọn người xuất cho khu trên thanh công cụ; FE cần có `sorting_persons` mới cho xác nhận.
 2. Chọn VT đang có pallet. `MonitorZoneInteractiveMap` tải lại pending-stock và gọi `/masan/outbound-orders/start-sorting-time` cho các allocation chờ tại VT; mốc đã có không bị ghi đè.
 3. FE làm nổi các CC có hàng chờ từ đúng VT đang chọn và vẫn đang gán xe. Chọn từng CC để mở modal “Xác nhận lấy hàng tại CC”.

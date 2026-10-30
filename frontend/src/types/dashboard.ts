@@ -5,6 +5,55 @@ export interface ReportKpiResponse {
   unsolved_notifications: number;
 }
 
+export type RobotTaskKind = 'inbound' | 'outbound' | 'return';
+
+export interface RobotPerformanceFilters {
+  start_date: string;
+  end_date: string;
+  device_num?: string;
+  task_kind?: RobotTaskKind;
+}
+
+export interface RobotPerformanceMetrics {
+  inbound_completed: number;
+  outbound_completed: number;
+  return_completed: number;
+  completed_count: number;
+  failed_count: number;
+  cancelled_count: number;
+  distance_m: number | null;
+  inbound_distance_m: number | null;
+  outbound_distance_m: number | null;
+  return_distance_m: number | null;
+  distance_count: number;
+  duration_seconds: number;
+  speed_distance_m: number;
+  speed_eligible_count: number;
+  average_speed_mps: number | null;
+  speed_coverage_percent: number | null;
+}
+
+export interface RobotPerformanceByRobot extends RobotPerformanceMetrics {
+  device_num: string | null;
+}
+
+export interface RobotPerformancePoint extends RobotPerformanceMetrics {
+  period_start: string;
+  label: string;
+  robots: RobotPerformanceByRobot[];
+}
+
+export interface RobotPerformanceResponse {
+  start_date: string;
+  end_date: string;
+  timezone: string;
+  granularity: 'hour' | 'day';
+  devices: string[];
+  summary: RobotPerformanceMetrics;
+  robots: RobotPerformanceByRobot[];
+  points: RobotPerformancePoint[];
+}
+
 export type TrendGranularity = "day" | "week";
 
 export interface ReportTrendPoint {

@@ -6,7 +6,9 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.core.dependencies import require_permission
+from app.core.dependencies import get_current_user, require_permission
+from app.modules.auth.auth_model import User
+from app.modules.warehouse.location_map.location_model import Location
 from app.modules.warehouse.item_stock import item_stock_service
 from app.modules.warehouse.item_stock.item_stock_schema import (
     ItemStockCreate,
@@ -19,6 +21,33 @@ from app.modules.warehouse.item_stock.item_stock_schema import (
 router = APIRouter(tags=["ItemStock"])
 
 DbSession = Annotated[Session, Depends(get_db)]
+
+_CHECK_STOCK_UPDATE = require_permission("item_stock:update")
+_CHECK_INBOUND_UPDATE = require_permission("inbound:update")
+
+
+def require_stock_update_permission(
+    db: DbSession,
+    current_user: Annotated[User, Depends(get_current_user)],
+    inbound_buffer_location_id: Optional[int] = Query(None, gt=0),
+) -> User:
+    """Keep stock RBAC; let inbound staff edit staged goods in assigned warehouses."""
+    try:
+        return _CHECK_STOCK_UPDATE(current_user)
+    except HTTPException as exc:
+        if exc.status_code != 403 or inbound_buffer_location_id is None:
+            raise
+
+    _CHECK_INBOUND_UPDATE(current_user)
+    location = db.get(Location, inbound_buffer_location_id)
+    if location is None or not any(
+        warehouse.id == location.warehouse_id
+        for warehouse in (current_user.warehouses or [])
+    ):
+        raise HTTPException(status_code=403, detail="Warehouse access denied")
+    # The scoped service below rechecks the real stock's location, inbound owner,
+    # allowed fields and buffer zone before any update; the query cannot bypass it.
+    return current_user
 
 
 @router.get(
@@ -86,11 +115,22 @@ def get_item_stock(stock_id: int, db: DbSession):
 @router.patch(
     "/item-stocks/{stock_id}",
     response_model=ItemStockResponse,
-    dependencies=[Depends(require_permission("item_stock:update"))],
+    dependencies=[Depends(require_stock_update_permission)],
 )
-def update_item_stock(stock_id: int, body: ItemStockUpdate, db: DbSession):
+def update_item_stock(
+    stock_id: int, body: ItemStockUpdate, db: DbSession,
+    inbound_buffer_location_id: Optional[int] = Query(None, gt=0),
+):
+    from app.modules.warehouse.item_stock.inbound_buffer_stock_service import (
+        InboundBufferStockConflict, update_inbound_buffer_stock,
+    )
     try:
-        stock = item_stock_service.update_item_stock(db, stock_id, body)
+        if inbound_buffer_location_id is not None:
+            stock = update_inbound_buffer_stock(db, stock_id, body, inbound_buffer_location_id)
+        else:
+            stock = item_stock_service.update_item_stock(db, stock_id, body)
+    except InboundBufferStockConflict as e:
+        raise HTTPException(status_code=409, detail={"code": e.code, "message": str(e)}) from e
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
     if not stock:

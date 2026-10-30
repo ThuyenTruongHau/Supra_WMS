@@ -229,6 +229,8 @@ type Props = {
   ccSortingActiveCodes?: string[] | Set<string>;
   /** Monitor: mã ô VT — luôn vẽ tồn gốc; chỉ CC mới bị dim khi focus. */
   vtLocationCodes?: string[] | Set<string>;
+  /** Monitor: tổng lượng còn chờ chia CC, hiển thị cạnh tồn VT: 98 (-12). */
+  vtPendingSortingQuantityByCode?: Record<string, number>;
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -343,6 +345,7 @@ export default function OperatorMapCanvas({
   cellClickDelayMs = 320,
   ccSortingActiveCodes,
   vtLocationCodes,
+  vtPendingSortingQuantityByCode,
 }: Props) {
   // ── API data ────────────────────────────────────────────────────────────────
   const zoneIdsKey = (Array.isArray(zoneId) ? zoneId : [zoneId]).join(",");
@@ -445,6 +448,7 @@ export default function OperatorMapCanvas({
   const pendingConfirmOverlayCodesRef = useRef<Set<string>>(new Set());
   const ccSortingActiveCodesRef = useRef<Set<string> | null>(null);
   const vtLocationCodesRef = useRef<Set<string>>(new Set());
+  const vtPendingSortingQuantityByCodeRef = useRef<Record<string, number>>({});
   const selectedCodesRef = useRef<Set<string>>(new Set());
   const interactiveCodesRef = useRef<Set<string> | null>(null);
 
@@ -640,6 +644,7 @@ export default function OperatorMapCanvas({
             isSelected,
             false,
             vehiclePlate,
+            isVtOnMap ? vtPendingSortingQuantityByCodeRef.current[node.content] : undefined,
           );
         }
       }
@@ -722,6 +727,11 @@ export default function OperatorMapCanvas({
     vtLocationCodesRef.current = vtLocationCodeSet;
     draw();
   }, [vtLocationCodeSet, draw]);
+
+  useEffect(() => {
+    vtPendingSortingQuantityByCodeRef.current = vtPendingSortingQuantityByCode ?? {};
+    draw();
+  }, [vtPendingSortingQuantityByCode, draw]);
 
   useEffect(() => {
     interactiveCodesRef.current = interactiveCodeSet;

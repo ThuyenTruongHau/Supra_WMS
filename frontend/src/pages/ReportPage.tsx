@@ -42,6 +42,7 @@ import type {
 } from '@/types/dashboard'
 import { formatInventoryValue, formatKpiNumber } from '@/utils/formatKpi'
 import { parseQuantity } from '@/utils/formatQuantity'
+import RobotPerformanceReport from '@/components/reports/RobotPerformanceReport'
 
 const KPI_CARD_META = [
   {
@@ -597,6 +598,8 @@ export default function ReportPage() {
           </div>
         </Spin>
       )}
+
+      <RobotPerformanceReport key={warehouseId} warehouseId={warehouseId} />
 
       <div className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">

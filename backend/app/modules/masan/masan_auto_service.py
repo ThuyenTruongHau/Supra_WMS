@@ -673,7 +673,7 @@ def _send(db, control, cycle, kind):
     cycle.phase = "supplying" if kind == "pick" else "returning"
     db.commit()  # Durable before the network call; survives a killed worker.
     try:
-        response = task_status_service.add_task({"orderId": task.order_id, "priority": 4,
+        response = task_status_service.add_task({"orderId": task.order_id, "priority": 6,
             "modelProcessCode": task.process_code, "fromSystem": task.system_code,
             "taskOrderDetail": json.loads(task.task_order_detail)})
         if not isinstance(response, dict) or response.get("code") not in (1000, "1000"):
