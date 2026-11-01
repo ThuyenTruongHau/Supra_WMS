@@ -1,3 +1,4 @@
+import { vietnamTime } from "./vietnamTime.ts";
 import * as XLSX from "xlsx";
 import type { Item } from "@/types/item";
 import { parseQuantity } from "@/utils/formatQuantity";
@@ -42,7 +43,7 @@ export function downloadItemExcel(
   const workbook = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(workbook, worksheet, "Sản phẩm");
 
-  const dateStr = new Date().toISOString().slice(0, 10);
+  const dateStr = vietnamTime().format("YYYY-MM-DD");
   const safeName = warehouseName.replace(/[^\w\u00C0-\u024f\s-]/gi, "").trim();
   const filename = `san-pham_${safeName || "kho"}_${dateStr}.xlsx`;
 

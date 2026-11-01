@@ -1,7 +1,7 @@
+import { formatVietnamDateTime } from "@/utils/vietnamTime";
 import { useEffect, useMemo, useState } from "react";
 import type { ColumnsType } from "antd/es/table";
 import { SearchOutlined } from "@ant-design/icons";
-import dayjs from "dayjs";
 import { Card, Input, Table, cn } from "@/components/ui";
 import { useSortingWaves } from "@/hooks/useSortingWave";
 import { useSortingOrdersByWave } from "@/hooks/useSortingOrder";
@@ -20,7 +20,7 @@ type SortingOrderPanelProps = {
 
 function formatDateTime(value?: string | null): string {
   if (!value) return "—";
-  return dayjs(value).format("DD/MM/YYYY HH:mm");
+  return formatVietnamDateTime(value);
 }
 
 function StatusTag({ status }: { status: string }) {

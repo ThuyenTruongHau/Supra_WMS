@@ -1,3 +1,4 @@
+import { formatVietnamDateTime } from "@/utils/vietnamTime";
 import { useEffect, useMemo, useRef, useState } from "react";
 import Hero from "@/components/shared/Hero";
 import { Card, Button, Table, Select, Input, message } from "@/components/ui";
@@ -14,7 +15,6 @@ import CreateOutboundModal from "@/pages/components/CreateOutboundModal";
 import { useGetOutboundOrders } from "@/hooks/useOutbound";
 import { useAppStore } from "@/store/useAppStore";
 import type { OutboundOrder } from "@/types/outbound";
-import dayjs from "dayjs";
 import { useUser } from "@/hooks/useAuth";
 
 const PAGE_SIZE = 20;
@@ -119,7 +119,7 @@ export default function QrTabletOutboundPage() {
       dataIndex: "created_at",
       key: "created_at",
       render: (text: string | null) =>
-        text ? dayjs(text).format("DD/MM/YYYY HH:mm") : "-",
+        text ? formatVietnamDateTime(text) : "-",
     },
     {
       title: "Trạng thái",

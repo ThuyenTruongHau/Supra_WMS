@@ -1,3 +1,4 @@
+import { formatVietnamDateTime } from "@/utils/vietnamTime";
 import { Modal, Table } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { Button } from "@/components/ui";
@@ -8,7 +9,6 @@ import {
 } from "@/i18n/qrTabletInbound.vi";
 import type { ItemStockResponse } from "@/types/itemStock";
 import type { QrCodePreviewResponse } from "@/types/inboundOrder";
-import dayjs from "dayjs";
 
 interface SplitStockPreviewModalProps {
   open: boolean;
@@ -61,7 +61,7 @@ export default function SplitStockPreviewModal({
       dataIndex: "created_at",
       key: "created_at",
       render: (value) =>
-        value ? dayjs(value).format("DD/MM/YYYY HH:mm") : "—",
+        value ? formatVietnamDateTime(value) : "—",
     },
   ];
 

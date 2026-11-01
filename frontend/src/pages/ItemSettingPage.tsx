@@ -1,3 +1,4 @@
+import { formatVietnamDateTime } from "@/utils/vietnamTime";
 import { useState, useEffect } from 'react';
 import { Card, Table, Button, Modal, Form, Input, InputNumber, Space, message, Select } from '@/components/ui';
 import { PlusOutlined, SearchOutlined, MinusCircleOutlined, EditOutlined } from '@ant-design/icons';
@@ -170,7 +171,7 @@ export default function ItemSettingPage() {
       dataIndex: 'created_at',
       key: 'created_at',
       className: 'text-slate-500',
-      render: (val: string) => val ? new Date(val).toLocaleString('vi-VN') : '-',
+      render: (val: string) => val ? formatVietnamDateTime(val) : '-',
     },
     {
       title: 'Trạng thái',

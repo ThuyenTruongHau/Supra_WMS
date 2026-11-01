@@ -8,6 +8,7 @@ import uuid
 import json
 
 from app.core.config import settings
+from app.core.time import as_vietnam, format_vietnam, vn_now
 from openpyxl import Workbook
 from datetime import datetime
 
@@ -52,6 +53,7 @@ from app.modules.masan.masan_schema import (
     MasanOutboundLineItem,
     MasanOutboundParseResponse,
     MasanOutboundPreviewRow,
+    MasanOutboundStockShortage,
 )
 from app.modules.warehouse.location_map.location_model import Location
 from app.modules.warehouse.item.item_model import Item
@@ -384,6 +386,59 @@ def _validate_outbound_import_locator(
     return None
 
 
+def _locator_is_blank(value: Any) -> bool:
+    return value is None or str(value).strip() == ""
+
+
+def summarize_nolocator_stock_shortages(
+    rows: list[dict[str, Any]],
+    on_hand_by_sku: dict[str, int],
+) -> list[MasanOutboundStockShortage]:
+    """Sum no-Locator rows by SKU; compare to Item.quantity on-hand."""
+    demanded: dict[str, int] = {}
+    names: dict[str, Optional[str]] = {}
+    for row in rows:
+        if not _locator_is_blank(row.get("locator")):
+            continue
+        sku = str(row.get("sku") or "").strip()
+        if not sku:
+            continue
+        quantity = int(row.get("quantity") or 0)
+        if quantity <= 0:
+            continue
+        demanded[sku] = demanded.get(sku, 0) + quantity
+        if sku not in names:
+            item_name = row.get("item_name")
+            names[sku] = (
+                str(item_name).strip()
+                if item_name not in (None, "")
+                else None
+            )
+
+    shortages: list[MasanOutboundStockShortage] = []
+    for sku, demand in demanded.items():
+        on_hand = int(on_hand_by_sku.get(sku, 0))
+        if demand <= on_hand:
+            continue
+        shortages.append(
+            MasanOutboundStockShortage(
+                sku=sku,
+                item_name=names.get(sku),
+                on_hand=on_hand,
+                demanded=demand,
+                shortage=demand - on_hand,
+            )
+        )
+    return shortages
+
+
+def format_stock_shortage_message(row: MasanOutboundStockShortage) -> str:
+    return (
+        f"Mã {row.sku}: trong kho còn {row.on_hand}, "
+        f"file cần {row.demanded}, thiếu {row.shortage}"
+    )
+
+
 def _build_line_item_details(row: dict[str, Any]) -> dict[str, Any]:
     details: dict[str, Any] = {}
     for key in (
@@ -424,6 +479,7 @@ def parse_masan_outbound_preview(
     warnings: list[str] = []
     invalid_count = 0
     locator_import_errors: list[str] = []
+    nolocator_rows: list[dict[str, Any]] = []
 
     for row in parsed_rows:
         sku = row["sku"]
@@ -485,6 +541,16 @@ def parse_masan_outbound_preview(
             invalid_count += 1
             continue
 
+        if _locator_is_blank(locator_raw):
+            nolocator_rows.append(
+                {
+                    "sku": sku,
+                    "item_name": item.name,
+                    "quantity": int(row["quantity"]),
+                    "locator": None,
+                }
+            )
+
         line_items.append(
             MasanOutboundLineItem(
                 item_id=item.id,
@@ -495,7 +561,19 @@ def parse_masan_outbound_preview(
             )
         )
 
+    on_hand_by_sku = {
+        sku: int(item.quantity or 0)
+        for sku, item in sku_cache.items()
+        if item is not None
+    }
+    stock_shortages = summarize_nolocator_stock_shortages(
+        nolocator_rows,
+        on_hand_by_sku,
+    )
     import_errors: list[str] = list(locator_import_errors)
+    import_errors.extend(
+        format_stock_shortage_message(row) for row in stock_shortages
+    )
     can_import = bool(line_items) and not import_errors
 
     if not line_items and not import_errors:
@@ -515,13 +593,14 @@ def parse_masan_outbound_preview(
 
     return MasanOutboundParseResponse(
         preview_rows=preview_rows,
-        line_items=line_items if can_import else [],
+        line_items=line_items,
         total_rows=len(preview_rows),
         valid_rows=len(preview_rows) - invalid_count,
         invalid_rows=invalid_count,
         warnings=warnings,
         import_errors=import_errors,
         can_import=can_import,
+        stock_shortages=stock_shortages,
     )
 
 
@@ -678,7 +757,7 @@ def _meta_value(meta: dict[str, Any], key: str, default: Any = "") -> Any:
 def _format_outbound_report_datetime(dt: datetime | None) -> str:
     if not dt:
         return ""
-    return dt.strftime("%d/%m/%Y\n%H:%M:%S")
+    return format_vietnam(dt, "%d/%m/%Y\n%H:%M:%S")
 
 
 def _format_report_distance_m(distance_m: float | None) -> float | None:
@@ -2299,7 +2378,7 @@ def _confirm_allocation_outbound(db: Session, warehouse_id: int, zone: str,
                 warehouse_id, zone, allocation.id, status="completed", quantity=quantities[allocation.id]
             )
         if allocation.end_sorting_time is None:
-            allocation.end_sorting_time = datetime.now()
+            allocation.end_sorting_time = vn_now()
 
         db.flush()
 
@@ -2521,9 +2600,9 @@ def start_sorting_time(db: Session, allocation_ids: list[int]) -> dict[str, Any]
         if row.start_sorting_time is not None
     ]
     if existing:
-        return {"started_at": min(existing), "already_started": True}
+        return {"started_at": min(as_vietnam(value) for value in existing), "already_started": True}
 
-    started_at = datetime.now()
+    started_at = vn_now()
     for allocation in allocations:
         allocation.start_sorting_time = started_at
     db.commit()

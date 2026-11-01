@@ -1,6 +1,7 @@
+import { formatVietnamDateTime, vietnamTime } from "@/utils/vietnamTime";
 import { useEffect, useMemo, useRef, useState } from "react";
 import Hero from "@/components/shared/Hero";
-import { Card, Button, Table, Select, Input, message } from "@/components/ui";
+import { Card, Button, Table, Select, Input, message, Modal, Space } from "@/components/ui";
 import { useNavigate } from "react-router-dom";
 import OutboundStatusTag from "@/components/shared/OutboundStatusTag";
 import {
@@ -20,8 +21,14 @@ import { resolveOutboundType } from "@/config/warehouseMode";
 import { getApiErrorMessage } from "@/utils/apiErrorMessage";
 import { buildMasanOutboundCreateRequest } from "@/utils/masanOutboundImport";
 import { collectMasanExcelLotErrors } from "@/utils/masanExcelLot";
-import { collectMasanOutboundImportBlockers } from "@/utils/masanOutboundImportErrors";
-import dayjs from "dayjs";
+import {
+  collectMasanOutboundImportBlockers,
+  isMasanOutboundImportBlocked,
+  isMasanStockShortageWarning,
+} from "@/utils/masanOutboundImportErrors";
+import type { MasanOutboundParseResponse } from "@/types/masanOutbound";
+import { MasanOutboundImportBlocker } from "@/components/outbound/MasanOutboundImportBlocker";
+import { downloadMasanInboundShortageWorkbook } from "@/utils/masanInboundShortageFile";
 import { useUser } from "@/hooks/useAuth";
 import OrderCreatedAtRangeFilter from "@/components/shared/OrderCreatedAtRangeFilter";
 import {
@@ -51,6 +58,12 @@ export default function OutboundPage() {
   );
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [importing, setImporting] = useState(false);
+  const [importBlockerOpen, setImportBlockerOpen] = useState(false);
+  const [importBlockerLines, setImportBlockerLines] = useState<string[]>([]);
+  const [importBlockerAllowProceed, setImportBlockerAllowProceed] =
+    useState(false);
+  const [pendingShortageParse, setPendingShortageParse] =
+    useState<MasanOutboundParseResponse | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -138,7 +151,7 @@ export default function OutboundPage() {
       dataIndex: "created_at",
       key: "created_at",
       render: (text: string | null) =>
-        text ? dayjs(text).format("DD/MM/YYYY HH:mm") : "-",
+        text ? formatVietnamDateTime(text) : "-",
     },
     {
       title: "Trạng thái",
@@ -152,6 +165,47 @@ export default function OutboundPage() {
   ];
 
   const total = ordersData?.total ?? 0;
+
+  const createOutboundFromParse = async (
+    parseResult: MasanOutboundParseResponse,
+    messageKey: string,
+  ) => {
+    if (!selectedWarehouseId) return;
+    const outboundType = resolveOutboundType(selectedWarehouseId);
+    const orderCode = `OUT-${vietnamTime().format("YYYYMMDD-HHmmss")}`;
+    const createPayload = buildMasanOutboundCreateRequest(parseResult, {
+      warehouseId: selectedWarehouseId,
+      orderCode,
+    });
+    message.loading({ content: "Đang tạo đơn xuất...", key: messageKey });
+    const order = await createOutboundOrderApi(createPayload, outboundType);
+    message.success({
+      content: `Đã tạo đơn ${order.order_code} với ${parseResult.valid_rows} dòng`,
+      key: messageKey,
+    });
+    void refetch();
+    navigate(`/export/${order.id}`);
+  };
+
+  const handleProceedShortageImport = async () => {
+    const parseResult = pendingShortageParse;
+    if (!parseResult?.line_items?.length) {
+      message.error("Không có dữ liệu để tạo phiên xuất");
+      return;
+    }
+    setImportBlockerOpen(false);
+    setPendingShortageParse(null);
+    const messageKey = "masan-outbound-import";
+    try {
+      setImporting(true);
+      await createOutboundFromParse(parseResult, messageKey);
+    } catch (err) {
+      message.error({ content: getApiErrorMessage(err), key: messageKey });
+    } finally {
+      setImporting(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
 
   const handleImportExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -192,19 +246,27 @@ export default function OutboundPage() {
         return;
       }
 
-      const importBlockers = collectMasanOutboundImportBlockers(parseResult);
-      if (importBlockers.length > 0) {
-        message.error({
-          content: (
-            <ul className="mt-2 max-h-64 list-disc space-y-1 overflow-y-auto pl-5 text-left text-sm">
-              {importBlockers.map((line) => (
-                <li key={line}>{line}</li>
-              ))}
-            </ul>
-          ),
-          key: messageKey,
-          duration: 10,
-        });
+      if (isMasanStockShortageWarning(parseResult)) {
+        downloadMasanInboundShortageWorkbook(parseResult.stock_shortages ?? []);
+        setPendingShortageParse(parseResult);
+        setImportBlockerLines([]);
+        setImportBlockerAllowProceed(true);
+        setImportBlockerOpen(true);
+        message.destroy(messageKey);
+        return;
+      }
+
+      if (isMasanOutboundImportBlocked(parseResult)) {
+        const importBlockers = collectMasanOutboundImportBlockers(parseResult);
+        setPendingShortageParse(null);
+        setImportBlockerLines(
+          importBlockers.length > 0
+            ? importBlockers
+            : ["Không thể import file Excel."],
+        );
+        setImportBlockerAllowProceed(false);
+        setImportBlockerOpen(true);
+        message.destroy(messageKey);
         return;
       }
 
@@ -214,21 +276,7 @@ export default function OutboundPage() {
         );
       }
 
-      const orderCode = `OUT-${dayjs().format("YYYYMMDD-HHmmss")}`;
-      const createPayload = buildMasanOutboundCreateRequest(parseResult, {
-        warehouseId: selectedWarehouseId,
-        orderCode,
-      });
-
-      message.loading({ content: "Đang tạo đơn xuất...", key: messageKey });
-      const order = await createOutboundOrderApi(createPayload, outboundType);
-
-      message.success({
-        content: `Đã tạo đơn ${order.order_code} với ${parseResult.valid_rows} dòng`,
-        key: messageKey,
-      });
-      void refetch();
-      navigate(`/export/${order.id}`);
+      await createOutboundFromParse(parseResult, messageKey);
     } catch (err) {
       message.error({ content: getApiErrorMessage(err), key: messageKey });
     } finally {
@@ -343,6 +391,50 @@ export default function OutboundPage() {
           size="middle"
         />
       </Card>
+
+      <Modal
+        open={importBlockerOpen}
+        onCancel={() => {
+          setImportBlockerOpen(false);
+          setPendingShortageParse(null);
+        }}
+        width={560}
+        zIndex={2100}
+        title={
+          importBlockerAllowProceed
+            ? "Xác nhận import"
+            : "Không thể import — lỗi tồn / Locator"
+        }
+        footer={
+          <Space>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setImportBlockerOpen(false);
+                setPendingShortageParse(null);
+                if (fileInputRef.current) fileInputRef.current.value = "";
+              }}
+            >
+              Hủy
+            </Button>
+            {importBlockerAllowProceed ? (
+              <Button
+                variant="primary"
+                loading={importing}
+                onClick={() => void handleProceedShortageImport()}
+              >
+                Xác nhận
+              </Button>
+            ) : null}
+          </Space>
+        }
+      >
+        <MasanOutboundImportBlocker
+          lines={importBlockerLines}
+          shortages={pendingShortageParse?.stock_shortages ?? []}
+          confirmOnly={importBlockerAllowProceed}
+        />
+      </Modal>
 
       <CreateOutboundModal
         open={isCreateOpen}

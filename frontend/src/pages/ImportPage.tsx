@@ -1,3 +1,4 @@
+import { formatVietnamDateTime, vietnamTime } from "@/utils/vietnamTime";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import * as XLSX from "xlsx";
 import Hero from "@/components/shared/Hero";
@@ -27,7 +28,6 @@ import { resolveInboundType } from "@/config/warehouseMode";
 import { getApiErrorMessage } from "@/utils/apiErrorMessage";
 import { buildMasanInboundCreateRequest } from "@/utils/masanInboundImport";
 import { collectMasanExcelLotErrors } from "@/utils/masanExcelLot";
-import dayjs from "dayjs";
 import { useUser } from "@/hooks/useAuth";
 import OrderCreatedAtRangeFilter from "@/components/shared/OrderCreatedAtRangeFilter";
 import {
@@ -191,7 +191,7 @@ export default function ImportPage() {
         parseResult.suggest_allocation,
       );
 
-      const orderCode = `IN-${dayjs().format("YYYYMMDD-HHmmss")}`;
+      const orderCode = `IN-${vietnamTime().format("YYYYMMDD-HHmmss")}`;
       const createPayload = buildMasanInboundCreateRequest(
         parseResult,
         suggestResult,
@@ -251,7 +251,7 @@ export default function ImportPage() {
       dataIndex: "created_at",
       key: "created_at",
       render: (text: string | null) =>
-        text ? dayjs(text).format("DD/MM/YYYY HH:mm") : "-",
+        text ? formatVietnamDateTime(text) : "-",
     },
     {
       title: "Trạng thái",

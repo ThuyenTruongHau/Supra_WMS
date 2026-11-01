@@ -1,3 +1,4 @@
+import { formatVietnamDateTime } from "@/utils/vietnamTime";
 import { useMemo, useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Card, Table, Button, message, Modal, Space, Select, cn } from "@/components/ui";
@@ -35,7 +36,6 @@ import type {
 import type { ColumnsType } from "antd/es/table";
 import { useUser } from "@/hooks/useAuth";
 import { useOutboundBufferLocations } from "@/hooks/useWarehouseMap";
-import dayjs from "dayjs";
 import CreateOutboundModal, {
   type OutboundItemDraft,
 } from "@/pages/components/CreateOutboundModal";
@@ -135,7 +135,7 @@ function hasAllocationLocation(
 
 function formatDateTime(value: string | null | undefined): string {
   if (!value) return "—";
-  return dayjs(value).format("DD/MM/YYYY HH:mm");
+  return formatVietnamDateTime(value);
 }
 
 function DetailsEntriesPanel({

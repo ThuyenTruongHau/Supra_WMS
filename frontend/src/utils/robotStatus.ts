@@ -39,6 +39,14 @@ function displayRobotState(robot: RobotTelemetry): Pick<AgvStatusRow, "status" |
   };
 }
 
+function parseRobotSpeed(speed: RobotTelemetry["speed"]): number | undefined {
+  if (typeof speed !== "number" && typeof speed !== "string") return undefined;
+  if (typeof speed === "string" && speed.trim() === "") return undefined;
+  const value = Number(speed);
+  // RCS reports mm/s; display m/s rounded to one decimal, without trailing zero.
+  return Number.isFinite(value) ? Number((value / 1000).toFixed(1)) : undefined;
+}
+
 export function buildRobotStatusRows(
   robots: RobotTelemetry[] | undefined,
   options: { isLoading?: boolean; isError?: boolean } = {},
@@ -52,6 +60,11 @@ export function buildRobotStatusRows(
     if (options.isError || !robot) {
       return { id: name, status: "Không có dữ liệu", tone: "unknown" };
     }
-    return { id: name, ...displayRobotState(robot) };
+    const speed = parseRobotSpeed(robot.speed);
+    return {
+      id: name,
+      ...displayRobotState(robot),
+      ...(speed === undefined ? {} : { speed }),
+    };
   });
 }

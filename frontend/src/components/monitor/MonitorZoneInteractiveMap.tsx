@@ -1,5 +1,5 @@
+import { vietnamTime } from "@/utils/vietnamTime";
 import { useCallback, useMemo, useRef, useState } from "react";
-import dayjs from "dayjs";
 import { message } from "@/components/ui";
 import { masanStartSortingTimeApi } from "@/api/masan";
 import MasanCcPendingStockConfirmModal from "@/components/outbound/MasanCcPendingStockConfirmModal";
@@ -16,7 +16,7 @@ import {
 
 function formatSortingClock(value: string | null | undefined): string | null {
   if (!value) return null;
-  const parsed = dayjs(value);
+  const parsed = vietnamTime(value);
   if (!parsed.isValid()) return null;
   return parsed.format("HH:mm:ss DD/MM/YYYY");
 }

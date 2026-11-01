@@ -1,5 +1,5 @@
+import { vietnamTime } from "./vietnamTime.ts";
 import * as XLSXStyle from "xlsx-js-style";
-import dayjs from "dayjs";
 import type { ItemOutbound, OutboundOrder } from "@/types/outbound";
 import {
   groupDetailGroupsByCustomer,
@@ -388,7 +388,7 @@ export function downloadOutboundDetailExcel(order: OutboundOrder) {
     });
   }
 
-  const dateStr = dayjs().format("DD_MM_YYYY");
+  const dateStr = vietnamTime().format("DD_MM_YYYY");
   const safeCode = order.order_code.replace(/[^\w-]/gi, "_");
   XLSXStyle.writeFile(
     workbook,

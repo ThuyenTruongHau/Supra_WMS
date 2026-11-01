@@ -15,6 +15,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
+from app.core.time import as_vietnam, vn_now, vn_today
 from app.core.warehouse_mode import is_manual_warehouse
 from app.modules.warehouse.lot_number_utils import format_lot_number_display
 from app.modules.warehouse.item.item_model import Item, QR_Code
@@ -401,7 +402,7 @@ def _resolve_qr_code_status(
     item_stock_id: Optional[int],
     today: date,
 ) -> str:
-    if created_at is not None and created_at.date() != today:
+    if created_at is not None and as_vietnam(created_at).date() != today:
         return "expired"
     if item_stock_id is not None:
         return "stocked"
@@ -415,7 +416,7 @@ def list_recent_qr_codes_by_item(
     if not item:
         raise ValueError("Item not found")
 
-    today = date.today()
+    today = vn_today()
     start_date = today - timedelta(days=RECENT_QR_CODE_DAYS)
     created_date = cast(QR_Code.created_at, Date)
     yesterday = today - timedelta(days=1)
@@ -465,7 +466,7 @@ def list_recent_qr_codes(
     page: int = 1,
     page_size: int = 20,
 ) -> QRCodeRecentListResponse:
-    today = date.today()
+    today = vn_today()
     start_date = today - timedelta(days=RECENT_QR_CODE_DAYS)
     created_date = cast(QR_Code.created_at, Date)
 
@@ -548,7 +549,7 @@ def get_qr_code_by_code(db: Session, code: Optional[str] = None) -> Optional[QR_
     get_code = db.query(QR_Code).filter(QR_Code.code == code).first()
     if not get_code:
         return None
-    if get_code.created_at.date() != date.today():
+    if as_vietnam(get_code.created_at).date() != vn_today():
         raise ValueError("QR code is expired") 
     if get_code.item_stock_id is not None:
         raise ValueError("QR code is already assigned to an item stock")
@@ -661,7 +662,7 @@ def _standard_weight_from_item(item: Item) -> str:
 
 
 def _build_qr_code_strings(item: Item, quantity: int) -> tuple[list[str], list[str]]:
-    date_part = datetime.now().strftime("%Y%m%d")
+    date_part = vn_now().strftime("%Y%m%d")
     display_code = f"{item.sku}-{date_part}"
     codes: list[str] = []
     display_codes: list[str] = []

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from decimal import Decimal
-from typing import Any, Optional, TypedDict
+from typing import Any, Literal, Optional, TypedDict
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -334,3 +334,45 @@ class OperatorBoardLinesResponse(OperatorBoardProgressFields):
     customer_name: str
     trip: str = ""
     items: list[OperatorBoardLineRow] = Field(default_factory=list)
+
+
+class OutboundProgressCounts(BaseModel):
+    waiting: float = 0
+    running: float = 0
+    completed: float = 0
+    attention: float = 0
+
+
+class OutboundProgressGroupRow(BaseModel):
+    key: str
+    label: str
+    total_quantity: float = 0
+    waiting_quantity: float = 0
+    running_quantity: float = 0
+    completed_quantity: float = 0
+    attention_quantity: float = 0
+    completion_percent: int = 0
+
+
+class OutboundOrderProgressResponse(BaseModel):
+    commands: OutboundProgressCounts
+    quantity: OutboundProgressCounts
+    vehicle_count: int = 0
+    trip_count: int = 0
+    customer_count: int = 0
+    by_vehicle: list[OutboundProgressGroupRow] = Field(default_factory=list)
+    by_sku: list[OutboundProgressGroupRow] = Field(default_factory=list)
+    by_split_position: list[OutboundProgressGroupRow] = Field(default_factory=list)
+    by_split_zone: list[OutboundProgressGroupRow] = Field(default_factory=list)
+
+
+class OutboundProgressGroupDetailRow(BaseModel):
+    detail_id: int
+    status: str
+    progress_status: Literal["waiting", "running", "completed", "attention"]
+    quantity: float = 0
+    unit: str = ""
+    sku: Optional[str] = None
+    vehicle_no: Optional[str] = None
+    split_position: Optional[str] = None
+    from_location_name: Optional[str] = None

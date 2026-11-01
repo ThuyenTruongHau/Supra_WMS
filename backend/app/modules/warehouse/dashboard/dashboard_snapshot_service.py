@@ -1,13 +1,13 @@
 """Daily inventory snapshots for dashboard trends (isolated from item_service)."""
 
-from datetime import date, datetime
+from datetime import date
 from decimal import Decimal
-from zoneinfo import ZoneInfo
 
 from sqlalchemy import Numeric, cast, func
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
+from app.core.time import VN_TZ, vn_today
 from app.modules.warehouse.dashboard.dashboard_model import InventoryDailySnapshot
 from app.modules.warehouse.item.item_model import Item
 from app.modules.warehouse.item_stock.item_stock_model import (
@@ -17,13 +17,6 @@ from app.modules.warehouse.item_stock.item_stock_model import (
 )
 from app.modules.warehouse.location_map.location_model import Location
 from app.modules.warehouse.warehouse_zone.warehouse_model import Warehouse, Zone
-
-VN_TZ = ZoneInfo("Asia/Ho_Chi_Minh")
-
-
-def vn_today() -> date:
-    return datetime.now(VN_TZ).date()
-
 
 def _storage_stock_filters(warehouse_id: int):
     return (

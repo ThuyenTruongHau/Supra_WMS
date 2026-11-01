@@ -35,8 +35,11 @@ from app.modules.warehouse.inbound_order.inbound_order_schema import (
     InboundAssignedDetailsResponse,
     InboundOperatorListSummaryRequest,
     InboundOperatorListSummaryResponse,
+    InboundOrderProgressResponse,
+    InboundProgressItemDetailRow,
 )
 from app.modules.warehouse.inbound_order import inbound_order_service, qr_code_module
+from app.modules.warehouse.inbound_order import inbound_order_progress_service
 from app.modules.masan import masan_inbound_service
 from app.modules.warehouse.inbound_order.inbound_celery_task import (
     accept_inbound_task_task,
@@ -196,6 +199,46 @@ def list_inbound_assigned_details(
         msg = str(e)
         code = 404 if "not found" in msg.lower() else 400
         raise HTTPException(status_code=code, detail=msg) from e
+
+
+@router.get(
+    "/inbound-orders/{order_code}/progress/item-details",
+    response_model=list[InboundProgressItemDetailRow],
+    dependencies=[Depends(_INBOUND_READ)],
+)
+def get_inbound_order_progress_item_details(
+    order_code: str,
+    db: DbSession,
+    item_id: Optional[int] = Query(None, gt=0),
+    sku: Optional[str] = Query(None, min_length=1),
+):
+    if item_id is None and not (sku and sku.strip()):
+        raise HTTPException(
+            status_code=400,
+            detail="item_id or sku is required",
+        )
+    normalized_sku = sku.strip() if sku else None
+    rows = inbound_order_progress_service.list_inbound_progress_item_details(
+        db,
+        order_code,
+        item_id=item_id,
+        sku=normalized_sku,
+    )
+    if rows is None:
+        raise HTTPException(status_code=404, detail="Inbound order not found")
+    return rows
+
+
+@router.get(
+    "/inbound-orders/{order_code}/progress",
+    response_model=InboundOrderProgressResponse,
+    dependencies=[Depends(_INBOUND_READ)],
+)
+def get_inbound_order_progress(order_code: str, db: DbSession):
+    progress = inbound_order_progress_service.get_inbound_order_progress(db, order_code)
+    if progress is None:
+        raise HTTPException(status_code=404, detail="Inbound order not found")
+    return progress
 
 
 @router.get(

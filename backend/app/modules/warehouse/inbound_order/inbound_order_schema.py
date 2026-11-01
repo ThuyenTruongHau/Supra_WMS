@@ -563,3 +563,40 @@ class InboundAssignedDetailItem(BaseModel):
 class InboundAssignedDetailsResponse(BaseModel):
     order_ids: list[int] = Field(default_factory=list)
     details: list[InboundAssignedDetailItem] = Field(default_factory=list)
+
+
+class InboundProgressCounts(BaseModel):
+    waiting: float = 0
+    running: float = 0
+    completed: float = 0
+    attention: float = 0
+
+
+class InboundProgressItemRow(BaseModel):
+    item_id: Optional[int] = None
+    sku: Optional[str] = None
+    item_name: Optional[str] = None
+    total_quantity: float = 0
+    waiting_quantity: float = 0
+    running_quantity: float = 0
+    completed_quantity: float = 0
+    attention_quantity: float = 0
+    completion_percent: int = 0
+
+
+class InboundOrderProgressResponse(BaseModel):
+    commands: InboundProgressCounts
+    quantity: InboundProgressCounts
+    vehicles: list[str] = Field(default_factory=list)
+    items: list[InboundProgressItemRow] = Field(default_factory=list)
+
+
+class InboundProgressItemDetailRow(BaseModel):
+    detail_id: int
+    status: str
+    progress_status: Literal["waiting", "running", "completed", "attention"]
+    to_location_code: Optional[str] = None
+    to_location_name: Optional[str] = None
+    vehicle_no: Optional[str] = None
+    quantity: float = 0
+    unit_name: Optional[str] = None

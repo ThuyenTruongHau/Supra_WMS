@@ -1,3 +1,4 @@
+import { formatVietnamDateTime } from "@/utils/vietnamTime";
 import { useMemo, useState } from "react";
 import type { AxiosError } from "axios";
 import type { ApiErrorResponse } from "@/types/apiError";
@@ -33,7 +34,6 @@ import {
   type UserModule,
 } from "@/types/auth";
 import Hero from "@/components/shared/Hero";
-import dayjs from "dayjs";
 
 type UserFormValues = {
   username: string;
@@ -309,7 +309,7 @@ export default function UserSettingPage() {
       dataIndex: "created_at",
       key: "created_at",
       render: (val: string) =>
-        val ? dayjs(val).format("DD/MM/YYYY HH:mm") : "—",
+        val ? formatVietnamDateTime(val) : "—",
     },
     {
       title: "Thao tác",

@@ -1,3 +1,4 @@
+import { formatVietnamDateTime } from "@/utils/vietnamTime";
 import { useNavigate, useParams } from "react-router-dom";
 import { useState } from "react";
 import { Card, Table, Button, Modal, Space, message } from "@/components/ui";
@@ -12,7 +13,6 @@ import {
   useGetStocktakeDetail,
 } from "@/hooks/useStocktake";
 import type { StocktakeItemStock } from "@/types/stocktake";
-import dayjs from "dayjs";
 import { getApiErrorMessage } from "@/utils/apiErrorMessage";
 
 const TABLE_CLASS =
@@ -20,7 +20,7 @@ const TABLE_CLASS =
 
 function formatDate(date?: string | null) {
   if (!date) return "—";
-  return dayjs(date).format("DD/MM/YYYY HH:mm");
+  return formatVietnamDateTime(date);
 }
 
 function displayLocationName(record: StocktakeItemStock): string {

@@ -1,3 +1,4 @@
+import { formatVietnamDateTime, vietnamTime } from "./vietnamTime.ts";
 import * as XLSX from "xlsx";
 import * as XLSXStyle from "xlsx-js-style";
 import dayjs from "dayjs";
@@ -13,7 +14,7 @@ const ORDER_STATUS_LABELS: Record<string, string> = {
 
 function formatDateShort(value?: string | null): string {
   if (!value) return "";
-  return dayjs(value).format("DD/MM/YYYY");
+  return formatVietnamDateTime(value, "DD/MM/YYYY");
 }
 
 function toListRows(orders: InboundOrder[]) {
@@ -44,7 +45,7 @@ export function downloadInboundListExcel(
     "Danh sách đơn",
   );
 
-  const dateStr = new Date().toISOString().slice(0, 10);
+  const dateStr = vietnamTime().format("YYYY-MM-DD");
   const safeName = warehouseName.replace(/[^\w\u00C0-\u024f\s-]/gi, "").trim();
   const safeTab = tabLabel.replace(/[^\w-]/gi, "_");
   XLSX.writeFile(
@@ -207,7 +208,7 @@ export function downloadInboundDetailReportExcel(report: InboundDetailReport) {
     "Inventory Adjustment",
   );
 
-  const dateStr = dayjs().format("DD_MM_YYYY");
+  const dateStr = vietnamTime().format("DD_MM_YYYY");
   XLSXStyle.writeFile(workbook, `Inventory_Adjustment_${dateStr}.xlsx`);
 }
 

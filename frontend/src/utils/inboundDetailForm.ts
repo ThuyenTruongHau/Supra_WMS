@@ -1,4 +1,5 @@
-import dayjs, { type Dayjs } from "dayjs";
+import { vietnamTime } from "./vietnamTime.ts";
+import type { Dayjs } from "dayjs";
 import type { InboundDetailInput, InboundOrderDetail } from "@/types/inbound";
 import type { Product } from "@/types/product";
 import {
@@ -38,9 +39,9 @@ export function detailToFormLine(
         : undefined,
     assigned_location_id: detail.assigned_location_id,
     customer_import_time: detail.customer_import_time
-      ? dayjs(detail.customer_import_time)
+      ? vietnamTime(detail.customer_import_time)
       : detail.event_datetime
-        ? dayjs(detail.event_datetime)
+        ? vietnamTime(detail.event_datetime)
         : undefined,
     vehicle_number: detail.vehicle_number ?? undefined,
     export_warehouse: detail.export_warehouse ?? undefined,

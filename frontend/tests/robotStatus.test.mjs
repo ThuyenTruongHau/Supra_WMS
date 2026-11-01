@@ -75,3 +75,34 @@ test("shows initial loading and hides cached statuses on API failure", () => {
   assert.deepEqual(buildRobotStatusRows(undefined, { isLoading: true }).map((row) => row.status), ["Đang tải…", "Đang tải…"]);
   assert.deepEqual(buildRobotStatusRows(robots, { isError: true }).map((row) => row.status), ["Không có dữ liệu", "Không có dữ liệu"]);
 });
+
+test("converts numeric and string speeds from mm/s to m/s, including measured zero", () => {
+  const rows = buildRobotStatusRows([
+    { deviceCode: fl02, state: "Idle", speed: "0" },
+    { deviceCode: fl01, state: "InTask", speed: " 750 " },
+  ]);
+  assert.equal(rows[0].speed, 0.8);
+  assert.equal(rows[1].speed, 0);
+  assert.equal(buildRobotStatusRows([{ deviceCode: fl01, speed: 1200 }])[0].speed, 1.2);
+});
+
+test("rounds m/s to one decimal and omits trailing decimal zeros", () => {
+  for (const [speed, expected] of [[1001, 1], [1234, 1.2], [1260, 1.3], [49, 0], [51, 0.1]]) {
+    const row = buildRobotStatusRows([{ deviceCode: fl01, speed }])[0];
+    assert.equal(row.speed, expected);
+  }
+});
+
+test("keeps missing, blank and invalid speeds unknown instead of showing zero", () => {
+  for (const speed of [undefined, null, "", " ", "invalid", "Infinity", NaN, Infinity]) {
+    assert.equal(buildRobotStatusRows([{ deviceCode: fl01, speed }])[0].speed, undefined);
+  }
+});
+
+test("hides stale speeds while loading or when telemetry is unavailable", () => {
+  const robots = [{ deviceCode: fl01, state: "InTask", speed: "800" }];
+  for (const options of [{ isLoading: true }, { isError: true }]) {
+    assert.equal(buildRobotStatusRows(robots, options)[0].speed, undefined);
+  }
+  assert.equal(buildRobotStatusRows([])[0].speed, undefined);
+});

@@ -143,6 +143,60 @@ export interface OutboundOrderDetail {
   allocations: OutboundOrderAllocation[];
 }
 
+export type OutboundProgressStatusBucket =
+  | "waiting"
+  | "running"
+  | "completed"
+  | "attention";
+
+export interface OutboundProgressCounts {
+  waiting: number;
+  running: number;
+  completed: number;
+  attention: number;
+}
+
+export interface OutboundProgressGroupRow {
+  key: string;
+  label: string;
+  total_quantity: number;
+  waiting_quantity: number;
+  running_quantity: number;
+  completed_quantity: number;
+  attention_quantity: number;
+  completion_percent: number;
+}
+
+export type OutboundProgressDimension =
+  | "vehicle"
+  | "sku"
+  | "split_position"
+  | "split_zone";
+
+export interface OutboundOrderProgressResponse {
+  commands: OutboundProgressCounts;
+  quantity: OutboundProgressCounts;
+  vehicle_count: number;
+  trip_count: number;
+  customer_count: number;
+  by_vehicle: OutboundProgressGroupRow[];
+  by_sku: OutboundProgressGroupRow[];
+  by_split_position: OutboundProgressGroupRow[];
+  by_split_zone: OutboundProgressGroupRow[];
+}
+
+export interface OutboundProgressGroupDetailRow {
+  detail_id: number;
+  status: string;
+  progress_status: OutboundProgressStatusBucket;
+  quantity: number;
+  unit: string;
+  sku: string | null;
+  vehicle_no: string | null;
+  split_position: string | null;
+  from_location_name: string | null;
+}
+
 export interface LackedDetail {
   id: number;
   item_id: number;

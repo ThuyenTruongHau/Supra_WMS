@@ -1,3 +1,4 @@
+import { vietnamTime } from "@/utils/vietnamTime";
 import {
   useCallback,
   useMemo,
@@ -26,7 +27,6 @@ import {
 } from "@/components/ui";
 import { Select, Spin } from "antd";
 import { useQueryClient } from "@tanstack/react-query";
-import dayjs from "dayjs";
 import {
   orderCreatedAtQueryParams,
   type OrderCreatedAtRange,
@@ -391,7 +391,7 @@ function OperatorInboundPageContent({ warehouseId }: { warehouseId: number }) {
 
       const suggestResult = await suggestMasanAllocationApi(parseResult.suggest_allocation);
 
-      const orderCode = `IN-${dayjs().format("YYYYMMDD-HHmmss")}`;
+      const orderCode = `IN-${vietnamTime().format("YYYYMMDD-HHmmss")}`;
       const createPayload: MasanCreatePayload = {
         order_code: orderCode,
         note: "Import Masan",

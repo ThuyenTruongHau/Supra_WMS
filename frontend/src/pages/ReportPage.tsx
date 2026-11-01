@@ -1,3 +1,4 @@
+import { VIETNAM_TIMEZONE } from "@/utils/vietnamTime";
 import {
   Area,
   AreaChart,
@@ -16,11 +17,10 @@ import {
   YAxis,
 } from 'recharts'
 import { useEffect, useMemo, useState } from 'react'
-import { NavLink } from 'react-router-dom'
 import { FileExcelOutlined } from '@ant-design/icons'
 import type { Dayjs } from 'dayjs'
 import { DatePicker, Segmented, Spin } from 'antd'
-import { Button, Card, Modal, message } from '@/components/ui'
+import { Button, Modal, message } from '@/components/ui'
 import { useAppStore } from '@/store/useAppStore'
 import {
   exportRobotPerformanceReportApi,
@@ -28,7 +28,6 @@ import {
 } from '@/api/dashboard'
 import { getApiErrorDetail } from '@/types/apiError'
 import {
-  useReportKpis,
   useReportStockAging,
   useReportStockAgingBucket,
   useReportTopProducts,
@@ -43,33 +42,7 @@ import type {
 import { formatInventoryValue, formatKpiNumber } from '@/utils/formatKpi'
 import { parseQuantity } from '@/utils/formatQuantity'
 import RobotPerformanceReport from '@/components/reports/RobotPerformanceReport'
-
-const KPI_CARD_META = [
-  {
-    label: 'Tổng đơn nhập',
-    color: '#3aa6a6',
-    key: 'total_inbound_orders' as const,
-    to: '/import',
-  },
-  {
-    label: 'Tổng đơn xuất',
-    color: '#0f3d46',
-    key: 'total_outbound_orders' as const,
-    to: '/export',
-  },
-  {
-    label: 'Giá trị tồn kho',
-    color: '#0f3460',
-    key: 'total_inventory_value' as const,
-    to: '/items',
-  },
-  {
-    label: 'Cảnh báo',
-    color: '#6b7280',
-    key: 'unsolved_notifications' as const,
-    to: '/notification',
-  },
-]
+import OrderProgressReport from '@/components/reports/OrderProgressReport'
 
 const TOP_PRODUCT_CHARTS = [
   { key: 'inbound_top' as const, title: 'Nhập nhiều', fill: '#3aa6a6' },
@@ -85,6 +58,7 @@ const STOCK_AGING_BUCKET_COLORS: Record<StockAgingBucketKey, string> = {
 
 function formatStockCreatedAt(iso: string) {
   return new Intl.DateTimeFormat('vi-VN', {
+    timeZone: VIETNAM_TIMEZONE,
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
@@ -141,17 +115,6 @@ function StockAgingRowList({
       ))}
     </ul>
   )
-}
-
-function formatKpiValue(
-  key: (typeof KPI_CARD_META)[number]['key'],
-  kpis: ReturnType<typeof useReportKpis>['data'],
-) {
-  if (!kpis) return '—'
-  if (key === 'total_inventory_value') {
-    return formatInventoryValue(kpis.total_inventory_value)
-  }
-  return formatKpiNumber(kpis[key])
 }
 
 type TrendChartRow = {
@@ -374,7 +337,6 @@ export default function ReportPage() {
     useState<TrendGranularity>('day')
   const [topProductsPeriod, setTopProductsPeriod] =
     useState<TopProductsPeriod>('week')
-  const { data: kpis, isLoading, isFetching } = useReportKpis(warehouseId)
   const {
     data: trends,
     isLoading: isTrendLoading,
@@ -490,15 +452,6 @@ export default function ReportPage() {
     return peak + 2
   }, [trendChartData])
 
-  const kpiCards = useMemo(
-    () =>
-      KPI_CARD_META.map((card) => ({
-        ...card,
-        value: warehouseId ? formatKpiValue(card.key, kpis) : '—',
-      })),
-    [kpis, warehouseId],
-  )
-
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -570,34 +523,7 @@ export default function ReportPage() {
         </Button>
       </Modal>
 
-      {!warehouseId ? (
-        <Card className="p-6 text-center text-slate-500">
-          Vui lòng chọn kho để xem KPI báo cáo
-        </Card>
-      ) : (
-        <Spin spinning={isLoading && !kpis}>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            {kpiCards.map((card) => (
-              <NavLink
-                key={card.label}
-                to={card.to}
-                className="block rounded-xl transition-shadow hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-primary"
-                title={`Xem ${card.label.toLowerCase()}`}
-              >
-                <Card className="h-full cursor-pointer hover:border-slate-200">
-                  <p className="text-sm text-gray-500">{card.label}</p>
-                  <p
-                    className={`mt-2 text-3xl font-bold ${isFetching && kpis ? 'opacity-70' : ''}`}
-                    style={{ color: card.color }}
-                  >
-                    {card.value}
-                  </p>
-                </Card>
-              </NavLink>
-            ))}
-          </div>
-        </Spin>
-      )}
+      <OrderProgressReport warehouseId={warehouseId} />
 
       <RobotPerformanceReport key={warehouseId} warehouseId={warehouseId} />
 

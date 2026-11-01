@@ -4,8 +4,16 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional, Union
 from logging.handlers import TimedRotatingFileHandler
+from app.core.time import VN_TZ, vn_now
 
 LogDir = Union[str, Path]
+
+
+class VietnamFormatter(logging.Formatter):
+    def formatTime(self, record, datefmt=None):
+        timestamp = datetime.fromtimestamp(record.created, VN_TZ)
+        return timestamp.strftime(datefmt) if datefmt else timestamp.isoformat(timespec="milliseconds")
+
 
 def setup_logger(
     name: str = "wms",
@@ -22,7 +30,7 @@ def setup_logger(
     if not logger.handlers:
         logger.setLevel(getattr(logging, log_level.upper()))
 
-        formatter = logging.Formatter(
+        formatter = VietnamFormatter(
             "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
         )
 
@@ -30,7 +38,7 @@ def setup_logger(
         console_handler.setFormatter(formatter)
         logger.addHandler(console_handler)
 
-        date_str = datetime.now().strftime("%Y%m%d")
+        date_str = vn_now().strftime("%Y%m%d")
         log_file_name = f"{service_name or name}_{date_str}.log"
         log_file = log_path / log_file_name
 

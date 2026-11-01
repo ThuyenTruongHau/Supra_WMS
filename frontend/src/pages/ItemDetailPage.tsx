@@ -1,3 +1,4 @@
+import { formatVietnamDateTime } from "@/utils/vietnamTime";
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import type { ColumnsType } from "antd/es/table";
@@ -31,7 +32,6 @@ import { getApiErrorMessage } from "@/utils/apiErrorMessage";
 import { useWarehouses } from "@/hooks/useWarehouse";
 import { useUnits } from "@/hooks/useUnit";
 import { DetailView } from "@/components/ui/DetailView";
-import dayjs from "dayjs";
 import type { Item } from "@/types/item";
 import type { DetailFieldSchema } from "@/components/ui/DetailView";
 import { formatQuantity, parseQuantity } from "@/utils/formatQuantity";
@@ -140,7 +140,7 @@ type ItemFormValues = {
 
 function formatDate(date?: string | null) {
   if (!date) return "—";
-  return dayjs(date).format("DD/MM/YYYY");
+  return formatVietnamDateTime(date, "DD/MM/YYYY");
 }
 
 const TABLE_CLASS =

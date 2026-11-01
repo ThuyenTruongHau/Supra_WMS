@@ -1,3 +1,4 @@
+import { VIETNAM_TIMEZONE } from "@/utils/vietnamTime";
 import { useState, useEffect } from "react";
 import { SettingOutlined } from "@ant-design/icons";
 import { useAppStore } from "@/store/useAppStore";
@@ -12,6 +13,7 @@ import {
 function formatHeaderDateTime(date: Date, lang: string): string {
   const locale = lang === "EN" ? "en-GB" : "vi-VN";
   return date.toLocaleString(locale, {
+    timeZone: VIETNAM_TIMEZONE,
     weekday: "short",
     day: "2-digit",
     month: "2-digit",

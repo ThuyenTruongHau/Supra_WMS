@@ -2,6 +2,7 @@
 
 import os
 import unittest
+from io import BytesIO
 from unittest.mock import patch
 
 os.environ.update(
@@ -14,6 +15,7 @@ os.environ.update(
 )
 
 import app.main  # noqa: F401,E402  registers every model on Base.metadata
+from openpyxl import load_workbook  # noqa: E402
 from sqlalchemy import create_engine, func, insert, select  # noqa: E402
 from sqlalchemy.orm import Session  # noqa: E402
 from sqlalchemy.pool import StaticPool  # noqa: E402
@@ -21,7 +23,10 @@ from sqlalchemy.pool import StaticPool  # noqa: E402
 from app.core.database import Base  # noqa: E402
 from app.modules.robot import robot_service  # noqa: E402
 from app.modules.robot.robot_model import TaskStatus  # noqa: E402
+from app.modules.masan.masan_inbound_excel import DATA_START_ROW, INBOUND_REPORT_DISTANCE_COLUMN  # noqa: E402
+from app.modules.masan.masan_inbound_service import export_inbound_order_masan  # noqa: E402
 from app.modules.warehouse.inbound_order.inbound_order_model import InboundOrderDetail  # noqa: E402
+from app.modules.warehouse.item_stock.item_stock_model import ItemStock  # noqa: E402
 from app.modules.warehouse.location_map.map_route_algo import RouteUnreachableError  # noqa: E402
 from app.modules.warehouse.outbound_order.outbound_order_model import OutboundOrderAllocation  # noqa: E402
 from app.modules.warehouse.transaction_history.history_model import History, Transaction  # noqa: E402
@@ -32,7 +37,8 @@ class RobotDistanceCallbackTests(unittest.TestCase):
         self.engine = create_engine("sqlite+pysqlite:///:memory:", poolclass=StaticPool,
                                     connect_args={"check_same_thread": False})
         Base.metadata.create_all(self.engine)
-        self.db = Session(self.engine)
+        # Match SessionLocal: queries must not implicitly flush pending callback values.
+        self.db = Session(self.engine, autoflush=False)
         self.addCleanup(self.engine.dispose)
         self.addCleanup(self.db.close)
 
@@ -67,8 +73,14 @@ class RobotDistanceCallbackTests(unittest.TestCase):
 
         self.distance = self.patch("calculate_distance", return_value={"distance_mm": 1234.5, "distance_m": 1.235})
         self.patch("check_and_create_notifications_under_over_min_max")
-        self.patch("cache_get", return_value=None)
         self.patch("publish_robot_task_completed")
+        for target in (
+            "app.modules.masan.masan_inbound_dispatch_service.wake",
+            "app.modules.masan.masan_auto_service.wake",
+        ):
+            patcher = patch(target)
+            patcher.start()
+            self.addCleanup(patcher.stop)
         telemetry = patch.object(robot_service.robot_telemetry, "get_robot_data", return_value=None)
         telemetry.start()
         self.addCleanup(telemetry.stop)
@@ -108,6 +120,40 @@ class RobotDistanceCallbackTests(unittest.TestCase):
         self.assertEqual(self.count(Transaction, transaction_type="inbound"), 1)
         self.assertEqual(self.count(History, inbound_order_id=1), 1)
         self.assertEqual(self.count(TaskStatus, order_id="TDS_IN_1"), 3)
+        history = self.db.query(History).filter_by(inbound_order_id=1).one()
+        self.assertEqual(history.details["status"], "completed")
+
+    def test_completed_callback_distance_is_exported(self):
+        self.put("inbound_order_allocation", id=1, inbound_order_detail_id=1,
+                 item_stock_id=1, unit_id=1, quantity=10)
+        self.db.commit()
+        self.callback("TDS_IN_1", "8")
+        self.db.expire_all()
+
+        content, _ = export_inbound_order_masan(self.db, 1)
+        workbook = load_workbook(BytesIO(content))
+        self.addCleanup(workbook.close)
+        self.assertEqual(
+            workbook.active.cell(DATA_START_ROW, INBOUND_REPORT_DISTANCE_COLUMN).value,
+            1.235,
+        )
+
+    def test_settlement_failure_rolls_back_flushed_callback_values(self):
+        with patch.object(robot_service, "check_and_create_notifications_under_over_min_max",
+                          side_effect=RuntimeError("settlement failed")):
+            with self.assertRaisesRegex(RuntimeError, "settlement failed"):
+                self.callback("TDS_IN_1", "8")
+        self.db.rollback()
+        self.db.expire_all()
+
+        detail = self.db.get(InboundOrderDetail, 1)
+        self.assertEqual(detail.status, "issued")
+        self.assertIsNone(detail.distance)
+        stock = self.db.get(ItemStock, 1)
+        self.assertEqual((stock.location_id, stock.status), (101, "pending"))
+        self.assertEqual(self.count(Transaction, transaction_type="inbound"), 0)
+        self.assertEqual(self.count(History, inbound_order_id=1), 0)
+        self.assertEqual(self.count(TaskStatus, order_id="TDS_IN_1"), 0)
 
     def test_inbound_distance_failure_never_breaks_callback(self):
         for error in (RouteUnreachableError("no path"), RuntimeError("map file broken")):

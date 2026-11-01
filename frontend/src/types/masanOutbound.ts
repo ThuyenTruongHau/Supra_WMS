@@ -18,6 +18,14 @@ export interface MasanOutboundPreviewRow {
   error: string | null;
 }
 
+export interface MasanOutboundStockShortage {
+  sku: string;
+  item_name: string | null;
+  on_hand: number;
+  demanded: number;
+  shortage: number;
+}
+
 export interface MasanOutboundParseResponse {
   preview_rows: MasanOutboundPreviewRow[];
   line_items: OutboundOrderLineItemCreate[];
@@ -27,4 +35,5 @@ export interface MasanOutboundParseResponse {
   warnings: string[];
   can_import?: boolean;
   import_errors?: string[];
+  stock_shortages?: MasanOutboundStockShortage[];
 }

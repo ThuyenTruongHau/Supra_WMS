@@ -1,3 +1,4 @@
+import { VIETNAM_TIMEZONE } from "@/utils/vietnamTime";
 import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import OperatorPageHeader from "@/components/layout/OperatorPageHeader";
@@ -26,6 +27,7 @@ export default function OperatorOutboundPage() {
   }, []);
 
   const clockLabel = clock.toLocaleTimeString("vi-VN", {
+    timeZone: VIETNAM_TIMEZONE,
     hour: "2-digit",
     minute: "2-digit",
     second: "2-digit",

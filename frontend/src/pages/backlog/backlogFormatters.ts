@@ -1,4 +1,4 @@
-import dayjs from "dayjs";
+import { vietnamTime } from "@/utils/vietnamTime";
 import { translateStatus } from "@/i18n/statusLabels.vi";
 import { formatQuantity } from "@/utils/formatQuantity";
 
@@ -112,7 +112,7 @@ function isEmptyPreviewValue(value: unknown): boolean {
 
 export function formatDateTime(value: string | null | undefined): string {
   if (!value) return "—";
-  const parsed = dayjs(value);
+  const parsed = vietnamTime(value);
   return parsed.isValid() ? parsed.format("DD/MM/YYYY HH:mm") : value;
 }
 

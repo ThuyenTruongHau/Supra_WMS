@@ -1,3 +1,4 @@
+import { formatVietnamDateTime } from "@/utils/vietnamTime";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, Table, Input, Button, cn } from "@/components/ui";
@@ -9,7 +10,6 @@ import type { Stocktake, StocktakeItemStock } from "@/types/stocktake";
 import InboundStatusTag from "@/components/shared/InboundStatusTag";
 import CreateStocktakeModal from "@/pages/components/CreateStocktakeModal";
 import StocktakeRecordCountModal from "@/pages/components/StocktakeRecordCountModal";
-import dayjs from "dayjs";
 
 const PAGE_SIZE = 20;
 const SEARCH_WIDTH = 280;
@@ -27,7 +27,7 @@ type StocktakeTab = (typeof STOCKTAKE_TABS)[number]["key"];
 
 function formatDate(date?: string | null) {
   if (!date) return "—";
-  return dayjs(date).format("DD/MM/YYYY HH:mm");
+  return formatVietnamDateTime(date);
 }
 
 function displayLocationName(record: StocktakeItemStock): string {

@@ -1,3 +1,4 @@
+import { VIETNAM_TIMEZONE } from "@/utils/vietnamTime";
 import { useMemo, useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { postInboundOperatorListSummaryApi } from "@/api/inboundOrder";
@@ -144,6 +145,7 @@ function formatDateTime(value: string | null): string {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "—";
   return date.toLocaleString("vi-VN", {
+    timeZone: VIETNAM_TIMEZONE,
     day: "2-digit",
     month: "2-digit",
     hour: "2-digit",

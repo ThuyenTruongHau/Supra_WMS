@@ -1,3 +1,4 @@
+import { formatVietnamDateTime } from "@/utils/vietnamTime";
 import { useMemo, useState } from 'react';
 import {
   Card,
@@ -266,7 +267,7 @@ export default function UnitSettingPage() {
       key: 'created_at',
       className: 'text-slate-500',
       render: (val: string | null) =>
-        val ? new Date(val).toLocaleString('vi-VN') : '—',
+        val ? formatVietnamDateTime(val) : '—',
     },
     {
       title: 'Thao tác',
@@ -329,7 +330,7 @@ export default function UnitSettingPage() {
       key: 'created_at',
       className: 'text-slate-500',
       render: (val: string | null) =>
-        val ? new Date(val).toLocaleString('vi-VN') : '—',
+        val ? formatVietnamDateTime(val) : '—',
     },
     {
       title: 'Thao tác',

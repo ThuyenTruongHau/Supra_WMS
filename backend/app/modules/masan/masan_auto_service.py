@@ -7,14 +7,15 @@ An interrupted/uncertain send is never automatically retried.
 from collections import defaultdict
 from contextlib import contextmanager
 from datetime import datetime, timezone
-from threading import RLock
+from threading import Lock, RLock
+from time import perf_counter
 import json
 import uuid
 
 from sqlalchemy import or_, text
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, lazyload
 
-from app.core.cache import cache_delete, cache_get, cache_scan_keys, cache_set
+from app.core.cache import cache_delete, cache_get, cache_scan_keys, cache_set, get_redis
 from app.core.config import settings
 from app.core.logger import get_logger
 from app.modules.masan.masan_auto_model import OutboundAutoZone, OutboundAutoCycle, OutboundAutoCommand
@@ -36,39 +37,133 @@ MOVING_STATUSES = {"issued", "in_progress"}
 TERMINAL_ALLOCATIONS = {"completed", "failed", "cancelled"}
 MOVING_COMMANDS = {"prepared", "sending", "accepted", "unknown"}
 _locks = defaultdict(RLock)
+_lock_waiters = defaultdict(int)
+_waiters_guard = Lock()
+_coordinator_lock = Lock()
+COORDINATOR_WAKE_TTL = 5
 
 
 def now():
     return datetime.now(timezone.utc)
 
 
+def _close_advisory_connection(connection, unlock_sql=None, parameters=None):
+    try:
+        if unlock_sql is not None:
+            # Session locks survive rollback. Clear any aborted transaction so
+            # the unlock can run, and never return a locked connection to pool.
+            connection.rollback()
+            connection.execute(text(unlock_sql), parameters or {})
+            connection.commit()
+    except BaseException:
+        connection.invalidate()
+        raise
+    finally:
+        connection.close()
+
+
 @contextmanager
-def warehouse_lock(db: Session, warehouse_id: int):
-    """Shared by auto sends, callbacks, confirmations and manual submissions."""
+def warehouse_lock(db: Session, warehouse_id: int, *, wait: bool = True):
+    """Foreground operations wait; background ticks skip contention without queuing."""
     key = int(warehouse_id)
     held = db.info.setdefault("outbound_auto_locks", set())
     if key in held:
-        yield
+        yield True
         return
-    with _locks[key]:
-        connection = None
+    started = perf_counter()
+    local_lock = _locks[key]
+    if wait:
+        with _waiters_guard:
+            _lock_waiters[key] += 1
         try:
-            if db.get_bind().dialect.name == "postgresql":
-                connection = db.get_bind().connect()
-                connection.execute(text("SELECT pg_advisory_lock(827010, :warehouse)"), {"warehouse": key})
-                connection.commit()
-            held.add(key)
-            db.flush()
-            db.expire_all()
-            yield
+            acquired = local_lock.acquire()
         finally:
-            held.discard(key)
+            with _waiters_guard:
+                _lock_waiters[key] -= 1
+    else:
+        # RLock is not fair: an arriving tick must not overtake callbacks already
+        # waiting in this process. PostgreSQL serializes the other processes.
+        with _waiters_guard:
+            acquired = not _lock_waiters[key] and local_lock.acquire(blocking=False)
+    if not acquired:
+        yield False
+        return
+    connection = None
+    advisory_acquired = False
+    entered = None
+    try:
+        if db.get_bind().dialect.name == "postgresql":
+            connection = db.get_bind().connect()
+            try:
+                if wait:
+                    connection.execute(text("SELECT pg_advisory_lock(827010, :warehouse)"), {"warehouse": key})
+                    advisory_acquired = True
+                else:
+                    advisory_acquired = bool(connection.execute(
+                        text("SELECT pg_try_advisory_lock(827010, :warehouse)"), {"warehouse": key}
+                    ).scalar())
+                connection.commit()
+            except BaseException:
+                connection.invalidate()
+                advisory_acquired = False
+                raise
+            if not advisory_acquired:
+                yield False
+                return
+        entered = perf_counter()
+        held.add(key)
+        db.flush()
+        db.expire_all()
+        yield True
+    finally:
+        held.discard(key)
+        try:
             if connection is not None:
-                try:
-                    connection.execute(text("SELECT pg_advisory_unlock(827010, :warehouse)"), {"warehouse": key})
-                    connection.commit()
-                finally:
-                    connection.close()
+                _close_advisory_connection(
+                    connection,
+                    "SELECT pg_advisory_unlock(827010, :warehouse)" if advisory_acquired else None,
+                    {"warehouse": key},
+                )
+        finally:
+            local_lock.release()
+            if entered is not None:
+                waited, held_for = entered - started, perf_counter() - entered
+                if waited >= 1 or held_for >= 2:
+                    logger.warning(
+                        "outbound.auto event=slow_warehouse_lock warehouse=%s background=%s wait_ms=%.1f hold_ms=%.1f",
+                        key, not wait, waited * 1000, held_for * 1000,
+                    )
+
+
+@contextmanager
+def coordinator_run_lock(db: Session):
+    """Drop overlapping coordinator runs; a dead worker releases its DB lock."""
+    if not _coordinator_lock.acquire(blocking=False):
+        yield False
+        return
+    connection = None
+    acquired = False
+    try:
+        if db.get_bind().dialect.name == "postgresql":
+            connection = db.get_bind().connect()
+            try:
+                acquired = bool(connection.execute(text("SELECT pg_try_advisory_lock(827011, 0)")).scalar())
+                connection.commit()
+            except BaseException:
+                connection.invalidate()
+                acquired = False
+                raise
+        else:
+            acquired = True
+        yield acquired
+    finally:
+        try:
+            if connection is not None:
+                _close_advisory_connection(
+                    connection, "SELECT pg_advisory_unlock(827011, 0)" if acquired else None,
+                )
+        finally:
+            _coordinator_lock.release()
 
 
 def configuration(display_zone_id: int):
@@ -79,7 +174,7 @@ def configuration(display_zone_id: int):
 
 def resolve_locations(db, warehouse_id, display_zone_id):
     vt_zone, _, pairs = configuration(display_zone_id)
-    locations = db.query(Location).join(Zone, Zone.id == Location.zone_id).filter(
+    locations = db.query(Location).options(lazyload("*")).join(Zone, Zone.id == Location.zone_id).filter(
         Location.warehouse_id == warehouse_id, Location.is_active.is_(True),
         Zone.warehouse_id == warehouse_id, Zone.code == vt_zone,
     ).all()
@@ -296,10 +391,15 @@ def _error(db, control, cycle, message):
 
 
 def wake():
-    # The periodic task is authoritative if broker publication is unavailable.
+    # One wake covers every warehouse. Beat remains authoritative if publication
+    # fails or a busy coordinator skips this run; expired wakes cannot build up.
     try:
+        prefix = settings.redis_key_prefix.strip(":")
+        key = f"{prefix}:outbound:auto:wake" if prefix else "outbound:auto:wake"
+        if not get_redis().set(key, "1", nx=True, ex=COORDINATOR_WAKE_TTL):
+            return
         from app.modules.masan.masan_celery_task import coordinate_outbound_auto_task
-        coordinate_outbound_auto_task.delay()
+        coordinate_outbound_auto_task.apply_async(expires=COORDINATOR_WAKE_TTL, retry=False)
     except Exception:
         logger.exception("Cannot wake automatic outbound coordinator; periodic reconciliation will retry")
 
@@ -394,11 +494,13 @@ def _return_candidates(db, warehouse_id, display_zone_id):
 
 
 def _stocks(db, cycle):
-    return db.query(ItemStock).filter(ItemStock.id.in_(cycle.stock_ids or [])).all()
+    return db.query(ItemStock).options(lazyload("*")).filter(ItemStock.id.in_(cycle.stock_ids or [])).all()
 
 
 def _allocations(db, cycle):
-    return db.query(OutboundOrderAllocation).filter(OutboundOrderAllocation.id.in_(cycle.allocation_ids or [])).all()
+    return db.query(OutboundOrderAllocation).options(lazyload("*")).filter(
+        OutboundOrderAllocation.id.in_(cycle.allocation_ids or [])
+    ).all()
 
 
 def _reconcile(db, control):
@@ -728,7 +830,10 @@ def _return(db, control, cycle):
 
 
 def tick_zone(db, warehouse_id, display_zone_id):
-    with warehouse_lock(db, warehouse_id):
+    with warehouse_lock(db, warehouse_id, wait=False) as acquired:
+        if not acquired:
+            logger.debug("outbound.auto event=tick_skipped warehouse=%s zone=%s reason=busy", warehouse_id, display_zone_id)
+            return
         control = zone_control(db, warehouse_id, display_zone_id)
         if not control:
             return
@@ -894,7 +999,7 @@ def confirm(db, warehouse_id, cc_zone, quantities, sorting_persons):
 
 
 def receive_callback(db, task, payload):
-    """Handle owned tasks only. Return (handled, TaskStatus | None)."""
+    """Handle owned tasks; the router wakes dispatch after releasing its lock."""
     cycle = cycle_for_task(db, task.id)
     if not cycle:
         return False, None
@@ -964,5 +1069,4 @@ def receive_callback(db, task, payload):
                 _repair_stock_ready(db, control)
             except Exception:
                 logger.exception("Automatic pallet arrived; stock-ready cache publication failed")
-    wake()
     return True, record

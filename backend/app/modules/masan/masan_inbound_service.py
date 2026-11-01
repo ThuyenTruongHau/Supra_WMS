@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import date
 from io import BytesIO
 from pathlib import Path
 from typing import Any, Optional
@@ -12,6 +12,7 @@ from app.modules.masan.masan_excel_io import load_masan_workbook
 from sqlalchemy import Integer, cast, func, or_
 from sqlalchemy.orm import Session, joinedload, selectinload
 from app.core.config import settings
+from app.core.time import format_vietnam, vn_now, vn_today
 
 from app.modules.masan.masan_inbound_excel import (
     COLUMN_ALIASES,
@@ -413,14 +414,14 @@ def _format_inbound_datetime(order: InboundOrder, meta: dict[str, Any]) -> str:
     if raw:
         return str(raw)
     if order.created_at:
-        return order.created_at.strftime("%d/%m/%Y\n%H:%M")
+        return format_vietnam(order.created_at, "%d/%m/%Y\n%H:%M")
     return ""
 
 
 def _format_inbound_report_datetime(dt) -> str:
     if not dt:
         return ""
-    return dt.strftime("%d/%m/%Y\n%H:%M:%S")
+    return format_vietnam(dt, "%d/%m/%Y\n%H:%M:%S")
 
 
 def _format_report_distance_m(distance_m: float | None) -> float | None:
@@ -605,7 +606,7 @@ def export_inbound_orders_masan(
     warehouse_label = (
         first.warehouse.code if first.warehouse and first.warehouse.code else str(first.warehouse_id)
     )
-    stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+    stamp = vn_now().strftime("%Y%m%d-%H%M%S")
     filename = f"BaoCaoNhap_{warehouse_label}_{len(unique_ids)}don_{stamp}.xlsx"
     return content, filename
 
@@ -673,7 +674,7 @@ def _load_storage_stocks_by_location(
 def _format_stock_inbound_date(created_at) -> str:
     if not created_at:
         return ""
-    return created_at.strftime("%d/%m/%Y")
+    return format_vietnam(created_at, "%d/%m/%Y")
 
 
 def _format_locator_stock_cells(
@@ -765,7 +766,7 @@ def _build_daily_capacity_workbook(
     ws.cell(
         row=1,
         column=1,
-        value=f"{title}\n(Ngày xuất: {date.today().strftime('%d/%m/%Y')})",
+        value=f"{title}\n(Ngày xuất: {vn_today().strftime('%d/%m/%Y')})",
     )
 
     last_template_row = ws.max_row
@@ -846,7 +847,7 @@ def export_daily_capacity_excel(db: Session, warehouse_id: int) -> tuple[bytes, 
     warehouse_label = (warehouse.code if warehouse and warehouse.code else None) or str(
         warehouse_id
     )
-    filename = f"Capacity_{warehouse_label}_{date.today().isoformat()}.xlsx"
+    filename = f"Capacity_{warehouse_label}_{vn_today().isoformat()}.xlsx"
     return content, filename
 
 

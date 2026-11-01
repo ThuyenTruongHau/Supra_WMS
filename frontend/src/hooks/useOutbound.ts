@@ -470,15 +470,14 @@ export const useOperatorBoardOrders = (
     queryFn: () =>
       listOperatorBoardOrdersApi(warehouseId, {
         page: 1,
-        page_size: 200,
+        page_size: 80,
         q: options?.q,
         created_from: options?.created_from,
         created_to: options?.created_to,
         item_id: options?.item_id,
       }),
     enabled: (options?.enabled ?? true) && warehouseId > 0,
-    staleTime: 30 * 1000,
-    refetchOnMount: "always",
+    staleTime: 60 * 1000,
   });
 };
 

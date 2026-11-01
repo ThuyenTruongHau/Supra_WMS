@@ -1,3 +1,4 @@
+import { formatVietnamDateTime } from "@/utils/vietnamTime";
 import { useMemo, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Card, Table, Button, message, Modal, Space, Select } from "@/components/ui";
@@ -25,7 +26,6 @@ import type {
 import type { ColumnsType } from "antd/es/table";
 import { useInboundBufferLocations, useFullLocations, useStorageAreaLocations } from "@/hooks/useWarehouseMap";
 import { useUser } from "@/hooks/useAuth";
-import dayjs from "dayjs";
 import CreateImportModal, {
   type ImportGroupDraft,
 } from "./components/CreateImportModal";
@@ -107,7 +107,7 @@ function displayValue(value: unknown): string {
 
 function formatDateTime(value: string | null | undefined): string {
   if (!value) return "—";
-  return dayjs(value).format("DD/MM/YYYY HH:mm");
+  return formatVietnamDateTime(value);
 }
 
 function DetailsEntriesPanel({
@@ -530,7 +530,7 @@ export default function ImportDetailPage() {
       width: 140,
       render: (_, record) =>
         record.expiry_date
-          ? dayjs(record.expiry_date).format("DD/MM/YYYY")
+          ? formatVietnamDateTime(record.expiry_date, "DD/MM/YYYY")
           : "—",
     },
   ];

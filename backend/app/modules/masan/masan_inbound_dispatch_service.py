@@ -16,6 +16,7 @@ from sqlalchemy import text
 
 from app.core.cache import cache_delete, cache_get
 from app.core.logger import get_logger
+from app.core.time import as_utc
 from app.modules.masan.masan_inbound_dispatch_model import InboundDispatchBatch as Batch, InboundDispatchCommand as Command, InboundDispatchControl as Control
 from app.modules.robot.robot_model import RobotTask
 from app.modules.warehouse.inbound_order.inbound_order_model import InboundOrder, InboundOrderDetail as Detail
@@ -318,7 +319,7 @@ def _reserve(db, control):
         if command.state != "reserved":
             continue
         timestamp = command.reserved_at
-        if timestamp and timestamp.replace(tzinfo=timezone.utc) > now() - timedelta(seconds=60):
+        if timestamp and as_utc(timestamp) > now() - timedelta(seconds=60):
             continue
         try:
             job = dispatch_inbound_command_task.apply_async(kwargs={"command_id": command.id, "token": command.token}, retry=False)

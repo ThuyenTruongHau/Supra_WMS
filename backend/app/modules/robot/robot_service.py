@@ -9,6 +9,7 @@ from app.modules.warehouse.location_map.map_graph_service import (
 from app.modules.warehouse.location_map.map_route_algo import RouteError
 
 from app.core.config import settings
+from app.core.time import vn_now
 from app.socket.ws_events import publish_robot_task_completed
 from app.modules.robot.robot_model import RobotTask, TaskStatus, MAPPING_STATUS
 from app.modules.warehouse.inbound_order.inbound_order_model import InboundOrderDetail
@@ -22,7 +23,7 @@ from app.modules.robot.robot_telemetry_service import robot_telemetry
 from app.modules.warehouse.transaction_history.history_model import Transaction, History
 from app.modules.warehouse.notificcation.notification_service import check_and_create_notifications_under_over_min_max
 from app.core.logger import get_logger
-from datetime import datetime
+from time import perf_counter
 
 logger = get_logger("main")
 
@@ -104,6 +105,10 @@ class TaskStatusService:
         if not detail.to_location_id:
             return
 
+        # Stock reloads also refresh their joined inbound detail. Persist pending
+        # status/distance first so populate_existing cannot overwrite them when
+        # autoflush=False. This stays in the settlement transaction.
+        db.flush()
         stocks = (
             db.query(ItemStock)
             .filter(
@@ -182,10 +187,29 @@ class TaskStatusService:
         return result["distance_m"]
 
     def receive_task_status(self, db: Session, payload: dict) -> TaskStatus:
+        started = perf_counter()
+        try:
+            return self._route_task_status(db, payload)
+        finally:
+            logger.info(
+                "robot.callback order_id=%s status=%s elapsed_ms=%.1f",
+                payload.get("orderId"), payload.get("status"),
+                (perf_counter() - started) * 1000,
+            )
+
+    def _route_task_status(self, db: Session, payload: dict) -> TaskStatus:
         from app.modules.masan.masan_auto_service import cycle_for_task, warehouse_lock, wake
         from app.modules.masan.masan_auto_manual_service import is_shared, callback
         task = db.query(RobotTask).filter_by(order_id=payload.get("orderId")).first()
-        if task and is_shared(cycle_for_task(db, task.id)):
+        cycle = cycle_for_task(db, task.id) if task else None
+        if task and task.inbound_order_detail_id is None and task.status == "completed":
+            from app.modules.masan.masan_auto_model import OutboundAutoCommand
+            command_state = db.query(OutboundAutoCommand.state).filter_by(robot_task_id=task.id).scalar()
+            # Completed commands never reopen. Ignore ICS retries before joining
+            # the warehouse queue, but retain recovery when only TaskStatus was saved.
+            if command_state == "completed":
+                return None
+        if task and is_shared(cycle):
             return callback(db, task, payload, lambda: self._receive_task_status(db, payload))
         if task and task.outbound_order_allocations:
             from app.modules.masan import masan_return_adoption_service as adoption
@@ -205,7 +229,11 @@ class TaskStatusService:
                         db.info.pop(adoption._CALLBACK_KEY, None)
                     else:
                         db.info[adoption._CALLBACK_KEY] = previous
-            wake()
+            # Wake after releasing the warehouse lock. Progress reports do not
+            # free a road or stock and must not enqueue another full tick.
+            mapped = MAPPING_STATUS.get(str(payload.get("status")))
+            if result is not None and mapped in {"completed", "failed", "cancelled"}:
+                wake()
             return result
         return self._receive_task_status(db, payload)
 
@@ -258,7 +286,7 @@ class TaskStatusService:
             
             if sub_task_status == "2" and sub_task_sequence == "2":
                 if detail.start_time is None:
-                    detail.start_time = datetime.now()
+                    detail.start_time = vn_now()
                     robot_data = robot_telemetry.get_robot_data(payload.get("deviceNum"))
                     if robot_data is not None:
                         detail.start_battery = robot_data.get("battery")
@@ -293,7 +321,7 @@ class TaskStatusService:
                     self._settle_inbound_stock(db, detail)
 
                     if detail.end_time is None:
-                        detail.end_time = datetime.now()
+                        detail.end_time = vn_now()
                         robot_data = robot_telemetry.get_robot_data(payload.get("deviceNum"))
                         if robot_data is not None:
                             detail.end_battery = robot_data.get("battery")
@@ -307,7 +335,7 @@ class TaskStatusService:
                         allocation.device = payload.get("deviceNum")
                     if sub_task_status == "2" and sub_task_sequence == "2":
                         if allocation.start_time is None:
-                            allocation.start_time = datetime.now()
+                            allocation.start_time = vn_now()
                             robot_data = robot_telemetry.get_robot_data(payload.get("deviceNum"))
                             if robot_data is not None:
                                 allocation.start_battery = robot_data.get("battery")
@@ -330,7 +358,7 @@ class TaskStatusService:
                     if MAPPING_STATUS[ics_status] == "completed" and allocation.allocation_type == "outbound":
                         allocation.status = "pre_completed"
                         if allocation.end_time is None:
-                            allocation.end_time = datetime.now()
+                            allocation.end_time = vn_now()
                             robot_data = robot_telemetry.get_robot_data(payload.get("deviceNum"))
                             if robot_data is not None:
                                 allocation.end_battery = robot_data.get("battery")
@@ -344,7 +372,7 @@ class TaskStatusService:
                         )
                         _settle_outbound_stock(db, [allocation])
                         if allocation.end_time is None:
-                            allocation.end_time = datetime.now()
+                            allocation.end_time = vn_now()
                             robot_data = robot_telemetry.get_robot_data(payload.get("deviceNum"))
                             if robot_data is not None:
                                 allocation.end_battery = robot_data.get("battery")

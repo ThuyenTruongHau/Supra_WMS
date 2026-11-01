@@ -29,16 +29,20 @@ def coordinate_inbound_dispatch_task():
 @celery_app.task(name="masan.coordinate_outbound_auto", acks_late=True)
 def coordinate_outbound_auto_task() -> None:
     from app.modules.masan.masan_auto_model import OutboundAutoZone
-    from app.modules.masan.masan_auto_service import tick_zone
+    from app.modules.masan.masan_auto_service import coordinator_run_lock, tick_zone
 
-    with db_session() as db:
-        zones = [(row.warehouse_id, row.display_zone_id) for row in db.query(OutboundAutoZone).all()]
-    for warehouse_id, display_zone_id in zones:
-        try:
-            with db_session() as db:
-                tick_zone(db, warehouse_id, display_zone_id)
-        except Exception:
-            logger.exception("Automatic outbound reconciliation failed warehouse=%s zone=%s", warehouse_id, display_zone_id)
+    with db_session() as coordinator_db:
+        with coordinator_run_lock(coordinator_db) as acquired:
+            if not acquired:
+                return
+            zones = coordinator_db.query(OutboundAutoZone.warehouse_id, OutboundAutoZone.display_zone_id).all()
+            coordinator_db.rollback()  # Release the read transaction before iterating zones.
+            for warehouse_id, display_zone_id in zones:
+                try:
+                    with db_session() as db:
+                        tick_zone(db, warehouse_id, display_zone_id)
+                except Exception:
+                    logger.exception("Automatic outbound reconciliation failed warehouse=%s zone=%s", warehouse_id, display_zone_id)
 
 
 def _dump(result: Any) -> Any:

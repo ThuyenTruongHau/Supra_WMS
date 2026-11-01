@@ -1,3 +1,4 @@
+import { vietnamTime } from "@/utils/vietnamTime";
 import { useEffect, useState } from "react";
 import {
   Modal,
@@ -27,7 +28,6 @@ import {
   getItemAvailableUnitsApi,
 } from "@/api/itemUnit";
 import { formatQuantity } from "@/utils/formatQuantity";
-import dayjs from "dayjs";
 import KeyValueDetailsEditor from "@/components/shared/KeyValueDetailsEditor";
 import { RequiredFieldLabel } from "@/components/shared/RequiredFieldLabel";
 import {
@@ -240,7 +240,7 @@ export default function CreateOutboundModal({
           : [],
       );
     } else {
-      setOrderCode(`OUT-${dayjs().format("YYYYMMDD-HHmmss")}`);
+      setOrderCode(`OUT-${vietnamTime().format("YYYYMMDD-HHmmss")}`);
       setNote("");
       setDetailEntries(
         applyOutboundTypeDetailRules(detailsToEntries(initialDetails)),

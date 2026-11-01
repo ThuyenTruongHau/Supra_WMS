@@ -1,5 +1,5 @@
+import { formatVietnamDateTime } from "@/utils/vietnamTime";
 import { useEffect, useState } from 'react'
-import dayjs from 'dayjs'
 import type { Dayjs } from 'dayjs'
 import { DatePicker, Select, Segmented, Spin } from 'antd'
 import {
@@ -204,13 +204,6 @@ export default function RobotPerformanceReport({
             onChange={setKind}
           />
         </div>
-        <p className="text-xs text-slate-500">
-          {!needsRange &&
-            `${dayjs(range.start_date).format('DD/MM/YYYY')} – ${dayjs(range.end_date).format('DD/MM/YYYY')} · `}
-          Giờ Việt Nam · Quãng đường tính từ bản đồ; thời gian lệnh có thể bao
-          gồm chờ và thao tác. Một lệnh xuất ra VT được tính một lần dù chia
-          hàng cho nhiều ô CC.
-        </p>
       </Card>
       {!warehouseId ? (
         <Card className="p-6 text-center text-slate-500">

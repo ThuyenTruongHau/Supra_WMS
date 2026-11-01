@@ -239,4 +239,5 @@ scripts/*
 !scripts/sync_location_occupancy_from_stock.py
 !scripts/mock_print_export.py
 !scripts/mock_print_layout.py
+!scripts/repair_event_timezones.py
 tests/

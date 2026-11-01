@@ -62,3 +62,21 @@
 [1028/081949.205:ERROR:net\socket\ssl_client_socket_impl.cc:949] handshake failed; returned -1, SSL error code 1, net_error -202
 [1028/081950.834:ERROR:net\socket\ssl_client_socket_impl.cc:949] handshake failed; returned -1, SSL error code 1, net_error -202
 [1028/081950.864:ERROR:net\socket\ssl_client_socket_impl.cc:949] handshake failed; returned -1, SSL error code 1, net_error -202
+[1031/174204.268:ERROR:net\base\network_change_notifier_win.cc:224] WSALookupServiceBegin failed with: -1
+[1031/174204.310:ERROR:net\socket\ssl_client_socket_impl.cc:949] handshake failed; returned -1, SSL error code 1, net_error -202
+[1031/174205.056:ERROR:net\socket\ssl_client_socket_impl.cc:949] handshake failed; returned -1, SSL error code 1, net_error -202
+[1031/174211.283:ERROR:net\socket\ssl_client_socket_impl.cc:949] handshake failed; returned -1, SSL error code 1, net_error -202
+[1031/174211.317:ERROR:net\socket\ssl_client_socket_impl.cc:949] handshake failed; returned -1, SSL error code 1, net_error -202
+[1031/174212.272:ERROR:net\socket\ssl_client_socket_impl.cc:949] handshake failed; returned -1, SSL error code 1, net_error -202
+[1031/174212.301:ERROR:net\socket\ssl_client_socket_impl.cc:949] handshake failed; returned -1, SSL error code 1, net_error -202
+[1031/174213.416:ERROR:net\socket\ssl_client_socket_impl.cc:949] handshake failed; returned -1, SSL error code 1, net_error -202
+[1031/174213.451:ERROR:net\socket\ssl_client_socket_impl.cc:949] handshake failed; returned -1, SSL error code 1, net_error -202
+[1031/174214.399:ERROR:net\socket\ssl_client_socket_impl.cc:949] handshake failed; returned -1, SSL error code 1, net_error -202
+[1031/174214.431:ERROR:net\socket\ssl_client_socket_impl.cc:949] handshake failed; returned -1, SSL error code 1, net_error -202
+[1031/174215.550:ERROR:net\socket\ssl_client_socket_impl.cc:949] handshake failed; returned -1, SSL error code 1, net_error -202
+[1031/174215.575:ERROR:net\socket\ssl_client_socket_impl.cc:949] handshake failed; returned -1, SSL error code 1, net_error -202
+[1031/174216.690:ERROR:net\socket\ssl_client_socket_impl.cc:949] handshake failed; returned -1, SSL error code 1, net_error -202
+[1031/174216.722:ERROR:net\socket\ssl_client_socket_impl.cc:949] handshake failed; returned -1, SSL error code 1, net_error -202
+[1031/174251.265:ERROR:net\base\network_change_notifier_win.cc:224] WSALookupServiceBegin failed with: -1
+[1031/174251.295:ERROR:net\socket\ssl_client_socket_impl.cc:949] handshake failed; returned -1, SSL error code 1, net_error -202
+[1031/174251.330:ERROR:net\socket\ssl_client_socket_impl.cc:949] handshake failed; returned -1, SSL error code 1, net_error -202

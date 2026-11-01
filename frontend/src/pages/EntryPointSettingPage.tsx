@@ -1,3 +1,4 @@
+import { formatVietnamDateTime } from "@/utils/vietnamTime";
 import { useState, useEffect } from "react";
 import {
   Card,
@@ -246,7 +247,7 @@ export default function EntryPointSettingPage() {
       key: "created_at",
       className: "text-slate-500",
       render: (val: string) =>
-        val ? new Date(val).toLocaleString("vi-VN") : "-",
+        val ? formatVietnamDateTime(val) : "-",
     },
     {
       title: "Kích hoạt",

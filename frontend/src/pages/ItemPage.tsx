@@ -1,3 +1,4 @@
+import { formatVietnamDateTime } from "@/utils/vietnamTime";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   PlusOutlined,
@@ -46,7 +47,6 @@ import { useUnits } from "@/hooks/useUnit";
 import { brand } from "@/components/ui/theme/tokens";
 import { formatQuantity, parseQuantity } from "@/utils/formatQuantity";
 import { getApiErrorMessage } from "@/utils/apiErrorMessage";
-import dayjs from "dayjs";
 
 const PAGE_SIZE = 20;
 const ITEM_FETCH_LIMIT = 100;
@@ -247,7 +247,7 @@ type CreateItemFormValues = Omit<CreateItemInput, "details"> & {
 
 function formatDate(date?: string | null) {
   if (!date) return "—";
-  return dayjs(date).format("DD/MM/YYYY HH:mm");
+  return formatVietnamDateTime(date);
 }
 
 function formatKpi(value?: number | string) {

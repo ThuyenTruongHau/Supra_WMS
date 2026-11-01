@@ -1,8 +1,8 @@
-import dayjs from 'dayjs'
+import { vietnamTime } from "./vietnamTime.ts";
 
 export function formatNotificationTime(value: string): string {
-  const date = dayjs(value)
-  const now = dayjs()
+  const date = vietnamTime(value)
+  const now = vietnamTime()
   const diffMinutes = now.diff(date, 'minute')
 
   if (diffMinutes < 1) return 'Vừa xong'
@@ -19,5 +19,5 @@ export function formatNotificationTime(value: string): string {
 }
 
 export function isToday(value: string): boolean {
-  return dayjs(value).isSame(dayjs(), 'day')
+  return vietnamTime(value).format('YYYY-MM-DD') === vietnamTime().format('YYYY-MM-DD')
 }

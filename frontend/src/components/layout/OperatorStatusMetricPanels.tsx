@@ -4,6 +4,8 @@ import { cn } from "@/components/ui";
 export type AgvStatusRow = {
   id: string;
   status: string;
+  /** Display speed in m/s, rounded to one decimal. */
+  speed?: number;
   tone?:
     | "active"
     | "standby"
@@ -98,7 +100,7 @@ export function RobotStatusPanel({
             <div
               key={row.id}
               className={cn(
-                "flex min-w-0 max-w-full items-center gap-2",
+                "flex min-w-0 max-w-full items-start gap-2",
                 !inline && "justify-between",
               )}
             >
@@ -116,16 +118,27 @@ export function RobotStatusPanel({
                   {row.id}
                 </span>
               </span>
-              <span
-                className={cn(
-                  "min-w-0 truncate font-bold",
-                  compact ? "text-base" : "text-lg",
-                  AGV_TONE_TEXT[tone],
-                )}
-                title={row.status}
-              >
-                {row.status}
-              </span>
+              <div className="flex min-w-0 flex-col items-end">
+                <span
+                  className={cn(
+                    "max-w-full truncate font-bold",
+                    compact ? "text-base" : "text-lg",
+                    AGV_TONE_TEXT[tone],
+                  )}
+                  title={row.status}
+                >
+                  {row.status}
+                </span>
+                <span
+                  className={cn(
+                    "whitespace-nowrap font-medium tabular-nums text-slate-500",
+                    compact ? "text-sm" : "text-base",
+                  )}
+                  aria-label={`Tốc độ ${row.id}: ${row.speed ?? "—"} m/s`}
+                >
+                  {row.speed ?? "—"} m/s
+                </span>
+              </div>
             </div>
           );
         })}

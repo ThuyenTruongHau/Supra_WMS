@@ -1,6 +1,6 @@
 """Notification CRUD service."""
 
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime, timedelta
 import re
 from typing import Optional
 
@@ -9,6 +9,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload
 
 from app.core.config import settings
+from app.core.time import as_vietnam, vn_today
 from app.modules.warehouse.item.item_model import Item
 from app.modules.warehouse.item_stock.item_stock_model import (
     ItemStock,
@@ -150,12 +151,12 @@ def _resolve_holding_date(stock: ItemStock) -> date:
         return datetime.strptime(lot, "%d/%m/%y").date()
     if lot and re.fullmatch(r"^\d{6}$", lot):
         return datetime.strptime(lot, "%d%m%y").date()
-    return stock.created_at.date()
+    return as_vietnam(stock.created_at).date()
 
 
 def check_long_holding_stock(db: Session) -> list[Notification]:
     cutoff_date = (
-        datetime.now(timezone.utc).date()
+        vn_today()
         - timedelta(days=settings.manual_expired_days)
     )
     holding_date = _effective_holding_date(

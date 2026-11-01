@@ -8,7 +8,6 @@ import re
 import sys
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime
 from pathlib import Path
 from typing import Any, Optional
 
@@ -16,6 +15,7 @@ from sqlalchemy.orm import Session, joinedload
 
 from app.core.cache import cache_get, cache_scan_keys
 from app.core.config import settings
+from app.core.time import vn_now
 from app.modules.masan.masan_outbound_service import _resolve_line_sku
 from app.modules.warehouse.lot_number_utils import format_lot_compact_ddmmyy
 from app.modules.warehouse.location_map.location_model import Location
@@ -425,7 +425,7 @@ def build_picking_list_payload(
         "vehicle_number": (vehicle_no or "").strip(),
         "assigned_location": _assigned_location_label(loc),
         "zone": zone,
-        "printed_at": datetime.now().strftime("%d/%m/%Y"),
+        "printed_at": vn_now().strftime("%d/%m/%Y"),
         "extracted": batch,
         "form_code": resolved_form_code,
         "sheets": _build_picking_sheets(pending),

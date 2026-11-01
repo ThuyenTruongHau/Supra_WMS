@@ -34,6 +34,45 @@ export interface InboundOrderListResponse {
   summary: OrderListSummary;
 }
 
+export type InboundProgressStatusBucket = "waiting" | "running" | "completed" | "attention";
+
+export interface InboundProgressCounts {
+  waiting: number;
+  running: number;
+  completed: number;
+  attention: number;
+}
+
+export interface InboundProgressItemRow {
+  item_id: number | null;
+  sku: string | null;
+  item_name: string | null;
+  total_quantity: number;
+  waiting_quantity: number;
+  running_quantity: number;
+  completed_quantity: number;
+  attention_quantity: number;
+  completion_percent: number;
+}
+
+export interface InboundOrderProgressResponse {
+  commands: InboundProgressCounts;
+  quantity: InboundProgressCounts;
+  vehicles: string[];
+  items: InboundProgressItemRow[];
+}
+
+export interface InboundProgressItemDetailRow {
+  detail_id: number;
+  status: string;
+  progress_status: InboundProgressStatusBucket;
+  to_location_code: string | null;
+  to_location_name: string | null;
+  vehicle_no: string | null;
+  quantity: number;
+  unit_name: string | null;
+}
+
 export interface InboundOperatorListSummaryRequest {
   order_ids: number[];
   item_id?: number;

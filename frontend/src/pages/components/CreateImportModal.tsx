@@ -1,3 +1,4 @@
+import { formatVietnamDateTime, vietnamTime } from "@/utils/vietnamTime";
 import { useEffect, useMemo, useState } from "react";
 import {
   Modal,
@@ -261,7 +262,7 @@ export default function CreateImportModal({
       setDetailEntries(detailsToEntries(initialDetails));
       setOriginalGroups(seed);
     } else {
-      setOrderCode(`IN-${dayjs().format("YYYYMMDD-HHmmss")}`);
+      setOrderCode(`IN-${vietnamTime().format("YYYYMMDD-HHmmss")}`);
       setNote("");
       setDetailEntries([]);
       setOriginalGroups([]);
@@ -1150,7 +1151,7 @@ export default function CreateImportModal({
         key: "expiry",
         width: 130,
         render: (_: unknown, i: ImportItemDraft) =>
-          i.expiry_date ? dayjs(i.expiry_date).format("DD/MM/YYYY") : "—",
+          i.expiry_date ? formatVietnamDateTime(i.expiry_date, "DD/MM/YYYY") : "—",
       },
     ];
 

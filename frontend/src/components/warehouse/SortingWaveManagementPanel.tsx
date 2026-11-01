@@ -1,3 +1,4 @@
+import { formatVietnamDateTime } from "@/utils/vietnamTime";
 import { useMemo, useState } from "react";
 import type { ColumnsType } from "antd/es/table";
 import {
@@ -7,7 +8,6 @@ import {
   DeleteOutlined,
   EnvironmentOutlined,
 } from "@ant-design/icons";
-import dayjs from "dayjs";
 import { useQuery } from "@tanstack/react-query";
 import {
   Button,
@@ -63,7 +63,7 @@ const FIELD_META: Record<
 
 function formatDateTime(value?: string | null): string {
   if (!value) return "—";
-  return dayjs(value).format("DD/MM/YYYY HH:mm");
+  return formatVietnamDateTime(value);
 }
 
 function formatStationCodes(

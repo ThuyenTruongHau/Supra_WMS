@@ -82,6 +82,13 @@ class RobotDataApiTests(unittest.TestCase):
         self.assertEqual(self.client.get(self.url).status_code, 403)
         self.assertEqual(self.client.post(self.url, json=self.robots).status_code, 200)
 
+    def test_speed_is_preserved_from_rcs_to_frontend(self):
+        for speed in ["", "0", "0.75", 0, 1.2, None]:
+            with self.subTest(speed=speed):
+                payload = [{**self.robots[0], "speed": speed}]
+                self.assertEqual(self.client.post(self.url, json=payload).status_code, 200)
+                self.assertEqual(self.client.get(self.url).json(), payload)
+
     def test_snapshot_replaces_previous_robots_and_can_be_cleared(self):
         self.client.post(self.url, json=self.robots)
         replacement = [{"deviceCode": "EE49822BAK00002", "state": "InCharging"}]

@@ -39,9 +39,12 @@ from app.modules.warehouse.outbound_order.outbound_order_schema import (
     OperatorBoardTripRow,
     OperatorBoardLinesResponse,
     OperatorBoardLineRow,
+    OutboundOrderProgressResponse,
+    OutboundProgressGroupDetailRow,
 )
 from app.modules.warehouse.outbound_order import outbound_order_service
 from app.modules.warehouse.outbound_order import outbound_operator_board_service
+from app.modules.warehouse.outbound_order import outbound_order_progress_service
 from app.modules.warehouse.outbound_order.outbound_celery_task import (
     calculate_outbound_order_task,
     create_outbound_order_task,
@@ -322,6 +325,47 @@ def get_outbound_manual_allocation_tasks(order_id: int):
             status_code=404, detail="Manual allocation tasks not found"
         )
     return tasks
+
+
+@router.get(
+    "/outbound-orders/id/{order_id}/progress/group-details",
+    response_model=list[OutboundProgressGroupDetailRow],
+    dependencies=[Depends(_OUTBOUND_READ)],
+)
+def get_outbound_order_progress_group_details(
+    order_id: int,
+    db: DbSession,
+    dimension: str = Query(..., min_length=1),
+    key: str = Query(..., min_length=1),
+):
+    allowed = {"vehicle", "sku", "split_position", "split_zone"}
+    dim = dimension.strip().lower()
+    if dim not in allowed:
+        raise HTTPException(
+            status_code=400,
+            detail=f"dimension must be one of: {', '.join(sorted(allowed))}",
+        )
+    rows = outbound_order_progress_service.list_outbound_progress_group_details(
+        db,
+        order_id,
+        dimension=dim,  # type: ignore[arg-type]
+        key=key,
+    )
+    if rows is None:
+        raise HTTPException(status_code=404, detail="Outbound order not found")
+    return rows
+
+
+@router.get(
+    "/outbound-orders/id/{order_id}/progress",
+    response_model=OutboundOrderProgressResponse,
+    dependencies=[Depends(_OUTBOUND_READ)],
+)
+def get_outbound_order_progress(order_id: int, db: DbSession):
+    progress = outbound_order_progress_service.get_outbound_order_progress(db, order_id)
+    if progress is None:
+        raise HTTPException(status_code=404, detail="Outbound order not found")
+    return progress
 
 
 @router.get(

@@ -1,3 +1,4 @@
+import { vietnamTime } from "@/utils/vietnamTime";
 import React, {
   useRef,
   useState,
@@ -32,10 +33,18 @@ import { useCreateOutboundOrder } from "@/hooks/useOutbound";
 import type { OutboundOrderLineItemCreate } from "@/types/outbound";
 import { buildMasanOutboundCreateRequest } from "@/utils/masanOutboundImport";
 import { collectMasanExcelLotErrors } from "@/utils/masanExcelLot";
-import { collectMasanOutboundImportBlockers } from "@/utils/masanOutboundImportErrors";
+import {
+  collectMasanOutboundImportBlockers,
+  isMasanOutboundImportBlocked,
+  isMasanStockShortageWarning,
+} from "@/utils/masanOutboundImportErrors";
+import { MasanOutboundImportBlocker } from "@/components/outbound/MasanOutboundImportBlocker";
+import { downloadMasanInboundShortageWorkbook } from "@/utils/masanInboundShortageFile";
 import { toDisplayInteger } from "@/utils/number";
-import dayjs from "dayjs";
-import type { MasanOutboundParseResponse } from "@/types/masanOutbound";
+import type {
+  MasanOutboundParseResponse,
+  MasanOutboundStockShortage,
+} from "@/types/masanOutbound";
 import {
   OUTBOUND_DISPLAY_ZONES,
   type OutboundDisplayZone,
@@ -184,9 +193,14 @@ export default React.memo(function SortingWaveOverviewPicker({
   const [importPreviewRows, setImportPreviewRows] = useState<
     MasanOutboundPreviewRow[]
   >([]);
-  const [importWarnings, setImportWarnings] = useState<{ message: string }[]>(
-    [],
-  );
+  const [importBlockerDialog, setImportBlockerDialog] = useState<{
+    lines: string[];
+    shortages: MasanOutboundStockShortage[];
+    allowProceed: boolean;
+  } | null>(null);
+  const [pendingShortageParse, setPendingShortageParse] =
+    useState<MasanOutboundParseResponse | null>(null);
+  const [lastParseAllowed, setLastParseAllowed] = useState(true);
 
   const [sortingZone, setSortingZone] = useState<OutboundDisplayZone | null>(
     null,
@@ -262,9 +276,12 @@ export default React.memo(function SortingWaveOverviewPicker({
   }, []);
 
   const resetImportState = () => {
+    setIsImportPreviewOpen(false);
+    setImportBlockerDialog(null);
+    setPendingShortageParse(null);
+    setLastParseAllowed(true);
     setImportLineItems([]);
     setImportPreviewRows([]);
-    setImportWarnings([]);
   };
 
   const closeImportPreview = () => {
@@ -318,28 +335,34 @@ export default React.memo(function SortingWaveOverviewPicker({
         return;
       }
 
-      const importBlockers = collectMasanOutboundImportBlockers(result);
-      if (importBlockers.length > 0) {
-        Modal.error({
-          title: "Không thể import — lỗi tồn / Locator",
-          width: OPERATOR_DESKTOP.modal.sm,
-          destroyOnHidden: true,
-          content: (
-            <ul
-              className={`mt-2 ${operatorDesktopClass.listMax64} list-disc space-y-1 overflow-y-auto pl-5 text-sm`}
-            >
-              {importBlockers.map((line) => (
-                <li key={line}>{line}</li>
-              ))}
-            </ul>
-          ),
+      if (isMasanStockShortageWarning(result)) {
+        const shortages = result.stock_shortages ?? [];
+        downloadMasanInboundShortageWorkbook(shortages);
+        setPendingShortageParse(result);
+        setImportBlockerDialog({
+          lines: [],
+          shortages,
+          allowProceed: true,
         });
         return;
       }
 
+      if (isMasanOutboundImportBlocked(result)) {
+        const importBlockers = collectMasanOutboundImportBlockers(result);
+        setImportBlockerDialog({
+          lines:
+            importBlockers.length > 0
+              ? importBlockers
+              : ["Không thể import file Excel."],
+          shortages: result.stock_shortages ?? [],
+          allowProceed: false,
+        });
+        return;
+      }
+
+      setLastParseAllowed(result.can_import !== false);
       setImportLineItems(result.line_items);
       setImportPreviewRows(result.preview_rows);
-      setImportWarnings(result.warnings.map((w) => ({ message: w })));
       setIsImportPreviewOpen(true);
     } catch {
       message.error("Không thể đọc file Excel (Lỗi API Masan)");
@@ -348,7 +371,25 @@ export default React.memo(function SortingWaveOverviewPicker({
     }
   };
 
+  const handleProceedAfterShortage = () => {
+    const result = pendingShortageParse;
+    if (!result?.line_items?.length) {
+      message.error("Không có dữ liệu để tạo phiên xuất");
+      return;
+    }
+    setImportBlockerDialog(null);
+    setPendingShortageParse(null);
+    setLastParseAllowed(true);
+    setImportLineItems(result.line_items);
+    setImportPreviewRows(result.preview_rows);
+    setIsImportPreviewOpen(true);
+  };
+
   const handleConfirmImport = async () => {
+    if (!lastParseAllowed) {
+      message.error("File import bị chặn do lỗi tồn/Locator");
+      return;
+    }
     if (importLineItems.length === 0) {
       message.error("Không có dữ liệu để import");
       return;
@@ -365,9 +406,9 @@ export default React.memo(function SortingWaveOverviewPicker({
         total_rows: importPreviewRows.length,
         valid_rows: importLineItems.length,
         invalid_rows: importPreviewRows.filter((row) => row.error).length,
-        warnings: importWarnings.map((w) => w.message),
+        warnings: [],
       };
-      const orderCode = `OUT-${dayjs().format("YYYYMMDD-HHmmss")}`;
+      const orderCode = `OUT-${vietnamTime().format("YYYYMMDD-HHmmss")}`;
       const outboundType = resolveOutboundType(warehouseId);
       await createOutboundOrderMutation.mutateAsync({
         outboundType,
@@ -533,9 +574,49 @@ export default React.memo(function SortingWaveOverviewPicker({
       ) : null}
 
       <Modal
+        open={importBlockerDialog != null}
+        onCancel={() => setImportBlockerDialog(null)}
+        width={OPERATOR_DESKTOP.modal.sm}
+        zIndex={2100}
+        title={
+          importBlockerDialog?.allowProceed
+            ? "Xác nhận import"
+            : "Không thể import — lỗi tồn / Locator"
+        }
+        footer={
+          <Space>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setImportBlockerDialog(null);
+                setPendingShortageParse(null);
+              }}
+            >
+              Hủy
+            </Button>
+            {importBlockerDialog?.allowProceed ? (
+              <Button variant="primary" onClick={handleProceedAfterShortage}>
+                Xác nhận
+              </Button>
+            ) : null}
+          </Space>
+        }
+      >
+        {importBlockerDialog ? (
+          <MasanOutboundImportBlocker
+            lines={importBlockerDialog.lines}
+            shortages={importBlockerDialog.shortages}
+            confirmOnly={importBlockerDialog.allowProceed}
+            listClassName={`mt-2 ${operatorDesktopClass.listMax64} list-disc space-y-1 overflow-y-auto pl-5 text-sm`}
+          />
+        ) : null}
+      </Modal>
+
+      <Modal
         open={isImportPreviewOpen}
         onCancel={closeImportPreview}
         width={OPERATOR_DESKTOP.modal.xl}
+        zIndex={2000}
         title={`Xem trước import Excel`}
         footer={
           <Space>
@@ -552,16 +633,6 @@ export default React.memo(function SortingWaveOverviewPicker({
           </Space>
         }
       >
-        {importWarnings.length > 0 && (
-          <div className="mb-4 rounded border border-warning-200 bg-warning-50 p-3 text-sm text-warning-800">
-            <h4 className="font-bold">Cảnh báo:</h4>
-            <ul className="mt-1 list-disc pl-5">
-              {importWarnings.map((w, i) => (
-                <li key={i}>{w.message}</li>
-              ))}
-            </ul>
-          </div>
-        )}
         <Table
           dataSource={importPreviewRows}
           columns={importPreviewColumns}

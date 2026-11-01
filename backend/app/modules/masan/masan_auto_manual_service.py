@@ -452,5 +452,6 @@ def callback(db, task, payload, operation):
             cycle.phase = "supplying" if command.kind == "pick" else "returning"
         db.commit()
         log(control, "callback", cycle, task, mapped)
-    auto.wake()
+    if mapped in {"completed", "failed", "cancelled"}:
+        auto.wake()
     return result

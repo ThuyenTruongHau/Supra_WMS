@@ -154,6 +154,16 @@ class MasanOutboundLineItem(BaseModel):
     details: dict[str, Any] = Field(default_factory=dict)
 
 
+class MasanOutboundStockShortage(BaseModel):
+    """Mã không có Locator mà tổng SL file vượt Item.quantity."""
+
+    sku: str
+    item_name: Optional[str] = None
+    on_hand: int
+    demanded: int
+    shortage: int
+
+
 class MasanOutboundParseResponse(BaseModel):
     preview_rows: list[MasanOutboundPreviewRow]
     line_items: list[MasanOutboundLineItem]
@@ -164,6 +174,7 @@ class MasanOutboundParseResponse(BaseModel):
     """False khi có lỗi locator/tồn chặn tạo đơn — FE vẫn nhận preview_rows."""
     can_import: bool = True
     import_errors: list[str] = Field(default_factory=list)
+    stock_shortages: list[MasanOutboundStockShortage] = Field(default_factory=list)
 
 
 class MasanCcLocationLine(BaseModel):

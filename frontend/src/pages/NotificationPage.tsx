@@ -1,3 +1,4 @@
+import { formatVietnamDateTime } from "@/utils/vietnamTime";
 import { useEffect, useState } from "react";
 import { Tag } from "antd";
 import { Card, Table } from "@/components/ui";
@@ -5,7 +6,6 @@ import type { ColumnsType } from "antd/es/table";
 import { useAppStore } from "@/store/useAppStore";
 import { useNotifications } from "@/hooks/useNotification";
 import type { Notification, NotificationType } from "@/types/notification";
-import dayjs from "dayjs";
 
 function renderSeverityTag(type: NotificationType | string) {
   if (type === "alert") {
@@ -40,7 +40,7 @@ const TABLE_CLASS =
 
 function formatDate(date?: string | null) {
   if (!date) return "—";
-  return dayjs(date).format("DD/MM/YYYY HH:mm");
+  return formatVietnamDateTime(date);
 }
 
 export default function NotificationPage() {

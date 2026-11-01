@@ -15,6 +15,9 @@ import type {
   OutboundRobotTaskExecuteRequest,
   ExecuteQrManualRequest,
   ExecuteQrManualResponse,
+  OutboundOrderProgressResponse,
+  OutboundProgressDimension,
+  OutboundProgressGroupDetailRow,
 } from "@/types/outbound";
 
 const BASE = "/api/v1/outbound-orders";
@@ -42,6 +45,26 @@ export const getOutboundOrderDetailsApi = async (
 ): Promise<OutboundOrderDetail[]> => {
   const { data } = await axiosInstance.get<OutboundOrderDetail[]>(
     `${BASE}/id/${orderId}/details`,
+  );
+  return data;
+};
+
+export const getOutboundOrderProgressApi = async (
+  orderId: number,
+): Promise<OutboundOrderProgressResponse> => {
+  const { data } = await axiosInstance.get<OutboundOrderProgressResponse>(
+    `${BASE}/id/${orderId}/progress`,
+  );
+  return data;
+};
+
+export const getOutboundOrderProgressGroupDetailsApi = async (
+  orderId: number,
+  params: { dimension: OutboundProgressDimension; key: string },
+): Promise<OutboundProgressGroupDetailRow[]> => {
+  const { data } = await axiosInstance.get<OutboundProgressGroupDetailRow[]>(
+    `${BASE}/id/${orderId}/progress/group-details`,
+    { params },
   );
   return data;
 };

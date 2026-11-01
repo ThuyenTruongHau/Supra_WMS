@@ -8,6 +8,8 @@ import type {
   InboundOrder,
   InboundOrderCreateRequest,
   InboundOrderDetail,
+  InboundOrderProgressResponse,
+  InboundProgressItemDetailRow,
   InboundOrderDeleteResponse,
   InboundOrderListResponse,
   InboundOperatorListSummaryRequest,
@@ -39,6 +41,26 @@ export const getInboundOrderDetailsApi = async (
 ): Promise<InboundOrderDetail[]> => {
   const { data } = await axiosInstance.get<InboundOrderDetail[]>(
     `${BASE}/${encodeURIComponent(orderCode)}/details`,
+  );
+  return data;
+};
+
+export const getInboundOrderProgressApi = async (
+  orderCode: string,
+): Promise<InboundOrderProgressResponse> => {
+  const { data } = await axiosInstance.get<InboundOrderProgressResponse>(
+    `${BASE}/${encodeURIComponent(orderCode)}/progress`,
+  );
+  return data;
+};
+
+export const getInboundOrderProgressItemDetailsApi = async (
+  orderCode: string,
+  params: { item_id?: number; sku?: string },
+): Promise<InboundProgressItemDetailRow[]> => {
+  const { data } = await axiosInstance.get<InboundProgressItemDetailRow[]>(
+    `${BASE}/${encodeURIComponent(orderCode)}/progress/item-details`,
+    { params },
   );
   return data;
 };

@@ -1,3 +1,4 @@
+import { formatVietnamDateTime } from "@/utils/vietnamTime";
 import { useEffect, useState } from "react";
 import type { ColumnsType } from "antd/es/table";
 import { PrinterOutlined } from "@ant-design/icons";
@@ -13,7 +14,6 @@ import { SkuSearchSelect } from "@/components/shared/SkuSearchSelect";
 import { useRecentQrCodes } from "@/hooks/useItem";
 import { useAppStore } from "@/store/useAppStore";
 import type { QRCodeRecent, QRCodeStatus } from "@/types/item";
-import dayjs from "dayjs";
 import QrCodeGeneratePrintModal from "@/pages/components/QrCodeGeneratePrintModal";
 import { translateQrType } from "@/i18n/qrTypeLabels.vi";
 
@@ -40,7 +40,7 @@ const QR_STATUS_STYLES: Record<QRCodeStatus, string> = {
 
 function formatDateTime(date?: string | null) {
   if (!date) return "—";
-  return dayjs(date).format("DD/MM/YYYY HH:mm");
+  return formatVietnamDateTime(date);
 }
 
 function QRCodeStatusTag({ status }: { status: QRCodeStatus }) {
