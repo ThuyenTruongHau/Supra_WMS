@@ -235,6 +235,66 @@ class OutboundRemainingQuantityTests(unittest.TestCase):
             self.dispatch()
         self.assertEqual([a.quantity for a in self.allocated() if a.status == "issued"], [12])
 
+    def test_items_needed_by_vehicle_single_bucket(self):
+        payload = masan.get_items_needed_to_sorting_by_vehicle(self.db, 1, "Zone_CC_01")
+        self.assertEqual(len(payload["vehicles"]), 1)
+        row = payload["vehicles"][0]
+        self.assertEqual(row["vehicle_no"], "TEST")
+        self.assertEqual(row["items"][0]["total_quantity"], 19)
+        self.assertEqual(row["line_count"], 1)
+
+    def test_items_needed_by_vehicle_excludes_completed_and_merges_same_plate(self):
+        self.put(
+            "outbound_order_detail",
+            id=2,
+            outbound_order_id=1,
+            item_id=1,
+            quantity=5,
+            unit="Thung",
+            detail_type="auto",
+            details={"vehicle_no": "OTHER"},
+        )
+        self.put("location", id=105, location_name="CC02", location_code="CC02-NODE", zone_id=2, warehouse_id=1)
+        self.db.commit()
+        self.cache["outbound:assigned_cc_location:1:105"] = {
+            "zone": "Zone_CC_01",
+            "outbound_order_id": 1,
+            "vehicle_number": "OTHER",
+            "lines": [
+                {"detail_id": 2, "outbound_order_id": 1, "item_id": 1, "quantity": 5},
+            ],
+        }
+        self.allocation("completed", 19)
+        payload = masan.get_items_needed_to_sorting_by_vehicle(self.db, 1, "Zone_CC_01")
+        by_plate = {row["vehicle_no"]: row for row in payload["vehicles"]}
+        self.assertNotIn("TEST", by_plate)
+        self.assertEqual(by_plate["OTHER"]["items"][0]["total_quantity"], 5)
+        self.put(
+            "outbound_order_detail",
+            id=3,
+            outbound_order_id=1,
+            item_id=1,
+            quantity=3,
+            unit="Thung",
+            detail_type="auto",
+            details={"vehicle_no": "OTHER"},
+        )
+        self.db.commit()
+        self.cache["outbound:assigned_cc_location:1:106"] = {
+            "zone": "Zone_CC_01",
+            "outbound_order_id": 1,
+            "vehicle_number": "OTHER",
+            "lines": [
+                {"detail_id": 3, "outbound_order_id": 1, "item_id": 1, "quantity": 3},
+            ],
+        }
+        self.put("location", id=106, location_name="CC03", location_code="CC03-NODE", zone_id=2, warehouse_id=1)
+        self.db.commit()
+        payload = masan.get_items_needed_to_sorting_by_vehicle(self.db, 1, "Zone_CC_01")
+        other = next(row for row in payload["vehicles"] if row["vehicle_no"] == "OTHER")
+        self.assertEqual(other["items"][0]["total_quantity"], 8)
+        self.assertEqual(other["line_count"], 2)
+
 
 if __name__ == "__main__":
     unittest.main()

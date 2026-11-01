@@ -23,6 +23,7 @@ import {
   robotReportRange,
   robotReportToday,
 } from '@/utils/robotPerformance'
+import StorageOccupancyCard from '@/components/reports/StorageOccupancyCard'
 
 const KINDS = [
   { key: 'inbound', label: 'Nhập', color: '#3aa6a6' },
@@ -245,11 +246,14 @@ export default function RobotPerformanceReport({
                         <p className="mt-2 text-2xl font-bold text-brand-dark">
                           {card.value}
                         </p>
-                        <p className="mt-2 text-xs text-slate-500">
-                          {card.hint}
-                        </p>
+                        {card.hint ? (
+                          <p className="mt-2 text-xs text-slate-500">
+                            {card.hint}
+                          </p>
+                        ) : null}
                       </Card>
                     ))}
+                    <StorageOccupancyCard warehouseId={warehouseId} layout="kpi" />
                   </div>
                   {!hasTasks ? (
                     <Card className="p-8 text-center text-slate-500">

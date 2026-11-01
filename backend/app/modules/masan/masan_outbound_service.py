@@ -1304,6 +1304,9 @@ def assign_cc_zone(db: Session, warehouse_id: int) -> None:
         if vehicle_number not in reversed_vehicles_list:
             reversed_vehicles_list.append(vehicle_number)
 
+    # assign both side
+    # code = _assigning_algorithm(db, list_details, available_locations)
+
     i = 0
     while i < len(available_locations) and i < len(reversed_vehicles_list):
         key = f"outbound:assigned_cc_location:{warehouse_id}:{available_locations[i].id}"
@@ -1319,33 +1322,61 @@ def assign_cc_zone(db: Session, warehouse_id: int) -> None:
         cache_set(key, {"outbound_order_id": outbound_order_id, "zone": available_locations[i].zone.code, "vehicle_number": reversed_vehicles_list[i], "lines": lines}, -1)
         i += 1
 
-# def _assigning_algorithm(db: Session, list_details: list[OutboundOrderDetail]) -> None:
-#     zone_ccs = settings.zone_cc
+def _assigning_algorithm(db: Session, list_details: list[OutboundOrderDetail], available_locations: list[Location]) -> None:
+    zone_ccs = settings.zone_cc
 
-#     assign_cc_by_zone: dict[str, dict[str, list]] = defaultdict(lambda: defaultdict(list))
-#     quantity_by_item_id: dict[int, int] = defaultdict(int)
-#     details_by_item_id: dict[int, list] = defaultdict(list)
+    assign_cc_by_zone: dict[str, dict[str, list]] = defaultdict(lambda: defaultdict(list))
+    quantity_by_item_id: dict[int, int] = defaultdict(int)
+    details_by_item_id: dict[int, dict[str, list]] = defaultdict(lambda: defaultdict(list))
+    available_locations_by_zone: dict[str, list[Location]] = defaultdict(list)
 
-#     temp = {zone: 0 for zone in zone_ccs}
+    temp = {zone: 0 for zone in zone_ccs}
 
-#     for detail in list_details:
-#         quantity_by_item_id[detail.item_id] += detail.quantity
+    for detail in list_details:
+        quantity_by_item_id[detail.item_id] += detail.quantity
 
-#         meta = detail.details if isinstance(detail.details, dict) else {}
-#         raw = meta.get("vehicle_no")
-#         vehicle_number = str(raw).strip() if raw is not None else ""
-#         if not vehicle_number:
-#             vehicle_number = "no_vehicle"
-#         line = _detail_to_cache_line(detail)
+        meta = detail.details if isinstance(detail.details, dict) else {}
+        raw = meta.get("vehicle_no")
+        vehicle_number = str(raw).strip() if raw is not None else ""
+        if not vehicle_number:
+            vehicle_number = "no_vehicle"
+        line = _detail_to_cache_line(detail)
 
-#         details_by_item_id[detail.item_id][vehicle_number].append(line)
+        details_by_item_id[detail.item_id][vehicle_number].append(line)
 
-#     for item_id, quantity in quantity_by_item_id.items():
-#         lowest_zone = min(temp, key=temp.get)
-#         temp[lowest_zone] += quantity
-#         for vehicle_number, lines in details_by_item_id[item_id].items():
-#             assign_cc_by_zone[lowest_zone][vehicle_number].extend(lines)
+    for location in available_locations:
+        available_locations_by_zone[location.zone.code].append(location)
 
+    for item_id, quantity in quantity_by_item_id.items():
+        lowest_zone = min(temp, key=temp.get)
+        temp[lowest_zone] += quantity
+        for vehicle_number, lines in details_by_item_id[item_id].items():
+            assign_cc_by_zone[lowest_zone][vehicle_number].extend(lines)
+
+    for zone_code in assign_cc_by_zone:
+        if not available_locations_by_zone[zone_code]:
+            continue
+        else:
+            for vehicle_number, lines in assign_cc_by_zone[zone_code].items():
+                if len(available_locations_by_zone[zone_code]) <= 0:
+                    break
+                location = available_locations_by_zone[zone_code][0]
+                available_locations_by_zone[zone_code].pop(0)
+                assign_to_cache(location.warehouse_id, zone_code, location.id, vehicle_number, lines)
+    
+    return {"code": 1000}
+
+def assign_to_cache(warehouse_id: int, zone_code: str, location_id: int, vehicle_number: str, lines: list):
+    key = f"outbound:assigned_cc_location:{warehouse_id}:{location_id}"
+    outbound_order_id = lines[0].get("outbound_order_id")
+    logger.info(f"Outbound order ID: {outbound_order_id}")
+    for line in lines:
+        cache_data = {
+            "zone": zone_code,
+            "location_id": location_id, 
+        }
+        cache_set(f"outbound:assigned_cc_details:{warehouse_id}:{line['detail_id']}", cache_data, -1)
+    cache_set(key, {"outbound_order_id": outbound_order_id, "zone": zone_code, "vehicle_number": vehicle_number, "lines": lines}, -1)
 
 def clear_completed_cc_assignments(
     db: Session, warehouse_id: int, *, order_id: int | None = None,
@@ -1705,6 +1736,99 @@ def get_item_needed_to_sorting(
         "return_tasks": by_task,
     }
 
+
+def _normalize_cc_bucket_vehicle(raw: Any) -> str:
+    if raw is None:
+        return "no_vehicle"
+    cleaned = str(raw).strip()
+    return cleaned or "no_vehicle"
+
+
+def get_items_needed_to_sorting_by_vehicle(
+    db: Session, warehouse_id: int, zone: str
+) -> dict[str, Any]:
+    detail_to_vehicle: dict[int, str] = {}
+    keys = cache_scan_keys(f"outbound:assigned_cc_location:{warehouse_id}:*")
+    for key in keys:
+        suffix = key.rsplit(":", 1)[-1]
+        if not suffix.isdigit():
+            continue
+        bucket = cache_get(f"outbound:assigned_cc_location:{warehouse_id}:{int(suffix)}")
+        if not bucket or bucket.get("zone") != zone:
+            continue
+        vehicle_key = _normalize_cc_bucket_vehicle(bucket.get("vehicle_number"))
+        for line in bucket.get("lines") or []:
+            raw_id = line.get("detail_id")
+            if raw_id is None:
+                continue
+            detail_to_vehicle[int(raw_id)] = vehicle_key
+
+    if not detail_to_vehicle:
+        return {"warehouse_id": warehouse_id, "zone": zone, "vehicles": []}
+
+    detail_rows = (
+        db.query(OutboundOrderDetail)
+        .filter(OutboundOrderDetail.id.in_(list(detail_to_vehicle.keys())))
+        .all()
+    )
+    active_details = [row for row in detail_rows if row.status != "completed"]
+
+    qty_by_vehicle_item: dict[tuple[str, int], int] = defaultdict(int)
+    line_count_by_vehicle: dict[str, int] = defaultdict(int)
+    item_ids_order: dict[str, list[int]] = defaultdict(list)
+
+    for detail in active_details:
+        vehicle_key = detail_to_vehicle.get(detail.id)
+        if vehicle_key is None:
+            continue
+        item_id = detail.item_id
+        qty_by_vehicle_item[(vehicle_key, item_id)] += int(detail.quantity or 0)
+        line_count_by_vehicle[vehicle_key] += 1
+        if item_id not in item_ids_order[vehicle_key]:
+            item_ids_order[vehicle_key].append(item_id)
+
+    all_item_ids = {item_id for (_, item_id) in qty_by_vehicle_item}
+    item_by_id: dict[int, Item] = {}
+    if all_item_ids:
+        for row in (
+            db.query(Item)
+            .filter(Item.id.in_(list(all_item_ids)), Item.warehouse_id == warehouse_id)
+            .all()
+        ):
+            item_by_id[row.id] = row
+
+    vehicles_payload: list[dict[str, Any]] = []
+    for vehicle_key in sorted(line_count_by_vehicle.keys()):
+        items_payload: list[dict[str, Any]] = []
+        for item_id in item_ids_order[vehicle_key]:
+            item = item_by_id.get(item_id)
+            if not item:
+                continue
+            items_payload.append(
+                {
+                    "item_id": item_id,
+                    "sku": item.sku,
+                    "item_name": item.name,
+                    "total_quantity": qty_by_vehicle_item[(vehicle_key, item_id)],
+                }
+            )
+        if not items_payload:
+            continue
+        vehicles_payload.append(
+            {
+                "vehicle_no": vehicle_key,
+                "items": items_payload,
+                "line_count": line_count_by_vehicle[vehicle_key],
+            }
+        )
+
+    return {
+        "warehouse_id": warehouse_id,
+        "zone": zone,
+        "vehicles": vehicles_payload,
+    }
+
+
 # def sending_masan_outbound_task(db: Session, warehouse_id: int, zone: str, item_id: int, to_location_id: int):
 #     target = db.query(Location).filter(
 #         Location.id == to_location_id,
@@ -1872,14 +1996,14 @@ def get_item_needed_to_sorting(
 #         "lacked": all_lacked,
 #     }    
 
-def sending_masan_outbound_task(db: Session, warehouse_id: int, zone: str, item_id: int, to_location_id: int):
+def sending_masan_outbound_task(db: Session, warehouse_id: int, zone: str, item_id: int, to_location_id: int, vehicle_no: Optional[str] = None):
     from app.modules.masan.masan_auto_service import warehouse_lock, guard_manual_locations
     with warehouse_lock(db, warehouse_id):
         guard_manual_locations(db, warehouse_id, {to_location_id})
-        return _sending_masan_outbound_task(db, warehouse_id, zone, item_id, to_location_id)
+        return _sending_masan_outbound_task(db, warehouse_id, zone, item_id, to_location_id, vehicle_no)
 
 
-def _sending_masan_outbound_task(db: Session, warehouse_id: int, zone: str, item_id: int, to_location_id: int):
+def _sending_masan_outbound_task(db: Session, warehouse_id: int, zone: str, item_id: int, to_location_id: int, vehicle_no: Optional[str] = None):
     from app.modules.masan.masan_auto_manual_service import context, prepare_dispatch
     if context(db) is not None:
         return prepare_dispatch(db, warehouse_id, zone, item_id, to_location_id)
@@ -1899,6 +2023,8 @@ def _sending_masan_outbound_task(db: Session, warehouse_id: int, zone: str, item
                 lines = bucket.get("lines") or []
                 for line in lines:
                     if line.get("item_id") == item_id:
+                        if vehicle_no is not None and bucket.get("vehicle_number") != vehicle_no:
+                            continue
                         if line.get("locator") is not None:
                             has_lo_lines.append(line["detail_id"])
                         else:
@@ -1906,12 +2032,12 @@ def _sending_masan_outbound_task(db: Session, warehouse_id: int, zone: str, item
 
     list_lines_db = db.query(OutboundOrderDetail).filter(
         OutboundOrderDetail.id.in_(list_lines),
-        OutboundOrderDetail.status == "initialize"
+        OutboundOrderDetail.status == "initialize",
     ).all()
 
     has_lo_lines_db = db.query(OutboundOrderDetail).filter(
         OutboundOrderDetail.id.in_(has_lo_lines),
-        OutboundOrderDetail.status == "initialize"
+        OutboundOrderDetail.status == "initialize",
     ).all()
 
     results: list[dict[str, Any]] = []
@@ -2016,7 +2142,8 @@ def _sending_masan_outbound_task(db: Session, warehouse_id: int, zone: str, item
         .order_by(OutboundOrderAllocation.id)
         .first()
     )
-
+    
+        
     # logger.info(f"Picked allocation: {picked_allocation.model_dump()}")
 
     if not picked_allocation:

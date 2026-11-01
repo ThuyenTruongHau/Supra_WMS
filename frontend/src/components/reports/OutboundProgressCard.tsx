@@ -17,6 +17,7 @@ import type {
   OutboundProgressStatusBucket,
 } from '@/types/outbound'
 import { formatVietnamDateTime } from '@/utils/vietnamTime'
+import { useAuthStore } from '@/store/useAuthStore'
 
 const POLL_INTERVAL_MS = 5_000
 const CARD_PAGE_SIZE = 6
@@ -165,6 +166,7 @@ function dimensionLabel(dimension: OutboundProgressDimension) {
 }
 
 export default function OutboundProgressCard({ warehouseId }: { warehouseId: number }) {
+  const isAdmin = useAuthStore((s) => s.user?.access?.is_admin === true)
   const [metric, setMetric] = useState<OutboundProgressUIMetric>('commands')
   const [dimension, setDimension] = useState<OutboundProgressDimension>('vehicle')
   const [selectedGroupKey, setSelectedGroupKey] = useState<string | null>(null)
@@ -186,6 +188,7 @@ export default function OutboundProgressCard({ warehouseId }: { warehouseId: num
     staleTime: 0,
   })
   const order = latestQuery.data
+  const outboundActionHref = order && isAdmin ? `/export/${order.id}` : '/export'
 
   const progressQuery = useQuery({
     queryKey: ['outboundOrderProgress', order?.id],
@@ -546,7 +549,7 @@ export default function OutboundProgressCard({ warehouseId }: { warehouseId: num
         ) : null}
 
         <Link
-          to={order ? `/export/${order.id}` : '/export'}
+          to={outboundActionHref}
           className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-brand-primary px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-stripe-primary-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-primary"
         >
           Xem xuất hàng <ArrowRightOutlined />

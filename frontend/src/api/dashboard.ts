@@ -2,6 +2,7 @@ import axiosInstance from "./axiosInstance";
 import { downloadBlobFromResponse } from "@/utils/downloadBlob";
 import type {
   ReportKpiResponse,
+  ReportStorageOccupancyResponse,
   ReportStockAgingBucketResponse,
   ReportStockAgingOverviewResponse,
   ReportTopProductsResponse,
@@ -32,6 +33,16 @@ export const getReportKpisApi = async (
 ): Promise<ReportKpiResponse> => {
   const { data } = await axiosInstance.get<ReportKpiResponse>(
     `${BASE}/report-kpis`,
+    { params: { warehouse_id: warehouseId } },
+  );
+  return data;
+};
+
+export const getReportStorageOccupancyApi = async (
+  warehouseId: number,
+): Promise<ReportStorageOccupancyResponse> => {
+  const { data } = await axiosInstance.get<ReportStorageOccupancyResponse>(
+    `${BASE}/report-storage-occupancy`,
     { params: { warehouse_id: warehouseId } },
   );
   return data;

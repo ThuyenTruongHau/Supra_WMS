@@ -253,7 +253,7 @@ class OutboundProgressBrowserTests(unittest.TestCase):
         expect(panel.get_by_text('Zone chia', exact=True)).to_have_count(0)
         panel.get_by_text('Mã hàng', exact=True).click()
         expect(panel.get_by_label('Tiến độ theo Mã hàng').get_by_text('SKU-A', exact=True)).to_be_visible()
-        expect(panel.get_by_role('link', name='Xem xuất hàng')).to_have_attribute('href', '/export/9')
+        expect(panel.get_by_role('link', name='Xem xuất hàng')).to_have_attribute('href', '/export')
         self.assertEqual(self.errors, [])
 
     def test_sku_drill_down_table(self):

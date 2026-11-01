@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { Segmented } from "antd";
 import OutboundAutoReturns from '@/components/outbound/OutboundAutoReturns';
 import { useOutboundAuto } from '@/hooks/useOutboundAuto';
 import { OUTBOUND_DISPLAY_ZONES } from '@/constants/outboundMapZones';
 import { Button, Modal, Loading, cn, message } from "@/components/ui";
 import { OPERATOR_DESKTOP } from "@/constants/operatorDesktopSizes";
 import { useMasanSortingItemsNeeded } from "@/hooks/useMasanSortingItemsNeeded";
+import { useMasanSortingItemsNeededByVehicle } from "@/hooks/useMasanSortingItemsNeededByVehicle";
 import type { MasanSortingItemNeededRow } from "@/types/masan";
 import { toDisplayInteger } from "@/utils/number";
 import MasanSortingDispatchHistoryPanel from "@/components/outbound/MasanSortingDispatchHistoryPanel";
@@ -23,6 +25,20 @@ import {
   useOperatorViewportTier,
 } from "@/utils/operatorViewportTier";
 
+export type SortingItemsConfirmOptions = {
+  vehicleNo?: string;
+};
+
+type PickMode = "sku" | "vehicle";
+
+function formatVehiclePlateLabel(vehicleNo: string): string {
+  const trimmed = vehicleNo.trim();
+  if (!trimmed || trimmed === "no_vehicle") {
+    return "Chưa có xe";
+  }
+  return trimmed;
+}
+
 type SortingItemsNeededModalProps = {
   open: boolean;
   onClose: () => void;
@@ -31,7 +47,10 @@ type SortingItemsNeededModalProps = {
   title: string;
   subtitle?: string | null;
   zIndex?: number;
-  onConfirmExport?: (items: MasanSortingItemNeededRow[]) => void | Promise<void>;
+  onConfirmExport?: (
+    items: MasanSortingItemNeededRow[],
+    options?: SortingItemsConfirmOptions,
+  ) => void | Promise<void>;
   /** Zone.code VT (Zone_sorting_1 / _2) — lịch sử robot sau khi chọn vị trí. */
   sortingZoneCode: string;
   /** Lọc bảng «Hàng quay đầu» theo vị trí đầu (VT đang chọn). */
@@ -56,7 +75,11 @@ export default function SortingItemsNeededModal({
   const [viewportWidth, setViewportWidth] = useState(
     () => (typeof window !== "undefined" ? window.innerWidth : 1280),
   );
+  const [pickMode, setPickMode] = useState<PickMode>("sku");
   const [selectedItemId, setSelectedItemId] = useState<number | null>(null);
+  const [selectedVehicleNo, setSelectedVehicleNo] = useState<string | null>(
+    null,
+  );
   const [confirming, setConfirming] = useState(false);
 
   useEffect(() => {
@@ -91,18 +114,57 @@ export default function SortingItemsNeededModal({
     isLoading,
     isError,
     refetch,
-  } = useMasanSortingItemsNeeded(warehouseId, ccBucketZoneCode, open);
+  } = useMasanSortingItemsNeeded(
+    warehouseId,
+    ccBucketZoneCode,
+    open && pickMode === "sku",
+  );
+
+  const {
+    data: byVehicleData,
+    isLoading: byVehicleLoading,
+    isError: byVehicleError,
+    refetch: refetchByVehicle,
+  } = useMasanSortingItemsNeededByVehicle(
+    warehouseId,
+    ccBucketZoneCode,
+    open && pickMode === "vehicle",
+  );
 
   const sortingItems = sortingItemsData?.items ?? [];
+  const vehicleRows = byVehicleData?.vehicles ?? [];
+
+  const selectedVehicle = useMemo(
+    () =>
+      selectedVehicleNo == null
+        ? null
+        : vehicleRows.find((row) => row.vehicle_no === selectedVehicleNo) ??
+          null,
+    [selectedVehicleNo, vehicleRows],
+  );
+
+  const vehicleItemChoices = selectedVehicle?.items ?? [];
 
   useEffect(() => {
     if (open) {
+      setPickMode("sku");
       setSelectedItemId(null);
+      setSelectedVehicleNo(null);
     }
   }, [open, ccBucketZoneCode]);
 
+  useEffect(() => {
+    setSelectedItemId(null);
+    setSelectedVehicleNo(null);
+  }, [pickMode]);
+
   const selectItem = useCallback((itemId: number) => {
     setSelectedItemId((prev) => (prev === itemId ? null : itemId));
+  }, []);
+
+  const selectVehicle = useCallback((vehicleNo: string) => {
+    setSelectedVehicleNo((prev) => (prev === vehicleNo ? null : vehicleNo));
+    setSelectedItemId(null);
   }, []);
 
   const handleConfirm = async () => {
@@ -114,11 +176,23 @@ export default function SortingItemsNeededModal({
       message.warning("Chọn một mã hàng");
       return;
     }
-    const picked = sortingItems.filter((row) => row.item_id === selectedItemId);
+    const picked =
+      pickMode === "vehicle"
+        ? vehicleItemChoices.filter((row) => row.item_id === selectedItemId)
+        : sortingItems.filter((row) => row.item_id === selectedItemId);
+    if (pickMode === "vehicle" && (selectedVehicleNo == null || picked.length === 0)) {
+      message.warning("Chọn xe và mã hàng");
+      return;
+    }
     setConfirming(true);
     try {
       if (onConfirmExport) {
-        await onConfirmExport(picked);
+        await onConfirmExport(
+          picked,
+          pickMode === "vehicle" && selectedVehicleNo
+            ? { vehicleNo: selectedVehicleNo }
+            : undefined,
+        );
       } else {
         console.info("[SortingExport]", {
           ccZone: ccBucketZoneCode,
@@ -140,7 +214,69 @@ export default function SortingItemsNeededModal({
   const skuTile = operatorPickSkuTileClass(tier);
   const skuText = operatorPickSkuTextClass(tier);
   const skuQty = operatorPickSkuQtyClass(tier);
-  const showSkuEmpty = !isLoading && !isError && sortingItems.length === 0;
+  const showSkuEmpty =
+    pickMode === "sku" && !isLoading && !isError && sortingItems.length === 0;
+  const showVehicleEmpty =
+    pickMode === "vehicle" &&
+    !byVehicleLoading &&
+    !byVehicleError &&
+    vehicleRows.length === 0;
+
+  const confirmDisabled =
+    auto.manualBlocked ||
+    confirming ||
+    (pickMode === "sku"
+      ? isLoading || sortingItems.length === 0 || selectedItemId == null
+      : byVehicleLoading ||
+        vehicleRows.length === 0 ||
+        selectedVehicleNo == null ||
+        selectedItemId == null);
+
+  const renderSkuGrid = (items: MasanSortingItemNeededRow[]) => (
+    <div className={cn("min-w-0 pr-1", gridClass)}>
+      {items.map((row) => {
+        const selected = selectedItemId === row.item_id;
+        return (
+          <button
+            key={row.item_id}
+            type="button"
+            title={`${row.item_name} · SL ${toDisplayInteger(row.total_quantity)}`}
+            aria-pressed={selected}
+            onClick={() => selectItem(row.item_id)}
+            className={cn(
+              "w-full text-left font-mono transition focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/50 touch-manipulation",
+              skuTile,
+              selected
+                ? "border-brand-primary bg-brand-primary text-white shadow-md"
+                : "border-stripe-hairline bg-panel-soft text-brand-dark hover:border-brand-primary/40 hover:bg-sky-50 active:scale-[0.98]",
+            )}
+          >
+            <span className={cn("block truncate", skuText)}>{row.sku}</span>
+            <span
+              className={cn(
+                "mt-1 block truncate tabular-nums",
+                skuQty,
+                selected ? "text-white/90" : "text-slate-500",
+              )}
+            >
+              SL {toDisplayInteger(row.total_quantity)}
+            </span>
+            {tier !== "narrow" && row.item_name?.trim() ? (
+              <span
+                className={cn(
+                  "mt-0.5 block truncate font-sans font-normal",
+                  tier === "tv" ? "text-sm" : "text-xs",
+                  selected ? "text-white/75" : "text-slate-400",
+                )}
+              >
+                {row.item_name}
+              </span>
+            ) : null}
+          </button>
+        );
+      })}
+    </div>
+  );
 
   return (
     <Modal
@@ -191,9 +327,7 @@ export default function SortingItemsNeededModal({
           <Button
             variant="primary"
             loading={confirming}
-            disabled={
-              isLoading || sortingItems.length === 0 || selectedItemId == null || auto.manualBlocked
-            }
+            disabled={confirmDisabled}
             onClick={() => void handleConfirm()}
             className={footerBtn}
           >
@@ -203,62 +337,117 @@ export default function SortingItemsNeededModal({
       }
     >
       <div className="operator-panel-scroll operator-modal-single-scroll flex min-h-0 min-w-0 flex-1 flex-col gap-4 sm:gap-5">
-        {isLoading ? (
+        <Segmented
+          className="w-full max-w-md shrink-0"
+          value={pickMode}
+          onChange={(value) => setPickMode(value as PickMode)}
+          options={[
+            { label: "Theo mã hàng", value: "sku" },
+            { label: "Theo xe", value: "vehicle" },
+          ]}
+          block
+        />
+
+        {pickMode === "sku" ? (
+          isLoading ? (
+            <div className="flex flex-1 items-center justify-center py-14 sm:py-16">
+              <Loading />
+            </div>
+          ) : isError ? (
+            <div
+              className={cn(
+                "rounded-xl border border-red-200 bg-red-50 px-4 py-8 text-center text-red-700 sm:px-6",
+                bodyText,
+              )}
+            >
+              <p className="font-semibold">Không tải được danh sách hàng.</p>
+              <Button
+                variant="secondary"
+                className={cn("mt-4", footerBtn)}
+                onClick={() => void refetch()}
+              >
+                Thử lại
+              </Button>
+            </div>
+          ) : showSkuEmpty ? (
+            <p
+              className={cn(
+                "py-6 text-center font-medium text-slate-500 sm:py-8",
+                bodyText,
+              )}
+            >
+              Chưa có hàng gán cho khu vực này. Chạy phân ô CC hoặc import phiên
+              xuất trước.
+            </p>
+          ) : (
+            <>
+              <p className={cn("font-medium text-slate-600", bodyText)}>
+                Chọn <span className="font-bold text-brand-dark">một</span> mã
+                hàng cần xuất.
+              </p>
+              {renderSkuGrid(sortingItems)}
+            </>
+          )
+        ) : byVehicleLoading ? (
           <div className="flex flex-1 items-center justify-center py-14 sm:py-16">
             <Loading />
           </div>
-        ) : isError ? (
+        ) : byVehicleError ? (
           <div
             className={cn(
               "rounded-xl border border-red-200 bg-red-50 px-4 py-8 text-center text-red-700 sm:px-6",
               bodyText,
             )}
           >
-            <p className="font-semibold">Không tải được danh sách hàng.</p>
+            <p className="font-semibold">Không tải được danh sách theo xe.</p>
             <Button
               variant="secondary"
               className={cn("mt-4", footerBtn)}
-              onClick={() => void refetch()}
+              onClick={() => void refetchByVehicle()}
             >
               Thử lại
             </Button>
           </div>
-        ) : showSkuEmpty ? (
+        ) : showVehicleEmpty ? (
           <p
             className={cn(
               "py-6 text-center font-medium text-slate-500 sm:py-8",
               bodyText,
             )}
           >
-            Chưa có hàng gán cho khu vực này. Chạy phân ô CC hoặc import phiên
+            Chưa có xe gán cho khu vực này. Chạy phân ô CC hoặc import phiên
             xuất trước.
           </p>
         ) : (
           <>
             <p className={cn("font-medium text-slate-600", bodyText)}>
-              Chọn <span className="font-bold text-brand-dark">một</span> mã
-              hàng cần xuất.
+              Chọn <span className="font-bold text-brand-dark">một</span> xe,
+              rồi chọn mã hàng.
             </p>
             <div className={cn("min-w-0 pr-1", gridClass)}>
-              {sortingItems.map((row) => {
-                const selected = selectedItemId === row.item_id;
+              {vehicleRows.map((row) => {
+                const selected = selectedVehicleNo === row.vehicle_no;
+                const totalQty = row.items.reduce(
+                  (sum, item) => sum + (Number(item.total_quantity) || 0),
+                  0,
+                );
                 return (
                   <button
-                    key={row.item_id}
+                    key={row.vehicle_no}
                     type="button"
-                    title={`${row.item_name} · SL ${toDisplayInteger(row.total_quantity)}`}
+                    title={`${formatVehiclePlateLabel(row.vehicle_no)} · ${row.items.length} mã · SL ${toDisplayInteger(totalQty)}`}
                     aria-pressed={selected}
-                    onClick={() => selectItem(row.item_id)}
+                    onClick={() => selectVehicle(row.vehicle_no)}
                     className={cn(
-                      "w-full text-left font-mono transition focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/50 touch-manipulation",
+                      "w-full text-left transition focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/50 touch-manipulation",
                       skuTile,
                       selected
                         ? "border-brand-primary bg-brand-primary text-white shadow-md"
                         : "border-stripe-hairline bg-panel-soft text-brand-dark hover:border-brand-primary/40 hover:bg-sky-50 active:scale-[0.98]",
                     )}
                   >
-                    <span className={cn("block truncate", skuText)}>
-                      {row.sku}
+                    <span className={cn("block truncate font-semibold", skuText)}>
+                      {formatVehiclePlateLabel(row.vehicle_no)}
                     </span>
                     <span
                       className={cn(
@@ -267,23 +456,23 @@ export default function SortingItemsNeededModal({
                         selected ? "text-white/90" : "text-slate-500",
                       )}
                     >
-                      SL {toDisplayInteger(row.total_quantity)}
+                      {row.items.length} mã · SL {toDisplayInteger(totalQty)}
                     </span>
-                    {tier !== "narrow" && row.item_name?.trim() ? (
-                      <span
-                        className={cn(
-                          "mt-0.5 block truncate font-sans font-normal",
-                          tier === "tv" ? "text-sm" : "text-xs",
-                          selected ? "text-white/75" : "text-slate-400",
-                        )}
-                      >
-                        {row.item_name}
-                      </span>
-                    ) : null}
                   </button>
                 );
               })}
             </div>
+            {selectedVehicle ? (
+              <div className="min-w-0 space-y-2 border-t border-slate-200 pt-4">
+                <p className={cn("font-medium text-slate-600", bodyText)}>
+                  Mã hàng —{" "}
+                  <span className="font-bold text-brand-dark">
+                    {formatVehiclePlateLabel(selectedVehicle.vehicle_no)}
+                  </span>
+                </p>
+                {renderSkuGrid(vehicleItemChoices)}
+              </div>
+            ) : null}
           </>
         )}
 

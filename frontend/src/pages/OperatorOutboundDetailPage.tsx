@@ -709,8 +709,12 @@ export default function OperatorOutboundDetailPage() {
           title={`Chọn mã hàng — ${dispatchVt.locationName}`}
           subtitle={`Vị trí VT: ${dispatchVt.locationName}`}
           vtLocationId={dispatchVt.locationId}
-          onConfirmExport={async (picked) => {
-            await runVtSortingDispatch(picked, dispatchVt.locationId);
+          onConfirmExport={async (picked, options) => {
+            await runVtSortingDispatch(
+              picked,
+              dispatchVt.locationId,
+              options?.vehicleNo,
+            );
           }}
         />
       ) : null}

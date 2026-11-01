@@ -72,13 +72,15 @@ def sending_masan_outbound_task_task(
     zone: str,
     item_id: int,
     to_location_id: int,
+    vehicle_no: str | None = None,
 ) -> Any:
     logger.info(
-        "masan.sorting_outbound_dispatch warehouse_id=%s zone=%s item_id=%s to_location_id=%s",
+        "masan.sorting_outbound_dispatch warehouse_id=%s zone=%s item_id=%s to_location_id=%s vehicle_no=%s",
         warehouse_id,
         zone,
         item_id,
         to_location_id,
+        vehicle_no,
     )
     with db_session() as db:
         try:
@@ -88,6 +90,7 @@ def sending_masan_outbound_task_task(
                 zone=zone.strip(),
                 item_id=item_id,
                 to_location_id=to_location_id,
+                vehicle_no=vehicle_no,
             )
             return _dump(result)
         except Exception:

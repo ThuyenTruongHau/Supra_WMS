@@ -210,11 +210,24 @@ export interface MasanSortingItemsNeededResponse {
   line_count: number;
 }
 
+export interface MasanSortingVehicleItemsRow {
+  vehicle_no: string;
+  items: MasanSortingItemNeededRow[];
+  line_count: number;
+}
+
+export interface MasanSortingItemsNeededByVehicleResponse {
+  warehouse_id: number;
+  zone: string;
+  vehicles: MasanSortingVehicleItemsRow[];
+}
+
 export interface MasanSortingOutboundDispatchRequest {
   warehouse_id: number;
   zone: string;
   item_id: number;
   to_location_id: number;
+  vehicle_no?: string | null;
 }
 
 export interface MasanSortingOutboundLackedRow {

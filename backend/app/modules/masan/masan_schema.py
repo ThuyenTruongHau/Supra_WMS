@@ -240,6 +240,24 @@ class MasanSortingItemsNeededResponse(BaseModel):
     )
 
 
+class MasanSortingVehicleItemsRow(BaseModel):
+    vehicle_no: str = Field(
+        ...,
+        description="Biển số từ bucket CC (vehicle_number); no_vehicle nếu thiếu",
+    )
+    items: list[MasanSortingItemNeededRow] = Field(default_factory=list)
+    line_count: int = Field(
+        0,
+        description="Số dòng detail (chưa completed) của xe trong zone",
+    )
+
+
+class MasanSortingItemsNeededByVehicleResponse(BaseModel):
+    warehouse_id: int
+    zone: str
+    vehicles: list[MasanSortingVehicleItemsRow] = Field(default_factory=list)
+
+
 class MasanSortingOutboundDispatchRequest(BaseModel):
     warehouse_id: int = Field(..., gt=0)
     zone: str = Field(
@@ -253,6 +271,14 @@ class MasanSortingOutboundDispatchRequest(BaseModel):
         ...,
         gt=0,
         description="Location đích (ô sorting / buffer) khi execute robot",
+    )
+    vehicle_no: Optional[str] = Field(
+        None,
+        max_length=100,
+        description=(
+            "Biển số xe (OutboundOrderDetail.details.vehicle_no); "
+            "bỏ trống = không lọc theo xe"
+        ),
     )
 
 

@@ -49,6 +49,7 @@ from app.modules.masan.masan_schema import (
     MasanCcLocationResponse,
     MasanSortingZoneCcLocationsResponse,
     MasanSortingItemsNeededResponse,
+    MasanSortingItemsNeededByVehicleResponse,
     MasanSortingOutboundDispatchRequest,
     MasanSortingOutboundDispatchResponse,
     MasanConfirmAllocationOutboundRequest,
@@ -335,6 +336,27 @@ def get_masan_sorting_items_needed(
     return MasanSortingItemsNeededResponse.model_validate(payload)
 
 
+@router.get(
+    "/masan/outbound-orders/sorting-items-needed-by-vehicle",
+    response_model=MasanSortingItemsNeededByVehicleResponse,
+    dependencies=[Depends(require_permission("outbound:read"))],
+)
+def get_masan_sorting_items_needed_by_vehicle(
+    db: DbSession,
+    warehouse_id: int = Query(..., gt=0),
+    zone: str = Query(
+        ...,
+        min_length=1,
+        max_length=50,
+        description="Mã zone CC trong cache (vd. Zone_CC_01)",
+    ),
+):
+    payload = masan_outbound_service.get_items_needed_to_sorting_by_vehicle(
+        db, warehouse_id, zone.strip()
+    )
+    return MasanSortingItemsNeededByVehicleResponse.model_validate(payload)
+
+
 @router.post(
     "/masan/outbound-orders/sorting-dispatch",
     response_model=MasanSortingOutboundDispatchResponse,
@@ -345,12 +367,14 @@ def masan_sorting_outbound_dispatch(
 ):
     """Calculate + execute robot cho SKU đã chọn trong zone CC (chạy trên Celery logic)."""
     try:
+        vehicle_no = (body.vehicle_no or "").strip() or None
         payload = run_logic_task(
             sending_masan_outbound_task_task,
             warehouse_id=body.warehouse_id,
             zone=body.zone.strip(),
             item_id=body.item_id,
             to_location_id=body.to_location_id,
+            vehicle_no=vehicle_no,
         )
     except ValueError as exc:
         raise HTTPException(

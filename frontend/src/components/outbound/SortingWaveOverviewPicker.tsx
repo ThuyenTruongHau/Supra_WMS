@@ -565,8 +565,12 @@ export default React.memo(function SortingWaveOverviewPicker({
           title={`Chọn mã hàng — ${dispatchVt.locationName}`}
           subtitle={`${sortingZone.name} · VT ${dispatchVt.locationName}`}
           vtLocationId={dispatchVt.locationId}
-          onConfirmExport={async (picked) => {
-            await runVtSortingDispatch(picked, dispatchVt.locationId);
+          onConfirmExport={async (picked, options) => {
+            await runVtSortingDispatch(
+              picked,
+              dispatchVt.locationId,
+              options?.vehicleNo,
+            );
             closeDispatchFlow();
             onSelectZone(sortingZone.id);
           }}

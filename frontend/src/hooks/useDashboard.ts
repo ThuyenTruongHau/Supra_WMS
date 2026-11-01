@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import {
   getReportKpisApi,
+  getReportStorageOccupancyApi,
   getReportStockAgingBucketApi,
   getReportStockAgingOverviewApi,
   getReportTopProductsApi,
@@ -42,6 +43,16 @@ export const useReportKpis = (warehouseId: number) => {
     ...LIVE_QUERY_OPTIONS,
   });
 };
+
+export const useReportStorageOccupancy = (warehouseId: number) =>
+  useQuery({
+    queryKey: ['dashboard', 'report-storage-occupancy', warehouseId],
+    queryFn: () => getReportStorageOccupancyApi(warehouseId),
+    enabled: warehouseId > 0,
+    refetchInterval: REPORT_KPI_POLL_INTERVAL_MS,
+    refetchIntervalInBackground: true,
+    ...LIVE_QUERY_OPTIONS,
+  });
 
 export const useReportTrends = (
   warehouseId: number,

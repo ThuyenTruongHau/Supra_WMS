@@ -8,6 +8,7 @@ import {
 } from "@/constants/outboundMapZones";
 import { masanSortingZoneRobotTasksQueryKey } from "@/hooks/useMasanSortingZoneRobotTasks";
 import { masanSortingItemsNeededQueryKey } from "@/hooks/useMasanSortingItemsNeeded";
+import { masanSortingItemsNeededByVehicleQueryKey } from "@/hooks/useMasanSortingItemsNeededByVehicle";
 import { masanSortingZoneCcLocationsQueryKey } from "@/hooks/useMasanSortingZoneCcLocations";
 import {
   operatorRecentLackedQueryKey,
@@ -27,7 +28,11 @@ export function useMasanVtSortingDispatch(
     outboundVtSortingZoneCodeFor(displayZoneId)?.trim() ?? "";
 
   return useCallback(
-    async (picked: MasanSortingItemNeededRow[], toLocationId: number) => {
+    async (
+      picked: MasanSortingItemNeededRow[],
+      toLocationId: number,
+      vehicleNo?: string | null,
+    ) => {
       const row = picked[0];
       if (!row) return;
       if (warehouseId <= 0 || !ccBucketZoneCode) {
@@ -41,11 +46,13 @@ export function useMasanVtSortingDispatch(
 
       let result;
       try {
+        const trimmedVehicle = vehicleNo?.trim();
         result = await masanSortingOutboundDispatchApi({
           warehouse_id: warehouseId,
           zone: ccBucketZoneCode,
           item_id: row.item_id,
           to_location_id: toLocationId,
+          ...(trimmedVehicle ? { vehicle_no: trimmedVehicle } : {}),
         });
       } catch (err: unknown) {
         message.error(getApiErrorDetail(err, "Không gửi được lệnh xuất"));
@@ -62,6 +69,12 @@ export function useMasanVtSortingDispatch(
 
       void queryClient.invalidateQueries({
         queryKey: masanSortingItemsNeededQueryKey(
+          warehouseId,
+          ccBucketZoneCode,
+        ),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: masanSortingItemsNeededByVehicleQueryKey(
           warehouseId,
           ccBucketZoneCode,
         ),

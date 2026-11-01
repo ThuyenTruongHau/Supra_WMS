@@ -226,8 +226,12 @@ export default function OperatorMonitorDetailPage() {
           subtitle={`Vị trí VT: ${dispatchVt.locationName}`}
           zIndex={contentFullscreen ? MONITOR_FULLSCREEN_MODAL_Z : undefined}
           vtLocationId={dispatchVt.locationId}
-          onConfirmExport={async (picked) => {
-            await runVtSortingDispatch(picked, dispatchVt.locationId);
+          onConfirmExport={async (picked, options) => {
+            await runVtSortingDispatch(
+              picked,
+              dispatchVt.locationId,
+              options?.vehicleNo,
+            );
           }}
         />
       ) : null}

@@ -55,6 +55,12 @@ class ReportKpiResponse(BaseModel):
     unsolved_notifications: int
 
 
+class ReportStorageOccupancyResponse(BaseModel):
+    total_locations: int = 0
+    occupied_locations: int = 0
+    occupancy_percent: int = 0
+
+
 class ReportTrendPoint(BaseModel):
     label: str
     period_start: date

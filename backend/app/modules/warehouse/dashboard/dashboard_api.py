@@ -12,8 +12,10 @@ from app.modules.warehouse.dashboard import dashboard_trend_service
 from app.modules.warehouse.dashboard import dashboard_top_products_service
 from app.modules.warehouse.dashboard import dashboard_stock_aging_service
 from app.modules.warehouse.dashboard import dashboard_robot_performance_service
+from app.modules.warehouse.dashboard import dashboard_storage_occupancy_service
 from app.modules.warehouse.dashboard.dashboard_schema import (
     ReportKpiResponse,
+    ReportStorageOccupancyResponse,
     ReportStockAgingBucketResponse,
     ReportStockAgingOverviewResponse,
     ReportTopProductsResponse,
@@ -38,6 +40,20 @@ def get_report_kpis(
     warehouse_id: int = Query(..., gt=0),
 ):
     return dashboard_service.get_report_kpis(db, warehouse_id=warehouse_id)
+
+
+@router.get(
+    "/dashboard/report-storage-occupancy",
+    response_model=ReportStorageOccupancyResponse,
+    dependencies=[Depends(get_current_user)],
+)
+def get_report_storage_occupancy(
+    db: DbSession,
+    warehouse_id: int = Query(..., gt=0),
+):
+    return dashboard_storage_occupancy_service.get_report_storage_occupancy(
+        db, warehouse_id=warehouse_id
+    )
 
 
 @router.get(

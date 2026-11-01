@@ -10,6 +10,7 @@ import type {
   MasanInboundDetailFilter,
   MasanInboundParseResponse,
   MasanSortingItemsNeededResponse,
+  MasanSortingItemsNeededByVehicleResponse,
   MasanSortingOutboundDispatchRequest,
   MasanSortingOutboundDispatchResponse,
   MasanSortingZoneCcLocationsResponse,
@@ -203,6 +204,19 @@ export const getMasanSortingItemsNeededApi = async (
     "/api/v1/masan/outbound-orders/sorting-items-needed",
     { params: { warehouse_id: warehouseId, zone }, signal },
   );
+  return data;
+};
+
+export const getMasanSortingItemsNeededByVehicleApi = async (
+  warehouseId: number,
+  zone: string,
+  signal?: AbortSignal,
+): Promise<MasanSortingItemsNeededByVehicleResponse> => {
+  const { data } =
+    await axiosInstance.get<MasanSortingItemsNeededByVehicleResponse>(
+      "/api/v1/masan/outbound-orders/sorting-items-needed-by-vehicle",
+      { params: { warehouse_id: warehouseId, zone }, signal },
+    );
   return data;
 };
 

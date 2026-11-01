@@ -1,3 +1,9 @@
+export interface ReportStorageOccupancyResponse {
+  total_locations: number;
+  occupied_locations: number;
+  occupancy_percent: number;
+}
+
 export interface ReportKpiResponse {
   total_inbound_orders: number;
   total_outbound_orders: number;
