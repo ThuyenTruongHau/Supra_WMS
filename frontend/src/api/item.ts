@@ -160,3 +160,26 @@ export const createQrCodesApi = async (
 
 /** @deprecated Dùng createQrCodesApi */
 export const generateQrCodesApi = createQrCodesApi
+
+export type InboundQrImportPrintResponse = {
+  html: string
+  quantity: number
+  page_count: number
+  qr_ids: string[]
+  skipped: string[]
+}
+
+export const importInboundQrPrintApi = async (
+  file: File,
+  warehouseId: number,
+) => {
+  const formData = new FormData()
+  formData.append('file', file)
+  formData.append('warehouse_id', String(warehouseId))
+  const { data } = await axiosInstance.post<InboundQrImportPrintResponse>(
+    `${QR_BASE}/import-print`,
+    formData,
+    { headers: { 'Content-Type': 'multipart/form-data' } },
+  )
+  return data
+}

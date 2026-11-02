@@ -130,13 +130,14 @@ export default function QrTabletSidebar() {
             collapsed={collapsed}
           />
         )}
-        {/* In QR: không cần permission — mọi user vào qrtablet đều được in */}
-        <SidebarLink
-          to="/qrtablet/print-qr"
-          icon={<PrinterOutlined className="text-lg" />}
-          label="In mã QR"
-          collapsed={collapsed}
-        />
+        {showInbound && (
+          <SidebarLink
+            to="/qrtablet/print-qr"
+            icon={<PrinterOutlined className="text-lg" />}
+            label="In mã QR"
+            collapsed={collapsed}
+          />
+        )}
       </nav>
 
       <div

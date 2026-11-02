@@ -3,6 +3,7 @@ import { matchPath, Navigate, NavLink, useLocation } from "react-router-dom";
 import logo_thado from "@/assets/logo_thadorobot.png";
 import { useLogout } from "@/hooks/useAuth";
 import { useAuthStore } from "@/store/useAuthStore";
+import { hasModuleAccess } from "@/utils/authSession";
 import { useNotificationUnsolvedCount } from "@/hooks/useNotification";
 import { useAppStore } from "@/store/useAppStore";
 import {
@@ -208,7 +209,11 @@ export default function Sidebar() {
   const { data: unsolvedCount = 0 } = useNotificationUnsolvedCount(warehouseId);
   const logout = useLogout();
   const [collapsed, setCollapsed] = useState(false);
-  const isAdmin = !!user?.access?.is_admin;
+  const access = user?.access;
+  const isAdmin = !!access?.is_admin;
+  const showInbound = hasModuleAccess(access, "inbound");
+  const showOutbound = hasModuleAccess(access, "outbound");
+  const showStocktake = hasModuleAccess(access, "stocktake");
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
@@ -319,48 +324,60 @@ export default function Sidebar() {
               label="Tổng quan"
               collapsed={collapsed}
             />
-            <SidebarLink
-              to="/import"
-              icon={<ImportOutlined className="text-lg" />}
-              label="Nhập kho"
-              collapsed={collapsed}
-            />
-            <SidebarLink
-              to="/export"
-              icon={<ExportOutlined className="text-lg" />}
-              label="Xuất kho"
-              collapsed={collapsed}
-            />
-            <SidebarLink
-              to="/monitor"
-              icon={<DesktopOutlined className="text-lg" />}
-              label="Monitor"
-              collapsed={collapsed}
-            />
+            {showInbound && (
+              <SidebarLink
+                to="/import"
+                icon={<ImportOutlined className="text-lg" />}
+                label="Nhập kho"
+                collapsed={collapsed}
+              />
+            )}
+            {showOutbound && (
+              <SidebarLink
+                to="/export"
+                icon={<ExportOutlined className="text-lg" />}
+                label="Xuất kho"
+                collapsed={collapsed}
+              />
+            )}
+            {showOutbound && (
+              <SidebarLink
+                to="/monitor"
+                icon={<DesktopOutlined className="text-lg" />}
+                label="Monitor"
+                collapsed={collapsed}
+              />
+            )}
             <SidebarLink
               to="/control-tower"
               icon={<ControlOutlined className="text-lg" />}
               label="Control Tower"
               collapsed={collapsed}
             />
-            <SidebarLink
-              to="/inventory"
-              icon={<AuditOutlined className="text-lg" />}
-              label="Kiểm kê"
-              collapsed={collapsed}
-            />
-            <SidebarLink
-              to="/qrtablet"
-              icon={<QrcodeOutlined className="text-lg" />}
-              label="Giao diện PDA"
-              collapsed={collapsed}
-            />
-            <SidebarLink
-              to="/print-qr"
-              icon={<QrcodeOutlined className="text-lg" />}
-              label="In mã QR"
-              collapsed={collapsed}
-            />
+            {showStocktake && (
+              <SidebarLink
+                to="/inventory"
+                icon={<AuditOutlined className="text-lg" />}
+                label="Kiểm kê"
+                collapsed={collapsed}
+              />
+            )}
+            {showInbound && (
+              <SidebarLink
+                to="/qrtablet"
+                icon={<QrcodeOutlined className="text-lg" />}
+                label="Quét QR nhập kho"
+                collapsed={collapsed}
+              />
+            )}
+            {showInbound && (
+              <SidebarLink
+                to="/print-qr"
+                icon={<QrcodeOutlined className="text-lg" />}
+                label="In mã QR"
+                collapsed={collapsed}
+              />
+            )}
           </>
         )}
       </nav>

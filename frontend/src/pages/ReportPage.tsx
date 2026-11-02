@@ -42,7 +42,6 @@ import type {
 import { formatInventoryValue, formatKpiNumber } from '@/utils/formatKpi'
 import { parseQuantity } from '@/utils/formatQuantity'
 import RobotPerformanceReport from '@/components/reports/RobotPerformanceReport'
-import OrderProgressReport from '@/components/reports/OrderProgressReport'
 
 const TOP_PRODUCT_CHARTS = [
   { key: 'inbound_top' as const, title: 'Nhập nhiều', fill: '#3aa6a6' },
@@ -522,8 +521,6 @@ export default function ReportPage() {
           Tải xuống Excel
         </Button>
       </Modal>
-
-      <OrderProgressReport warehouseId={warehouseId} />
 
       <RobotPerformanceReport key={warehouseId} warehouseId={warehouseId} />
 

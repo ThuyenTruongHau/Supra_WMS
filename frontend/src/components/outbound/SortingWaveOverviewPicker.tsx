@@ -6,7 +6,6 @@ import React, {
   useCallback,
   type ChangeEvent,
 } from "react";
-import OutboundAutoControl from '@/components/outbound/OutboundAutoControl';
 import OutboundAutoStatus from '@/components/outbound/OutboundAutoStatus';
 import { useOutboundAuto } from '@/hooks/useOutboundAuto';
 import { EyeOutlined, PartitionOutlined, UploadOutlined } from "@ant-design/icons";
@@ -96,10 +95,7 @@ function SortingWaveOverviewCell({
       <div className="shrink-0 border-b border-stripe-hairline px-4 py-2">
         <OutboundAutoStatus warehouseId={warehouseId} displayZoneId={displayZoneId}
           renderToolbar={(toggle) => (
-            <div className="flex min-w-0 items-center">
-              <div className="min-w-0 flex-1">
-                <OutboundAutoControl warehouseId={warehouseId} displayZoneId={displayZoneId} />
-              </div>
+            <div className="flex min-w-0 items-center justify-end">
               {toggle}
             </div>
           )}

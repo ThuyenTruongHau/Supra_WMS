@@ -1,18 +1,26 @@
+import { useRef, useState } from "react";
 import Hero from "@/components/shared/Hero";
 import { SkuSearchSelect } from "@/components/shared/SkuSearchSelect";
-import { Button, Card, Input, Select } from "@/components/ui";
+import { Button, Card, Input, Select, message } from "@/components/ui";
+import { importInboundQrPrintApi } from "@/api/item";
 import {
   QR_PRINT_MAX_QUANTITY,
   QR_TYPE_OPTIONS,
   useQrCodePrint,
 } from "@/hooks/useQrCodePrint";
 import { useAppStore } from "@/store/useAppStore";
+import { getApiErrorDetail } from "@/types/apiError";
+import { printBacvietHtml } from "@/utils/printBacvietHtml";
 
 const SKU_BROWSE_PAGE_SIZE = 20;
 
 export default function QrTabletPrintQrPage() {
   const selectedWarehouseId = useAppStore((state) => state.selectedWarehouseId);
   const warehouseId = selectedWarehouseId ?? 0;
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [importHtml, setImportHtml] = useState<string | null>(null);
+  const [importErrors, setImportErrors] = useState<string[]>([]);
+  const [importPending, setImportPending] = useState(false);
 
   const {
     selectedSku,
@@ -32,19 +40,109 @@ export default function QrTabletPrintQrPage() {
     isPreviewPending,
   } = useQrCodePrint({
     warehouseId,
-    active: warehouseId > 0,
+    active: warehouseId > 0 && importHtml == null,
     onPrintSuccess: () => resetPreview(),
   });
 
+  const handleImportFile = async (file: File | undefined) => {
+    if (!file || warehouseId <= 0) return;
+    const lowerName = file.name.toLowerCase();
+    if (!lowerName.endsWith(".xlsx") && !lowerName.endsWith(".xls")) {
+      message.warning("File phải là Excel (.xlsx hoặc .xls)");
+      return;
+    }
+
+    setImportPending(true);
+    setImportErrors([]);
+    try {
+      const result = await importInboundQrPrintApi(file, warehouseId);
+      setImportHtml(result.html);
+      setImportErrors(result.skipped ?? []);
+      const printed = await printBacvietHtml(result.html);
+      if (!printed) {
+        message.warning("Không thể mở hộp thoại in");
+      } else if (result.skipped?.length) {
+        message.warning(
+          `Đã tạo ${result.quantity} mã QR. ${result.skipped.length} dòng không đạt chuẩn đã bỏ qua`,
+        );
+      } else {
+        message.success(`Đã tạo ${result.quantity} mã QR`);
+      }
+    } catch (err) {
+      const detail = getApiErrorDetail(err, "Không thể import file nhập hàng");
+      const lines = detail.split("\n").map((line) => line.trim()).filter(Boolean);
+      setImportErrors(lines.length > 0 ? lines : ["Không thể import file nhập hàng"]);
+      message.error("File nhập hàng chưa đạt chuẩn");
+    } finally {
+      setImportPending(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
+  };
+
   return (
     <div className="space-y-4 md:space-y-6">
+      <div>
+        <Button
+          variant="secondary"
+          className="!h-11"
+          disabled={warehouseId <= 0}
+          loading={importPending}
+          onClick={() => fileInputRef.current?.click()}
+        >
+          Import file nhập hàng
+        </Button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".xlsx,.xls"
+          className="hidden"
+          onChange={(event) => void handleImportFile(event.target.files?.[0])}
+        />
+      </div>
       <Hero title="In mã QR" />
+
+      {importErrors.length > 0 ? (
+        <Card>
+          <p className="mb-2 text-sm font-medium text-red-600">
+            {importHtml == null
+              ? "File chưa đạt chuẩn. Chưa tạo mã QR."
+              : "Các dòng sau không đạt chuẩn nên không tạo mã QR:"}
+          </p>
+          <ul className="max-h-64 list-disc space-y-1 overflow-y-auto pl-5 text-sm text-red-600">
+            {importErrors.map((line, index) => (
+              <li key={`${index}-${line}`}>{line}</li>
+            ))}
+          </ul>
+        </Card>
+      ) : null}
 
       {warehouseId <= 0 ? (
         <Card>
           <div className="py-12 text-center text-slate-400 italic">
             Vui lòng chọn kho để in mã QR
           </div>
+        </Card>
+      ) : importHtml != null ? (
+        <Card className="!p-0 overflow-hidden">
+          <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4">
+            <h3 className="text-base font-semibold text-brand-dark">
+              Xem trước phiếu in
+            </h3>
+            <Button
+              variant="secondary"
+              className="!h-10"
+              onClick={() => setImportHtml(null)}
+            >
+              Quay lại
+            </Button>
+          </div>
+          <iframe
+            title="Xem trước phiếu in nhập hàng"
+            srcDoc={importHtml}
+            className="h-[70vh] w-full border-0 bg-white"
+          />
         </Card>
       ) : !isPreviewStep ? (
         <Card>

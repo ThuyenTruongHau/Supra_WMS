@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.dependencies import require_permission, get_current_user
+from app.modules.masan.masan_inbound_qr_code import router as inbound_qr_print_router
 from app.modules.warehouse.item import item_service
 from app.modules.warehouse.item.item_schema import (
     ItemAnalyzeResponse,
@@ -27,6 +28,7 @@ from app.modules.warehouse.item.item_schema import (
 )
 
 router = APIRouter(tags=["Item"])
+router.include_router(inbound_qr_print_router)
 
 DbSession = Annotated[Session, Depends(get_db)]
 

@@ -1,4 +1,4 @@
-"""Overview progress UI; run with a local Vite server on port 5187. All APIs are mocked."""
+"""Control Tower progress UI; run with a local Vite server on port 5187. All APIs are mocked."""
 import copy
 import json
 import math
@@ -171,8 +171,8 @@ class InboundProgressBrowserTests(unittest.TestCase):
             return outbound
         return fixture.RobotPerformanceBrowserTests.api(self, route)
 
-    def open_overview(self):
-        self.page.goto(f'{BASE_URL}/overview')
+    def open_control_tower(self):
+        self.page.goto(f'{BASE_URL}/control-tower')
         return self.page.get_by_role('region', name='Tiến độ nhập hàng', exact=True)
 
     def assert_counts(self, panel, waiting, running, completed):
@@ -181,7 +181,7 @@ class InboundProgressBrowserTests(unittest.TestCase):
             expect(legend.locator('div').filter(has_text=label).locator('dd')).to_have_text(str(value))
 
     def test_active_session_metrics_metadata_layout_and_import_link(self):
-        panel = self.open_overview()
+        panel = self.open_control_tower()
         expect(panel.get_by_text('IN-TEST-007', exact=True)).to_be_visible()
         expect(panel.get_by_text('31/10/2026 08:30', exact=True)).to_be_visible()
         expect(panel.get_by_text('51C-123.45', exact=True)).to_be_visible()
@@ -203,7 +203,7 @@ class InboundProgressBrowserTests(unittest.TestCase):
         self.assertEqual(self.errors, [])
 
     def test_quantity_item_expand_shows_detail_lines(self):
-        panel = self.open_overview()
+        panel = self.open_control_tower()
         panel.get_by_text('Số lượng hàng', exact=True).click()
         panel.get_by_role('button', name='SKU-1, 10 trên 30 hàng').click()
         expect(panel.get_by_role('table', name='Nhóm lệnh theo mã hàng')).to_be_visible()
@@ -219,7 +219,7 @@ class InboundProgressBrowserTests(unittest.TestCase):
         self.inbound_mode = 'completed'
         for row in self.details:
             row['status'] = 'completed'
-        panel = self.open_overview()
+        panel = self.open_control_tower()
         expect(panel.get_by_text('Phiên hoàn thành gần nhất', exact=True)).to_be_visible()
         self.assert_counts(panel, 0, 0, 4)
         expect(panel.get_by_role('img', name='Số lệnh: hoàn thành 4 trên 4, 100%')).to_be_visible()
@@ -228,14 +228,14 @@ class InboundProgressBrowserTests(unittest.TestCase):
 
     def test_no_eligible_session_is_empty(self):
         self.inbound_mode = 'empty'
-        panel = self.open_overview()
+        panel = self.open_control_tower()
         expect(panel.get_by_text('Chưa có phiên đang nhập hoặc đã hoàn thành')).to_be_visible()
         expect(panel.locator('.recharts-wrapper')).to_have_count(0)
         expect(panel.get_by_role('link', name='Xem nhập hàng')).to_be_visible()
 
     def test_polling_updates_progress(self):
         self.page.clock.install()
-        panel = self.open_overview()
+        panel = self.open_control_tower()
         self.assert_counts(panel, 1, 1, 2)
         self.details[0]['status'] = 'completed'
         self.page.clock.fast_forward(5_500)
@@ -243,7 +243,7 @@ class InboundProgressBrowserTests(unittest.TestCase):
         self.assertEqual(self.errors, [])
 
     def test_refresh_switches_sessions_without_reusing_previous_details(self):
-        panel = self.open_overview()
+        panel = self.open_control_tower()
         self.assert_counts(panel, 1, 1, 2)
         self.order = {**self.order, 'id': 8, 'order_code': 'IN-TEST-008'}
         self.details = [detail(8, 'in_progress', 8, 5)]
@@ -253,7 +253,7 @@ class InboundProgressBrowserTests(unittest.TestCase):
 
     def test_error_and_retry(self):
         self.inbound_mode = 'error'
-        panel = self.open_overview()
+        panel = self.open_control_tower()
         expect(panel.get_by_text('Không thể tải tiến độ nhập hàng')).to_be_visible(timeout=20_000)
         self.inbound_mode = 'active'
         panel.get_by_role('button', name='Thử lại').click()
@@ -261,7 +261,7 @@ class InboundProgressBrowserTests(unittest.TestCase):
 
     def test_tablet_has_no_progress_panel_overflow(self):
         self.page.set_viewport_size({'width': 1024, 'height': 768})
-        panel = self.open_overview()
+        panel = self.open_control_tower()
         expect(panel.get_by_text('IN-TEST-007', exact=True)).to_be_visible()
         self.assertTrue(panel.evaluate('(element) => element.scrollWidth <= element.clientWidth'))
         self.assertEqual(self.errors, [])

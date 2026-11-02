@@ -1,4 +1,4 @@
-"""Outbound overview progress UI; run with local Vite on port 5187. APIs mocked."""
+"""Outbound Control Tower progress UI; run with local Vite on port 5187. APIs mocked."""
 import copy
 import json
 import os
@@ -187,14 +187,15 @@ def build_outbound_group_details_payload(detail_rows, dimension, key):
 
 
 def fulfill_outbound_api_route(test_case, route):
-    """Mock outbound list/progress endpoints for overview tests."""
+    """Mock outbound list/progress endpoints for Control Tower tests."""
     url = urlparse(route.request.url)
     query = parse_qs(url.query)
     path = url.path
     if path.rstrip('/').endswith('/outbound-orders') and '/id/' not in path:
         mode = getattr(test_case, 'outbound_mode', 'active')
         if mode == 'error':
-            return route.fulfill(status=503, json={'detail': 'Test unavailable'})
+            route.fulfill(status=503, json={'detail': 'Test unavailable'})
+            return True
         status = query.get('status', [''])[0]
         order = getattr(test_case, 'outbound_order', OUTBOUND_ORDER)
         rows = []
@@ -202,16 +203,19 @@ def fulfill_outbound_api_route(test_case, route):
             rows = [order]
         elif status == 'completed' and mode == 'completed':
             rows = [{**order, 'status': 'completed'}]
-        return route.fulfill(json=dict(items=rows, total=len(rows), page=1, page_size=1, summary={}))
+        route.fulfill(json=dict(items=rows, total=len(rows), page=1, page_size=1, summary={}))
+        return True
     if path.endswith('/progress/group-details') and '/outbound-orders/id/' in path:
         dimension = query.get('dimension', [''])[0]
         key = query.get('key', [''])[0]
         details = getattr(test_case, 'outbound_details', [])
         payload = build_outbound_group_details_payload(details, dimension, key)
-        return route.fulfill(json=payload)
+        route.fulfill(json=payload)
+        return True
     if '/outbound-orders/id/' in path and path.endswith('/progress'):
         details = getattr(test_case, 'outbound_details', [])
-        return route.fulfill(json=build_outbound_progress_payload(details))
+        route.fulfill(json=build_outbound_progress_payload(details))
+        return True
     return None
 
 
@@ -239,14 +243,14 @@ class OutboundProgressBrowserTests(unittest.TestCase):
         return fixture.RobotPerformanceBrowserTests.api(self, route)
 
     def open_outbound_panel(self):
-        self.page.goto(f'{BASE_URL}/overview')
+        self.page.goto(f'{BASE_URL}/control-tower')
         return self.page.get_by_role('region', name='Tiến độ xuất hàng', exact=True)
 
     def test_outbound_metadata_and_quantity_dimensions(self):
         panel = self.open_outbound_panel()
         expect(panel.get_by_text('OUT-TEST-009', exact=True)).to_be_visible()
         expect(panel.get_by_text('Thông số', exact=True)).to_be_visible()
-        expect(panel.locator('div').filter(has_text='Thông số').locator('dd')).to_have_text('2 xe - 2 trip - 2 khách hàng')
+        expect(panel.get_by_text('Thông số', exact=True).locator('..').locator('dd')).to_have_text('2 xe - 2 trip - 2 khách hàng')
         panel.get_by_text('Số lượng', exact=True).click()
         expect(panel.get_by_label('Chọn chiều tiến độ xuất hàng')).to_be_visible()
         expect(panel.get_by_text('Vị trí chia', exact=True)).to_have_count(0)

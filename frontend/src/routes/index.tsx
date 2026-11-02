@@ -22,6 +22,7 @@ import StocktakeDetailPage from "@/pages/StocktakeDetailPage";
 import BacklogPage from "@/pages/BacklogPage";
 import NotificationPage from "@/pages/NotificationPage";
 import QrTabletInboundPage from "@/pages/qrtablet/QrTabletInboundPage";
+import OperatorQrInboundPage from "@/pages/qrtablet/OperatorQrInboundPage";
 import QrTabletOutboundPage from "@/pages/qrtablet/QrTabletOutboundPage";
 import QrTabletOutboundDetailPage from "@/pages/qrtablet/QrTabletOutboundDetailPage";
 import QrTabletStocktakePage from "@/pages/qrtablet/QrTabletStocktakePage";
@@ -29,6 +30,8 @@ import QrTabletPrintQrPage from "@/pages/qrtablet/QrTabletPrintQrPage";
 
 import { RoleGatePage } from "../components/auth/RoleGatePage";
 import { RoleHomeRedirect } from "@/components/auth/RoleHomeRedirect";
+import { ModuleGate } from "@/components/auth/ModuleGate";
+import { QrTabletHomeRedirect } from "@/components/auth/QrTabletHomeRedirect";
 import OperatorInboundPage from "@/pages/OperatorInboundPage";
 import OperatorOutboundPage from "@/pages/OperatorOutboundPage";
 import OperatorSortingWavePage from "@/pages/OperatorSortingWavePage";
@@ -54,16 +57,19 @@ export default function AppRoutes() {
         path="/qrtablet"
         element={
           <ProtectedRoute>
-            <MainLayout />
+            <ModuleGate module="inbound">
+              <MainLayout />
+            </ModuleGate>
           </ProtectedRoute>
         }
       >
-        <Route index element={<Navigate to="import" replace />} />
-        <Route path="import" element={<QrTabletInboundPage />} />
-        <Route path="export" element={<QrTabletOutboundPage />} />
-        <Route path="export/:orderId" element={<QrTabletOutboundDetailPage />} />
-        <Route path="inventory" element={<QrTabletStocktakePage />} />
-        <Route path="print-qr" element={<QrTabletPrintQrPage />} />
+        <Route index element={<QrTabletHomeRedirect />} />
+        <Route path="import" element={<ModuleGate module="inbound"><OperatorQrInboundPage /></ModuleGate>} />
+        <Route path="import-vcc" element={<ModuleGate module="inbound"><QrTabletInboundPage /></ModuleGate>} />
+        <Route path="export" element={<ModuleGate module="outbound"><QrTabletOutboundPage /></ModuleGate>} />
+        <Route path="export/:orderId" element={<ModuleGate module="outbound"><QrTabletOutboundDetailPage /></ModuleGate>} />
+        <Route path="inventory" element={<ModuleGate module="stocktake"><QrTabletStocktakePage /></ModuleGate>} />
+        <Route path="print-qr" element={<ModuleGate module="inbound"><QrTabletPrintQrPage /></ModuleGate>} />
       </Route>
 
       {/* ── Main app with sidebar ── */}
@@ -89,21 +95,23 @@ export default function AppRoutes() {
         <Route path="items" element={<ItemPage />} />
         <Route path="items/:id" element={<ItemDetailPage />} />
         <Route path="zones" element={<ZoneSettingPage />} />
-        <Route path="import" element={<RoleGatePage admin={<ImportPage />} operator={<OperatorInboundPage />} />} />
+        <Route path="import" element={<ModuleGate module="inbound"><RoleGatePage admin={<ImportPage />} operator={<OperatorInboundPage />} /></ModuleGate>} />
         <Route path="import/:id" element={<ImportDetailPage />} />
-        <Route path="export" element={<RoleGatePage admin={<OutboundPage />} operator={<OperatorOutboundPage />} />} />
-        <Route path="export/zone/:zoneId" element={<OperatorOutboundDetailPage />} />
-        <Route path="export/sorting-waves" element={<RoleGatePage admin={<div>Tính năng chia chọn của Admin chưa hoàn thiện</div>} operator={<OperatorSortingWavePage />} />} />
+        <Route path="export" element={<ModuleGate module="outbound"><RoleGatePage admin={<OutboundPage />} operator={<OperatorOutboundPage />} /></ModuleGate>} />
+        <Route path="export/zone/:zoneId" element={<ModuleGate module="outbound"><OperatorOutboundDetailPage /></ModuleGate>} />
+        <Route path="export/sorting-waves" element={<ModuleGate module="outbound"><RoleGatePage admin={<div>Tính năng chia chọn của Admin chưa hoàn thiện</div>} operator={<OperatorSortingWavePage />} /></ModuleGate>} />
         <Route
           path="monitor"
           element={
-            <RoleGatePage
-              admin={<Navigate to="/report" replace />}
-              operator={<OperatorMonitorPage />}
-            />
+            <ModuleGate module="outbound">
+              <RoleGatePage
+                admin={<Navigate to="/report" replace />}
+                operator={<OperatorMonitorPage />}
+              />
+            </ModuleGate>
           }
         />
-        <Route path="monitor/zone/:zoneId" element={<OperatorMonitorDetailPage />} />
+        <Route path="monitor/zone/:zoneId" element={<ModuleGate module="outbound"><OperatorMonitorDetailPage /></ModuleGate>} />
         <Route
           path="control-tower"
           element={
@@ -113,11 +121,11 @@ export default function AppRoutes() {
             />
           }
         />
-        <Route path="export/:orderId" element={<OutboundDetailPage />} />
-        <Route path="inventory" element={<StocktakePage />} />
-        <Route path="inventory/:id" element={<StocktakeDetailPage />} />
+        <Route path="export/:orderId" element={<ModuleGate module="outbound"><OutboundDetailPage /></ModuleGate>} />
+        <Route path="inventory" element={<ModuleGate module="stocktake"><StocktakePage /></ModuleGate>} />
+        <Route path="inventory/:id" element={<ModuleGate module="stocktake"><StocktakeDetailPage /></ModuleGate>} />
         <Route path="backlog" element={<BacklogPage />} />
-        <Route path="print-qr" element={<QrTabletPrintQrPage />} />
+        <Route path="print-qr" element={<ModuleGate module="inbound"><QrTabletPrintQrPage /></ModuleGate>} />
         {/* Các Route con ngoài WMS dropdown */}
         <Route path="report" element={<ReportPage />} />
         <Route path="notification" element={<NotificationPage />} />

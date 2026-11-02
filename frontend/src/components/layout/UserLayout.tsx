@@ -29,8 +29,7 @@ export default function UserLayout() {
     pathname === "/export" ||
     pathname.startsWith("/export/zone/") ||
     pathname === "/monitor" ||
-    pathname.startsWith("/monitor/") ||
-    pathname === "/control-tower";
+    pathname.startsWith("/monitor/");
   const isQrTablet = pathname.startsWith("/qrtablet");
   /** Chỉ tablet / TV nhỏ — desktop rộng không bọc stage (tránh viền 2 bên). */
   const useOperatorStage =
