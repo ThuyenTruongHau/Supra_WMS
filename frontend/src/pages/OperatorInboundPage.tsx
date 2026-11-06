@@ -1024,6 +1024,20 @@ function OperatorInboundPageContent({ warehouseId }: { warehouseId: number }) {
             >
               Xem kho
             </Button>
+            {sourceTab === "direct" ? (
+              <OperatorAssigneeSelect
+                mode="single"
+                toolbar="inbound"
+                label="Người nhập"
+                value={inboundAssignee}
+                onChange={(next) =>
+                  setInboundAssignee(
+                    typeof next === "string" ? next : undefined,
+                  )
+                }
+                disabled={warehouseId <= 0}
+              />
+            ) : null}
             <div className="flex rounded-full border border-stripe-hairline bg-panel-soft p-1">
               <button
                 type="button"

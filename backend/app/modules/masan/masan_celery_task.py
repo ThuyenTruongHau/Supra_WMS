@@ -7,7 +7,7 @@ from fastapi.encoders import jsonable_encoder
 from app.core.celery_app import celery_app
 from app.core.database import db_session
 from app.core.logger import get_logger
-from app.modules.masan import masan_outbound_service
+from app.modules.masan import masan_inbound_service, masan_outbound_service
 from app.modules.warehouse.warehouse_zone.warehouse_model import Warehouse
 
 logger = get_logger("main")
@@ -89,6 +89,38 @@ def sending_masan_outbound_task_task(
                 warehouse_id=warehouse_id,
                 zone=zone.strip(),
                 item_id=item_id,
+                to_location_id=to_location_id,
+                vehicle_no=vehicle_no,
+            )
+            return _dump(result)
+        except Exception:
+            db.rollback()
+            raise
+
+
+@celery_app.task(name="masan.bypass_inbound_to_outbound", acks_late=True)
+def bypass_inbound_to_outbound_task(
+    warehouse_id: int,
+    target_zone: str,
+    item_stock_id: int,
+    to_location_id: int,
+    vehicle_no: str | None = None,
+) -> Any:
+    logger.info(
+        "masan.bypass_inbound_to_outbound warehouse_id=%s target_zone=%s item_stock_id=%s to_location_id=%s vehicle_no=%s",
+        warehouse_id,
+        target_zone,
+        item_stock_id,
+        to_location_id,
+        vehicle_no,
+    )
+    with db_session() as db:
+        try:
+            result = masan_inbound_service.bypass_inbound_to_outbound(
+                db,
+                warehouse_id=warehouse_id,
+                target_zone=target_zone.strip(),
+                item_stock_id=item_stock_id,
                 to_location_id=to_location_id,
                 vehicle_no=vehicle_no,
             )

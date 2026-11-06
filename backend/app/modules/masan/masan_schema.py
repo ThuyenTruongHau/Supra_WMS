@@ -91,6 +91,24 @@ class MasanClearInboundZoneResponse(BaseModel):
     )
 
 
+class MasanBypassInboundToOutboundRequest(BaseModel):
+    warehouse_id: int = Field(..., gt=0)
+    target_zone: str = Field(..., min_length=1, max_length=50)
+    item_stock_id: int = Field(..., gt=0)
+    to_location_id: int = Field(..., gt=0)
+    vehicle_no: Optional[str] = Field(
+        None,
+        max_length=100,
+        description=(
+            "Biển số xe (cache vehicle_number); bỏ trống = không lọc theo xe"
+        ),
+    )
+
+
+class MasanBypassInboundToOutboundResponse(BaseModel):
+    message: str
+
+
 class MasanClearCcCacheRequest(BaseModel):
     warehouse_id: int = Field(..., gt=0)
 

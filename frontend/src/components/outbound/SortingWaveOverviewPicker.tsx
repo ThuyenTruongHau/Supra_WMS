@@ -6,7 +6,6 @@ import React, {
   useCallback,
   type ChangeEvent,
 } from "react";
-import OutboundAutoStatus from '@/components/outbound/OutboundAutoStatus';
 import { useOutboundAuto } from '@/hooks/useOutboundAuto';
 import { EyeOutlined, PartitionOutlined, UploadOutlined } from "@ant-design/icons";
 import WarehouseViewModal from "@/components/inbound/WarehouseViewModal";
@@ -92,15 +91,6 @@ function SortingWaveOverviewCell({
   const auto = useOutboundAuto(warehouseId, displayZoneId);
   return (
     <div className="group relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-xl border border-stripe-hairline bg-panel text-left shadow-stripe-1 transition hover:border-brand-primary/35 hover:shadow-[0_8px_28px_rgba(37,99,235,0.12)]">
-      <div className="shrink-0 border-b border-stripe-hairline px-4 py-2">
-        <OutboundAutoStatus warehouseId={warehouseId} displayZoneId={displayZoneId}
-          renderToolbar={(toggle) => (
-            <div className="flex min-w-0 items-center justify-end">
-              {toggle}
-            </div>
-          )}
-        />
-      </div>
       <button
         type="button"
         disabled={callDisabled || auto.manualBlocked}

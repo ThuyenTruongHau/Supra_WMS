@@ -64,6 +64,20 @@ export interface MasanClearInboundZoneResponse {
   deactivated_count: number;
 }
 
+export interface MasanBypassInboundToOutboundRequest {
+  warehouse_id: number;
+  /** Zone.code CC đi cặp với ô VT được chọn (vd. Zone_CC_01). */
+  target_zone: string;
+  item_stock_id: number;
+  /** id ô VT (Zone_sorting). */
+  to_location_id: number;
+  vehicle_no?: string | null;
+}
+
+export interface MasanBypassInboundToOutboundResponse {
+  message: string;
+}
+
 export interface MasanClearOutboundStationCacheRequest {
   warehouse_id: number;
   cc_location_ids: number[];

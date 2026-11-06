@@ -15,7 +15,11 @@ from app.modules.masan import (
     masan_outbound_service,
     masan_picking_list_service,
 )
-from app.modules.masan.masan_celery_task import sending_masan_outbound_task_task
+from app.modules.masan.masan_celery_task import (
+    bypass_inbound_to_outbound_task,
+    sending_masan_outbound_task_task,
+)
+from app.modules.robot.robot_service import IcsError
 from app.modules.masan.masan_sorting_return_service import list_sorting_zone_return_tasks
 from app.modules.masan.masan_oubound_auto_service import (
     clear_outbound_station_cache,
@@ -34,6 +38,8 @@ from app.modules.warehouse.outbound_order.outbound_order_service import (
     _parse_task_path,
 )
 from app.modules.masan.masan_schema import (
+    MasanBypassInboundToOutboundRequest,
+    MasanBypassInboundToOutboundResponse,
     MasanClearInboundZoneRequest,
     MasanClearInboundZoneResponse,
     MasanClearCcCacheRequest,
@@ -707,6 +713,37 @@ def masan_clear_inbound_zone(db: DbSession, body: MasanClearInboundZoneRequest):
         zones=list(settings.zone_inbound),
         deactivated_count=count,
     )
+
+
+@router.post(
+    "/masan/inbound-orders/bypass-to-outbound",
+    response_model=MasanBypassInboundToOutboundResponse,
+    dependencies=[Depends(require_permission("inbound:update"))],
+)
+def masan_bypass_inbound_to_outbound(body: MasanBypassInboundToOutboundRequest):
+    """Complete inbound stock rồi allocate/issue outbound thiếu (Celery logic)."""
+    try:
+        vehicle_no = (body.vehicle_no or "").strip() or None
+        payload = run_logic_task(
+            bypass_inbound_to_outbound_task,
+            warehouse_id=body.warehouse_id,
+            target_zone=body.target_zone.strip(),
+            item_stock_id=body.item_stock_id,
+            to_location_id=body.to_location_id,
+            vehicle_no=vehicle_no,
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
+    except IcsError as exc:
+        raise HTTPException(
+            status_code=503 if "reach" in str(exc).lower() else 502,
+            detail=str(exc),
+        ) from exc
+
+    return MasanBypassInboundToOutboundResponse.model_validate(payload)
 
 
 @router.post(

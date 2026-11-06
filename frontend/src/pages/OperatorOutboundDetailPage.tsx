@@ -458,11 +458,10 @@ export default function OperatorOutboundDetailPage() {
         }
         mapToolbar={
           <OutboundAutoStatus warehouseId={warehouseId} displayZoneId={zoneId}
-            renderToolbar={(toggle) => (
+            renderToolbar={() => (
               <div className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-2">
                 <div className="flex shrink-0 items-center">
                   <OutboundAutoControl warehouseId={warehouseId} displayZoneId={zoneId} className={outboundActionBtnClass} />
-                  {toggle}
                 </div>
                 <Button
                   variant="primary"

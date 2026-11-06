@@ -1,5 +1,7 @@
 import axiosInstance from "./axiosInstance";
 import type {
+  MasanBypassInboundToOutboundRequest,
+  MasanBypassInboundToOutboundResponse,
   MasanCcLocationResponse,
   MasanClearInboundZoneRequest,
   MasanClearInboundZoneResponse,
@@ -48,6 +50,17 @@ export const clearMasanInboundZoneApi = async (
     "/api/v1/masan/inbound-orders/clear-inbound-zone",
     body,
   );
+  return data;
+};
+
+export const bypassMasanInboundToOutboundApi = async (
+  body: MasanBypassInboundToOutboundRequest,
+): Promise<MasanBypassInboundToOutboundResponse> => {
+  const { data } =
+    await axiosInstance.post<MasanBypassInboundToOutboundResponse>(
+      "/api/v1/masan/inbound-orders/bypass-to-outbound",
+      body,
+    );
   return data;
 };
 

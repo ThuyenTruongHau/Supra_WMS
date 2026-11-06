@@ -899,6 +899,7 @@ def greedy_allocate_stocks_to_lines(
         for idx, qty in enumerate(line_remaining)
         if qty > 0
     }
+
     return len(lines), lacked
 
 def calculate_outbound_order(

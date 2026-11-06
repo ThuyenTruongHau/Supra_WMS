@@ -14,6 +14,22 @@ from sqlalchemy.orm import Session, joinedload, selectinload
 from app.core.config import settings
 from app.core.time import format_vietnam, vn_now, vn_today
 
+from collections import defaultdict
+
+from app.core.cache import cache_get
+
+from app.modules.warehouse.outbound_order.outbound_order_model import (
+    OutboundOrderDetail,
+)
+from app.modules.warehouse.outbound_order.outbound_order_schema import (
+    CalculateOutboundDetail,
+    DetailForCalculate,
+)
+from app.modules.warehouse.outbound_order.outbound_order_service import (
+    calculate_outbound_order,
+    greedy_allocate_stocks_to_lines,
+)
+
 from app.modules.masan.masan_inbound_excel import (
     COLUMN_ALIASES,
     DATA_START_ROW,
@@ -1063,3 +1079,130 @@ def clear_zone_inbound(db: Session, warehouse_id: int) -> int:
         detail.status = "not call"
     db.commit()
     return len(stocks)
+
+
+def bypass_inbound_to_outbound(db: Session, target_zone: str, item_stock_id: int, to_location_id: int) -> Any:
+    location_ids = db.query(Location.id).filter(Location.zone_code == target_zone).all()
+
+    item_stock = db.query(ItemStock).filter(ItemStock.id == item_stock_id).first()
+    list_lines = []
+    for location_id in location_ids:
+        key = f"inbound:assigned_location:{warehouse_id}:{location_id}"
+        bucket = cache_get(key)
+        if bucket:
+            lines = bucket.get("lines")
+            for line in lines:
+                if line.get("item_id") == item_stock.item_id:
+                    if vehicle_no is not None and bucket.get("vehicle_number") != vehicle_no:
+                        continue
+                    if line.get("locator") is not None:
+                        raise ValueError("Không thể bypass hàng có vị trí định vị")
+                    else:
+                        list_lines.append(line["detail_id"])
+
+    if not list_lines:
+        raise ValueError("Zone sorting không cần bypass hàng này")
+
+    list_lines_db = db.query(OutboundOrderDetail).filter(
+        OutboundOrderDetail.id.in_(list_lines),
+        OutboundOrderDetail.status == "initialize",
+    ).all()
+
+    if len(list_lines_db) > 0:
+        details_by_order: dict[int, list[OutboundOrderDetail]] = defaultdict(list)
+        for detail in list_lines_db:
+            details_by_order[detail.outbound_order_id].append(detail)
+        calculate_bodies: list[CalculateOutboundDetail] = []
+        for order_id, details in details_by_order.items():
+            line_items = [
+                DetailForCalculate(
+                    id=d.id,
+                    item_id=d.item_id,
+                    quantity=int(d.quantity),
+                    detail_type=d.detail_type,
+                    details=d.details if isinstance(d.details, dict) else {},
+                )
+                for d in details
+            ]
+            calculate_bodies.append(
+                CalculateOutboundDetail(
+                    warehouse_id=warehouse_id,
+                    outbound_order_id=order_id,
+                    line_items=line_items,
+                )
+            )
+        
+        for body in calculate_bodies:
+            response_caculate = calculate_outbound_order(db, body, strategy="fefo")
+
+    lack_details = [d for d in list_lines_db if d.unallocated_quantity > 0 and d.status == "in_progress"]
+
+    if not lack_details:
+        raise ValueError("Hàng này không thiếu")
+
+    #handle inbound
+    inbound_detail = (
+        db.query(InboundOrderDetail)
+        .join(
+            InboundOrderAllocation,
+            InboundOrderAllocation.inbound_order_detail_id == InboundOrderDetail.id,
+        )
+        .filter(
+            InboundOrderAllocation.item_stock_id == item_stock_id,
+            InboundOrderDetail.status == "initialize",
+        )
+        .first()
+    )
+
+    inbound_detail.status = "completed"
+    # item_stock.location_id = inbound_detail.to_location_id
+    # db.commit()
+    
+    details_lack_by_order: dict[int, list[OutboundOrderDetail]] = defaultdict(list)
+    for detail in lack_details:
+        details_lack_by_order[detail.outbound_order_id].append(detail)
+    calculate_lack_bodies: list[CalculateOutboundDetail] = []
+    for order_id, details in details_lack_by_order.items():
+        line_items = [
+            DetailForCalculate(
+                id=d.id,
+                item_id=d.item_id,
+                quantity=int(d.unallocated_quantity),
+                detail_type=d.detail_type,
+                details=d.details if isinstance(d.details, dict) else {},
+            )
+            for d in details
+        ]
+        calculate_lack_bodies.append(
+            CalculateOutboundDetail(
+                warehouse_id=warehouse_id,
+                outbound_order_id=order_id,
+                line_items=line_items,
+            )
+        )
+
+    for body in calculate_lack_bodies:
+        greedy_allocate_stocks_to_lines(db, [item_stock], body.line_items, body.outbound_order_id)
+
+    #find robot task and send
+    outbound_allocations = db.query(OutboundOrderAllocation).filter(
+        OutboundOrderAllocation.item_stock_id == item_stock_id,
+        OutboundOrderAllocation.from_location_id == item_stock.location_id,
+        OutboundOrderAllocation.status == "initialize"
+    ).all()
+
+    track_ids = []
+    for allocation in outbound_allocations:
+        allocation.from_location_id = inbound_detail.to_location_id
+        allocation.to_location_id = to_location_id
+        allocation.status = "issued"
+        if allocation.robot_task_id not in track_ids:
+            track_ids.append(allocation.robot_task_id)
+            task_path = f"{inbound_detail.from_location.location_code},{allocation.to_location.location_code}"
+            allocation.robot_task.task_order_detail = json.dumps([{"taskPath": task_path}])
+            db.flush()
+
+            task_status_service.create_robot_task(db, allocation.robot_task, not_inserted=False)
+
+    db.commit()
+    return {"message": "Bypass hàng thành công"}

@@ -1344,10 +1344,16 @@ def _assigning_algorithm(db: Session, list_details: list[OutboundOrderDetail], a
 
         details_by_item_id[detail.item_id][vehicle_number].append(line)
 
+    sorted_items = sorted(
+        quantity_by_item_id.items(),
+        key=lambda x: x[1],
+        reverse=True,
+    )
+
     for location in available_locations:
         available_locations_by_zone[location.zone.code].append(location)
 
-    for item_id, quantity in quantity_by_item_id.items():
+    for item_id, quantity in sorted_items:
         lowest_zone = min(temp, key=temp.get)
         temp[lowest_zone] += quantity
         for vehicle_number, lines in details_by_item_id[item_id].items():
@@ -1469,22 +1475,11 @@ def clear_completed_cc_assignments(
         logger.info("Cleared completed CC assignments warehouse_id=%s result=%s", warehouse_id, result)
     return result
 
-def _clear_assigned_cc_location(warehouse_id: int, outbound_order_id: int) -> None:
-    keys = cache_scan_keys(f"outbound:assigned_cc_location:{warehouse_id}:*")
-    lines = []
-    for key in keys:
-        suffix = key.rsplit(":", 1)[-1]
-        if suffix.isdigit():
-            location_id = int(suffix)
-            loc_key = f"outbound:assigned_cc_location:{warehouse_id}:{location_id}"
-            bucket = cache_get(loc_key)
-            if bucket and bucket.get("outbound_order_id") == outbound_order_id:
-                lines.extend(bucket.get("lines") or [])
-                cache_delete(loc_key)
-                cache_delete_pattern(f"outbound:masan:stock_ready:{warehouse_id}:*:{location_id}")
-
-    for line in lines:
-        cache_delete(f"outbound:assigned_cc_details:{warehouse_id}:{line['detail_id']}")
+def _clear_assigned_stock_ready(warehouse_id: int, allocation_ids: list[int]) -> None:
+    for allocation_id in allocation_ids:
+        cache_delete_pattern(
+            f"outbound:masan:stock_ready:{warehouse_id}:*:{allocation_id}:*"
+        )
 
 
 def _clear_cc_cache_if_order_completed(
@@ -1501,7 +1496,22 @@ def _clear_cc_cache_if_order_completed(
     logger.info(f"Warehouse: {warehouse_id}")
     logger.info(f"Order ID: {order_id}")
     if order and order.status == "completed":
-        _clear_assigned_cc_location(warehouse_id, order_id)
+        allocation_ids = [
+            row.id
+            for row in (
+                db.query(OutboundOrderAllocation.id)
+                .join(
+                    OutboundOrderDetail,
+                    OutboundOrderDetail.id == OutboundOrderAllocation.outbound_order_detail_id,
+                )
+                .filter(
+                    OutboundOrderDetail.outbound_order_id == order_id,
+                    OutboundOrderAllocation.allocation_type == "outbound",
+                )
+                .all()
+            )
+        ]
+        _clear_assigned_stock_ready(warehouse_id, allocation_ids)
 
 def get_sorting_data_for_zone(
     db: Session,

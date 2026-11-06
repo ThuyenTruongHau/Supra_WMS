@@ -23,6 +23,11 @@ export default defineConfig({
   server: {
     host: true,
     proxy: {
+      '/control-tower-api/receive-status': {
+        target: 'http://192.168.50.200:8001',
+        changeOrigin: true,
+        rewrite: () => '/api/v1/receive-status',
+      },
       '/api': {
         target: 'http://localhost:8001',
         changeOrigin: true,

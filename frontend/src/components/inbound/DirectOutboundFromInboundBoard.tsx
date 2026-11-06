@@ -1,14 +1,12 @@
 /**
- * Board tab Xuất trực tiếp.
- * Form chọn + 2 map (nhập | chia chọn & cửa xuất).
- * Click map chỉ fill select — không mở popup; ô không BP/CX bị mờ và không chọn được.
+ * Board tab Xuất trực tiếp (bypass).
+ * Điểm nhập: ô BP (inbound_buffer) — lấy ItemStock tại ô.
+ * Điểm xuất: ô VT (Zone_sorting) — gửi BE Zone_CC cùng cặp làm `target_zone`.
+ * Click map chỉ fill select — không mở popup; ô không hợp lệ bị mờ và không chọn được.
  */
-import { useEffect, useMemo, useState } from "react";
-import {
-  ExportOutlined,
-  RobotOutlined,
-  UploadOutlined,
-} from "@ant-design/icons";
+import { useMemo, useState } from "react";
+import { RobotOutlined } from "@ant-design/icons";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button, Input, Modal, Select, message } from "@/components/ui";
 import { OPERATOR_DESKTOP } from "@/constants/operatorDesktopSizes";
 import {
@@ -19,339 +17,195 @@ import {
 } from "@/utils/operatorViewportTier";
 import { cn } from "@/components/ui";
 import OperatorMapCanvas from "@/components/warehouse/OperatorMapCanvas";
-import { WAVE_STATION_LOCATION_TYPES } from "@/api/warehouseMap";
-import {
-  useDirectOutboundFromInbound,
-  useOldestIncompleteInbound,
-  useInboundAssignedDetails,
-  useAssignInboundToBuffer,
-} from "@/hooks/useInbound";
-import { useStationProductAggregate } from "@/hooks/useOutboundTask";
-import { useSortingWaves } from "@/hooks/useSortingWave";
 import {
   useLocationByCodeMap,
   useLocationsByZone,
 } from "@/hooks/useWarehouseLocation";
 import { useLocationDetail } from "@/hooks/useWarehouseMap";
-import { useProduct } from "@/hooks/useProduct";
-import { getInboundBufferAssignmentApi } from "@/api/inboundOperator";
-import type { InboundBufferAssignment } from "@/types/inbound";
-import type { StationProductLine } from "@/types/outboundTask";
-import type { WarehouseLocation } from "@/types/warehouseLocation";
+import { bypassMasanInboundToOutboundApi } from "@/api/masan";
 import { getApiErrorDetail } from "@/types/apiError";
 import { toDisplayInteger } from "@/utils/number";
 import { getLocationDisplayLabel } from "@/utils/locationBin";
-import { OUTBOUND_MAP_ZONE_IDS } from "@/constants/outboundMapZones";
-import type { SortingWave } from "@/types/sortingWave";
-import OperatorAssigneeSelect from "@/components/operator/OperatorAssigneeSelect";
+import {
+  OUTBOUND_DISPLAY_ZONES,
+  OUTBOUND_MAP_ZONE_IDS,
+} from "@/constants/outboundMapZones";
 import { useInboundOperatorAssignee } from "@/store/useOperatorAssigneeStore";
 import {
   hasInboundOperatorAssignee,
   OPERATOR_ASSIGNEE_REQUIRED_INBOUND,
 } from "@/utils/operatorSortingPersons";
+import { useMasanVtLocations } from "@/hooks/useMasanVtLocations";
 
-const EMPTY_SORTING_WAVES: SortingWave[] = [];
+const DIRECT_OUTBOUND_VT_ZONE_A = OUTBOUND_DISPLAY_ZONES[0];
+const DIRECT_OUTBOUND_VT_ZONE_B = OUTBOUND_DISPLAY_ZONES[1];
+
+const SELECT_CLASS =
+  "!h-12 flex-1 min-w-0 [&_.ant-select-selection-item]:!text-base [&_.ant-select-selection-item]:!leading-[46px] [&_.ant-select-selection-placeholder]:!text-base [&_.ant-select-selection-placeholder]:!leading-[46px] [&_.ant-select-selector]:!h-12";
 
 type DirectOutboundFromInboundBoardProps = {
+  /** Thực chất là warehouse id (OperatorInboundPage truyền `warehouseId`). */
   zoneId: number;
   onImportClick?: () => void;
   importLoading?: boolean;
   importDisabled?: boolean;
 };
 
-function locationLabel(loc: {
+type VtTarget = {
   id: number;
   location_code: string;
-  location_name?: string | null;
-  bin?: string | null;
-  location_type?: string | null;
-  status?: string | null;
-}) {
-  const code =
-    getLocationDisplayLabel(loc, loc.location_type) ||
-    `#${loc.id}`;
-  const status = (loc.status || "").trim();
-  return status ? `${code} · ${status}` : code;
-}
+  location_name: string;
+  /** Zone.code CC cùng cặp với khu VT. */
+  ccZoneCode: string;
+};
 
-function displayBin(loc: {
+function locationName(loc: {
+  location_code: string;
   location_name?: string | null;
-  bin?: string | null;
-  location_type?: string | null;
-  location_code?: string | null;
 }): string {
-  return getLocationDisplayLabel(loc, loc.location_type).toUpperCase();
+  return (loc.location_name ?? "").trim() || loc.location_code;
 }
 
-/** Ô chọn được trên map: mã bin BP* (chia chọn) hoặc CX* (cửa xuất). */
-function isBpOrCxBin(loc: {
+function isBypassBin(loc: {
+  location_name?: string | null;
   bin?: string | null;
   location_type?: string | null;
   location_code?: string | null;
 }): boolean {
-  const bin = displayBin(loc);
-  return bin.startsWith("BP") || bin.startsWith("CX");
+  return getLocationDisplayLabel(loc, loc.location_type)
+    .toUpperCase()
+    .startsWith("BP");
 }
 
 export default function DirectOutboundFromInboundBoard({
   zoneId = 1,
-  onImportClick,
-  importLoading,
-  importDisabled,
 }: DirectOutboundFromInboundBoardProps) {
-  const { username: inboundAssignee, setUsername: setInboundAssignee } =
-    useInboundOperatorAssignee(zoneId);
+  const warehouseId = zoneId;
+  const queryClient = useQueryClient();
+  const { username: inboundAssignee } = useInboundOperatorAssignee(zoneId);
   const viewportTier = useOperatorViewportTier();
   const inboundMapTuning = operatorInboundMapTuningForTier(viewportTier);
   const waveMapTuning = operatorWaveMapTuningForTier(viewportTier);
   const tabletControls = isOperatorTabletViewport(viewportTier);
 
-  const { data: sortingWavesData } = useSortingWaves(zoneId);
-  const sortingWaves = sortingWavesData ?? EMPTY_SORTING_WAVES;
-  const waveIdsKey = useMemo(
-    () => sortingWaves.map((wave) => wave.id).join(","),
-    [sortingWaves],
-  );
-  const { data: incompleteInbound } = useOldestIncompleteInbound(zoneId);
-  const orderId = incompleteInbound?.order?.id ?? 0;
-  const { data: products = [] } = useProduct(zoneId);
-
   const { data: allLocations = [], isLoading: locationsLoading } =
     useLocationsByZone(zoneId);
   const { locationByCode } = useLocationByCodeMap(zoneId);
-  const sendMutation = useDirectOutboundFromInbound();
 
-  const [waveId, setWaveId] = useState<number | null>(null);
   const [inboundLocationId, setInboundLocationId] = useState<
     number | undefined
   >();
-  const [outboundLocationId, setOutboundLocationId] = useState<
-    number | undefined
-  >();
-  const [selectedProduct, setSelectedProduct] =
-    useState<StationProductLine | null>(null);
-  const [assignmentRefreshKey, setAssignmentRefreshKey] = useState(0);
-  const [inboundAssignment, setInboundAssignment] =
-    useState<InboundBufferAssignment | null>(null);
+  const [outboundVt, setOutboundVt] = useState<VtTarget | null>(null);
 
-  const { data: assignedPayload } = useInboundAssignedDetails(
-    orderId > 0 ? [orderId] : [],
-    orderId > 0,
-  );
-  const assignedDetails = assignedPayload?.details ?? [];
-  const assignMutation = useAssignInboundToBuffer();
-
-  useEffect(() => {
-    if (sortingWaves.length === 0) {
-      setWaveId(null);
-      return;
-    }
-    setWaveId((prev) => {
-      if (prev != null && sortingWaves.some((w) => w.id === prev)) return prev;
-      return sortingWaves[0].id;
-    });
-  }, [waveIdsKey, sortingWaves]);
-
-  const inboundBuffers = useMemo(
+  const bypassCells = useMemo(
     () =>
       allLocations.filter(
-        (loc) => (loc.location_type || "").trim() === "inbound_buffer",
+        (loc) =>
+          (loc.location_type || "").trim() === "inbound_buffer" &&
+          isBypassBin(loc),
       ),
     [allLocations],
   );
 
-  /** Toàn bộ station của mọi wave — để hiện đủ 2 khu chia chọn. */
-  const allWaveStationIds = useMemo(() => {
-    const ids: number[] = [];
-    for (const wave of sortingWaves) {
-      ids.push(...(wave.sorting_stations ?? []));
-      ids.push(...(wave.outbound_stations ?? []));
-    }
-    return [...new Set(ids)];
-  }, [sortingWaves]);
-
-  const outboundStations = useMemo(() => {
-    return allLocations.filter(
-      (loc) => (loc.location_type || "").trim() === "outbound_station",
-    );
-  }, [allLocations]);
-
   const inboundOptions = useMemo(
     () =>
-      inboundBuffers.map((loc) => ({
+      bypassCells.map((loc) => ({
         value: loc.id,
-        label: locationLabel(loc),
+        label: locationName(loc),
       })),
-    [inboundBuffers],
+    [bypassCells],
   );
 
+  const inboundInteractiveCodes = useMemo(
+    () => bypassCells.map((loc) => loc.location_code),
+    [bypassCells],
+  );
+
+  const selectedInboundLocation =
+    bypassCells.find((loc) => loc.id === inboundLocationId) ?? null;
+  const inboundLocationCode = selectedInboundLocation?.location_code ?? null;
+
+  const { data: inboundLocationDetail, isFetching: inboundDetailLoading } =
+    useLocationDetail(inboundLocationId);
+  const bypassStock = useMemo(
+    () =>
+      (inboundLocationDetail?.item_stock ?? []).find(
+        (stock) => Number(stock.quantity || 0) > 0,
+      ) ?? null,
+    [inboundLocationDetail?.item_stock],
+  );
+  const inboundDisplayName = inboundLocationDetail?.location
+    ? locationName(inboundLocationDetail.location)
+    : selectedInboundLocation
+      ? locationName(selectedInboundLocation)
+      : null;
+
+  const vtZoneA = useMasanVtLocations(DIRECT_OUTBOUND_VT_ZONE_A?.id ?? 8);
+  const vtZoneB = useMasanVtLocations(DIRECT_OUTBOUND_VT_ZONE_B?.id ?? 9);
+  const vtByCode = useMemo(() => {
+    const map = new Map<string, VtTarget>();
+    const pairs = [
+      [vtZoneA.locations, DIRECT_OUTBOUND_VT_ZONE_A?.ccBucketZoneCode],
+      [vtZoneB.locations, DIRECT_OUTBOUND_VT_ZONE_B?.ccBucketZoneCode],
+    ] as const;
+    for (const [locations, ccZoneCode] of pairs) {
+      if (!ccZoneCode) continue;
+      for (const loc of locations) {
+        const code = (loc.location_code ?? "").trim();
+        if (!code) continue;
+        map.set(code, {
+          id: loc.id,
+          location_code: code,
+          location_name: locationName(loc),
+          ccZoneCode,
+        });
+      }
+    }
+    return map;
+  }, [vtZoneA.locations, vtZoneB.locations]);
+
+  const vtLocationCodes = useMemo(() => new Set(vtByCode.keys()), [vtByCode]);
+  const vtById = useMemo(
+    () => new Map([...vtByCode.values()].map((vt) => [vt.id, vt])),
+    [vtByCode],
+  );
   const outboundOptions = useMemo(
     () =>
-      outboundStations.map((loc) => ({
-        value: loc.id,
-        label: locationLabel(loc),
-      })),
-    [outboundStations],
+      [...vtByCode.values()]
+        .sort((a, b) =>
+          a.location_name.localeCompare(b.location_name, undefined, {
+            numeric: true,
+          }),
+        )
+        .map((vt) => ({
+          value: vt.id,
+          label: `${vt.location_name} · ${vt.ccZoneCode}`,
+        })),
+    [vtByCode],
   );
+  const vtLoading = vtZoneA.isLoading || vtZoneB.isLoading;
 
-  /** Trái: chỉ ô nhập BP/CX (fallback toàn bộ inbound_buffer nếu không có). */
-  const inboundInteractiveCodes = useMemo(() => {
-    const bpCx = inboundBuffers
-      .filter(isBpOrCxBin)
-      .map((loc) => loc.location_code);
-    if (bpCx.length > 0) return bpCx;
-    return inboundBuffers.map((loc) => loc.location_code);
-  }, [inboundBuffers]);
-
-  /** Phải: chỉ BP (chia chọn) + CX (cửa xuất). */
-  const waveInteractiveCodes = useMemo(() => {
-    const idSet =
-      allWaveStationIds.length > 0 ? new Set(allWaveStationIds) : null;
-    return allLocations
-      .filter((loc) => {
-        const t = (loc.location_type || "").trim();
-        if (t !== "sorting_station" && t !== "outbound_station") return false;
-        if (idSet && !idSet.has(loc.id)) return false;
-        return isBpOrCxBin(loc);
-      })
-      .map((loc) => loc.location_code);
-  }, [allLocations, allWaveStationIds]);
-
-  useEffect(() => {
-    if (!inboundLocationId) {
-      setInboundAssignment(null);
-      return;
-    }
-    let cancelled = false;
-    void (async () => {
-      try {
-        const assignment =
-          await getInboundBufferAssignmentApi(inboundLocationId);
-        if (!cancelled) setInboundAssignment(assignment);
-      } catch {
-        if (!cancelled) setInboundAssignment(null);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [inboundLocationId, assignmentRefreshKey]);
-
-  const assignedDetail = inboundAssignment?.details?.[0] ?? null;
-  const inboundReady =
-    Boolean(inboundAssignment?.is_assigned) && assignedDetail != null;
-
-  const aggregateQuery = useStationProductAggregate(
-    zoneId,
-    waveId ?? 0,
-    outboundLocationId ?? 0,
-    { enabled: zoneId > 0 && waveId != null && outboundLocationId != null }
-  );
-
-  useEffect(() => {
-    if (!outboundLocationId) return;
-    const stationProducts = aggregateQuery.data?.products ?? [];
-    if (stationProducts.length > 0) {
-      const match = stationProducts.find((p) => p.product_id === assignedDetail?.product_id);
-      setSelectedProduct(match || stationProducts[0]);
-    } else {
-      setSelectedProduct(null);
-    }
-  }, [aggregateQuery.data?.products, assignedDetail?.product_id, outboundLocationId]);
-
-  const itemOutboundIds = useMemo(() => {
-    if (!selectedProduct) return [] as number[];
-    const ids = selectedProduct.by_customer.flatMap((c) => c.item_outbound_ids);
-    return [...new Set(ids)];
-  }, [selectedProduct]);
-
-  const inboundLocationCode =
-    inboundBuffers.find((l) => l.id === inboundLocationId)?.location_code ??
-    null;
-  const selectedInboundLocation =
-    inboundBuffers.find((location) => location.id === inboundLocationId) ?? null;
-  const isSelectedBypass =
-    selectedInboundLocation != null &&
-    displayBin(selectedInboundLocation).startsWith("BP");
-  const { data: inboundLocationDetail } = useLocationDetail(
-    isSelectedBypass ? inboundLocationId ?? undefined : undefined,
-  );
-  const productById = useMemo(
-    () => new Map(products.map((product) => [product.id, product])),
-    [products],
-  );
   const bypassMetadata = useMemo(() => {
-    const stocks = inboundLocationDetail?.item_stock ?? [];
-    if (!isSelectedBypass || stocks.length === 0) {
-      return "Chưa chọn ô bypass có hàng";
-    }
-    return stocks
-      .map((stock) => {
-        const product = productById.get(stock.item_id);
-        const sku = stock.sku || product?.sku || `#${stock.item_id}`;
-        const name = product?.name || "Chưa có tên hàng";
-        const quantity = toDisplayInteger(Number(stock.quantity || 0));
-        return `${sku} - ${name} - ${quantity}`;
-      })
-      .join("; ");
-  }, [inboundLocationDetail?.item_stock, isSelectedBypass, productById]);
-  const outboundLocationCode =
-    outboundStations.find((l) => l.id === outboundLocationId)?.location_code ??
-    null;
-
-  const resolveWaveForLocation = (locationId: number) => {
-    for (const wave of sortingWaves) {
-      if ((wave.sorting_stations ?? []).includes(locationId)) return wave.id;
-      if ((wave.outbound_stations ?? []).includes(locationId)) return wave.id;
-    }
-    return null;
-  };
-
-  /** Fill điểm nhập và gán SP tự động */
-  const fillInbound = (locationId: number) => {
-    setInboundLocationId(locationId);
-    setSelectedProduct(null);
-    if (orderId <= 0) {
-      message.warning("Không có đơn nhập đang xử lý trong kho này");
-      return;
-    }
-
-    // Tự động gán detail đầu tiên chưa gán
-    const pendingDetail = assignedDetails.find((d) => d.status === "pending");
-    if (pendingDetail) {
-      assignMutation.mutate(
-        {
-          orderId,
-          data: { location_id: locationId, detail_id: pendingDetail.detail_id },
-        },
-        {
-          onSuccess: () => {
-            message.success(`Đã tự động gán sản phẩm vào ô`);
-            setAssignmentRefreshKey((k) => k + 1);
-          },
-        }
-      );
-    }
-  };
-
-  /** Fill điểm xuất (+ suy ra wave nếu cần) */
-  const fillOutbound = (locationId: number) => {
-    const owningWave = resolveWaveForLocation(locationId);
-    if (owningWave != null) setWaveId(owningWave);
-    setOutboundLocationId(locationId);
-    setSelectedProduct(null);
-
-    if (owningWave == null) {
-      message.warning("Điểm xuất không thuộc vị trí sorting nào");
-      return;
-    }
-  };
-
-  const fillSortingWave = (locationId: number) => {
-    const owningWave = resolveWaveForLocation(locationId);
-    if (owningWave == null) return;
-    setWaveId(owningWave);
-  };
+    if (!inboundLocationId) return "Chưa chọn ô bypass";
+    if (inboundDetailLoading && !inboundLocationDetail) return "Đang tải tồn ô bypass...";
+    if (!bypassStock) return "Ô bypass không có hàng";
+    const parts = [
+      bypassStock.sku || `#${bypassStock.item_id}`,
+      bypassStock.item_name || "Chưa có tên hàng",
+      bypassStock.lot_number ? `Lot ${bypassStock.lot_number}` : null,
+      `SL ${toDisplayInteger(Number(bypassStock.quantity || 0))}`,
+    ].filter(Boolean);
+    const target = outboundVt
+      ? ` → ${outboundVt.location_name} (${outboundVt.ccZoneCode})`
+      : "";
+    return `${parts.join(" - ")}${target}`;
+  }, [
+    bypassStock,
+    inboundDetailLoading,
+    inboundLocationDetail,
+    inboundLocationId,
+    outboundVt,
+  ]);
 
   const handleInboundMapClick = (payload: { locationCode: string }) => {
     const location = locationByCode[payload.locationCode];
@@ -361,39 +215,25 @@ export default function DirectOutboundFromInboundBoard({
       );
       return;
     }
-    if ((location.location_type || "").trim() !== "inbound_buffer") {
-      message.error("Điểm nhập phải là inbound_buffer.");
+    if (
+      (location.location_type || "").trim() !== "inbound_buffer" ||
+      !isBypassBin(location)
+    ) {
+      message.error("Điểm nhập phải là ô bypass (BP).");
       return;
     }
-    fillInbound(location.id);
+    setInboundLocationId(location.id);
   };
-
 
   const handleWaveMapClick = (payload: { locationCode: string }) => {
-    const location = locationByCode[payload.locationCode] as
-      | WarehouseLocation
-      | undefined;
-    if (!location) {
-      message.error(
-        `Không tìm thấy warehouse location cho mã ${payload.locationCode}`,
-      );
-      return;
-    }
-    if (!isBpOrCxBin(location)) {
-      return;
-    }
-    const locType = (location.location_type || "").trim();
-    if (locType === "sorting_station") {
-      fillSortingWave(location.id);
-      return;
-    }
-    if (locType === "outbound_station") {
-      fillOutbound(location.id);
-      return;
-    }
+    const vt = vtByCode.get(payload.locationCode);
+    if (!vt) return;
+    setOutboundVt(vt);
   };
 
-
+  const bypassMutation = useMutation({
+    mutationFn: bypassMasanInboundToOutboundApi,
+  });
 
   const inboundAssigneeReady = hasInboundOperatorAssignee(inboundAssignee);
 
@@ -402,99 +242,64 @@ export default function DirectOutboundFromInboundBoard({
       message.warning(OPERATOR_ASSIGNEE_REQUIRED_INBOUND);
       return;
     }
-    const resolvedWaveId =
-      waveId ??
-      (outboundLocationId != null
-        ? resolveWaveForLocation(outboundLocationId)
-        : null);
-    if (!inboundLocationId || !outboundLocationId || !resolvedWaveId) {
-      message.warning("Vui lòng chọn đủ điểm nhập và điểm xuất");
+    if (!inboundLocationId || !outboundVt) {
+      message.warning("Vui lòng chọn đủ điểm nhập (BP) và điểm xuất (VT)");
       return;
     }
-    if (waveId == null) setWaveId(resolvedWaveId);
-    if (!assignedDetail || !inboundAssignment?.inbound_order_id) {
-      message.warning(
-        "Điểm nhập chưa được gán sản phẩm — bấm «Gán / hủy SP» để gán",
-      );
-      return;
-    }
-    if (!selectedProduct || itemOutboundIds.length === 0) {
-      message.warning("Chưa chọn SKU xuất — bấm «Chọn SKU xuất»");
-      return;
-    }
-    if (selectedProduct.product_id !== assignedDetail.product_id) {
-      message.warning("SKU xuất phải khớp sản phẩm đã gán trên điểm nhập");
+    if (!bypassStock) {
+      message.warning("Ô bypass không có hàng");
       return;
     }
 
-    const inboundQty = Number(assignedDetail.expected_quantity || 0);
-    const outboundNeed = Number(selectedProduct.total_quantity || 0);
-    if (inboundQty <= 0) {
-      message.warning("Số lượng inbound không hợp lệ");
-      return;
-    }
-    if (outboundNeed <= 0) {
-      message.warning("Nhu cầu outbound không hợp lệ");
-      return;
-    }
-
-    const appliedQty = Math.min(inboundQty, outboundNeed);
-    const surplusQty = Math.max(0, inboundQty - outboundNeed);
-    const shortageQty = Math.max(0, outboundNeed - inboundQty);
-
+    const stock = bypassStock;
+    const target = outboundVt;
     Modal.confirm({
-      title: "Xác nhận xuất trực tiếp",
+      title: "Xác nhận bypass xuất trực tiếp",
       width: OPERATOR_DESKTOP.modal.default,
       content: (
         <div className="space-y-2 text-sm text-slate-600">
           <p>
-            Xuất hết{" "}
-            <strong>
-              {selectedProduct.product_sku || `#${selectedProduct.product_id}`}
-            </strong>{" "}
-            · SL inbound <strong>{toDisplayInteger(inboundQty)}</strong> →
-            outbound station
+            Điểm nhập: <strong>{inboundDisplayName}</strong>
           </p>
           <p>
-            Trừ đơn xuất: <strong>{toDisplayInteger(appliedQty)}</strong>
-            {shortageQty > 0
-              ? ` (thiếu ${toDisplayInteger(shortageQty)} so với nhu cầu)`
-              : null}
-            {surplusQty > 0
-              ? ` · thừa ${toDisplayInteger(surplusQty)} → tạo lệnh return`
-              : null}
+            Điểm xuất: <strong>{target.location_name}</strong> · Zone CC{" "}
+            <strong>{target.ccZoneCode}</strong>
+          </p>
+          <p>
+            Hàng: <strong>{stock.sku || `#${stock.item_id}`}</strong>
+            {stock.item_name ? ` - ${stock.item_name}` : null}
+            {stock.lot_number ? ` · Lot ${stock.lot_number}` : null} · SL{" "}
+            <strong>{toDisplayInteger(Number(stock.quantity || 0))}</strong>
           </p>
         </div>
       ),
       okText: "Gửi lệnh",
       cancelText: "Hủy",
       onOk: () =>
-        sendMutation.mutateAsync(
+        bypassMutation.mutateAsync(
           {
-            zone_id: zoneId,
-            inbound_location_id: inboundLocationId,
-            outbound_location_id: outboundLocationId,
-            inbound_order_id: inboundAssignment.inbound_order_id!,
-            inbound_detail_id: assignedDetail.detail_id,
-            sorting_wave_id: resolvedWaveId,
-            item_outbound_ids: itemOutboundIds,
-            quantity: inboundQty,
+            warehouse_id: warehouseId,
+            target_zone: target.ccZoneCode,
+            item_stock_id: stock.id,
+            to_location_id: target.id,
           },
           {
             onSuccess: (result) => {
-              const surplus = Number(result.surplus_quantity || 0);
-              message.success(
-                surplus > 0
-                  ? `Đã xuất ${toDisplayInteger(result.quantity)} · trừ đơn ${toDisplayInteger(result.applied_quantity)} · lệnh return #${result.return_task_id}`
-                  : `Đã xuất trực tiếp ${toDisplayInteger(result.quantity)} · trừ đơn ${toDisplayInteger(result.applied_quantity)} · lệnh #${result.command_id}`,
-              );
-              setAssignmentRefreshKey((k) => k + 1);
-              setSelectedProduct(null);
+              message.success(result.message || "Bypass hàng thành công");
+              void queryClient.invalidateQueries({
+                queryKey: ["location-detail"],
+              });
+              for (const zone of [
+                ...vtZoneA.vtZoneIds,
+                ...vtZoneB.vtZoneIds,
+              ]) {
+                void queryClient.invalidateQueries({
+                  queryKey: ["zone_map_status", zone],
+                });
+              }
             },
             onError: (err) => {
-              message.error(
-                getApiErrorDetail(err, "Không thể gửi lệnh xuất trực tiếp"),
-              );
+              message.error(getApiErrorDetail(err, "Không thể bypass hàng"));
             },
           },
         ),
@@ -503,10 +308,9 @@ export default function DirectOutboundFromInboundBoard({
 
   const canSend =
     inboundAssigneeReady &&
-    inboundReady &&
-    outboundLocationId != null &&
-    selectedProduct != null &&
-    itemOutboundIds.length > 0;
+    bypassStock != null &&
+    outboundVt != null &&
+    !bypassMutation.isPending;
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-panel">
@@ -521,12 +325,12 @@ export default function DirectOutboundFromInboundBoard({
               optionFilterProp="label"
               loading={locationsLoading}
               value={inboundLocationId}
-              placeholder="Chọn / click map trái"
-              onChange={(next) => fillInbound(Number(next))}
+              placeholder="Chọn / click ô BP map trái"
+              onChange={(next) => setInboundLocationId(Number(next))}
               options={inboundOptions}
               disabled={zoneId <= 0 || locationsLoading}
-              className="!h-12 flex-1 min-w-0 [&_.ant-select-selection-item]:!text-base [&_.ant-select-selection-item]:!leading-[46px] [&_.ant-select-selection-placeholder]:!text-base [&_.ant-select-selection-placeholder]:!leading-[46px] [&_.ant-select-selector]:!h-12"
-              notFoundContent="Không có inbound_buffer"
+              className={SELECT_CLASS}
+              notFoundContent="Không có ô bypass"
             />
           </div>
         </div>
@@ -539,14 +343,14 @@ export default function DirectOutboundFromInboundBoard({
             <Select
               showSearch
               optionFilterProp="label"
-              loading={locationsLoading}
-              value={outboundLocationId}
-              placeholder="Chọn / click CX trên map"
-              onChange={(next) => fillOutbound(Number(next))}
+              loading={vtLoading}
+              value={outboundVt?.id}
+              placeholder="Chọn / click ô VT trên map"
+              onChange={(next) => setOutboundVt(vtById.get(Number(next)) ?? null)}
               options={outboundOptions}
-              disabled={zoneId <= 0 || locationsLoading}
-              className="!h-12 flex-1 min-w-0 [&_.ant-select-selection-item]:!text-base [&_.ant-select-selection-item]:!leading-[46px] [&_.ant-select-selection-placeholder]:!text-base [&_.ant-select-selection-placeholder]:!leading-[46px] [&_.ant-select-selector]:!h-12"
-              notFoundContent="Không có outbound_station"
+              disabled={zoneId <= 0 || vtLoading}
+              className={SELECT_CLASS}
+              notFoundContent="Không có ô VT"
             />
           </div>
         </div>
@@ -571,7 +375,7 @@ export default function DirectOutboundFromInboundBoard({
               ? OPERATOR_ASSIGNEE_REQUIRED_INBOUND
               : undefined
           }
-          loading={sendMutation.isPending}
+          loading={bypassMutation.isPending}
           className={cn("!h-12", tabletControls ? "!text-base" : "!text-sm")}
         >
           Gửi lệnh
@@ -580,22 +384,10 @@ export default function DirectOutboundFromInboundBoard({
 
       <div className="grid min-h-0 flex-1 grid-cols-1 overflow-hidden @min-[1280px]:grid-cols-2">
         <div className="flex min-h-0 min-w-0 flex-col overflow-hidden @min-[1280px]:border-r @min-[1280px]:border-stripe-hairline">
-          <div className="flex shrink-0 flex-wrap items-end justify-between gap-2 border-b border-stripe-hairline px-3 py-2">
+          <div className="flex shrink-0 items-center border-b border-stripe-hairline px-3 py-2">
             <h4 className="text-sm font-semibold text-brand-dark">
               Sơ đồ điểm nhập
             </h4>
-            <OperatorAssigneeSelect
-              mode="single"
-              toolbar="inbound"
-              label="Người nhập"
-              value={inboundAssignee}
-              onChange={(next) =>
-                setInboundAssignee(
-                  typeof next === "string" ? next : undefined,
-                )
-              }
-              disabled={zoneId <= 0}
-            />
           </div>
           <div className="relative min-h-0 flex-1 overflow-hidden bg-industrial-pattern p-2">
             {zoneId > 0 ? (
@@ -619,17 +411,18 @@ export default function DirectOutboundFromInboundBoard({
         <div className="flex min-h-0 min-w-0 flex-col overflow-hidden border-t border-stripe-hairline @min-[1280px]:border-t-0">
           <div className="flex shrink-0 items-center border-b border-stripe-hairline px-3 py-2">
             <h4 className="text-sm font-semibold text-brand-dark">
-              Sơ đồ chia chọn & cửa xuất
+              Sơ đồ chia chọn (VT)
             </h4>
           </div>
           <div className="relative min-h-0 flex-1 overflow-hidden bg-industrial-pattern p-2">
             {zoneId > 0 ? (
               <OperatorMapCanvas
-                key={`wave-all-${allWaveStationIds.join(",") || "zone"}`}
+                key="wave-all-vt"
                 zoneId={[...OUTBOUND_MAP_ZONE_IDS]}
                 tuning={waveMapTuning}
-                selectedCodes={outboundLocationCode ? [outboundLocationCode] : undefined}
-                interactiveCodes={waveInteractiveCodes}
+                selectedCodes={outboundVt ? [outboundVt.location_code] : undefined}
+                interactiveCodes={vtLocationCodes}
+                vtLocationCodes={vtLocationCodes}
                 onBufferCellClick={handleWaveMapClick}
                 className="!h-full"
               />
@@ -641,7 +434,6 @@ export default function DirectOutboundFromInboundBoard({
           </div>
         </div>
       </div>
-
     </div>
   );
 }
