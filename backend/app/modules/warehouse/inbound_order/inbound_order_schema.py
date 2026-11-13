@@ -377,6 +377,9 @@ class InboundOrderAllocationResponse(BaseModel):
     item_stock_id: int
     unit_id: int
     quantity: int
+    base_unit_quantity: int = 0
+    base_unit_id: Optional[int] = None
+    base_unit_name: Optional[str] = None
     status: str
     item_id: Optional[int] = None
     sku: Optional[str] = None
@@ -412,6 +415,7 @@ class InboundOrderDetailResponse(BaseModel):
     from_location_name: Optional[str] = None
     to_location_code: Optional[str] = None
     to_location_name: Optional[str] = None
+    total_base_unit_quantity: int = 0
     status: str
     detail_type: str
     details: dict[str, Any] = Field(default_factory=dict)

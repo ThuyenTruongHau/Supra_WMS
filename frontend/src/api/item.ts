@@ -17,7 +17,7 @@ const BASE = '/api/v1/items'
 const QR_BASE = '/api/v1/qr-codes'
 
 export const listItemsApi = async (params: ItemListParams) => {
-  const { warehouse_id, q, page, page_size, limit, is_active } = params
+  const { warehouse_id, q, page, page_size, limit, is_active, stock_level } = params
   const { data } = await axiosInstance.get<ItemListResponse>(BASE, {
     params: {
       warehouse_id,
@@ -25,6 +25,7 @@ export const listItemsApi = async (params: ItemListParams) => {
       page: page ?? 1,
       page_size: page_size ?? limit ?? 20,
       is_active,
+      stock_level,
     },
   })
   return data

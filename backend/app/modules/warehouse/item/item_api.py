@@ -43,6 +43,9 @@ def list_items(
     warehouse_id: Optional[int] = Query(None),
     q: Optional[str] = Query(None),
     is_active: Optional[bool] = Query(None),
+    stock_level: Optional[str] = Query(
+        None, description="Lọc mức tồn: low | over | ok"
+    ),
 ):
     return item_service.list_items(
         db,
@@ -51,6 +54,7 @@ def list_items(
         warehouse_id=warehouse_id,
         q=q,
         is_active=is_active,
+        stock_level=stock_level,
     )
 
 

@@ -23,11 +23,14 @@ from app.modules.warehouse.lot_number_utils import format_lot_number_display
 from app.modules.warehouse.warehouse_zone.warehouse_service import _ensure_warehouse_exists
 
 VN_TIMEZONE = "Asia/Ho_Chi_Minh"
-BUCKET_KEYS: tuple[StockAgingBucketKey, ...] = ("lte_30", "days_31_60", "gt_60")
+BUCKET_KEYS: tuple[StockAgingBucketKey, ...] = (
+    "lte_90", "days_91_180", "days_181_360", "gt_360",
+)
 BUCKET_LABELS: dict[StockAgingBucketKey, str] = {
-    "lte_30": "0–30 ngày",
-    "days_31_60": "31–60 ngày",
-    "gt_60": "Trên 60 ngày",
+    "lte_90": "0–90 ngày",
+    "days_91_180": "91–180 ngày",
+    "days_181_360": "181–360 ngày",
+    "gt_360": "Trên 360 ngày",
 }
 LONGEST_LIMIT = 8
 BUCKET_ITEMS_LIMIT = 500
@@ -43,9 +46,10 @@ def _holding_days_expr(today=None):
 
 def _bucket_key_expr(holding_days):
     return case(
-        (holding_days <= 30, literal("lte_30")),
-        (holding_days <= 60, literal("days_31_60")),
-        else_=literal("gt_60"),
+        (holding_days <= 90, literal("lte_90")),
+        (holding_days <= 180, literal("days_91_180")),
+        (holding_days <= 360, literal("days_181_360")),
+        else_=literal("gt_360"),
     )
 
 
@@ -148,11 +152,15 @@ def _bucket_holding_filter(
     bucket: StockAgingBucketKey,
     holding_days,
 ):
-    if bucket == "lte_30":
-        return holding_days <= 30
-    if bucket == "days_31_60":
-        return and_(holding_days >= 31, holding_days <= 60)
-    return holding_days > 60
+    if bucket == "lte_90":
+        return holding_days <= 90
+    if bucket == "days_91_180":
+        return and_(holding_days >= 91, holding_days <= 180)
+    if bucket == "days_181_360":
+        return and_(holding_days >= 181, holding_days <= 360)
+    if bucket == "gt_360":
+        return holding_days > 360
+    raise ValueError(f"Unsupported stock aging bucket: {bucket}")
 
 
 def get_report_stock_aging_bucket(

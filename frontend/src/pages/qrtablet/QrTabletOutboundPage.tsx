@@ -16,6 +16,8 @@ import { useAppStore } from "@/store/useAppStore";
 import type { OutboundOrder } from "@/types/outbound";
 import dayjs from "dayjs";
 import { useUser } from "@/hooks/useAuth";
+import OrderCreatedDateRangeFilter from "@/components/shared/OrderCreatedDateRangeFilter";
+import type { OrderCreatedDateRangeValue } from "@/utils/formatOrderListDateParams";
 
 const PAGE_SIZE = 20;
 const STATUS_FILTER_WIDTH = 180;
@@ -32,6 +34,8 @@ export default function QrTabletOutboundPage() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [searchInput, setSearchInput] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+  const [createdDateRange, setCreatedDateRange] =
+    useState<OrderCreatedDateRangeValue>({});
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -49,6 +53,8 @@ export default function QrTabletOutboundPage() {
     page_size: PAGE_SIZE,
     q: searchQuery || undefined,
     status: statusFilter === "all" ? undefined : statusFilter,
+    created_from: createdDateRange.created_from,
+    created_to: createdDateRange.created_to,
   });
   const orders = ordersData?.items ?? [];
 
@@ -171,6 +177,13 @@ export default function QrTabletOutboundPage() {
               }}
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
+            />
+            <OrderCreatedDateRangeFilter
+              value={createdDateRange}
+              onChange={(next) => {
+                setCreatedDateRange(next);
+                setPage(1);
+              }}
             />
           </div>
 

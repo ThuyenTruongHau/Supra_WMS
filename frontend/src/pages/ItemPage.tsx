@@ -47,6 +47,7 @@ import { brand } from "@/components/ui/theme/tokens";
 import { formatQuantity, parseQuantity } from "@/utils/formatQuantity";
 import { getApiErrorMessage } from "@/utils/apiErrorMessage";
 import dayjs from "dayjs";
+import KpiFilterCardGrid from "@/components/shared/KpiFilterCardGrid";
 
 const PAGE_SIZE = 20;
 const ITEM_FETCH_LIMIT = 100;
@@ -274,6 +275,9 @@ export default function ItemPage() {
   const [searchInput, setSearchInput] = useState("");
   const [submittedQuery, setSubmittedQuery] = useState("");
   const [page, setPage] = useState(1);
+  const [stockLevelFilter, setStockLevelFilter] = useState<
+    "low" | "over" | null
+  >(null);
   const [activeTab, setActiveTab] = useState<ItemPageTab>("products");
   const navigate = useNavigate();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -287,12 +291,22 @@ export default function ItemPage() {
     setPage(1);
   };
 
-  const { data, isLoading: isItemsLoading } = useItems({
+  const { data: listData, isLoading: isItemsLoading } = useItems({
+    warehouse_id: selectedWarehouseId,
+    q: submittedQuery || undefined,
+    page,
+    page_size: PAGE_SIZE,
+    stock_level: stockLevelFilter ?? undefined,
+  });
+  const itemList = listData?.items ?? [];
+  const itemListTotal = listData?.total ?? 0;
+
+  const { data: chartData, isLoading: isChartItemsLoading } = useItems({
     warehouse_id: selectedWarehouseId,
     q: submittedQuery || undefined,
     page_size: ITEM_FETCH_LIMIT,
   });
-  const itemList = data?.items ?? [];
+  const chartItemList = chartData?.items ?? [];
   const createMutation = useCreateItem();
   const importMutation = useImportItems();
   const downloadImportFileMutation = useDownloadLastImportItemFile();
@@ -300,7 +314,7 @@ export default function ItemPage() {
     useItemAnalyze(selectedWarehouseId);
 
   const stockLineChartChunks = useMemo(() => {
-    const baseRows = [...itemList]
+    const baseRows = [...chartItemList]
       .sort((a, b) => a.sku.localeCompare(b.sku, undefined, { numeric: true }))
       .map((item) => {
         const quantity = Number(item.quantity ?? 0);
@@ -331,7 +345,7 @@ export default function ItemPage() {
       chunks.push({ data, yMax: yMax > 0 ? yMax : 1 });
     }
     return chunks;
-  }, [itemList]);
+  }, [chartItemList]);
 
   useEffect(() => {
     if (isCreateOpen) {
@@ -349,26 +363,52 @@ export default function ItemPage() {
 
   const kpiCards = [
     {
+      key: "all",
       label: "Tổng sản phẩm",
       value: formatKpi(analyze?.total_items),
       color: "#3aa6a6",
     },
     {
+      key: "total_quantity",
       label: "Tổng số lượng",
       value: formatKpi(analyze?.total_quantity),
       color: "#0f3d46",
+      filterable: false,
     },
     {
+      key: "inventory_value",
       label: "Giá trị tồn kho",
       value: formatInventoryValue(analyze?.total_inventory_value),
       color: "#0f3460",
+      filterable: false,
     },
     {
-      label: "Số lượng còn ít",
+      key: "low",
+      label: "Số lượng dưới tiêu chuẩn",
       value: formatKpi(analyze?.total_low_stock),
-      color: "#6b7280",
+      color: "#ea580c",
+    },
+    {
+      key: "over",
+      label: "Số lượng trên tiêu chuẩn",
+      value: formatKpi(analyze?.total_over_stock),
+      color: "#7c3aed",
     },
   ];
+
+  const handleKpiStockFilter = (key: string | null) => {
+    if (key === null || key === "all") {
+      setStockLevelFilter(null);
+      setPage(1);
+      return;
+    }
+    if (key === "low" || key === "over") {
+      setStockLevelFilter((prev) =>
+        prev === key ? null : (key as "low" | "over"),
+      );
+      setPage(1);
+    }
+  };
 
   const handleCreate = (values: CreateItemFormValues) => {
     const details = Object.fromEntries(
@@ -517,18 +557,19 @@ export default function ItemPage() {
       dataIndex: "quantity",
       key: "quantity",
       sorter: (a, b) => parseQuantity(a.quantity) - parseQuantity(b.quantity),
-      render: (qty: number | string) => {
-        const amount = parseQuantity(qty);
+      render: (_qty: number | string, record: Item) => {
+        const amount = parseQuantity(record.quantity);
+        const min = Number(record.min_quantity ?? 0);
+        const max = Number(record.max_quantity ?? 0);
+        const status = getStockStatus(amount, min, max);
+        const className =
+          status === "low"
+            ? "font-semibold text-orange-500"
+            : status === "over"
+              ? "font-semibold text-violet-600"
+              : "font-semibold text-brand-dark";
         return (
-          <span
-            className={
-              amount === 0 || amount < 10
-                ? "font-semibold text-orange-500"
-                : "font-semibold text-brand-dark"
-            }
-          >
-            {formatQuantity(qty)}
-          </span>
+          <span className={className}>{formatQuantity(record.quantity)}</span>
         );
       },
     },
@@ -567,19 +608,12 @@ export default function ItemPage() {
         </span>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {kpiCards.map((card) => (
-          <Card key={card.label}>
-            <p className="text-sm text-gray-500">{card.label}</p>
-            <p
-              className="mt-2 text-3xl font-bold"
-              style={{ color: card.color }}
-            >
-              {isAnalyzeLoading ? "..." : card.value}
-            </p>
-          </Card>
-        ))}
-      </div>
+      <KpiFilterCardGrid
+        cards={kpiCards}
+        selectedKey={stockLevelFilter}
+        onSelectKey={handleKpiStockFilter}
+        loading={isAnalyzeLoading}
+      />
 
       <div className="overflow-hidden rounded-xl border border-gray-100/50 shadow-sm">
         <div className="flex items-stretch gap-0 border-b border-stripe-hairline bg-[#eef2f6]">
@@ -632,6 +666,17 @@ export default function ItemPage() {
                   >
                     Tìm
                   </Button>
+                  {stockLevelFilter && (
+                    <Button
+                      variant="secondary"
+                      onClick={() => {
+                        setStockLevelFilter(null);
+                        setPage(1);
+                      }}
+                    >
+                      Bỏ lọc KPI
+                    </Button>
+                  )}
                 </div>
                 <div className="flex flex-wrap items-center gap-3 shrink-0">
                   <input
@@ -683,7 +728,7 @@ export default function ItemPage() {
                 pagination={{
                   current: page,
                   pageSize: PAGE_SIZE,
-                  total: itemList.length,
+                  total: itemListTotal,
                   showSizeChanger: false,
                   showTotal: (total, range) =>
                     `Hiển thị ${range[0]}–${range[1]} / ${total} sản phẩm`,
@@ -701,7 +746,7 @@ export default function ItemPage() {
         
               </div>
 
-              {isItemsLoading ? (
+              {isChartItemsLoading ? (
                 <div className="flex h-64 items-center justify-center text-brand-primary/70">
                   Đang tải dữ liệu tồn kho...
                 </div>

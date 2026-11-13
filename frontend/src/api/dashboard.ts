@@ -7,6 +7,7 @@ import type {
   ReportTrendResponse,
   StockAgingBucketKey,
   TopProductsPeriod,
+  TopProductsLimit,
   TrendGranularity,
 } from "@/types/dashboard";
 
@@ -36,10 +37,11 @@ export const getReportTrendsApi = async (
 export const getReportTopProductsApi = async (
   warehouseId: number,
   period: TopProductsPeriod,
+  limit: TopProductsLimit = 5,
 ): Promise<ReportTopProductsResponse> => {
   const { data } = await axiosInstance.get<ReportTopProductsResponse>(
     `${BASE}/report-top-products`,
-    { params: { warehouse_id: warehouseId, period } },
+    { params: { warehouse_id: warehouseId, period, limit } },
   );
   return data;
 };

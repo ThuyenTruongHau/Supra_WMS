@@ -150,6 +150,7 @@ class ItemAnalyzeResponse(BaseModel):
     total_quantity: Decimal
     total_inventory_value: Decimal
     total_low_stock: int
+    total_over_stock: int
 
 
 class ItemStockInDetail(BaseModel):

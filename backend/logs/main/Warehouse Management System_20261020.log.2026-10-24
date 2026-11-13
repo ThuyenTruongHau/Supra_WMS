@@ -1,0 +1,188 @@
+2026-10-24 08:25:51,679 - main - INFO - no inbound pending cache keys to delete
+2026-10-24 08:48:25,814 - main - INFO - qr_record: RC3-2468-000-20261024-60614779 --- <app.modules.warehouse.item.item_model.QR_Code object at 0x00000207A9869270>
+2026-10-24 08:49:02,893 - main - INFO - qr_record: RC3-2468-000-20261024-34025351 --- <app.modules.warehouse.item.item_model.QR_Code object at 0x00000207A986BF10>
+2026-10-24 08:49:45,461 - main - INFO - inbound.caller_order order_code=IN-20261024-085302
+2026-10-24 08:49:46,457 - main - INFO - ICS addTask response: {'code': 1000, 'data': 'TDS_Inbound_082081ec', 'desc': '请求成功'}
+2026-10-24 08:49:47,646 - main - INFO - Processing task status for order_id=TDS_Inbound_082081ec
+2026-10-24 08:50:19,077 - main - INFO - Processing task status for order_id=TDS_Inbound_082081ec
+2026-10-24 08:50:19,443 - main - INFO - Processing task status for order_id=TDS_Inbound_082081ec
+2026-10-24 08:50:32,873 - main - INFO - Processing task status for order_id=TDS_Inbound_082081ec
+2026-10-24 08:50:32,959 - main - INFO - Processing task status for order_id=TDS_Inbound_082081ec
+2026-10-24 08:51:54,801 - main - INFO - Processing task status for order_id=TDS_Inbound_082081ec
+2026-10-24 08:51:55,098 - main - INFO - Processing task status for order_id=TDS_Inbound_082081ec
+2026-10-24 08:52:01,739 - main - INFO - Processing task status for order_id=TDS_Inbound_082081ec
+2026-10-24 08:52:01,998 - main - INFO - Receive completed for TDS_Inbound_082081ec
+2026-10-24 08:52:02,284 - main - INFO - Current status: in_transit
+2026-10-24 08:52:02,285 - main - INFO - New status: available
+2026-10-24 08:52:02,287 - main - INFO - Current status: in_transit
+2026-10-24 08:52:02,288 - main - INFO - New status: available
+2026-10-24 08:56:58,595 - main - INFO - qr_record: RC3-2468-000-20261024-40310304 --- <app.modules.warehouse.item.item_model.QR_Code object at 0x00000207A9AF2680>
+2026-10-24 08:57:41,083 - main - INFO - inbound.caller_order order_code=IN-20261024-090113
+2026-10-24 08:57:41,898 - main - INFO - ICS addTask response: {'code': 1000, 'data': 'TDS_Inbound_8eeb74f1', 'desc': '请求成功'}
+2026-10-24 08:57:43,129 - main - INFO - Processing task status for order_id=TDS_Inbound_8eeb74f1
+2026-10-24 08:58:12,636 - main - INFO - Processing task status for order_id=TDS_Inbound_8eeb74f1
+2026-10-24 08:58:12,981 - main - INFO - Processing task status for order_id=TDS_Inbound_8eeb74f1
+2026-10-24 08:58:20,040 - main - INFO - Processing task status for order_id=TDS_Inbound_8eeb74f1
+2026-10-24 08:58:20,164 - main - INFO - Processing task status for order_id=TDS_Inbound_8eeb74f1
+2026-10-24 08:59:47,011 - main - INFO - Processing task status for order_id=TDS_Inbound_8eeb74f1
+2026-10-24 08:59:47,334 - main - INFO - Processing task status for order_id=TDS_Inbound_8eeb74f1
+2026-10-24 08:59:54,093 - main - INFO - Processing task status for order_id=TDS_Inbound_8eeb74f1
+2026-10-24 08:59:54,356 - main - INFO - Receive completed for TDS_Inbound_8eeb74f1
+2026-10-24 08:59:54,453 - main - INFO - Current status: split
+2026-10-24 08:59:54,454 - main - INFO - New status: split
+2026-10-24 09:33:29,117 - main - INFO - inbound.get_order_details order_code=IN-20261023-165740
+2026-10-24 09:33:32,797 - main - INFO - inbound.get_order_details order_code=IN-20261023-165740
+2026-10-24 09:34:43,534 - main - INFO - Deleted inbound order IN-20261023-165740: kept 0 completed detail(s), purged 1 detail(s)
+2026-10-24 09:34:43,596 - main - INFO - inbound.get_order_details order_code=IN-20261023-165740
+2026-10-24 10:25:35,338 - main - INFO - qr_record: QC5-4675-000-20261024-29724593 --- <app.modules.warehouse.item.item_model.QR_Code object at 0x00000207AE6BCDF0>
+2026-10-24 10:26:57,068 - main - INFO - qr_record: QC5-4675-000-20261024-43935160 --- <app.modules.warehouse.item.item_model.QR_Code object at 0x00000207AE5A4520>
+2026-10-24 10:28:27,835 - main - INFO - inbound.caller_order order_code=IN-20261024-103144
+2026-10-24 10:28:28,602 - main - INFO - ICS addTask response: {'code': 1000, 'data': 'TDS_Inbound_3ce6d73a', 'desc': '请求成功'}
+2026-10-24 10:28:29,996 - main - INFO - Processing task status for order_id=TDS_Inbound_3ce6d73a
+2026-10-24 10:28:59,921 - main - INFO - Processing task status for order_id=TDS_Inbound_3ce6d73a
+2026-10-24 10:29:00,320 - main - INFO - Processing task status for order_id=TDS_Inbound_3ce6d73a
+2026-10-24 10:29:12,714 - main - INFO - Processing task status for order_id=TDS_Inbound_3ce6d73a
+2026-10-24 10:29:12,831 - main - INFO - Processing task status for order_id=TDS_Inbound_3ce6d73a
+2026-10-24 10:30:40,446 - main - INFO - Processing task status for order_id=TDS_Inbound_3ce6d73a
+2026-10-24 10:30:40,776 - main - INFO - Processing task status for order_id=TDS_Inbound_3ce6d73a
+2026-10-24 10:30:47,595 - main - INFO - Processing task status for order_id=TDS_Inbound_3ce6d73a
+2026-10-24 10:30:47,861 - main - INFO - Receive completed for TDS_Inbound_3ce6d73a
+2026-10-24 10:30:47,934 - main - INFO - Current status: in_transit
+2026-10-24 10:30:47,935 - main - INFO - New status: available
+2026-10-24 10:30:47,936 - main - INFO - Current status: split
+2026-10-24 10:30:47,936 - main - INFO - New status: split
+2026-10-24 11:07:03,093 - main - INFO - outbound.get_lacked_details order_id=146
+2026-10-24 11:07:03,104 - main - INFO - outbound.get_order_by_id order_id=146
+2026-10-24 11:07:03,120 - main - INFO - outbound.get_order_details order_id=146
+2026-10-24 11:07:03,120 - main - INFO - outbound.get_manual_allocation_tasks order_id=146
+2026-10-24 11:07:09,109 - main - INFO - outbound.get_order_details order_id=146
+2026-10-24 11:07:09,110 - main - INFO - outbound.get_lacked_details order_id=146
+2026-10-24 11:07:09,131 - main - INFO - outbound.get_order_by_id order_id=146
+2026-10-24 11:07:09,134 - main - INFO - outbound.get_manual_allocation_tasks order_id=146
+2026-10-24 11:07:09,945 - main - INFO - outbound.get_manual_allocation_tasks order_id=146
+2026-10-24 11:07:11,515 - main - INFO - outbound.get_order_details order_id=146
+2026-10-24 11:07:11,521 - main - INFO - outbound.get_lacked_details order_id=146
+2026-10-24 11:07:11,521 - main - INFO - outbound.get_order_by_id order_id=146
+2026-10-24 11:07:12,594 - main - INFO - outbound.get_order_details order_id=146
+2026-10-24 11:07:23,021 - main - INFO - outbound.get_order_by_id order_id=146
+2026-10-24 11:07:23,022 - main - INFO - outbound.get_manual_allocation_tasks order_id=146
+2026-10-24 11:07:23,024 - main - INFO - outbound.get_order_details order_id=146
+2026-10-24 11:07:23,027 - main - INFO - outbound.get_lacked_details order_id=146
+2026-10-24 11:07:26,933 - main - INFO - outbound.get_order_details order_id=146
+2026-10-24 11:07:26,934 - main - INFO - outbound.get_lacked_details order_id=146
+2026-10-24 11:07:26,935 - main - INFO - outbound.get_order_by_id order_id=146
+2026-10-24 13:34:09,191 - main - INFO - Successfully logged in user Công
+2026-10-24 13:36:00,648 - main - INFO - Successfully logged in user Công
+2026-10-24 13:36:08,702 - main - INFO - Successfully logged in user công
+2026-10-24 13:36:24,274 - main - INFO - Successfully logged in user cong@gmail.com
+2026-10-24 13:36:41,945 - main - INFO - Successfully logged in user Cong
+2026-10-24 13:36:47,392 - main - INFO - Successfully logged in user admin
+2026-10-24 13:37:00,641 - main - INFO - Successfully logged in user Công
+2026-10-24 13:37:11,296 - main - INFO - outbound.get_order_by_id order_id=146
+2026-10-24 13:37:11,316 - main - INFO - outbound.get_lacked_details order_id=146
+2026-10-24 13:37:11,317 - main - INFO - outbound.get_manual_allocation_tasks order_id=146
+2026-10-24 13:37:11,317 - main - INFO - outbound.get_order_details order_id=146
+2026-10-24 13:37:14,281 - main - INFO - outbound.get_order_details order_id=146
+2026-10-24 13:37:19,320 - main - INFO - outbound.get_order_by_id order_id=146
+2026-10-24 13:37:19,324 - main - INFO - outbound.get_order_details order_id=146
+2026-10-24 13:37:19,325 - main - INFO - outbound.get_manual_allocation_tasks order_id=146
+2026-10-24 13:37:19,343 - main - INFO - outbound.get_lacked_details order_id=146
+2026-10-24 13:37:25,072 - main - INFO - outbound.get_manual_allocation_tasks order_id=146
+2026-10-24 13:37:29,380 - main - INFO - outbound.get_order_details order_id=146
+2026-10-24 13:37:29,381 - main - INFO - outbound.get_order_by_id order_id=146
+2026-10-24 13:37:29,381 - main - INFO - outbound.get_lacked_details order_id=146
+2026-10-24 13:53:25,617 - main - INFO - outbound.get_order_by_id order_id=146
+2026-10-24 13:53:25,618 - main - INFO - outbound.get_lacked_details order_id=146
+2026-10-24 13:53:25,625 - main - INFO - outbound.get_order_details order_id=146
+2026-10-24 13:53:25,626 - main - INFO - outbound.get_manual_allocation_tasks order_id=146
+2026-10-24 13:53:33,377 - main - INFO - outbound.get_order_by_id order_id=146
+2026-10-24 13:53:33,381 - main - INFO - outbound.get_lacked_details order_id=146
+2026-10-24 13:53:33,382 - main - INFO - outbound.get_order_details order_id=146
+2026-10-24 14:45:26,510 - main - INFO - outbound.get_order_details order_id=124
+2026-10-24 14:45:26,512 - main - INFO - outbound.get_order_by_id order_id=124
+2026-10-24 14:45:26,518 - main - INFO - outbound.get_lacked_details order_id=124
+2026-10-24 14:45:26,524 - main - INFO - outbound.get_manual_allocation_tasks order_id=124
+2026-10-24 14:45:46,928 - main - INFO - outbound.get_order_by_id order_id=136
+2026-10-24 14:45:46,928 - main - INFO - outbound.get_lacked_details order_id=136
+2026-10-24 14:45:46,929 - main - INFO - outbound.get_order_details order_id=136
+2026-10-24 14:45:46,932 - main - INFO - outbound.get_manual_allocation_tasks order_id=136
+2026-10-24 14:46:54,909 - main - INFO - outbound.get_order_details order_id=136
+2026-10-24 14:46:54,925 - main - INFO - outbound.get_lacked_details order_id=136
+2026-10-24 14:46:54,927 - main - INFO - outbound.get_order_by_id order_id=136
+2026-10-24 14:46:54,928 - main - INFO - outbound.get_manual_allocation_tasks order_id=136
+2026-10-24 14:47:09,297 - main - INFO - outbound.get_order_by_id order_id=137
+2026-10-24 14:47:09,307 - main - INFO - outbound.get_manual_allocation_tasks order_id=137
+2026-10-24 14:47:09,308 - main - INFO - outbound.get_order_details order_id=137
+2026-10-24 14:47:09,317 - main - INFO - outbound.get_lacked_details order_id=137
+2026-10-24 14:47:48,538 - main - INFO - outbound.get_order_by_id order_id=142
+2026-10-24 14:47:48,539 - main - INFO - outbound.get_manual_allocation_tasks order_id=142
+2026-10-24 14:47:48,540 - main - INFO - outbound.get_order_details order_id=142
+2026-10-24 14:47:48,549 - main - INFO - outbound.get_lacked_details order_id=142
+2026-10-24 14:48:19,961 - main - INFO - outbound.get_order_details order_id=143
+2026-10-24 14:48:19,966 - main - INFO - outbound.get_order_by_id order_id=143
+2026-10-24 14:48:19,971 - main - INFO - outbound.get_lacked_details order_id=143
+2026-10-24 14:48:19,975 - main - INFO - outbound.get_manual_allocation_tasks order_id=143
+2026-10-24 14:49:16,860 - main - INFO - outbound.get_order_details order_id=145
+2026-10-24 14:49:16,877 - main - INFO - outbound.get_order_by_id order_id=145
+2026-10-24 14:49:16,880 - main - INFO - outbound.get_lacked_details order_id=145
+2026-10-24 14:49:16,888 - main - INFO - outbound.get_manual_allocation_tasks order_id=145
+2026-10-24 14:50:50,312 - main - INFO - outbound.get_order_by_id order_id=143
+2026-10-24 14:50:50,326 - main - INFO - outbound.get_manual_allocation_tasks order_id=143
+2026-10-24 14:50:50,335 - main - INFO - outbound.get_order_details order_id=143
+2026-10-24 14:50:50,352 - main - INFO - outbound.get_lacked_details order_id=143
+2026-10-24 14:50:52,916 - main - INFO - outbound.get_order_details order_id=143
+2026-10-24 14:51:27,872 - main - INFO - outbound.get_order_details order_id=145
+2026-10-24 14:51:27,893 - main - INFO - outbound.get_lacked_details order_id=145
+2026-10-24 14:51:27,894 - main - INFO - outbound.get_order_by_id order_id=145
+2026-10-24 14:51:27,900 - main - INFO - outbound.get_manual_allocation_tasks order_id=145
+2026-10-24 15:01:13,497 - main - INFO - outbound.get_manual_allocation_tasks order_id=137
+2026-10-24 15:01:13,501 - main - INFO - outbound.get_lacked_details order_id=137
+2026-10-24 15:01:13,505 - main - INFO - outbound.get_order_by_id order_id=137
+2026-10-24 15:01:13,521 - main - INFO - outbound.get_order_details order_id=137
+2026-10-24 15:01:16,605 - main - INFO - outbound.get_order_details order_id=137
+2026-10-24 15:01:41,049 - main - INFO - outbound.get_order_by_id order_id=137
+2026-10-24 15:01:41,053 - main - INFO - outbound.get_order_details order_id=137
+2026-10-24 15:01:41,054 - main - INFO - outbound.get_manual_allocation_tasks order_id=137
+2026-10-24 15:01:41,054 - main - INFO - outbound.get_lacked_details order_id=137
+2026-10-24 15:01:48,374 - main - INFO - outbound.get_order_by_id order_id=136
+2026-10-24 15:01:48,376 - main - INFO - outbound.get_order_details order_id=136
+2026-10-24 15:01:48,382 - main - INFO - outbound.get_lacked_details order_id=136
+2026-10-24 15:01:48,384 - main - INFO - outbound.get_manual_allocation_tasks order_id=136
+2026-10-24 15:03:20,621 - main - INFO - outbound.get_order_details order_id=142
+2026-10-24 15:03:20,625 - main - INFO - outbound.get_manual_allocation_tasks order_id=142
+2026-10-24 15:03:20,625 - main - INFO - outbound.get_order_by_id order_id=142
+2026-10-24 15:03:20,635 - main - INFO - outbound.get_lacked_details order_id=142
+2026-10-24 15:03:23,689 - main - INFO - outbound.get_manual_allocation_tasks order_id=142
+2026-10-24 15:03:23,697 - main - INFO - outbound.get_lacked_details order_id=142
+2026-10-24 15:03:23,708 - main - INFO - outbound.get_order_details order_id=142
+2026-10-24 15:03:23,709 - main - INFO - outbound.get_order_by_id order_id=142
+2026-10-24 15:03:28,667 - main - INFO - outbound.get_order_by_id order_id=143
+2026-10-24 15:03:28,670 - main - INFO - outbound.get_manual_allocation_tasks order_id=143
+2026-10-24 15:03:28,672 - main - INFO - outbound.get_lacked_details order_id=143
+2026-10-24 15:03:28,676 - main - INFO - outbound.get_order_details order_id=143
+2026-10-24 15:03:30,690 - main - INFO - outbound.get_lacked_details order_id=143
+2026-10-24 15:03:30,693 - main - INFO - outbound.get_manual_allocation_tasks order_id=143
+2026-10-24 15:03:30,693 - main - INFO - outbound.get_order_by_id order_id=143
+2026-10-24 15:03:30,694 - main - INFO - outbound.get_order_details order_id=143
+2026-10-24 15:03:52,597 - main - INFO - outbound.get_order_by_id order_id=145
+2026-10-24 15:03:52,605 - main - INFO - outbound.get_order_details order_id=145
+2026-10-24 15:03:52,609 - main - INFO - outbound.get_lacked_details order_id=145
+2026-10-24 15:03:52,620 - main - INFO - outbound.get_manual_allocation_tasks order_id=145
+2026-10-24 15:03:54,810 - main - INFO - outbound.get_lacked_details order_id=145
+2026-10-24 15:03:54,816 - main - INFO - outbound.get_order_by_id order_id=145
+2026-10-24 15:03:54,817 - main - INFO - outbound.get_order_details order_id=145
+2026-10-24 15:03:54,824 - main - INFO - outbound.get_manual_allocation_tasks order_id=145
+2026-10-24 15:16:07,917 - main - INFO - inbound.get_order_details order_code=INB-M-7C89B4D6
+2026-10-24 15:17:04,160 - main - INFO - inbound.get_order_details order_code=INB-M-AF468A07
+2026-10-24 15:17:22,214 - main - INFO - inbound.get_order_details order_code=INB-M-7C89B4D6
+2026-10-24 15:17:50,064 - main - INFO - inbound.get_order_details order_code=INB-M-A77B2DF6
+2026-10-24 15:17:51,923 - main - INFO - inbound.get_order_details order_code=INB-M-A77B2DF6
+2026-10-24 15:17:57,167 - main - INFO - inbound.get_order_details order_code=INB-M-A77B2DF6
+2026-10-24 15:17:59,401 - main - INFO - inbound.get_order_details order_code=INB-M-7C89B4D6
+2026-10-24 15:18:02,337 - main - INFO - inbound.get_order_details order_code=INB-M-7C89B4D6
+2026-10-24 15:18:03,356 - main - INFO - inbound.get_order_details order_code=INB-M-7C89B4D6
+2026-10-24 15:20:39,708 - main - INFO - inbound.get_order_details order_code=INB-M-AF468A07
+2026-10-24 15:20:41,663 - main - INFO - inbound.get_order_details order_code=INB-M-AF468A07
+2026-10-24 15:20:42,342 - main - INFO - inbound.get_order_details order_code=INB-M-AF468A07
+2026-10-24 15:22:10,014 - main - INFO - inbound.get_order_details order_code=INB-M-F4C89E82
+2026-10-24 15:22:12,270 - main - INFO - inbound.get_order_details order_code=INB-M-F4C89E82

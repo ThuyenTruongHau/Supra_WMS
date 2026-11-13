@@ -1,3 +1,4 @@
+from datetime import date, datetime
 from typing import Optional
 import uuid
 import json
@@ -47,6 +48,8 @@ from app.modules.warehouse.transaction_history.history_model import History, Tra
 from app.core.config import settings
 from app.core.cache import cache_scan_keys, cache_set, cache_delete, cache_delete_pattern, cache_get, get_redis
 from app.core.logger import get_logger
+from app.modules.warehouse.order_list_date_filter import apply_order_created_date_range
+from app.modules.warehouse.order_quantity_display import BaseUnitQuantityResolver
 
 logger = get_logger("main")
 
@@ -730,17 +733,28 @@ def _create_detail_with_stock_and_allocation(
 
 
 def _build_allocation_response(
+    db: Session,
     allocation: InboundOrderAllocation,
+    resolver: BaseUnitQuantityResolver,
 ) -> InboundOrderAllocationResponse:
     stock = allocation.item_stock
     item = stock.item if stock else None
     unit = allocation.unit
+    item_id = stock.item_id if stock else None
+    base_qty, base_unit_id, base_unit_name = resolver.resolve(
+        item_id=item_id,
+        unit_id=allocation.unit_id,
+        quantity=allocation.quantity,
+    )
     return InboundOrderAllocationResponse(
         id=allocation.id,
         inbound_order_detail_id=allocation.inbound_order_detail_id,
         item_stock_id=allocation.item_stock_id,
         unit_id=allocation.unit_id,
         quantity=allocation.quantity,
+        base_unit_quantity=base_qty,
+        base_unit_id=base_unit_id,
+        base_unit_name=base_unit_name,
         status=allocation.status,
         item_id=stock.item_id if stock else None,
         sku=item.sku if item else None,
@@ -759,7 +773,16 @@ def _build_allocation_response(
     )
 
 
-def _build_detail_response(detail: InboundOrderDetail) -> InboundOrderDetailResponse:
+def _build_detail_response(
+    db: Session,
+    detail: InboundOrderDetail,
+) -> InboundOrderDetailResponse:
+    resolver = BaseUnitQuantityResolver(db)
+    allocations = [
+        _build_allocation_response(db, allocation, resolver)
+        for allocation in sorted(detail.allocations, key=lambda a: a.id)
+    ]
+    total_base = sum(a.base_unit_quantity for a in allocations)
     return InboundOrderDetailResponse(
         id=detail.id,
         inbound_order_id=detail.inbound_order_id,
@@ -769,15 +792,13 @@ def _build_detail_response(detail: InboundOrderDetail) -> InboundOrderDetailResp
         from_location_name=detail.from_location.location_name if detail.from_location else None,
         to_location_code=detail.to_location.location_code if detail.to_location else None,
         to_location_name=detail.to_location.location_name if detail.to_location else None,
+        total_base_unit_quantity=total_base,
         status=detail.status,
         detail_type=detail.detail_type,
         details=detail.details or {},
         created_at=detail.created_at,
         updated_at=detail.updated_at,
-        allocations=[
-            _build_allocation_response(allocation)
-            for allocation in sorted(detail.allocations, key=lambda a: a.id)
-        ],
+        allocations=allocations,
     )
 
 
@@ -806,7 +827,7 @@ def get_inbound_order_detail(db: Session, order_code: str) -> Optional[list[Inbo
         .order_by(InboundOrderDetail.id)
         .all()
     )
-    return [_build_detail_response(d) for d in details]
+    return [_build_detail_response(db, d) for d in details]
 
 
 def execute_inbound_task(db: Session, detail_id: int) -> InboundExecuteDetailResult:
@@ -882,7 +903,7 @@ def execute_inbound_task(db: Session, detail_id: int) -> InboundExecuteDetailRes
             old_status=detail.status,
             new_status="issued",
             description=f"Inbound order detail {detail.id} issued",
-            details=_build_detail_response(detail).model_dump(mode="json"),
+            details=_build_detail_response(db, detail).model_dump(mode="json"),
             created_by_id=detail.inbound_order.created_by_id,
         ))
 
@@ -896,7 +917,7 @@ def execute_inbound_task(db: Session, detail_id: int) -> InboundExecuteDetailRes
             raise
 
     return InboundExecuteDetailResult(
-        detail=_build_detail_response(detail),
+        detail=_build_detail_response(db, detail),
         robot_task=(
             RobotTaskResponse.model_validate(robot_task) if robot_task else None
         ),
@@ -928,6 +949,8 @@ def get_inbound_order(
     page_size: int = 10,
     q: Optional[str] = None,
     status: Optional[str] = None,
+    created_from: Optional[datetime] = None,
+    created_to: Optional[datetime] = None,
 ):
     base_query = db.query(InboundOrder).filter(
         InboundOrder.warehouse_id == warehouse_id
@@ -941,6 +964,10 @@ def get_inbound_order(
                 User.username.ilike(term),
             )
         )
+
+    base_query = apply_order_created_date_range(
+        base_query, InboundOrder, created_from, created_to
+    )
 
     summary = _build_inbound_list_summary(base_query)
 
@@ -966,6 +993,8 @@ def get_inbound_orders_by_sku(
     page_size: int = 10,
     q: Optional[str] = None,
     status: Optional[str] = None,
+    created_from: Optional[datetime] = None,
+    created_to: Optional[datetime] = None,
 ):
     sku_term = f"%{sku.strip()}%"
     sku_match = exists(
@@ -995,6 +1024,10 @@ def get_inbound_orders_by_sku(
                 User.username.ilike(term),
             )
         )
+
+    base_query = apply_order_created_date_range(
+        base_query, InboundOrder, created_from, created_to
+    )
 
     summary = _build_inbound_list_summary(base_query)
 

@@ -111,3 +111,22 @@ class ItemStockListResponse(BaseModel):
 class ItemStockSplitListResponse(BaseModel):
     items: list[ItemStockResponse]
     total: int
+
+
+class ItemStockQrCodeEntry(BaseModel):
+    id: int
+    code: str
+    qr_type: str = "item"
+
+
+class ItemStockQrMappingItem(BaseModel):
+    item_stock_id: int
+    qr_codes: list[ItemStockQrCodeEntry] = Field(default_factory=list)
+
+
+class ItemStockQrLookupRequest(BaseModel):
+    item_stock_ids: list[int] = Field(..., min_length=1, max_length=500)
+
+
+class ItemStockQrLookupResponse(BaseModel):
+    items: list[ItemStockQrMappingItem]

@@ -27,6 +27,7 @@ export interface ItemListParams {
   /** @deprecated use warehouse_id */
   offset?: number
   is_active?: boolean
+  stock_level?: 'low' | 'over' | 'ok'
 }
 
 export interface ItemListResponse {
@@ -97,6 +98,7 @@ export interface ItemAnalyzeResponse {
   total_quantity: number
   total_inventory_value: number
   total_low_stock: number
+  total_over_stock: number
 }
 
 export interface ItemImportJobAccepted {

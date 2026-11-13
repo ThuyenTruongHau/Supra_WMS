@@ -1,5 +1,6 @@
 import json
 import uuid
+from datetime import date, datetime
 from typing import Optional
 from decimal import Decimal
 from collections import defaultdict
@@ -50,6 +51,7 @@ from app.modules.warehouse.lot_number_utils import (
 )
 
 from app.core.logger import get_logger
+from app.modules.warehouse.order_list_date_filter import apply_order_created_date_range
 
 logger = get_logger("main")
 
@@ -238,12 +240,18 @@ def get_outbound_order(
     page_size: int = 10,
     q: Optional[str] = None,
     status: Optional[str] = None,
+    created_from: Optional[datetime] = None,
+    created_to: Optional[datetime] = None,
 ):
     base_query = db.query(OutboundOrder).filter(
         OutboundOrder.warehouse_id == warehouse_id
     )
     if q:
         base_query = base_query.filter(OutboundOrder.order_code.ilike(f"%{q}%"))
+
+    base_query = apply_order_created_date_range(
+        base_query, OutboundOrder, created_from, created_to
+    )
 
     summary = _build_outbound_list_summary(base_query)
 
@@ -269,6 +277,8 @@ def get_outbound_orders_by_sku(
     page_size: int = 10,
     q: Optional[str] = None,
     status: Optional[str] = None,
+    created_from: Optional[datetime] = None,
+    created_to: Optional[datetime] = None,
 ):
     sku_term = f"%{sku.strip()}%"
     sku_match = exists(
@@ -286,6 +296,10 @@ def get_outbound_orders_by_sku(
     )
     if q:
         base_query = base_query.filter(OutboundOrder.order_code.ilike(f"%{q}%"))
+
+    base_query = apply_order_created_date_range(
+        base_query, OutboundOrder, created_from, created_to
+    )
 
     summary = _build_outbound_list_summary(base_query)
 

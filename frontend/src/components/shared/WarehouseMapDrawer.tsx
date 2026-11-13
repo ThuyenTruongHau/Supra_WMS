@@ -1,5 +1,7 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useLocationDetail } from '@/hooks/useWarehouseMap';
+import { useItemStockQrLookup } from '@/hooks/useItemStock';
+import ItemStockQrDisplay from '@/components/shared/ItemStockQrDisplay';
 import { Loading, Alert, Button } from '@/components/ui';
 import { cn } from '@/components/ui/utils/cn';
 import { formatQuantity } from '@/utils/formatQuantity';
@@ -36,6 +38,17 @@ const WarehouseMapDrawer: React.FC<WarehouseMapDrawerProps> = ({
     node?.type === 1 ? locationId : undefined,
     refreshToken,
   );
+
+  const persistedStockIds = useMemo(
+    () =>
+      (detailData?.item_stock ?? [])
+        .map((stock) => stock.id)
+        .filter((id) => id > 0),
+    [detailData?.item_stock],
+  );
+
+  const { qrByStockId, isLoading: isQrLookupLoading } =
+    useItemStockQrLookup(persistedStockIds);
 
   const hasItem = detailData && detailData.summary.item_stock_count > 0;
   return (
@@ -170,6 +183,22 @@ const WarehouseMapDrawer: React.FC<WarehouseMapDrawerProps> = ({
                             <span className="font-medium text-slate-700">
                               {stock.expiry_date || '-'}
                             </span>
+                          </div>
+                          <div className="col-span-2">
+                            <span className="block text-xs text-slate-400 mb-1">
+                              Mã QR
+                            </span>
+                            {stock.id <= 0 || stock.status === 'assigned' ? (
+                              <span className="text-sm text-slate-500">
+                                Chưa nhập kho
+                              </span>
+                            ) : (
+                              <ItemStockQrDisplay
+                                qrCodes={qrByStockId.get(stock.id)}
+                                loading={isQrLookupLoading}
+                                size={80}
+                              />
+                            )}
                           </div>
                         </div>
                       </div>

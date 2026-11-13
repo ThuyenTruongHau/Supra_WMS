@@ -1,7 +1,11 @@
-import axiosInstance from "./axiosInstance";
-import type { ItemStockSplitListResponse } from "@/types/itemStock";
+import axiosInstance from './axiosInstance'
+import type {
+  ItemStockQrLookupRequest,
+  ItemStockQrLookupResponse,
+  ItemStockSplitListResponse,
+} from '@/types/itemStock'
 
-const BASE = "/api/v1/item-stocks";
+const BASE = '/api/v1/item-stocks'
 
 export const getStockSplitApi = async (
   itemId: number,
@@ -9,6 +13,17 @@ export const getStockSplitApi = async (
   const { data } = await axiosInstance.get<ItemStockSplitListResponse>(
     `${BASE}/split`,
     { params: { item_id: itemId } },
-  );
-  return data;
-};
+  )
+  return data
+}
+
+export const lookupItemStockQrCodesApi = async (
+  itemStockIds: number[],
+): Promise<ItemStockQrLookupResponse> => {
+  const body: ItemStockQrLookupRequest = { item_stock_ids: itemStockIds }
+  const { data } = await axiosInstance.post<ItemStockQrLookupResponse>(
+    `${BASE}/qr-codes/lookup`,
+    body,
+  )
+  return data
+}

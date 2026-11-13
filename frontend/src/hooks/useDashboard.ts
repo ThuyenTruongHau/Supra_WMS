@@ -9,6 +9,7 @@ import {
 import type {
   StockAgingBucketKey,
   TopProductsPeriod,
+  TopProductsLimit,
   TrendGranularity,
 } from "@/types/dashboard";
 import { LIVE_QUERY_OPTIONS } from "@/utils/liveQueryOptions";
@@ -41,10 +42,11 @@ export const useReportTrends = (
 export const useReportTopProducts = (
   warehouseId: number,
   period: TopProductsPeriod,
+  limit: TopProductsLimit = 5,
 ) => {
   return useQuery({
-    queryKey: ["dashboard", "top-products", warehouseId, period],
-    queryFn: () => getReportTopProductsApi(warehouseId, period),
+    queryKey: ["dashboard", "top-products", warehouseId, period, limit],
+    queryFn: () => getReportTopProductsApi(warehouseId, period, limit),
     enabled: warehouseId > 0,
     ...LIVE_QUERY_OPTIONS,
   });

@@ -1,0 +1,140 @@
+2026-10-15 10:43:52,123 - main - INFO - outbound.get_order_by_id order_id=129
+2026-10-15 10:43:52,124 - main - INFO - outbound.get_lacked_details order_id=129
+2026-10-15 10:43:52,129 - main - INFO - outbound.get_order_details order_id=129
+2026-10-15 10:43:52,136 - main - INFO - outbound.get_robot_tasks order_id=129
+2026-10-15 10:43:54,306 - main - INFO - outbound.get_order_details order_id=129
+2026-10-15 11:44:19,550 - main - INFO - outbound.get_order_details order_id=50
+2026-10-15 11:44:19,551 - main - INFO - outbound.get_order_by_id order_id=50
+2026-10-15 11:44:19,556 - main - INFO - outbound.get_robot_tasks order_id=50
+2026-10-15 11:44:19,558 - main - INFO - outbound.get_lacked_details order_id=50
+2026-10-15 11:44:22,080 - main - INFO - outbound.get_order_details order_id=50
+2026-10-15 11:44:28,383 - main - INFO - outbound.get_order_details order_id=135
+2026-10-15 11:44:28,392 - main - INFO - outbound.get_lacked_details order_id=135
+2026-10-15 11:44:28,396 - main - INFO - outbound.get_order_by_id order_id=135
+2026-10-15 11:44:28,398 - main - INFO - outbound.get_robot_tasks order_id=135
+2026-10-15 11:44:39,081 - main - INFO - outbound.get_robot_tasks order_id=74
+2026-10-15 11:44:39,082 - main - INFO - outbound.get_lacked_details order_id=74
+2026-10-15 11:44:39,084 - main - INFO - outbound.get_order_details order_id=74
+2026-10-15 11:44:39,096 - main - INFO - outbound.get_order_by_id order_id=74
+2026-10-15 11:44:43,388 - main - INFO - outbound.get_order_details order_id=74
+2026-10-15 11:44:56,952 - main - INFO - outbound.get_order_details order_id=51
+2026-10-15 11:44:56,961 - main - INFO - outbound.get_robot_tasks order_id=51
+2026-10-15 11:44:56,963 - main - INFO - outbound.get_lacked_details order_id=51
+2026-10-15 11:44:56,964 - main - INFO - outbound.get_order_by_id order_id=51
+2026-10-15 11:45:01,368 - main - INFO - outbound.get_order_details order_id=51
+2026-10-15 11:45:14,449 - main - INFO - outbound.get_robot_tasks order_id=50
+2026-10-15 11:45:14,454 - main - INFO - outbound.get_order_details order_id=50
+2026-10-15 11:45:14,466 - main - INFO - outbound.get_lacked_details order_id=50
+2026-10-15 11:45:14,467 - main - INFO - outbound.get_order_by_id order_id=50
+2026-10-15 11:45:17,968 - main - INFO - outbound.get_order_details order_id=50
+2026-10-15 11:45:47,664 - main - INFO - outbound.get_robot_tasks order_id=74
+2026-10-15 11:45:47,665 - main - INFO - outbound.get_order_details order_id=74
+2026-10-15 11:45:47,668 - main - INFO - outbound.get_order_by_id order_id=74
+2026-10-15 11:45:47,673 - main - INFO - outbound.get_lacked_details order_id=74
+2026-10-15 11:45:55,613 - main - INFO - outbound.get_order_details order_id=74
+2026-10-15 11:46:21,648 - main - INFO - inbound.get_order_details order_code=IN-20260915-152815
+2026-10-15 11:46:24,596 - main - INFO - inbound.get_order_details order_code=IN-20260915-152815
+2026-10-15 11:46:33,850 - main - INFO - inbound.get_order_details order_code=IN-20260922-165555
+2026-10-15 11:46:35,585 - main - INFO - inbound.get_order_details order_code=IN-20260922-165555
+2026-10-15 11:47:04,314 - main - INFO - inbound.get_order_details order_code=IN-20260924-170639
+2026-10-15 11:47:06,607 - main - INFO - inbound.get_order_details order_code=IN-20260924-170639
+2026-10-15 11:48:32,909 - main - INFO - inbound.get_order_details order_code=IN-20260915-152815
+2026-10-15 11:48:35,541 - main - INFO - inbound.get_order_details order_code=IN-20260915-152815
+2026-10-15 11:48:44,312 - main - INFO - inbound.get_order_details order_code=IN-20260915-152815
+2026-10-15 11:48:49,804 - main - INFO - inbound.get_order_details order_code=IN-20260915-152815
+2026-10-15 11:49:58,368 - main - INFO - outbound.get_robot_tasks order_id=74
+2026-10-15 11:49:58,372 - main - INFO - outbound.get_order_details order_id=74
+2026-10-15 11:49:58,375 - main - INFO - outbound.get_order_by_id order_id=74
+2026-10-15 11:49:58,381 - main - INFO - outbound.get_lacked_details order_id=74
+2026-10-15 11:50:09,825 - main - INFO - outbound.get_order_details order_id=74
+2026-10-15 11:50:18,893 - main - INFO - outbound.get_order_details order_id=51
+2026-10-15 11:50:18,895 - main - INFO - outbound.get_order_by_id order_id=51
+2026-10-15 11:50:18,898 - main - INFO - outbound.get_lacked_details order_id=51
+2026-10-15 11:50:18,900 - main - INFO - outbound.get_robot_tasks order_id=51
+2026-10-15 11:50:21,967 - main - INFO - outbound.get_order_details order_id=51
+2026-10-15 12:55:57,994 - main - INFO - outbound.create_order order_code=OUT-20261015-125909
+2026-10-15 12:55:58,003 - main - INFO - Type: None
+2026-10-15 12:55:58,007 - main - INFO - Flag: False
+2026-10-15 12:56:01,900 - main - INFO - outbound.get_order_by_id order_id=142
+2026-10-15 12:56:01,934 - main - INFO - outbound.get_order_details order_id=142
+2026-10-15 12:56:01,941 - main - INFO - outbound.get_manual_allocation_tasks order_id=142
+2026-10-15 12:56:01,944 - main - INFO - outbound.get_lacked_details order_id=142
+2026-10-15 12:56:09,283 - main - INFO - outbound.calculate_order outbound_order_id=142
+2026-10-15 12:56:10,072 - main - INFO - Has task: None
+2026-10-15 12:56:10,583 - main - INFO - outbound.get_lacked_details order_id=142
+2026-10-15 12:56:10,594 - main - INFO - outbound.get_order_by_id order_id=142
+2026-10-15 12:56:10,609 - main - INFO - outbound.get_order_details order_id=142
+2026-10-15 12:56:10,617 - main - INFO - outbound.get_manual_allocation_tasks order_id=142
+2026-10-15 12:56:10,683 - main - INFO - outbound.get_order_by_id order_id=142
+2026-10-15 12:56:11,079 - main - INFO - outbound.get_order_details order_id=142
+2026-10-15 12:56:11,080 - main - INFO - outbound.get_manual_allocation_tasks order_id=142
+2026-10-15 12:56:11,081 - main - INFO - outbound.get_lacked_details order_id=142
+2026-10-15 12:56:16,778 - main - INFO - ---M90CA-TC-20261003-28826041---
+2026-10-15 12:56:16,906 - main - INFO - ---Steps1: Go here---
+2026-10-15 13:06:37,953 - main - INFO - ---M90CA-TC-20261003-29174579---
+2026-10-15 13:06:38,050 - main - INFO - ---Steps1: Go here---
+2026-10-15 13:07:20,952 - main - INFO - ---M90CA-TC-20261003-14789879---
+2026-10-15 13:07:21,055 - main - INFO - ---Steps1: Go here---
+2026-10-15 13:07:33,748 - main - INFO - ---M90CA-TC-20261003-94527519---
+2026-10-15 13:07:33,848 - main - INFO - ---Steps1: Go here---
+2026-10-15 13:07:34,394 - main - INFO - outbound.get_order_by_id order_id=142
+2026-10-15 13:07:34,408 - main - INFO - outbound.get_manual_allocation_tasks order_id=142
+2026-10-15 13:07:34,410 - main - INFO - outbound.get_order_details order_id=142
+2026-10-15 13:07:34,411 - main - INFO - outbound.get_lacked_details order_id=142
+2026-10-15 13:07:34,484 - main - INFO - outbound.get_order_by_id order_id=142
+2026-10-15 13:07:34,754 - main - INFO - outbound.get_manual_allocation_tasks order_id=142
+2026-10-15 13:07:34,881 - main - INFO - outbound.get_lacked_details order_id=142
+2026-10-15 13:07:34,882 - main - INFO - outbound.get_order_details order_id=142
+2026-10-15 13:08:34,016 - main - INFO - ---MS07---
+2026-10-15 13:08:34,834 - main - INFO - outbound.get_order_by_id order_id=142
+2026-10-15 13:08:34,848 - main - INFO - outbound.get_lacked_details order_id=142
+2026-10-15 13:08:34,850 - main - INFO - outbound.get_order_details order_id=142
+2026-10-15 13:08:34,858 - main - INFO - outbound.get_manual_allocation_tasks order_id=142
+2026-10-15 13:08:34,899 - main - INFO - outbound.get_order_by_id order_id=142
+2026-10-15 13:08:35,380 - main - INFO - outbound.get_manual_allocation_tasks order_id=142
+2026-10-15 13:08:35,537 - main - INFO - outbound.get_order_details order_id=142
+2026-10-15 13:08:35,538 - main - INFO - outbound.get_lacked_details order_id=142
+2026-10-15 13:08:44,030 - main - INFO - ---MS07---
+2026-10-15 13:08:51,481 - main - INFO - ---M90CA-TC-20261003-94527519---
+2026-10-15 13:08:51,594 - main - INFO - ---Steps1: Go here---
+2026-10-15 13:08:52,069 - main - INFO - ---Steps2: Go here---
+2026-10-15 13:08:52,070 - main - INFO - ---Steps3: Go here - 428 - completed---
+2026-10-15 13:08:52,274 - main - INFO - outbound.get_order_details order_id=142
+2026-10-15 13:08:52,277 - main - INFO - outbound.get_manual_allocation_tasks order_id=142
+2026-10-15 13:08:52,279 - main - INFO - outbound.get_order_by_id order_id=142
+2026-10-15 13:08:52,288 - main - INFO - outbound.get_lacked_details order_id=142
+2026-10-15 13:08:52,432 - main - INFO - outbound.get_order_by_id order_id=142
+2026-10-15 13:08:52,934 - main - INFO - outbound.get_order_details order_id=142
+2026-10-15 13:08:52,936 - main - INFO - outbound.get_manual_allocation_tasks order_id=142
+2026-10-15 13:08:52,939 - main - INFO - outbound.get_lacked_details order_id=142
+2026-10-15 14:01:22,622 - main - INFO - outbound.get_order_by_id order_id=142
+2026-10-15 14:51:00,936 - main - INFO - outbound.get_order_by_id order_id=129
+2026-10-15 14:51:00,940 - main - INFO - outbound.get_robot_tasks order_id=129
+2026-10-15 14:51:00,941 - main - INFO - outbound.get_order_details order_id=129
+2026-10-15 14:51:00,945 - main - INFO - outbound.get_lacked_details order_id=129
+2026-10-15 14:56:46,723 - main - INFO - outbound.get_order_details order_id=129
+2026-10-15 14:57:15,145 - main - INFO - outbound.get_order_by_id order_id=129
+2026-10-15 14:57:15,152 - main - INFO - outbound.get_robot_tasks order_id=129
+2026-10-15 14:57:15,153 - main - INFO - outbound.get_order_details order_id=129
+2026-10-15 14:57:15,208 - main - INFO - outbound.get_lacked_details order_id=129
+2026-10-15 15:09:23,438 - main - INFO - outbound.get_order_details order_id=133
+2026-10-15 15:09:23,439 - main - INFO - outbound.get_lacked_details order_id=133
+2026-10-15 15:09:23,443 - main - INFO - outbound.get_order_by_id order_id=133
+2026-10-15 15:09:23,446 - main - INFO - outbound.get_robot_tasks order_id=133
+2026-10-15 15:09:31,451 - main - INFO - outbound.get_order_details order_id=135
+2026-10-15 15:09:31,451 - main - INFO - outbound.get_order_by_id order_id=135
+2026-10-15 15:09:31,452 - main - INFO - outbound.get_lacked_details order_id=135
+2026-10-15 15:09:31,452 - main - INFO - outbound.get_robot_tasks order_id=135
+2026-10-15 15:09:40,275 - main - INFO - outbound.get_order_details order_id=135
+2026-10-15 15:09:48,701 - main - INFO - outbound.get_order_by_id order_id=133
+2026-10-15 15:09:48,712 - main - INFO - outbound.get_lacked_details order_id=133
+2026-10-15 15:09:48,716 - main - INFO - outbound.get_order_details order_id=133
+2026-10-15 15:09:48,727 - main - INFO - outbound.get_robot_tasks order_id=133
+2026-10-15 16:12:20,712 - main - INFO - Successfully logged in user admin
+2026-10-16 08:36:57,311 - main - INFO - outbound.get_order_details order_id=142
+2026-10-16 08:36:57,313 - main - INFO - outbound.get_manual_allocation_tasks order_id=142
+2026-10-16 08:36:57,315 - main - INFO - outbound.get_lacked_details order_id=142
+2026-10-16 08:36:57,319 - main - INFO - outbound.get_order_by_id order_id=142
+2026-10-16 08:36:59,785 - main - INFO - outbound.get_order_details order_id=142
+2026-10-16 08:37:24,417 - main - INFO - inbound.get_order_details order_code=INB-M-26A1E432
+2026-10-16 08:37:27,419 - main - INFO - inbound.get_order_details order_code=INB-M-26A1E432

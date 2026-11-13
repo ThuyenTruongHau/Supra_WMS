@@ -2,7 +2,7 @@
 
 from datetime import date, datetime, timedelta
 from decimal import Decimal
-from typing import Optional
+from typing import Literal, Optional
 import json
 import math
 import threading
@@ -96,6 +96,49 @@ def _ensure_unit_exists(db: Session, unit_id: int) -> None:
         raise ValueError(f"Unit id not found: {unit_id}")
 
 
+StockLevelFilter = Literal["low", "over", "ok"]
+ALLOWED_STOCK_LEVELS = frozenset({"low", "over", "ok"})
+
+
+def _storage_zone_stock_sum_subquery(db: Session, warehouse_id: int):
+    """Tổng qty theo item trong khu storage (cùng nguồn với analyze_items)."""
+    return (
+        db.query(
+            ItemStock.item_id.label("item_id"),
+            func.coalesce(func.sum(ItemStock.quantity), 0).label("qty"),
+        )
+        .join(Location, Location.id == ItemStock.location_id)
+        .join(Zone, Zone.id == Location.zone_id)
+        .filter(
+            ItemStock.is_active.is_(True),
+            countable_stock_level_criterion(),
+            positive_stock_quantity_criterion(),
+            Location.warehouse_id == warehouse_id,
+            Location.is_active.is_(True),
+            Zone.code.in_(settings.zone_storage),
+        )
+        .group_by(ItemStock.item_id)
+        .subquery()
+    )
+
+
+def _apply_stock_level_filter(query, db: Session, warehouse_id: int, stock_level: str):
+    if stock_level not in ALLOWED_STOCK_LEVELS:
+        raise ValueError(
+            f"stock_level must be one of: {', '.join(sorted(ALLOWED_STOCK_LEVELS))}"
+        )
+    stock_sum = _storage_zone_stock_sum_subquery(db, warehouse_id)
+    qty = func.coalesce(stock_sum.c.qty, 0)
+    query = query.outerjoin(stock_sum, stock_sum.c.item_id == Item.id)
+    if stock_level == "low":
+        query = query.filter(qty < Item.min_quantity)
+    elif stock_level == "over":
+        query = query.filter(qty > Item.max_quantity)
+    else:
+        query = query.filter(qty >= Item.min_quantity, qty <= Item.max_quantity)
+    return query
+
+
 def list_items(
     db: Session,
     page: int = 1,
@@ -103,6 +146,7 @@ def list_items(
     warehouse_id: Optional[int] = None,
     q: Optional[str] = None,
     is_active: Optional[bool] = None,
+    stock_level: Optional[StockLevelFilter] = None,
 ) -> ItemListResponse:
     # Default: only active. If is_active explicitly passed, filter by it.
     if is_active is None:
@@ -114,6 +158,10 @@ def list_items(
     if q:
         like = f"%{q.strip()}%"
         query = query.filter((Item.sku.ilike(like)) | (Item.name.ilike(like)))
+    if stock_level is not None:
+        if warehouse_id is None:
+            raise ValueError("warehouse_id is required when stock_level is set")
+        query = _apply_stock_level_filter(query, db, warehouse_id, stock_level)
     total = query.count()
     items = (
         query.order_by(Item.id)
@@ -232,25 +280,7 @@ def analyze_items(db: Session, warehouse_id: int) -> ItemAnalyzeResponse:
 
     total_inventory_value = compute_total_inventory_value(db, warehouse_id)
 
-    # Low stock: active items whose storage-zone stock qty < threshold
-    stock_sum = (
-        db.query(
-            ItemStock.item_id.label("item_id"),
-            func.coalesce(func.sum(ItemStock.quantity), 0).label("qty"),
-        )
-        .join(Location, Location.id == ItemStock.location_id)
-        .join(Zone, Zone.id == Location.zone_id)
-        .filter(
-            ItemStock.is_active.is_(True),
-            countable_stock_level_criterion(),
-            positive_stock_quantity_criterion(),
-            Location.warehouse_id == warehouse_id,
-            Location.is_active.is_(True),
-            Zone.code.in_(settings.zone_storage),
-        )
-        .group_by(ItemStock.item_id)
-        .subquery()
-    )
+    stock_sum = _storage_zone_stock_sum_subquery(db, warehouse_id)
     total_low_stock = (
         db.query(func.count(Item.id))
         .outerjoin(stock_sum, stock_sum.c.item_id == Item.id)
@@ -262,12 +292,24 @@ def analyze_items(db: Session, warehouse_id: int) -> ItemAnalyzeResponse:
         .scalar()
         or 0
     )
+    total_over_stock = (
+        db.query(func.count(Item.id))
+        .outerjoin(stock_sum, stock_sum.c.item_id == Item.id)
+        .filter(
+            Item.warehouse_id == warehouse_id,
+            Item.is_active.is_(True),
+            func.coalesce(stock_sum.c.qty, 0) > Item.max_quantity,
+        )
+        .scalar()
+        or 0
+    )
 
     return ItemAnalyzeResponse(
         total_items=int(total_items),
         total_quantity=Decimal(str(total_quantity)),
         total_inventory_value=Decimal(str(total_inventory_value)),
         total_low_stock=int(total_low_stock),
+        total_over_stock=int(total_over_stock),
     )
 
 

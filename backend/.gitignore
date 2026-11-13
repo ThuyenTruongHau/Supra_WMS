@@ -240,3 +240,11 @@ scripts/*
 !scripts/mock_print_export.py
 !scripts/mock_print_layout.py
 tests/
+
+# Include reporting regression tests; keep other local test files ignored.
+!/tests/
+/tests/*
+!/tests/test_dashboard_trend_periods.py
+!/tests/test_dashboard_trend_service.py
+!/tests/test_dashboard_top_products.py
+!/tests/test_dashboard_stock_aging.py

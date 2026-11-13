@@ -25,6 +25,12 @@ import { getApiErrorMessage } from "@/utils/apiErrorMessage";
 import { buildMasanOutboundCreateRequest } from "@/utils/masanOutboundImport";
 import dayjs from "dayjs";
 import { useUser } from "@/hooks/useAuth";
+import OrderCreatedDateRangeFilter from "@/components/shared/OrderCreatedDateRangeFilter";
+import type { OrderCreatedDateRangeValue } from "@/utils/formatOrderListDateParams";
+import {
+  handleOrderKpiFilterKey,
+  orderKpiSelectedKey,
+} from "@/utils/orderKpiFilter";
 
 const PAGE_SIZE = 20;
 const STATUS_FILTER_WIDTH = 180;
@@ -42,6 +48,8 @@ export default function OutboundPage() {
   const [searchInput, setSearchInput] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [skuQuery, setSkuQuery] = useState("");
+  const [createdDateRange, setCreatedDateRange] =
+    useState<OrderCreatedDateRangeValue>({});
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [importing, setImporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -60,6 +68,8 @@ export default function OutboundPage() {
     page_size: PAGE_SIZE,
     q: searchQuery || undefined,
     status: statusFilter === "all" ? undefined : statusFilter,
+    created_from: createdDateRange.created_from,
+    created_to: createdDateRange.created_to,
   };
   const skuActive = skuQuery.length > 0;
   const listQuery = useGetOutboundOrders(listParams, { enabled: !skuActive });
@@ -84,26 +94,37 @@ export default function OutboundPage() {
 
   const kpiData = [
     {
+      key: "all",
       label: "Tổng đơn",
       value: String(summary?.total ?? 0),
       color: "var(--color-brand-dark)",
     },
     {
+      key: "initialize",
       label: "Khởi tạo",
       value: String(summary?.initialize ?? 0),
       color: "var(--color-stripe-ink-mute)",
     },
     {
+      key: "in_progress",
       label: "Đang xử lý",
       value: String(summary?.in_progress ?? 0),
       color: "var(--color-stripe-lemon)",
     },
     {
+      key: "completed",
       label: "Hoàn thành",
       value: String(summary?.completed ?? 0),
       color: "var(--color-brand-primary)",
     },
   ];
+
+  const kpiSelectedKey = orderKpiSelectedKey(statusFilter);
+  const kpiFilterActive = statusFilter !== "all";
+
+  const handleKpiFilterKey = (key: string | null) => {
+    handleOrderKpiFilterKey(key, statusFilter, setStatusFilter, setPage);
+  };
 
   const columns: ColumnsType<OutboundOrder> = [
     {
@@ -208,7 +229,12 @@ export default function OutboundPage() {
 
   return (
     <div className="space-y-6">
-      <Hero title="Quản lý Xuất kho" list={kpiData} />
+      <Hero
+        title="Quản lý Xuất kho"
+        list={kpiData}
+        selectedFilterKey={kpiSelectedKey}
+        onFilterKeyChange={handleKpiFilterKey}
+      />
 
       <Card>
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
@@ -259,6 +285,24 @@ export default function OutboundPage() {
                 }}
               />
             </div>
+            <OrderCreatedDateRangeFilter
+              value={createdDateRange}
+              onChange={(next) => {
+                setCreatedDateRange(next);
+                setPage(1);
+              }}
+            />
+            {kpiFilterActive && (
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  setStatusFilter("all");
+                  setPage(1);
+                }}
+              >
+                Bỏ lọc KPI
+              </Button>
+            )}
           </div>
 
           <div className="flex items-center gap-3">

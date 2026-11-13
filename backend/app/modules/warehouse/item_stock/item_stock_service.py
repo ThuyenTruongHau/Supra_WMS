@@ -12,9 +12,11 @@ from app.modules.warehouse.item_stock.item_stock_model import (
     countable_stock_level_criterion,
     positive_stock_quantity_criterion,
 )
+from app.modules.warehouse.item_stock import item_stock_logic
 from app.modules.warehouse.item_stock.item_stock_schema import (
     ItemStockCreate,
     ItemStockListResponse,
+    ItemStockQrLookupResponse,
     ItemStockResponse,
     ItemStockSplitListResponse,
     ItemStockUpdate,
@@ -204,3 +206,10 @@ def get_stock_split(db: Session, item_id: int) -> ItemStockSplitListResponse:
         items=[ItemStockResponse.model_validate(s) for s in stocks],
         total=len(stocks),
     )
+
+
+def lookup_qr_codes_for_stocks(
+    db: Session,
+    item_stock_ids: list[int],
+) -> ItemStockQrLookupResponse:
+    return item_stock_logic.resolve_qr_codes_for_stocks(db, item_stock_ids)

@@ -38,6 +38,8 @@ export interface GetOutboundOrdersParams {
   page_size?: number;
   q?: string;
   status?: string;
+  created_from?: string;
+  created_to?: string;
 }
 
 export interface GetOutboundOrdersBySkuParams extends GetOutboundOrdersParams {

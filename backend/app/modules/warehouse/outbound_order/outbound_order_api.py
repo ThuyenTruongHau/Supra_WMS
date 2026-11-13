@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Annotated, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -30,6 +31,7 @@ from app.modules.warehouse.outbound_order.outbound_order_schema import (
     ExecuteQrManualResponse,
 )
 from app.modules.warehouse.outbound_order import outbound_order_service
+from app.modules.warehouse.order_list_date_filter import validate_created_date_range
 from app.modules.warehouse.outbound_order.outbound_celery_task import (
     calculate_outbound_order_task,
     create_outbound_order_task,
@@ -95,7 +97,19 @@ def list_outbound_orders(
     page_size: int = Query(10, ge=1, le=100),
     q: Optional[str] = Query(None),
     status: Optional[str] = Query(None),
+    created_from: Optional[datetime] = Query(
+        None,
+        description="Thời điểm tạo từ (inclusive), giờ VN (YYYY-MM-DDTHH:mm:ss hoặc ngày)",
+    ),
+    created_to: Optional[datetime] = Query(
+        None,
+        description="Thời điểm tạo đến (inclusive), giờ VN (YYYY-MM-DDTHH:mm:ss hoặc ngày)",
+    ),
 ):
+    try:
+        validate_created_date_range(created_from, created_to)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
     orders, total, summary = outbound_order_service.get_outbound_order(
         db,
         warehouse_id=warehouse_id,
@@ -103,6 +117,8 @@ def list_outbound_orders(
         page_size=page_size,
         q=q,
         status=status,
+        created_from=created_from,
+        created_to=created_to,
     )
     return OutboundOrderListResponse(
         items=[OutboundOrderCreateResponse.model_validate(o) for o in orders],
@@ -126,7 +142,19 @@ def list_outbound_orders_by_item(
     page_size: int = Query(10, ge=1, le=100),
     q: Optional[str] = Query(None),
     status: Optional[str] = Query(None),
+    created_from: Optional[datetime] = Query(
+        None,
+        description="Thời điểm tạo từ (inclusive), giờ VN (YYYY-MM-DDTHH:mm:ss hoặc ngày)",
+    ),
+    created_to: Optional[datetime] = Query(
+        None,
+        description="Thời điểm tạo đến (inclusive), giờ VN (YYYY-MM-DDTHH:mm:ss hoặc ngày)",
+    ),
 ):
+    try:
+        validate_created_date_range(created_from, created_to)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
     orders, total, summary = outbound_order_service.get_outbound_orders_by_sku(
         db,
         warehouse_id=warehouse_id,
@@ -135,6 +163,8 @@ def list_outbound_orders_by_item(
         page_size=page_size,
         q=q,
         status=status,
+        created_from=created_from,
+        created_to=created_to,
     )
     return OutboundOrderListResponse(
         items=[OutboundOrderCreateResponse.model_validate(o) for o in orders],

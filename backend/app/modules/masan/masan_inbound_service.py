@@ -571,7 +571,7 @@ def get_masan_inbound_order_details(
         )
 
     details = query.order_by(InboundOrderDetail.id).all()
-    return [_build_detail_response(d) for d in details]
+    return [_build_detail_response(db, d) for d in details]
 
 
 def caller_masan_inbound_order(db: Session, location_ids: list[int]) -> dict[str, Any]:

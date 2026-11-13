@@ -4,7 +4,11 @@ from typing import Literal
 
 from pydantic import BaseModel
 
-StockAgingBucketKey = Literal["lte_30", "days_31_60", "gt_60"]
+from app.modules.warehouse.dashboard.dashboard_trend_periods import TrendGranularity
+
+StockAgingBucketKey = Literal["lte_90", "days_91_180", "days_181_360", "gt_360"]
+TopProductsPeriod = Literal["week", "month", "three_months"]
+TopProductsLimit = Literal[5, 10, 15]
 
 
 class ReportKpiResponse(BaseModel):
@@ -18,14 +22,14 @@ class ReportTrendPoint(BaseModel):
     label: str
     period_start: date
     period_end: date
-    inbound_orders: int
-    outbound_orders: int
+    inbound_quantity: int
+    outbound_quantity: int
     inventory_quantity: Decimal
     inventory_value: Decimal
 
 
 class ReportTrendResponse(BaseModel):
-    granularity: Literal["day", "week"]
+    granularity: TrendGranularity
     points: list[ReportTrendPoint]
 
 
@@ -33,10 +37,13 @@ class TopProductRow(BaseModel):
     item_id: int
     label: str
     total_quantity: int
+    sku: str | None = None
+    name: str | None = None
 
 
 class ReportTopProductsResponse(BaseModel):
-    period: Literal["week", "month"]
+    period: TopProductsPeriod
+    limit: TopProductsLimit = 5
     inbound_top: list[TopProductRow]
     outbound_top: list[TopProductRow]
     stock_top: list[TopProductRow]

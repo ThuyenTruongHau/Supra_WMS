@@ -11,6 +11,8 @@ from app.modules.warehouse.item_stock import item_stock_service
 from app.modules.warehouse.item_stock.item_stock_schema import (
     ItemStockCreate,
     ItemStockListResponse,
+    ItemStockQrLookupRequest,
+    ItemStockQrLookupResponse,
     ItemStockResponse,
     ItemStockSplitListResponse,
     ItemStockUpdate,
@@ -69,6 +71,20 @@ def get_stock_split(
     item_id: int = Query(..., gt=0),
 ):
     return item_stock_service.get_stock_split(db, item_id)
+
+
+@router.post(
+    "/item-stocks/qr-codes/lookup",
+    response_model=ItemStockQrLookupResponse,
+    dependencies=[Depends(require_permission("item_stock:read"))],
+)
+def lookup_item_stock_qr_codes(body: ItemStockQrLookupRequest, db: DbSession):
+    try:
+        return item_stock_service.lookup_qr_codes_for_stocks(
+            db, body.item_stock_ids
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
 
 @router.get(

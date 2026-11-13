@@ -1,7 +1,6 @@
-"""Top 5 products by inbound, outbound, and current stock."""
+"""Top 5/10/15 products by inbound, outbound, and current stock."""
 
 from datetime import date, timedelta
-from typing import Literal
 
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -9,6 +8,8 @@ from sqlalchemy.orm import Session
 from app.modules.warehouse.dashboard.dashboard_schema import (
     ReportTopProductsResponse,
     TopProductRow,
+    TopProductsLimit,
+    TopProductsPeriod,
 )
 from app.modules.warehouse.dashboard.dashboard_snapshot_service import (
     _storage_stock_filters,
@@ -30,13 +31,13 @@ from app.modules.warehouse.warehouse_zone.warehouse_model import Zone
 from app.modules.warehouse.warehouse_zone.warehouse_service import _ensure_warehouse_exists
 
 VN_TIMEZONE = "Asia/Ho_Chi_Minh"
-TOP_LIMIT = 5
 
 
-def _period_start(period: Literal["week", "month"], today: date) -> date:
-    if period == "week":
-        return today - timedelta(days=6)
-    return today - timedelta(days=29)
+def _period_start(period: TopProductsPeriod, today: date) -> date:
+    days_by_period = {"week": 7, "month": 30, "three_months": 90}
+    if period not in days_by_period:
+        raise ValueError(f"Unsupported top products period: {period}")
+    return today - timedelta(days=days_by_period[period] - 1)
 
 
 def _created_on_or_after(column, start_date: date):
@@ -55,12 +56,16 @@ def _rows_to_top_product(rows) -> list[TopProductRow]:
             item_id=int(row.item_id),
             label=_item_display_label(row.sku, row.name, int(row.item_id)),
             total_quantity=int(row.total_qty or 0),
+            sku=row.sku,
+            name=row.name,
         )
         for row in rows
     ]
 
 
-def _top_inbound(db: Session, *, warehouse_id: int, start_date: date) -> list[TopProductRow]:
+def _top_inbound(
+    db: Session, *, warehouse_id: int, start_date: date, limit: TopProductsLimit
+) -> list[TopProductRow]:
     total_qty = func.sum(InboundOrderAllocation.quantity).label("total_qty")
     rows = (
         db.query(
@@ -85,14 +90,16 @@ def _top_inbound(db: Session, *, warehouse_id: int, start_date: date) -> list[To
             _created_on_or_after(InboundOrderAllocation.created_at, start_date),
         )
         .group_by(Item.id, Item.sku, Item.name)
-        .order_by(total_qty.desc())
-        .limit(TOP_LIMIT)
+        .order_by(total_qty.desc(), Item.id.asc())
+        .limit(limit)
         .all()
     )
     return _rows_to_top_product(rows)
 
 
-def _top_outbound(db: Session, *, warehouse_id: int, start_date: date) -> list[TopProductRow]:
+def _top_outbound(
+    db: Session, *, warehouse_id: int, start_date: date, limit: TopProductsLimit
+) -> list[TopProductRow]:
     total_qty = func.sum(OutboundOrderDetail.quantity).label("total_qty")
     rows = (
         db.query(
@@ -112,14 +119,16 @@ def _top_outbound(db: Session, *, warehouse_id: int, start_date: date) -> list[T
             _created_on_or_after(OutboundOrderDetail.created_at, start_date),
         )
         .group_by(Item.id, Item.sku, Item.name)
-        .order_by(total_qty.desc())
-        .limit(TOP_LIMIT)
+        .order_by(total_qty.desc(), Item.id.asc())
+        .limit(limit)
         .all()
     )
     return _rows_to_top_product(rows)
 
 
-def _top_stock(db: Session, *, warehouse_id: int) -> list[TopProductRow]:
+def _top_stock(
+    db: Session, *, warehouse_id: int, limit: TopProductsLimit
+) -> list[TopProductRow]:
     total_qty = func.sum(ItemStock.quantity).label("total_qty")
     rows = (
         db.query(
@@ -133,8 +142,8 @@ def _top_stock(db: Session, *, warehouse_id: int) -> list[TopProductRow]:
         .join(Zone, Zone.id == Location.zone_id)
         .filter(*_storage_stock_filters(warehouse_id))
         .group_by(Item.id, Item.sku, Item.name)
-        .order_by(total_qty.desc())
-        .limit(TOP_LIMIT)
+        .order_by(total_qty.desc(), Item.id.asc())
+        .limit(limit)
         .all()
     )
     return _rows_to_top_product(rows)
@@ -144,13 +153,17 @@ def get_report_top_products(
     db: Session,
     *,
     warehouse_id: int,
-    period: Literal["week", "month"],
+    period: TopProductsPeriod,
+    limit: TopProductsLimit = 5,
 ) -> ReportTopProductsResponse:
+    if limit not in (5, 10, 15):
+        raise ValueError(f"Unsupported top products limit: {limit}")
     _ensure_warehouse_exists(db, warehouse_id)
     start_date = _period_start(period, vn_today())
     return ReportTopProductsResponse(
         period=period,
-        inbound_top=_top_inbound(db, warehouse_id=warehouse_id, start_date=start_date),
-        outbound_top=_top_outbound(db, warehouse_id=warehouse_id, start_date=start_date),
-        stock_top=_top_stock(db, warehouse_id=warehouse_id),
+        limit=limit,
+        inbound_top=_top_inbound(db, warehouse_id=warehouse_id, start_date=start_date, limit=limit),
+        outbound_top=_top_outbound(db, warehouse_id=warehouse_id, start_date=start_date, limit=limit),
+        stock_top=_top_stock(db, warehouse_id=warehouse_id, limit=limit),
     )

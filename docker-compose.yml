@@ -26,6 +26,11 @@ services:
       - redis_data:/data
     command: redis-server --appendonly yes
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
 
   backend:
     build:
@@ -37,6 +42,8 @@ services:
       - "8001:8000"
     env_file:
       - ./backend/.env
+    environment:
+      DATABASE_URL: postgresql://postgres:thado123@db:5432/WMS_db
     volumes:
       - ./backend/logs:/app/logs
       - ./backend/app/static/file_import_item:/app/app/static/file_import_item
@@ -61,6 +68,7 @@ services:
     env_file:
       - ./backend/.env
     environment:
+      DATABASE_URL: postgresql://postgres:thado123@db:5432/WMS_db
       CELERY_BROKER_URL: redis://redis:6379/1
       CELERY_BROKER_RESULT_URL: redis://redis:6379/2
     volumes:
@@ -87,6 +95,29 @@ services:
     env_file:
       - ./backend/.env
     environment:
+      DATABASE_URL: postgresql://postgres:thado123@db:5432/WMS_db
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_BROKER_RESULT_URL: redis://redis:6379/2
+    volumes:
+      - ./backend/logs:/app/logs
+    depends_on:
+      redis:
+        condition: service_healthy
+      backend:
+        condition: service_started
+    restart: unless-stopped
+
+  celery-beat:
+    image: wms-backend:latest
+    container_name: wms-celery-beat
+    command: >
+      celery -A app.core.celery_app.celery_app beat
+      --loglevel=INFO
+      --schedule=/tmp/celerybeat-schedule
+    env_file:
+      - ./backend/.env
+    environment:
+      DATABASE_URL: postgresql://postgres:thado123@db:5432/WMS_db
       CELERY_BROKER_URL: redis://redis:6379/1
       CELERY_BROKER_RESULT_URL: redis://redis:6379/2
     volumes:

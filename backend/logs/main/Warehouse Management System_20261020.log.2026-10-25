@@ -1,0 +1,38 @@
+2026-10-25 19:45:10,419 - main - INFO - Successfully logged in user admin
+2026-10-25 19:49:52,117 - main - INFO - outbound.get_order_by_id order_id=161
+2026-10-25 19:49:52,123 - main - INFO - outbound.get_order_details order_id=161
+2026-10-25 19:49:52,126 - main - INFO - outbound.get_lacked_details order_id=161
+2026-10-25 19:49:52,137 - main - INFO - outbound.get_robot_tasks order_id=161
+2026-10-25 19:49:52,522 - main - INFO - outbound.get_manual_allocation_tasks order_id=161
+2026-10-25 19:51:19,831 - main - INFO - outbound.get_order_by_id order_id=161
+2026-10-25 19:51:19,833 - main - INFO - outbound.get_order_details order_id=161
+2026-10-25 19:51:19,835 - main - INFO - outbound.get_lacked_details order_id=161
+2026-10-25 19:51:19,838 - main - INFO - outbound.get_manual_allocation_tasks order_id=161
+2026-10-25 20:24:04,531 - main - INFO - Successfully logged in user VCC_production_operator
+2026-10-25 20:24:16,371 - main - INFO - Successfully logged in user VCC
+2026-10-25 20:24:21,322 - main - INFO - Successfully logged in user Công
+2026-10-25 20:31:19,233 - main - INFO - Successfully logged in user admin
+2026-10-25 20:33:26,418 - main - INFO - ---F20-18-20261025-40078412---
+2026-10-25 20:34:04,564 - main - INFO - ---F20-18-20261025-40078412---
+2026-10-25 20:35:11,244 - main - INFO - Successfully logged in user admin
+2026-10-25 20:40:37,023 - main - INFO - Successfully logged in user Công
+2026-10-25 20:40:40,055 - main - INFO - Successfully logged in user Công
+2026-10-26 08:50:25,709 - main - INFO - Successfully logged in user admin
+2026-10-26 10:34:35,663 - main - INFO - outbound.get_order_details order_id=143
+2026-10-26 10:34:35,670 - main - INFO - outbound.get_manual_allocation_tasks order_id=143
+2026-10-26 10:34:35,670 - main - INFO - outbound.get_order_by_id order_id=143
+2026-10-26 10:34:35,670 - main - INFO - outbound.get_lacked_details order_id=143
+2026-10-26 10:34:45,684 - main - INFO - outbound.get_manual_allocation_tasks order_id=145
+2026-10-26 10:34:45,689 - main - INFO - outbound.get_lacked_details order_id=145
+2026-10-26 10:34:45,690 - main - INFO - outbound.get_order_by_id order_id=145
+2026-10-26 10:34:45,697 - main - INFO - outbound.get_order_details order_id=145
+2026-10-26 10:46:04,776 - main - INFO - outbound.get_order_by_id order_id=143
+2026-10-26 10:46:04,778 - main - INFO - outbound.get_order_details order_id=143
+2026-10-26 10:46:04,779 - main - INFO - outbound.get_manual_allocation_tasks order_id=143
+2026-10-26 10:46:04,790 - main - INFO - outbound.get_lacked_details order_id=143
+2026-10-26 11:45:05,893 - main - INFO - Successfully logged in user admin
+2026-10-26 15:53:49,339 - main - INFO - outbound.get_order_by_id order_id=153
+2026-10-26 15:53:49,361 - main - INFO - outbound.get_order_details order_id=153
+2026-10-26 15:53:49,364 - main - INFO - outbound.get_lacked_details order_id=153
+2026-10-26 15:53:49,384 - main - INFO - outbound.get_manual_allocation_tasks order_id=153
+2026-10-26 15:53:53,332 - main - INFO - outbound.get_order_details order_id=153

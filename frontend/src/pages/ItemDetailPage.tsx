@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import type { ColumnsType } from "antd/es/table";
 import {
@@ -26,6 +26,8 @@ import {
   useUpdateItem,
 } from "@/hooks/useItem";
 import type { ItemStock } from "@/types/item";
+import ItemStockQrDisplay from "@/components/shared/ItemStockQrDisplay";
+import { useItemStockQrLookup } from "@/hooks/useItemStock";
 import { useAppStore } from "@/store/useAppStore";
 import { useZone } from "@/hooks/useZone";
 import { useUnits } from "@/hooks/useUnit";
@@ -34,6 +36,7 @@ import dayjs from "dayjs";
 import type { Item } from "@/types/item";
 import type { DetailFieldSchema } from "@/components/ui/DetailView";
 import { formatQuantity, parseQuantity } from "@/utils/formatQuantity";
+import { itemStockStatusLabel } from "@/utils/itemStockStatusLabel";
 
 function formatDetailEntryValue(value: unknown): string {
   if (value === null || value === undefined) return "";
@@ -145,50 +148,6 @@ function formatDate(date?: string | null) {
 const TABLE_CLASS =
   "[&_.ant-table-thead_th]:!bg-slate-50 [&_.ant-table-thead_th]:!text-slate-600 [&_.ant-table-thead_th]:!font-semibold [&_.ant-table-thead_th]:!text-base [&_.ant-table-tbody_td]:!text-base [&_.ant-table-thead_th]:!py-3 [&_.ant-table-tbody_td]:!py-3 [&_.ant-table-row]:hover:bg-slate-50/50 [&_.ant-table-cell]:!text-center";
 
-const locationColumns: ColumnsType<ItemStock> = [
-  {
-    title: "Tên vị trí",
-    dataIndex: "location_name",
-    key: "location_name",
-    render: (name: string | null | undefined, row) =>
-      name || (row.location_id ? `#${row.location_id}` : "—"),
-  },
-  {
-    title: "Số lượng",
-    dataIndex: "quantity",
-    key: "quantity",
-    align: "center",
-    render: (qty: number | string) => (
-      <span className="font-semibold text-brand-dark">
-        {formatQuantity(qty)}
-      </span>
-    ),
-  },
-  {
-    title: "Số Lot",
-    dataIndex: "lot_number",
-    key: "lot_number",
-    align: "center",
-    render: (lotNumber: string | null) => (
-      <span className="font-semibold text-brand-dark">{lotNumber || "—"}</span>
-    ),
-  },
-  {
-    title: "Hạn sử dụng",
-    dataIndex: "expiry_date",
-    key: "expiry_date",
-    align: "center",
-    render: (date: string | null) => (
-      <span className="font-semibold text-brand-dark">{formatDate(date)}</span>
-    ),
-  },
-  {
-    title: "Trạng thái",
-    dataIndex: "status",
-    key: "status",
-  },
-];
-
 export default function ItemDetailPage() {
   const navigate = useNavigate();
   const { selectedWarehouseId } = useAppStore();
@@ -203,6 +162,74 @@ export default function ItemDetailPage() {
   const { data } = useItemById(itemId);
   const item = data?.item;
   const stocks = data?.stocks ?? [];
+
+  const stockIds = useMemo(() => stocks.map((s) => s.id), [stocks]);
+  const { qrByStockId, isLoading: isQrLookupLoading } =
+    useItemStockQrLookup(stockIds);
+
+  const locationColumns: ColumnsType<ItemStock> = useMemo(
+    () => [
+      {
+        title: "Tên vị trí",
+        dataIndex: "location_name",
+        key: "location_name",
+        render: (name: string | null | undefined, row) =>
+          name || (row.location_id ? `#${row.location_id}` : "—"),
+      },
+      {
+        title: "Số lượng",
+        dataIndex: "quantity",
+        key: "quantity",
+        align: "center",
+        render: (qty: number | string) => (
+          <span className="font-semibold text-brand-dark">
+            {formatQuantity(qty)}
+          </span>
+        ),
+      },
+      {
+        title: "Số Lot",
+        dataIndex: "lot_number",
+        key: "lot_number",
+        align: "center",
+        render: (lotNumber: string | null) => (
+          <span className="font-semibold text-brand-dark">
+            {lotNumber || "—"}
+          </span>
+        ),
+      },
+      {
+        title: "Hạn sử dụng",
+        dataIndex: "expiry_date",
+        key: "expiry_date",
+        align: "center",
+        render: (date: string | null) => (
+          <span className="font-semibold text-brand-dark">
+            {formatDate(date)}
+          </span>
+        ),
+      },
+      {
+        title: "Trạng thái",
+        dataIndex: "status",
+        key: "status",
+        render: (status: string) => itemStockStatusLabel(status),
+      },
+      {
+        title: "Mã QR",
+        key: "qr_code",
+        align: "center",
+        render: (_: unknown, row) => (
+          <ItemStockQrDisplay
+            qrCodes={qrByStockId.get(row.id)}
+            loading={isQrLookupLoading}
+            size={64}
+          />
+        ),
+      },
+    ],
+    [qrByStockId, isQrLookupLoading],
+  );
 
   const warehouseName =
     zones.find((z) => z.id === selectedWarehouseId)?.name ?? "Chưa chọn kho";

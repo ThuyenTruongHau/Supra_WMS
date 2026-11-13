@@ -110,6 +110,15 @@ function displayValue(value: unknown): string {
   return String(value);
 }
 
+function formatBaseUnitQuantity(
+  quantity?: number,
+  unitName?: string | null,
+): string {
+  if (quantity == null) return "—";
+  const label = String(quantity);
+  return unitName ? `${label} ${unitName}` : label;
+}
+
 function formatDateTime(value: string | null | undefined): string {
   if (!value) return "—";
   return dayjs(value).format("DD/MM/YYYY HH:mm");
@@ -370,6 +379,22 @@ export default function ImportDetailPage() {
           <span className="font-semibold">{record.allocations?.length ?? 0}</span>
         ),
       },
+      {
+        title: "SL (ĐV cơ bản)",
+        key: "total_base_unit_quantity",
+        width: 130,
+        render: (_, record) => {
+          const firstAlloc = record.allocations?.[0];
+          return (
+            <span className="font-semibold">
+              {formatBaseUnitQuantity(
+                record.total_base_unit_quantity,
+                firstAlloc?.base_unit_name,
+              )}
+            </span>
+          );
+        },
+      },
     ];
 
     if (isManualInbound) {
@@ -528,6 +553,19 @@ export default function ImportDetailPage() {
       key: "unit_name",
       width: 120,
       render: (_, record) => record.unit_name ?? `#${record.unit_id}`,
+    },
+    {
+      title: "SL (ĐV cơ bản)",
+      key: "base_unit_quantity",
+      width: 140,
+      render: (_, record) => (
+        <span className="font-semibold">
+          {formatBaseUnitQuantity(
+            record.base_unit_quantity,
+            record.base_unit_name,
+          )}
+        </span>
+      ),
     },
     {
       title: "Hạn sử dụng",

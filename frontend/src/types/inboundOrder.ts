@@ -41,6 +41,9 @@ export interface InboundOrderAllocation {
   item_stock_id: number;
   unit_id: number;
   quantity: number;
+  base_unit_quantity?: number;
+  base_unit_id?: number | null;
+  base_unit_name?: string | null;
   status: string;
   item_id: number | null;
   sku: string | null;
@@ -62,6 +65,7 @@ export interface InboundOrderDetail {
   from_location_name: string | null;
   to_location_code: string | null;
   to_location_name: string | null;
+  total_base_unit_quantity?: number;
   status: string;
   detail_type: string;
   details: Record<string, unknown>;
@@ -76,6 +80,8 @@ export interface GetInboundOrdersParams {
   page_size?: number;
   q?: string;
   status?: string;
+  created_from?: string;
+  created_to?: string;
 }
 
 export interface GetInboundOrdersBySkuParams extends GetInboundOrdersParams {

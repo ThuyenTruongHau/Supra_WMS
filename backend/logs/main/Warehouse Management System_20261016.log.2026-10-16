@@ -1,0 +1,415 @@
+2026-10-16 13:16:21,616 - main - INFO - Starting app
+2026-10-16 13:16:21,651 - main - INFO - Redis connected: redis://10.73.231.5:6379/0 (prefix=wms)
+2026-10-16 13:16:21,652 - main - INFO - Websocket manager started
+2026-10-16 13:28:19,357 - main - INFO - Stopping app
+2026-10-16 13:28:19,358 - main - INFO - Websocket manager stopped
+2026-10-16 13:28:27,671 - main - INFO - Starting app
+2026-10-16 13:28:27,708 - main - INFO - Redis connected: redis://10.73.231.5:6379/0 (prefix=wms)
+2026-10-16 13:28:27,708 - main - INFO - Websocket manager started
+2026-10-16 13:29:37,119 - main - INFO - Stopping app
+2026-10-16 13:29:37,120 - main - INFO - Websocket manager stopped
+2026-10-16 13:29:44,439 - main - INFO - Starting app
+2026-10-16 13:29:44,467 - main - INFO - Redis connected: redis://10.73.231.5:6379/0 (prefix=wms)
+2026-10-16 13:29:44,468 - main - INFO - Websocket manager started
+2026-10-16 13:31:59,904 - main - INFO - Stopping app
+2026-10-16 13:31:59,905 - main - INFO - Websocket manager stopped
+2026-10-16 13:32:06,952 - main - INFO - Starting app
+2026-10-16 13:32:06,975 - main - INFO - Redis connected: redis://10.73.231.5:6379/0 (prefix=wms)
+2026-10-16 13:32:06,976 - main - INFO - Websocket manager started
+2026-10-16 13:36:39,898 - main - INFO - Stopping app
+2026-10-16 13:36:39,898 - main - INFO - Websocket manager stopped
+2026-10-16 13:36:44,460 - main - INFO - Starting app
+2026-10-16 13:36:44,487 - main - INFO - Redis connected: redis://10.73.231.5:6379/0 (prefix=wms)
+2026-10-16 13:36:44,487 - main - INFO - Websocket manager started
+2026-10-16 13:38:09,155 - main - INFO - inbound.get_order_details order_code=IN-20261013-143601
+2026-10-16 13:38:16,026 - main - INFO - inbound.get_order_details order_code=IN-20261013-143601
+2026-10-16 14:01:55,864 - main - INFO - outbound.create_order order_code=OUT-20261016-140519
+2026-10-16 14:01:56,076 - main - INFO - Type: None
+2026-10-16 14:01:56,081 - main - INFO - Flag: False
+2026-10-16 14:01:58,636 - main - INFO - outbound.get_order_by_id order_id=143
+2026-10-16 14:01:58,678 - main - INFO - outbound.get_lacked_details order_id=143
+2026-10-16 14:01:58,684 - main - INFO - outbound.get_order_details order_id=143
+2026-10-16 14:01:58,685 - main - INFO - outbound.get_manual_allocation_tasks order_id=143
+2026-10-16 14:02:04,659 - main - INFO - outbound.calculate_order outbound_order_id=143
+2026-10-16 14:02:06,603 - main - INFO - Has task: None
+2026-10-16 14:02:08,283 - main - INFO - outbound.get_manual_allocation_tasks order_id=143
+2026-10-16 14:02:08,306 - main - INFO - outbound.get_order_by_id order_id=143
+2026-10-16 14:02:08,314 - main - INFO - outbound.get_order_details order_id=143
+2026-10-16 14:02:08,322 - main - INFO - outbound.get_lacked_details order_id=143
+2026-10-16 14:02:08,460 - main - INFO - outbound.get_order_by_id order_id=143
+2026-10-16 14:02:10,233 - main - INFO - outbound.get_manual_allocation_tasks order_id=143
+2026-10-16 14:02:10,233 - main - INFO - outbound.get_lacked_details order_id=143
+2026-10-16 14:02:10,252 - main - INFO - outbound.get_order_details order_id=143
+2026-10-16 14:02:13,557 - main - INFO - ---M90CA-TC-20261003-28826041---
+2026-10-16 14:02:13,760 - main - INFO - ---Steps1: Go here---
+2026-10-16 14:02:19,181 - main - INFO - ---M90CA-TC-20261003-29174579---
+2026-10-16 14:02:19,292 - main - INFO - ---Steps1: Go here---
+2026-10-16 14:02:31,567 - main - INFO - ---M90CA-TC-20261003-14789879---
+2026-10-16 14:02:31,661 - main - INFO - ---Steps1: Go here---
+2026-10-16 14:03:39,659 - main - INFO - ---M90CA-TC-20261003-94527519---
+2026-10-16 14:03:39,758 - main - INFO - ---Steps1: Go here---
+2026-10-16 14:03:53,013 - main - INFO - Stopping app
+2026-10-16 14:03:53,014 - main - INFO - Websocket manager stopped
+2026-10-16 14:04:04,127 - main - INFO - Starting app
+2026-10-16 14:04:04,149 - main - INFO - Redis connected: redis://10.73.231.5:6379/0 (prefix=wms)
+2026-10-16 14:04:04,150 - main - INFO - Websocket manager started
+2026-10-16 14:04:31,346 - main - INFO - outbound.get_manual_allocation_tasks order_id=143
+2026-10-16 14:05:08,098 - main - INFO - outbound.get_order_details order_id=135
+2026-10-16 14:05:08,100 - main - INFO - outbound.get_lacked_details order_id=135
+2026-10-16 14:05:08,101 - main - INFO - outbound.get_order_by_id order_id=135
+2026-10-16 14:05:08,126 - main - INFO - outbound.get_robot_tasks order_id=135
+2026-10-16 14:05:11,546 - main - INFO - outbound.get_manual_allocation_tasks order_id=135
+2026-10-16 14:05:18,908 - main - INFO - outbound.get_lacked_details order_id=143
+2026-10-16 14:05:18,911 - main - INFO - outbound.get_order_details order_id=143
+2026-10-16 14:05:18,916 - main - INFO - outbound.get_order_by_id order_id=143
+2026-10-16 14:05:18,920 - main - INFO - outbound.get_manual_allocation_tasks order_id=143
+2026-10-16 14:05:22,938 - main - INFO - outbound.get_manual_allocation_tasks order_id=143
+2026-10-16 14:05:22,941 - main - INFO - outbound.get_order_by_id order_id=143
+2026-10-16 14:05:22,942 - main - INFO - outbound.get_lacked_details order_id=143
+2026-10-16 14:05:22,943 - main - INFO - outbound.get_order_details order_id=143
+2026-10-16 14:05:29,726 - main - INFO - ---MS07---
+2026-10-16 14:05:37,734 - main - INFO - outbound.get_order_details order_id=143
+2026-10-16 14:05:37,737 - main - INFO - outbound.get_order_by_id order_id=143
+2026-10-16 14:05:37,762 - main - INFO - outbound.get_lacked_details order_id=143
+2026-10-16 14:05:42,498 - main - INFO - outbound.get_order_by_id order_id=143
+2026-10-16 14:05:42,507 - main - INFO - outbound.get_lacked_details order_id=143
+2026-10-16 14:05:42,510 - main - INFO - outbound.get_manual_allocation_tasks order_id=143
+2026-10-16 14:05:42,513 - main - INFO - outbound.get_order_details order_id=143
+2026-10-16 14:05:47,110 - main - INFO - outbound.get_order_details order_id=143
+2026-10-16 14:05:47,113 - main - INFO - outbound.get_order_by_id order_id=143
+2026-10-16 14:05:47,114 - main - INFO - outbound.get_manual_allocation_tasks order_id=143
+2026-10-16 14:05:47,114 - main - INFO - outbound.get_lacked_details order_id=143
+2026-10-16 14:05:49,846 - main - INFO - outbound.get_manual_allocation_tasks order_id=143
+2026-10-16 14:05:49,846 - main - INFO - outbound.get_order_by_id order_id=143
+2026-10-16 14:05:49,848 - main - INFO - outbound.get_order_details order_id=143
+2026-10-16 14:05:49,848 - main - INFO - outbound.get_lacked_details order_id=143
+2026-10-16 14:06:14,738 - main - INFO - outbound.get_manual_allocation_tasks order_id=143
+2026-10-16 14:06:18,588 - main - INFO - Stopping app
+2026-10-16 14:06:18,594 - main - INFO - Websocket manager stopped
+2026-10-16 14:06:26,381 - main - INFO - Starting app
+2026-10-16 14:06:26,408 - main - INFO - Redis connected: redis://10.73.231.5:6379/0 (prefix=wms)
+2026-10-16 14:06:26,409 - main - INFO - Websocket manager started
+2026-10-16 14:06:31,219 - main - INFO - outbound.get_order_details order_id=143
+2026-10-16 14:06:31,220 - main - INFO - outbound.get_order_by_id order_id=143
+2026-10-16 14:06:31,220 - main - INFO - outbound.get_lacked_details order_id=143
+2026-10-16 14:06:32,289 - main - INFO - outbound.get_manual_allocation_tasks order_id=143
+2026-10-16 14:06:33,833 - main - INFO - outbound.get_order_by_id order_id=143
+2026-10-16 14:06:35,045 - main - INFO - outbound.get_lacked_details order_id=143
+2026-10-16 14:06:35,048 - main - INFO - outbound.get_order_details order_id=143
+2026-10-16 14:06:38,141 - main - INFO - ---M90CA-TC-20261003-28826041---
+2026-10-16 14:06:38,699 - main - INFO - ---Steps1: Go here---
+2026-10-16 14:06:43,566 - main - INFO - ---M90CA-TC-20261003-29174579---
+2026-10-16 14:06:43,732 - main - INFO - ---Steps1: Go here---
+2026-10-16 14:06:51,026 - main - INFO - ---M90CA-TC-20261003-14789879---
+2026-10-16 14:06:51,157 - main - INFO - ---Steps1: Go here---
+2026-10-16 14:06:51,747 - main - INFO - Stopping app
+2026-10-16 14:06:51,748 - main - INFO - Websocket manager stopped
+2026-10-16 14:06:57,558 - main - INFO - Starting app
+2026-10-16 14:06:57,569 - main - INFO - Redis connected: redis://10.73.231.5:6379/0 (prefix=wms)
+2026-10-16 14:06:57,569 - main - INFO - Websocket manager started
+2026-10-16 14:07:04,184 - main - INFO - ---M90CA-TC-20261003-28826041---
+2026-10-16 14:07:15,064 - main - INFO - outbound.get_order_by_id order_id=143
+2026-10-16 14:07:15,065 - main - INFO - outbound.get_lacked_details order_id=143
+2026-10-16 14:07:15,189 - main - INFO - outbound.get_manual_allocation_tasks order_id=143
+2026-10-16 14:07:15,190 - main - INFO - outbound.get_order_details order_id=143
+2026-10-16 14:07:21,494 - main - INFO - outbound.get_order_details order_id=143
+2026-10-16 14:07:30,006 - main - INFO - outbound.get_lacked_details order_id=143
+2026-10-16 14:07:30,008 - main - INFO - outbound.get_order_details order_id=143
+2026-10-16 14:07:30,019 - main - INFO - outbound.get_manual_allocation_tasks order_id=143
+2026-10-16 14:07:30,022 - main - INFO - outbound.get_order_by_id order_id=143
+2026-10-16 14:07:34,084 - main - INFO - ---M90CA-TC-20261003-42611394---
+2026-10-16 14:07:34,236 - main - INFO - ---Steps1: Go here---
+2026-10-16 14:07:35,487 - main - INFO - outbound.get_lacked_details order_id=143
+2026-10-16 14:07:35,488 - main - INFO - outbound.get_manual_allocation_tasks order_id=143
+2026-10-16 14:07:35,488 - main - INFO - outbound.get_order_by_id order_id=143
+2026-10-16 14:07:35,501 - main - INFO - outbound.get_order_details order_id=143
+2026-10-16 14:07:35,606 - main - INFO - outbound.get_order_by_id order_id=143
+2026-10-16 14:07:35,816 - main - INFO - outbound.get_manual_allocation_tasks order_id=143
+2026-10-16 14:07:35,967 - main - INFO - outbound.get_order_details order_id=143
+2026-10-16 14:07:35,967 - main - INFO - outbound.get_lacked_details order_id=143
+2026-10-16 14:10:36,309 - main - INFO - outbound.get_lacked_details order_id=141
+2026-10-16 14:10:36,314 - main - INFO - outbound.get_manual_allocation_tasks order_id=141
+2026-10-16 14:10:36,317 - main - INFO - outbound.get_order_by_id order_id=141
+2026-10-16 14:10:36,317 - main - INFO - outbound.get_order_details order_id=141
+2026-10-16 14:15:11,921 - main - INFO - ---MS07---
+2026-10-16 14:15:14,048 - main - INFO - outbound.get_order_by_id order_id=143
+2026-10-16 14:15:14,048 - main - INFO - outbound.get_manual_allocation_tasks order_id=143
+2026-10-16 14:15:14,049 - main - INFO - outbound.get_order_details order_id=143
+2026-10-16 14:15:14,053 - main - INFO - outbound.get_lacked_details order_id=143
+2026-10-16 14:15:14,168 - main - INFO - outbound.get_order_by_id order_id=143
+2026-10-16 14:15:14,624 - main - INFO - outbound.get_lacked_details order_id=143
+2026-10-16 14:15:14,625 - main - INFO - outbound.get_manual_allocation_tasks order_id=143
+2026-10-16 14:15:14,626 - main - INFO - outbound.get_order_details order_id=143
+2026-10-16 14:15:15,848 - main - INFO - ---M90CA-TC-20261003-42611394---
+2026-10-16 14:15:15,961 - main - INFO - ---Steps1: Go here---
+2026-10-16 14:15:16,618 - main - INFO - ---Steps2: Go here---
+2026-10-16 14:15:16,619 - main - INFO - ---Steps3: Go here - 429 - completed---
+2026-10-16 14:15:16,746 - main - INFO - outbound.get_order_details order_id=143
+2026-10-16 14:15:16,747 - main - INFO - outbound.get_manual_allocation_tasks order_id=143
+2026-10-16 14:15:16,747 - main - INFO - outbound.get_lacked_details order_id=143
+2026-10-16 14:15:16,754 - main - INFO - outbound.get_order_by_id order_id=143
+2026-10-16 14:15:16,844 - main - INFO - outbound.get_order_by_id order_id=143
+2026-10-16 14:15:17,199 - main - INFO - outbound.get_manual_allocation_tasks order_id=143
+2026-10-16 14:15:17,266 - main - INFO - outbound.get_lacked_details order_id=143
+2026-10-16 14:15:17,267 - main - INFO - outbound.get_order_details order_id=143
+2026-10-16 14:20:59,207 - main - INFO - Stopping app
+2026-10-16 14:20:59,207 - main - INFO - Websocket manager stopped
+2026-10-16 14:21:08,281 - main - INFO - Starting app
+2026-10-16 14:21:08,319 - main - INFO - Redis connected: redis://10.73.231.5:6379/0 (prefix=wms)
+2026-10-16 14:21:08,320 - main - INFO - Websocket manager started
+2026-10-16 14:45:16,104 - main - INFO - inbound.get_order_details order_code=IN-20261013-143601
+2026-10-16 16:45:37,167 - main - INFO - qr_record: RC6-1377-000-20261016-23050886 --- <app.modules.warehouse.item.item_model.QR_Code object at 0x000001498E0113C0>
+2026-10-16 16:46:09,409 - main - INFO - qr_record: RC6-1377-000-20261016-82406095 --- <app.modules.warehouse.item.item_model.QR_Code object at 0x000001498E06AD70>
+2026-10-16 16:46:34,938 - main - INFO - inbound.caller_order order_code=IN-20261016-164952
+2026-10-16 16:46:38,636 - main - INFO - ICS addTask response: {'code': 1000, 'data': 'TDS_Inbound_7d92ef16', 'desc': '请求成功'}
+2026-10-16 16:50:03,109 - main - INFO - Processing task status for order_id=TDS_Inbound_7d92ef16
+2026-10-16 16:50:50,480 - main - INFO - Processing task status for order_id=TDS_Inbound_7d92ef16
+2026-10-16 16:50:50,831 - main - INFO - Processing task status for order_id=TDS_Inbound_7d92ef16
+2026-10-16 16:50:57,801 - main - INFO - Processing task status for order_id=TDS_Inbound_7d92ef16
+2026-10-16 16:50:57,914 - main - INFO - Processing task status for order_id=TDS_Inbound_7d92ef16
+2026-10-16 16:52:16,218 - main - INFO - Processing task status for order_id=TDS_Inbound_7d92ef16
+2026-10-16 16:52:16,496 - main - INFO - Processing task status for order_id=TDS_Inbound_7d92ef16
+2026-10-16 16:52:23,125 - main - INFO - Processing task status for order_id=TDS_Inbound_7d92ef16
+2026-10-16 16:52:23,445 - main - INFO - Receive completed for TDS_Inbound_7d92ef16
+2026-10-16 16:52:24,343 - main - INFO - Current status: in_transit
+2026-10-16 16:52:24,345 - main - INFO - New status: available
+2026-10-16 16:52:24,346 - main - INFO - Current status: in_transit
+2026-10-16 16:52:24,346 - main - INFO - New status: available
+2026-10-17 10:26:19,896 - main - INFO - qr_record: RC6-1377-000-20261017-11266145 --- <app.modules.warehouse.item.item_model.QR_Code object at 0x0000014995BD9F60>
+2026-10-17 10:27:03,613 - main - INFO - qr_record: RC6-1377-000-20261017-48446612 --- <app.modules.warehouse.item.item_model.QR_Code object at 0x0000014995DC0DC0>
+2026-10-17 10:27:36,164 - main - INFO - qr_record: RC6-1377-000-20261017-35762244 --- <app.modules.warehouse.item.item_model.QR_Code object at 0x0000014995E14E50>
+2026-10-17 10:27:58,403 - main - INFO - inbound.caller_order order_code=IN-20261017-103119
+2026-10-17 10:27:59,846 - main - INFO - ICS addTask response: {'code': 1000, 'data': 'TDS_Inbound_6b8e36e3', 'desc': '请求成功'}
+2026-10-17 10:28:00,892 - main - INFO - Processing task status for order_id=TDS_Inbound_6b8e36e3
+2026-10-17 10:28:32,539 - main - INFO - Processing task status for order_id=TDS_Inbound_6b8e36e3
+2026-10-17 10:28:32,900 - main - INFO - Processing task status for order_id=TDS_Inbound_6b8e36e3
+2026-10-17 10:28:45,781 - main - INFO - Processing task status for order_id=TDS_Inbound_6b8e36e3
+2026-10-17 10:28:45,913 - main - INFO - Processing task status for order_id=TDS_Inbound_6b8e36e3
+2026-10-17 10:30:06,336 - main - INFO - Processing task status for order_id=TDS_Inbound_6b8e36e3
+2026-10-17 10:30:06,589 - main - INFO - Processing task status for order_id=TDS_Inbound_6b8e36e3
+2026-10-17 10:30:13,208 - main - INFO - Processing task status for order_id=TDS_Inbound_6b8e36e3
+2026-10-17 10:30:13,537 - main - INFO - Receive completed for TDS_Inbound_6b8e36e3
+2026-10-17 10:30:13,633 - main - INFO - Current status: in_transit
+2026-10-17 10:30:13,634 - main - INFO - New status: available
+2026-10-17 10:30:13,635 - main - INFO - Current status: in_transit
+2026-10-17 10:30:13,636 - main - INFO - New status: available
+2026-10-17 10:30:13,637 - main - INFO - Current status: in_transit
+2026-10-17 10:30:13,637 - main - INFO - New status: available
+2026-10-17 10:41:59,615 - main - INFO - outbound.create_order order_code=OUT-20261017-104527
+2026-10-17 10:41:59,662 - main - INFO - Type: Lấy lẻ
+2026-10-17 10:41:59,666 - main - INFO - Flag: True
+2026-10-17 10:41:59,680 - main - INFO - Fixed quantity: 986
+2026-10-17 10:42:00,644 - main - INFO - outbound.get_order_by_id order_id=144
+2026-10-17 10:42:00,646 - main - INFO - outbound.get_order_details order_id=144
+2026-10-17 10:42:00,647 - main - INFO - outbound.get_robot_tasks order_id=144
+2026-10-17 10:42:00,652 - main - INFO - outbound.get_lacked_details order_id=144
+2026-10-17 10:42:00,770 - main - INFO - outbound.get_manual_allocation_tasks order_id=144
+2026-10-17 10:42:06,870 - main - INFO - outbound.calculate_order outbound_order_id=144
+2026-10-17 10:42:08,863 - main - INFO - Has task: None
+2026-10-17 10:42:10,018 - main - INFO - outbound.get_manual_allocation_tasks order_id=144
+2026-10-17 10:42:10,021 - main - INFO - outbound.get_order_details order_id=144
+2026-10-17 10:42:10,023 - main - INFO - outbound.get_order_by_id order_id=144
+2026-10-17 10:42:10,027 - main - INFO - outbound.get_lacked_details order_id=144
+2026-10-17 10:42:10,109 - main - INFO - outbound.get_order_by_id order_id=144
+2026-10-17 10:42:11,240 - main - INFO - outbound.get_order_details order_id=144
+2026-10-17 10:42:11,241 - main - INFO - outbound.get_lacked_details order_id=144
+2026-10-17 10:42:11,242 - main - INFO - outbound.get_manual_allocation_tasks order_id=144
+2026-10-17 10:42:18,457 - main - INFO - outbound.execute_task order_id=MANUAL_outbound_374
+2026-10-17 10:42:21,605 - main - INFO - Manual allocation stock: 374 --- 1775 --- 1643
+2026-10-17 10:42:22,468 - main - INFO - outbound.get_order_by_id order_id=144
+2026-10-17 10:42:22,470 - main - INFO - outbound.get_order_details order_id=144
+2026-10-17 10:42:22,488 - main - INFO - outbound.get_lacked_details order_id=144
+2026-10-17 10:42:22,489 - main - INFO - outbound.get_manual_allocation_tasks order_id=144
+2026-10-17 10:42:22,598 - main - INFO - outbound.get_order_by_id order_id=144
+2026-10-17 10:42:23,705 - main - INFO - outbound.get_manual_allocation_tasks order_id=144
+2026-10-17 10:42:23,767 - main - INFO - outbound.get_order_details order_id=144
+2026-10-17 11:14:37,984 - main - INFO - outbound.create_order order_code=OUT-20261017-111756
+2026-10-17 11:14:37,990 - main - INFO - Type: None
+2026-10-17 11:14:37,995 - main - INFO - Flag: False
+2026-10-17 11:14:40,320 - main - INFO - outbound.get_order_by_id order_id=145
+2026-10-17 11:14:40,320 - main - INFO - outbound.get_manual_allocation_tasks order_id=145
+2026-10-17 11:14:40,327 - main - INFO - outbound.get_lacked_details order_id=145
+2026-10-17 11:14:40,327 - main - INFO - outbound.get_order_details order_id=145
+2026-10-17 11:14:47,246 - main - INFO - outbound.calculate_order outbound_order_id=145
+2026-10-17 11:14:49,849 - main - INFO - Has task: None
+2026-10-17 11:14:50,172 - main - INFO - Has task: None
+2026-10-17 11:14:50,758 - main - INFO - outbound.get_order_by_id order_id=145
+2026-10-17 11:14:50,776 - main - INFO - outbound.get_order_details order_id=145
+2026-10-17 11:14:50,779 - main - INFO - outbound.get_manual_allocation_tasks order_id=145
+2026-10-17 11:14:50,782 - main - INFO - outbound.get_lacked_details order_id=145
+2026-10-17 11:14:51,007 - main - INFO - outbound.get_order_by_id order_id=145
+2026-10-17 11:14:51,156 - main - INFO - outbound.get_manual_allocation_tasks order_id=145
+2026-10-17 11:14:51,180 - main - INFO - outbound.get_lacked_details order_id=145
+2026-10-17 11:14:51,234 - main - INFO - outbound.get_order_details order_id=145
+2026-10-17 11:14:55,390 - main - INFO - ---M90CA-TC-20261003-28826041---
+2026-10-17 11:14:55,486 - main - INFO - ---Steps1: Go here---
+2026-10-17 11:15:06,246 - main - INFO - ---M90CA-TC-20261003-29174579---
+2026-10-17 11:15:06,339 - main - INFO - ---Steps1: Go here---
+2026-10-17 11:15:10,553 - main - INFO - ---M90CA-TC-20261003-14789879---
+2026-10-17 11:15:10,630 - main - INFO - ---Steps1: Go here---
+2026-10-17 11:15:11,158 - main - INFO - outbound.get_manual_allocation_tasks order_id=145
+2026-10-17 11:15:11,160 - main - INFO - outbound.get_lacked_details order_id=145
+2026-10-17 11:15:11,171 - main - INFO - outbound.get_order_details order_id=145
+2026-10-17 11:15:11,173 - main - INFO - outbound.get_order_by_id order_id=145
+2026-10-17 11:15:11,455 - main - INFO - outbound.get_order_by_id order_id=145
+2026-10-17 11:15:11,598 - main - INFO - outbound.get_manual_allocation_tasks order_id=145
+2026-10-17 11:15:11,603 - main - INFO - outbound.get_lacked_details order_id=145
+2026-10-17 11:15:11,603 - main - INFO - outbound.get_order_details order_id=145
+2026-10-17 11:15:16,707 - main - INFO - ---M90CA-TC-20261003-28826041---
+2026-10-17 11:15:16,824 - main - INFO - ---Steps1: Go here---
+2026-10-17 11:15:17,234 - main - INFO - outbound.get_order_by_id order_id=145
+2026-10-17 11:15:17,234 - main - INFO - outbound.get_manual_allocation_tasks order_id=145
+2026-10-17 11:15:17,235 - main - INFO - outbound.get_order_details order_id=145
+2026-10-17 11:15:17,241 - main - INFO - outbound.get_lacked_details order_id=145
+2026-10-17 11:15:17,305 - main - INFO - outbound.get_order_by_id order_id=145
+2026-10-17 11:15:17,514 - main - INFO - outbound.get_manual_allocation_tasks order_id=145
+2026-10-17 11:15:17,608 - main - INFO - outbound.get_lacked_details order_id=145
+2026-10-17 11:15:17,609 - main - INFO - outbound.get_order_details order_id=145
+2026-10-17 11:21:30,250 - main - INFO - ---MS07---
+2026-10-17 11:21:30,967 - main - INFO - outbound.get_manual_allocation_tasks order_id=145
+2026-10-17 11:21:30,975 - main - INFO - outbound.get_order_by_id order_id=145
+2026-10-17 11:21:30,978 - main - INFO - outbound.get_order_details order_id=145
+2026-10-17 11:21:30,979 - main - INFO - outbound.get_lacked_details order_id=145
+2026-10-17 11:21:31,073 - main - INFO - outbound.get_order_by_id order_id=145
+2026-10-17 11:21:31,540 - main - INFO - outbound.get_manual_allocation_tasks order_id=145
+2026-10-17 11:21:31,562 - main - INFO - outbound.get_order_details order_id=145
+2026-10-17 11:21:31,563 - main - INFO - outbound.get_lacked_details order_id=145
+2026-10-17 11:21:35,097 - main - INFO - ---MS07---
+2026-10-17 11:21:35,871 - main - INFO - outbound.get_order_by_id order_id=145
+2026-10-17 11:21:35,876 - main - INFO - outbound.get_manual_allocation_tasks order_id=145
+2026-10-17 11:21:35,877 - main - INFO - outbound.get_lacked_details order_id=145
+2026-10-17 11:21:35,880 - main - INFO - outbound.get_order_details order_id=145
+2026-10-17 11:21:36,013 - main - INFO - outbound.get_order_by_id order_id=145
+2026-10-17 11:21:36,408 - main - INFO - outbound.get_manual_allocation_tasks order_id=145
+2026-10-17 11:21:36,448 - main - INFO - outbound.get_order_details order_id=145
+2026-10-17 11:21:36,450 - main - INFO - outbound.get_lacked_details order_id=145
+2026-10-17 11:21:55,697 - main - INFO - outbound.create_order order_code=OUT-20261017-112519
+2026-10-17 11:21:55,702 - main - INFO - Type: None
+2026-10-17 11:21:55,705 - main - INFO - Flag: False
+2026-10-17 11:22:18,518 - main - INFO - outbound.get_lacked_details order_id=146
+2026-10-17 11:22:18,519 - main - INFO - outbound.get_order_by_id order_id=146
+2026-10-17 11:22:18,519 - main - INFO - outbound.get_order_details order_id=146
+2026-10-17 11:22:18,522 - main - INFO - outbound.get_manual_allocation_tasks order_id=146
+2026-10-17 11:22:26,897 - main - INFO - outbound.calculate_order outbound_order_id=146
+2026-10-17 11:22:27,649 - main - INFO - Has task: None
+2026-10-17 11:22:28,103 - main - INFO - outbound.get_lacked_details order_id=146
+2026-10-17 11:22:28,103 - main - INFO - outbound.get_order_by_id order_id=146
+2026-10-17 11:22:28,104 - main - INFO - outbound.get_order_details order_id=146
+2026-10-17 11:22:28,105 - main - INFO - outbound.get_manual_allocation_tasks order_id=146
+2026-10-17 11:22:28,186 - main - INFO - outbound.get_order_by_id order_id=146
+2026-10-17 11:22:28,484 - main - INFO - outbound.get_manual_allocation_tasks order_id=146
+2026-10-17 11:22:28,536 - main - INFO - outbound.get_lacked_details order_id=146
+2026-10-17 11:22:28,538 - main - INFO - outbound.get_order_details order_id=146
+2026-10-17 11:22:36,181 - main - INFO - ---M90CA-20261003-99331741---
+2026-10-17 11:22:36,307 - main - INFO - ---Steps1: Go here---
+2026-10-17 11:22:36,904 - main - INFO - outbound.get_order_details order_id=146
+2026-10-17 11:22:36,905 - main - INFO - outbound.get_manual_allocation_tasks order_id=146
+2026-10-17 11:22:36,920 - main - INFO - outbound.get_lacked_details order_id=146
+2026-10-17 11:22:36,923 - main - INFO - outbound.get_order_by_id order_id=146
+2026-10-17 11:22:36,987 - main - INFO - outbound.get_order_by_id order_id=146
+2026-10-17 11:22:37,435 - main - INFO - outbound.get_lacked_details order_id=146
+2026-10-17 11:22:37,437 - main - INFO - outbound.get_manual_allocation_tasks order_id=146
+2026-10-17 11:22:37,442 - main - INFO - outbound.get_order_details order_id=146
+2026-10-17 11:23:15,569 - main - INFO - ---MS07---
+2026-10-17 11:23:16,236 - main - INFO - outbound.get_order_by_id order_id=146
+2026-10-17 11:23:16,245 - main - INFO - outbound.get_order_details order_id=146
+2026-10-17 11:23:16,249 - main - INFO - outbound.get_manual_allocation_tasks order_id=146
+2026-10-17 11:23:16,251 - main - INFO - outbound.get_lacked_details order_id=146
+2026-10-17 11:23:16,324 - main - INFO - outbound.get_order_by_id order_id=146
+2026-10-17 11:23:18,500 - main - INFO - outbound.get_lacked_details order_id=146
+2026-10-17 11:23:18,501 - main - INFO - outbound.get_order_details order_id=146
+2026-10-17 11:23:18,501 - main - INFO - outbound.get_manual_allocation_tasks order_id=146
+2026-10-17 11:23:21,370 - main - INFO - ---M90CA-20261003-99331741---
+2026-10-17 11:23:21,450 - main - INFO - ---Steps1: Go here---
+2026-10-17 11:23:22,126 - main - INFO - ---Steps2: Go here---
+2026-10-17 11:23:22,127 - main - INFO - ---Steps3: Go here - 419 - completed---
+2026-10-17 11:23:22,266 - main - INFO - outbound.get_lacked_details order_id=146
+2026-10-17 11:23:22,268 - main - INFO - outbound.get_order_details order_id=146
+2026-10-17 11:23:22,271 - main - INFO - outbound.get_manual_allocation_tasks order_id=146
+2026-10-17 11:23:22,273 - main - INFO - outbound.get_order_by_id order_id=146
+2026-10-17 11:23:22,428 - main - INFO - outbound.get_order_by_id order_id=146
+2026-10-17 11:23:22,881 - main - INFO - outbound.get_order_details order_id=146
+2026-10-17 11:23:22,882 - main - INFO - outbound.get_manual_allocation_tasks order_id=146
+2026-10-17 11:23:22,882 - main - INFO - outbound.get_lacked_details order_id=146
+2026-10-17 11:23:59,980 - main - INFO - outbound.get_order_details order_id=133
+2026-10-17 11:23:59,983 - main - INFO - outbound.get_order_by_id order_id=133
+2026-10-17 11:23:59,985 - main - INFO - outbound.get_lacked_details order_id=133
+2026-10-17 11:23:59,988 - main - INFO - outbound.get_robot_tasks order_id=133
+2026-10-17 11:24:05,213 - main - INFO - outbound.get_order_by_id order_id=133
+2026-10-17 11:24:05,217 - main - INFO - outbound.get_lacked_details order_id=133
+2026-10-17 11:24:05,222 - main - INFO - outbound.get_robot_tasks order_id=133
+2026-10-17 11:24:05,222 - main - INFO - outbound.get_order_details order_id=133
+2026-10-17 11:24:09,015 - main - INFO - outbound.get_manual_allocation_tasks order_id=133
+2026-10-17 11:24:18,012 - main - INFO - outbound.get_lacked_details order_id=145
+2026-10-17 11:24:18,012 - main - INFO - outbound.get_manual_allocation_tasks order_id=145
+2026-10-17 11:24:18,013 - main - INFO - outbound.get_order_by_id order_id=145
+2026-10-17 11:24:18,014 - main - INFO - outbound.get_order_details order_id=145
+2026-10-17 11:24:22,047 - main - INFO - outbound.get_lacked_details order_id=145
+2026-10-17 11:24:22,050 - main - INFO - outbound.get_order_by_id order_id=145
+2026-10-17 11:24:22,050 - main - INFO - outbound.get_manual_allocation_tasks order_id=145
+2026-10-17 11:24:22,053 - main - INFO - outbound.get_order_details order_id=145
+2026-10-17 11:24:33,579 - main - INFO - ---M90CA-TC-20261003-14789879---
+2026-10-17 11:24:33,656 - main - INFO - ---Steps1: Go here---
+2026-10-17 11:24:34,149 - main - INFO - ---Steps2: Go here---
+2026-10-17 11:24:34,150 - main - INFO - ---Steps3: Go here - 430 - completed---
+2026-10-17 11:24:34,366 - main - INFO - outbound.get_order_by_id order_id=145
+2026-10-17 11:24:34,370 - main - INFO - outbound.get_manual_allocation_tasks order_id=145
+2026-10-17 11:24:34,371 - main - INFO - outbound.get_lacked_details order_id=145
+2026-10-17 11:24:34,380 - main - INFO - outbound.get_order_details order_id=145
+2026-10-17 11:24:34,434 - main - INFO - outbound.get_order_by_id order_id=145
+2026-10-17 11:24:34,877 - main - INFO - outbound.get_manual_allocation_tasks order_id=145
+2026-10-17 11:24:34,965 - main - INFO - outbound.get_lacked_details order_id=145
+2026-10-17 11:24:34,967 - main - INFO - outbound.get_order_details order_id=145
+2026-10-17 11:24:37,604 - main - INFO - ---M90CA-TC-20261003-28826041---
+2026-10-17 11:24:37,725 - main - INFO - ---Steps1: Go here---
+2026-10-17 11:24:38,165 - main - INFO - ---Steps2: Go here---
+2026-10-17 11:24:38,165 - main - INFO - ---Steps3: Go here - 431 - completed---
+2026-10-17 11:24:38,358 - main - INFO - outbound.get_manual_allocation_tasks order_id=145
+2026-10-17 11:24:38,359 - main - INFO - outbound.get_lacked_details order_id=145
+2026-10-17 11:24:38,366 - main - INFO - outbound.get_order_by_id order_id=145
+2026-10-17 11:24:38,369 - main - INFO - outbound.get_order_details order_id=145
+2026-10-17 11:24:38,443 - main - INFO - outbound.get_order_by_id order_id=145
+2026-10-17 11:24:39,075 - main - INFO - outbound.get_manual_allocation_tasks order_id=145
+2026-10-17 11:24:39,079 - main - INFO - outbound.get_order_details order_id=145
+2026-10-17 11:24:39,089 - main - INFO - outbound.get_lacked_details order_id=145
+2026-10-17 11:24:44,010 - main - INFO - outbound.get_lacked_details order_id=146
+2026-10-17 11:24:44,011 - main - INFO - outbound.get_manual_allocation_tasks order_id=146
+2026-10-17 11:24:44,013 - main - INFO - outbound.get_order_by_id order_id=146
+2026-10-17 11:24:44,015 - main - INFO - outbound.get_order_details order_id=146
+2026-10-17 11:24:46,405 - main - INFO - outbound.get_order_details order_id=146
+2026-10-17 11:24:46,405 - main - INFO - outbound.get_order_by_id order_id=146
+2026-10-17 11:24:46,407 - main - INFO - outbound.get_lacked_details order_id=146
+2026-10-17 11:24:46,410 - main - INFO - outbound.get_manual_allocation_tasks order_id=146
+2026-10-17 11:24:51,015 - main - INFO - outbound.get_order_by_id order_id=146
+2026-10-17 11:24:51,016 - main - INFO - outbound.get_order_details order_id=146
+2026-10-17 11:24:51,020 - main - INFO - outbound.get_lacked_details order_id=146
+2026-10-17 11:41:55,375 - main - INFO - qr_record: 4506.331-20261017-19817227 --- <app.modules.warehouse.item.item_model.QR_Code object at 0x000001499DD68D30>
+2026-10-17 11:42:43,573 - main - INFO - qr_record: 4506.331-20261017-20976525 --- <app.modules.warehouse.item.item_model.QR_Code object at 0x000001499E1B6830>
+2026-10-17 11:42:43,739 - main - INFO - qr_record: 4506.331-20261017-84766188 --- <app.modules.warehouse.item.item_model.QR_Code object at 0x000001499E1B5510>
+2026-10-17 11:45:13,411 - main - INFO - 6 inbound pending cache keys deleted
+2026-10-17 11:45:54,262 - main - INFO - qr_record: 4506.331-20261017-19817227 --- <app.modules.warehouse.item.item_model.QR_Code object at 0x000001499BD85240>
+2026-10-17 11:46:23,867 - main - INFO - qr_record: 4506.331-20261017-20976525 --- <app.modules.warehouse.item.item_model.QR_Code object at 0x000001499DD44880>
+2026-10-17 11:47:55,596 - main - INFO - qr_record: 4506.331-20261017-84266631 --- <app.modules.warehouse.item.item_model.QR_Code object at 0x000001499D8F7B50>
+2026-10-17 11:47:55,747 - main - INFO - qr_record: 4506.331-20261017-20976525 --- <app.modules.warehouse.item.item_model.QR_Code object at 0x000001499D8F7B50>
+2026-10-17 11:47:55,903 - main - INFO - qr_record: 4506.331-20261017-19817227 --- <app.modules.warehouse.item.item_model.QR_Code object at 0x000001499D8F7BB0>
+2026-10-17 11:49:06,843 - main - INFO - qr_record: 4506.331-20261017-01081524 --- <app.modules.warehouse.item.item_model.QR_Code object at 0x000001499DD0B790>
+2026-10-17 11:55:47,494 - main - INFO - inbound.caller_order order_code=IN-20261017-115850
+2026-10-17 11:55:48,429 - main - INFO - ICS addTask response: {'code': 1000, 'data': 'TDS_Inbound_c2ebdce0', 'desc': '请求成功'}
+2026-10-17 11:55:49,271 - main - INFO - Processing task status for order_id=TDS_Inbound_c2ebdce0
+2026-10-17 11:56:21,858 - main - INFO - Processing task status for order_id=TDS_Inbound_c2ebdce0
+2026-10-17 11:56:22,180 - main - INFO - Processing task status for order_id=TDS_Inbound_c2ebdce0
+2026-10-17 11:56:29,149 - main - INFO - Processing task status for order_id=TDS_Inbound_c2ebdce0
+2026-10-17 11:56:29,279 - main - INFO - Processing task status for order_id=TDS_Inbound_c2ebdce0
+2026-10-17 11:57:50,469 - main - INFO - Processing task status for order_id=TDS_Inbound_c2ebdce0
+2026-10-17 11:57:50,746 - main - INFO - Processing task status for order_id=TDS_Inbound_c2ebdce0
+2026-10-17 11:57:57,403 - main - INFO - Processing task status for order_id=TDS_Inbound_c2ebdce0
+2026-10-17 11:57:57,652 - main - INFO - Receive completed for TDS_Inbound_c2ebdce0
+2026-10-17 11:57:57,883 - main - INFO - Current status: in_transit
+2026-10-17 11:57:57,884 - main - INFO - New status: available
+2026-10-17 11:57:57,886 - main - INFO - Current status: split
+2026-10-17 11:57:57,886 - main - INFO - New status: split
+2026-10-17 14:10:52,717 - main - INFO - qr_record: 4506.322-20261017-49671195 --- <app.modules.warehouse.item.item_model.QR_Code object at 0x000001499EF04040>
+2026-10-17 14:10:52,815 - main - INFO - qr_record: 4506.322-20261017-99342679 --- <app.modules.warehouse.item.item_model.QR_Code object at 0x000001499EF07250>
+2026-10-17 14:11:26,543 - main - INFO - qr_record: 4506.322-20261017-24637291 --- <app.modules.warehouse.item.item_model.QR_Code object at 0x000001499EBF63E0>
+2026-10-17 14:12:05,315 - main - INFO - qr_record: 4506.322-20261017-13267747 --- <app.modules.warehouse.item.item_model.QR_Code object at 0x000001499E9836D0>
+2026-10-17 14:12:05,427 - main - INFO - qr_record: 4506.322-20261017-99741442 --- <app.modules.warehouse.item.item_model.QR_Code object at 0x000001499E983940>

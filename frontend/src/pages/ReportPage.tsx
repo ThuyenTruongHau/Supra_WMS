@@ -31,10 +31,12 @@ import type {
   StockAgingBucketKey,
   StockAgingRow,
   TopProductsPeriod,
+  TopProductsLimit,
   TrendGranularity,
 } from '@/types/dashboard'
 import { formatInventoryValue, formatKpiNumber } from '@/utils/formatKpi'
 import { parseQuantity } from '@/utils/formatQuantity'
+import dayjs from 'dayjs'
 
 const KPI_CARD_META = [
   {
@@ -70,9 +72,10 @@ const TOP_PRODUCT_CHARTS = [
 ] as const
 
 const STOCK_AGING_BUCKET_COLORS: Record<StockAgingBucketKey, string> = {
-  lte_30: '#3aa6a6',
-  days_31_60: '#0f3d46',
-  gt_60: '#0f3460',
+  lte_90: '#3aa6a6',
+  days_91_180: '#0f3d46',
+  days_181_360: '#0f3460',
+  gt_360: '#d97706',
 }
 
 function formatStockCreatedAt(iso: string) {
@@ -157,14 +160,21 @@ type TrendChartRow = {
 const TREND_AXIS_TICK = { fontSize: 11, fill: '#6b7280' }
 
 function trendXAxisProps(granularity: TrendGranularity) {
+  const angled = granularity === 'month' || granularity === 'year'
   return {
     dataKey: 'label' as const,
     tick: TREND_AXIS_TICK,
-    interval: 0 as const,
-    angle: granularity === 'week' ? -25 : 0,
-    textAnchor: (granularity === 'week' ? 'end' : 'middle') as 'end' | 'middle',
-    height: granularity === 'week' ? 56 : 30,
+    interval: 'preserveStartEnd' as const,
+    minTickGap: 16,
+    angle: angled ? -25 : 0,
+    textAnchor: (angled ? 'end' : 'middle') as 'end' | 'middle',
+    height: angled ? 56 : 30,
   }
+}
+
+function formatTrendDate(isoDate: string) {
+  const [year, month, day] = isoDate.split('-')
+  return `${day}/${month}/${year}`
 }
 
 function OrdersTrendTooltip({
@@ -209,11 +219,65 @@ function InventoryTrendTooltip({
       <p className="text-[#9333ea]">
         Giá trị tồn: {formatInventoryValue(byKey.tonValue ?? 0)}
       </p>
-      {granularity === 'week' && (
+      {(granularity === 'quarter' || granularity === 'year') && (
         <p className="text-xs text-slate-400 mt-1">
-          Tồn tuần = tổng theo ngày trong tuần
+          Tồn cuối tháng (cộng dồn nhập/xuất trong kỳ hiển thị)
         </p>
       )}
+    </div>
+  )
+}
+
+type TopProductChartRow = {
+  name: string
+  value: number
+  sku?: string | null
+  productName?: string | null
+}
+
+function TopProductAxisTick({
+  x = 0,
+  y = 0,
+  payload,
+  data,
+}: {
+  x?: number | string
+  y?: number | string
+  payload?: { value?: string | number }
+  data: TopProductChartRow[]
+}) {
+  const label = String(payload?.value ?? '')
+  const row = data.find((entry) => entry.name === label)
+  const sku = row?.sku?.trim() || label
+  const productName = row?.productName?.trim() || ''
+  const truncate = (value: string) => value.length > 27 ? `${value.slice(0, 26)}…` : value
+  return (
+    <g transform={`translate(${x},${y})`}>
+      <title>{label}</title>
+      <text textAnchor="end" fontSize={12} fill="#374151">
+        <tspan x={-6} dy={productName ? -3 : 4}>{truncate(sku)}</tspan>
+        {productName && (
+          <tspan x={-6} dy={14} fontSize={11} fill="#6b7280">{truncate(productName)}</tspan>
+        )}
+      </text>
+    </g>
+  )
+}
+
+function TopProductTooltip({
+  active,
+  payload,
+}: {
+  active?: boolean
+  payload?: { payload?: TopProductChartRow }[]
+}) {
+  const row = payload?.[0]?.payload
+  if (!active || !row) return null
+  return (
+    <div className="max-w-xs rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm shadow-md">
+      <p className="font-semibold text-slate-800">{row.productName || row.name}</p>
+      <p className="mt-1 text-slate-500">Mã SKU: {row.sku || row.name}</p>
+      <p className="mt-1 text-slate-700">Số lượng: {formatKpiNumber(row.value)}</p>
     </div>
   )
 }
@@ -224,30 +288,37 @@ function HorizontalBarChart({
   fill,
 }: {
   title: string
-  data: { name: string; value: number }[]
+  data: TopProductChartRow[]
   fill: string
 }) {
   return (
     <div className="rounded-xl bg-white p-5 shadow-sm h-full">
       <h3 className="mb-4 text-base font-semibold text-brand-dark">{title}</h3>
-      <ResponsiveContainer width="100%" height={280}>
-        <BarChart
-          data={data}
-          layout="vertical"
-          margin={{ top: 0, right: 16, left: 8, bottom: 0 }}
-        >
-          <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" horizontal={false} />
-          <XAxis type="number" tick={{ fontSize: 12, fill: '#6b7280' }} />
-          <YAxis
-            type="category"
-            dataKey="name"
-            width={100}
-            tick={{ fontSize: 12, fill: '#374151' }}
-          />
-          <Tooltip />
-          <Bar dataKey="value" name="Số lượng" fill={fill} radius={[0, 4, 4, 0]} />
-        </BarChart>
-      </ResponsiveContainer>
+      {!data.length ? (
+        <p className="py-12 text-center text-sm text-slate-500">Chưa có dữ liệu</p>
+      ) : (
+        <div className="max-h-[440px] overflow-y-auto">
+          <ResponsiveContainer width="100%" height={Math.max(280, data.length * 40 + 60)}>
+            <BarChart
+              data={data}
+              layout="vertical"
+              margin={{ top: 0, right: 16, left: 8, bottom: 0 }}
+            >
+              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" horizontal={false} />
+              <XAxis type="number" tick={{ fontSize: 12, fill: '#6b7280' }} />
+              <YAxis
+                type="category"
+                dataKey="name"
+                width={180}
+                interval={0}
+                tick={<TopProductAxisTick data={data} />}
+              />
+              <Tooltip content={<TopProductTooltip />} />
+              <Bar dataKey="value" name="Số lượng" fill={fill} radius={[0, 4, 4, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
     </div>
   )
 }
@@ -278,6 +349,7 @@ function OrdersTrendChart({
         <XAxis {...trendXAxisProps(granularity)} />
         <YAxis
           tick={{ fontSize: 12, fill: '#6b7280' }}
+          tickFormatter={(v) => formatKpiNumber(v)}
           domain={[0, yMax]}
           allowDataOverflow
         />
@@ -290,6 +362,7 @@ function OrdersTrendChart({
           stroke="#3aa6a6"
           fill="url(#colorNhap)"
           strokeWidth={2}
+          dot={data.length === 1 ? { r: 3 } : false}
         />
         <Area
           type="monotone"
@@ -298,10 +371,17 @@ function OrdersTrendChart({
           stroke="#0f3d46"
           fill="url(#colorXuat)"
           strokeWidth={2}
+          dot={data.length === 1 ? { r: 3 } : false}
         />
       </AreaChart>
     </ResponsiveContainer>
   )
+}
+
+function inventoryTrendYMax(values: number[], floor = 1) {
+  const peak = Math.max(0, ...values)
+  if (peak <= 0) return floor
+  return Math.max(floor, Math.ceil(peak * 1.12))
 }
 
 function InventoryTrendChart({
@@ -311,48 +391,60 @@ function InventoryTrendChart({
   data: TrendChartRow[]
   granularity: TrendGranularity
 }) {
+  const qtyMax = inventoryTrendYMax(data.map((row) => row.tonQuantity))
+  const valueMax = inventoryTrendYMax(data.map((row) => row.tonValue))
+
   return (
     <ResponsiveContainer width="100%" height={320}>
-      <ComposedChart data={data} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
+      <ComposedChart
+        data={data}
+        margin={{ top: 8, right: 16, left: 4, bottom: 0 }}
+      >
         <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
         <XAxis {...trendXAxisProps(granularity)} />
         <YAxis
-          yAxisId="left"
-          tick={{ fontSize: 12, fill: '#6b7280' }}
+          yAxisId="qty"
+          tick={{ fontSize: 12, fill: '#2563eb' }}
           tickFormatter={(v) => formatKpiNumber(v)}
+          domain={[0, qtyMax]}
+          allowDataOverflow
+          width={56}
         />
         <YAxis
-          yAxisId="right"
+          yAxisId="value"
           orientation="right"
-          tick={{ fontSize: 12, fill: '#6b7280' }}
+          tick={{ fontSize: 12, fill: '#9333ea' }}
           tickFormatter={(v) =>
             new Intl.NumberFormat('vi-VN', {
               notation: 'compact',
               maximumFractionDigits: 1,
             }).format(Number(v))
           }
+          domain={[0, valueMax]}
+          allowDataOverflow
+          width={64}
         />
         <Tooltip
           content={<InventoryTrendTooltip granularity={granularity} />}
         />
         <Legend />
         <Line
-          yAxisId="left"
+          yAxisId="qty"
           type="monotone"
           dataKey="tonQuantity"
           name="SL tồn"
           stroke="#2563eb"
           strokeWidth={2}
-          dot={false}
+          dot={data.length === 1 ? { r: 3 } : false}
         />
         <Line
-          yAxisId="right"
+          yAxisId="value"
           type="monotone"
           dataKey="tonValue"
           name="Giá trị tồn"
           stroke="#9333ea"
           strokeWidth={2}
-          dot={false}
+          dot={data.length === 1 ? { r: 3 } : false}
         />
       </ComposedChart>
     </ResponsiveContainer>
@@ -363,9 +455,10 @@ export default function ReportPage() {
   const selectedWarehouseId = useAppStore((state) => state.selectedWarehouseId)
   const warehouseId = selectedWarehouseId || 0
   const [trendGranularity, setTrendGranularity] =
-    useState<TrendGranularity>('day')
+    useState<TrendGranularity>('week')
   const [topProductsPeriod, setTopProductsPeriod] =
     useState<TopProductsPeriod>('week')
+  const [topProductsLimit, setTopProductsLimit] = useState<TopProductsLimit>(5)
   const { data: kpis, isLoading, isFetching } = useReportKpis(warehouseId)
   const {
     data: trends,
@@ -374,7 +467,7 @@ export default function ReportPage() {
   const {
     data: topProducts,
     isLoading: isTopProductsLoading,
-  } = useReportTopProducts(warehouseId, topProductsPeriod)
+  } = useReportTopProducts(warehouseId, topProductsPeriod, topProductsLimit)
   const [selectedAgingBucket, setSelectedAgingBucket] =
     useState<StockAgingBucketKey | null>(null)
   const {
@@ -417,8 +510,8 @@ export default function ReportPage() {
     if (!trends?.points?.length) return []
     return trends.points.map((point) => ({
       label: point.label,
-      nhap: point.inbound_orders,
-      xuat: point.outbound_orders,
+      nhap: point.inbound_quantity,
+      xuat: point.outbound_quantity,
       tonQuantity: parseQuantity(point.inventory_quantity),
       tonValue: parseQuantity(point.inventory_value),
     }))
@@ -429,8 +522,18 @@ export default function ReportPage() {
     const peak = Math.max(
       ...trendChartData.flatMap((d) => [d.nhap, d.xuat]),
     )
-    return peak + 2
+    if (peak <= 0) return 2
+    return Math.max(peak + 1, Math.ceil(peak * 1.05))
   }, [trendChartData])
+
+  const firstTrendPoint = trends?.points[0]
+  const lastTrendPoint = trends?.points[trends.points.length - 1]
+  const trendRange = firstTrendPoint && lastTrendPoint
+    ? `${formatTrendDate(firstTrendPoint.period_start)} – ${formatTrendDate(lastTrendPoint.period_end)}`
+    : null
+  const trendPointUnit = trendGranularity === 'week' || trendGranularity === 'month'
+    ? 'Theo ngày'
+    : 'Theo tháng'
 
   const kpiCards = useMemo(
     () =>
@@ -445,7 +548,9 @@ export default function ReportPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold text-brand-dark">Báo cáo</h2>
-        <span className="text-sm text-gray-400">Tháng 6 / 2026</span>
+        <span className="text-sm text-gray-400">
+          {dayjs().format('DD/MM/YYYY')}
+        </span>
       </div>
 
       {!warehouseId ? (
@@ -484,12 +589,19 @@ export default function ReportPage() {
             value={trendGranularity}
             onChange={(value) => setTrendGranularity(value as TrendGranularity)}
             options={[
-              { label: '12 ngày', value: 'day' },
-              { label: '12 tuần', value: 'week' },
+              { label: '1 tuần', value: 'week' },
+              { label: '1 tháng', value: 'month' },
+              { label: '1 quý', value: 'quarter' },
+              { label: '1 năm', value: 'year' },
             ]}
             disabled={!warehouseId}
           />
         </div>
+        {warehouseId > 0 && trendRange && (
+          <p className="text-sm text-slate-500">
+            {trendRange} · {trendPointUnit} · Kỳ hiện tại, tính đến hôm nay
+          </p>
+        )}
         {!warehouseId ? (
           <div className="rounded-xl bg-white p-5 shadow-sm">
             <p className="py-12 text-center text-slate-500">
@@ -501,7 +613,7 @@ export default function ReportPage() {
             <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
               <div className="rounded-xl bg-white p-5 shadow-sm">
                 <h4 className="mb-4 text-sm font-semibold text-brand-dark">
-                  Đơn nhập / xuất
+                  Số lượng nhập / xuất
                 </h4>
                 <OrdersTrendChart
                   data={trendChartData}
@@ -526,20 +638,38 @@ export default function ReportPage() {
       <div className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h3 className="text-base font-semibold text-brand-dark">
-            Top 5 sản phẩm
+            Top {topProductsLimit} sản phẩm
           </h3>
-          <Segmented
-            value={topProductsPeriod}
-            onChange={(value) =>
-              setTopProductsPeriod(value as TopProductsPeriod)
-            }
-            options={[
-              { label: '1 tuần', value: 'week' },
-              { label: '1 tháng', value: 'month' },
-            ]}
-            disabled={!warehouseId}
-          />
+          <div className="flex flex-wrap items-center gap-3">
+            <Segmented
+              aria-label="Số sản phẩm xếp hạng"
+              value={topProductsLimit}
+              onChange={(value) => setTopProductsLimit(value as TopProductsLimit)}
+              options={[
+                { label: 'Top 5', value: 5 },
+                { label: 'Top 10', value: 10 },
+                { label: 'Top 15', value: 15 },
+              ]}
+              disabled={!warehouseId}
+            />
+            <Segmented
+              aria-label="Kỳ xếp hạng sản phẩm"
+              value={topProductsPeriod}
+              onChange={(value) =>
+                setTopProductsPeriod(value as TopProductsPeriod)
+              }
+              options={[
+                { label: '1 tuần', value: 'week' },
+                { label: '1 tháng', value: 'month' },
+                { label: '3 tháng', value: 'three_months' },
+              ]}
+              disabled={!warehouseId}
+            />
+          </div>
         </div>
+        <p className="text-xs text-slate-500">
+          Nhập/Xuất: {topProductsPeriod === 'week' ? 7 : topProductsPeriod === 'month' ? 30 : 90} ngày gần nhất · Tồn: số lượng hiện tại
+        </p>
         {!warehouseId ? (
           <div className="rounded-xl bg-white p-5 shadow-sm">
             <p className="py-12 text-center text-slate-500">
@@ -551,10 +681,16 @@ export default function ReportPage() {
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
               {TOP_PRODUCT_CHARTS.map((chart) => {
                 const rows = topProducts?.[chart.key] ?? []
-                const data = rows.map((row) => ({
-                  name: row.label,
-                  value: row.total_quantity,
-                }))
+                const data = rows.map((row) => {
+                  const sku = row.sku?.trim() || row.label
+                  const productName = row.name?.trim() || ''
+                  return {
+                    name: productName ? `${sku} – ${productName}` : sku,
+                    value: row.total_quantity,
+                    sku,
+                    productName,
+                  }
+                })
                 return (
                   <HorizontalBarChart
                     key={chart.key}
@@ -571,11 +707,11 @@ export default function ReportPage() {
 
       <div className="rounded-xl bg-white p-5 shadow-sm w-full">
         <h3 className="mb-4 text-base font-semibold text-brand-dark">
-          Tỉ lệ thời gian tồn hàng
+          Hàng tồn kho dài hạn
         </h3>
         {!warehouseId ? (
           <p className="py-12 text-center text-slate-500">
-            Vui lòng chọn kho để xem tỉ lệ thời gian tồn hàng
+            Vui lòng chọn kho để xem Hàng tồn kho dài hạn
           </p>
         ) : (
           <Spin spinning={isStockAgingLoading && !stockAging}>

@@ -1,7 +1,32 @@
 # Kế hoạch triển khai Celery cho Supra WMS
 
 > Tài liệu tham chiếu khi deploy Celery worker cùng hệ thống hiện tại.
-> Trạng thái tại thời điểm viết: `redis` **đã có** trong `docker-compose.yml`, backend **chưa có bất kỳ code Celery nào**.
+
+## Trạng thái hiện tại (Compose local)
+
+Đã có trong source (khác với checklist lịch sử bên dưới):
+
+| Thành phần | Ghi chú |
+|---|---|
+| `backend/app/core/celery_app.py` | App, queue `logic`/`status`, Beat schedule snapshot **23:00** VN |
+| `docker-compose.yml` | `celery-worker-logic`, `celery-worker-status`, **`celery-beat`** |
+| Image | `packaging` + `kombu<5.7` trong `requirements.txt` (tránh Kombu 5.7 yêu cầu redis-py 6.x) |
+| Redis | `healthcheck` `redis-cli ping`; worker `depends_on: service_healthy` |
+| Env trong container | Override `DATABASE_URL` → host `db`; broker `redis://redis:6379/1`, `/2` |
+
+Lệnh kiểm tra (tại thư mục `Supra_WMS`):
+
+```powershell
+docker compose ps celery-worker-logic celery-worker-status celery-beat
+docker compose exec celery-worker-logic celery -A app.core.celery_app.celery_app inspect ping
+docker compose exec celery-worker-logic celery -A app.core.celery_app.celery_app call dashboard.snapshot_inventory_daily
+```
+
+Vận hành: **một** Beat; rebuild backend sau đổi dependency: `docker compose build --no-cache backend` rồi recreate các service Celery.
+
+---
+
+> **Lưu ý lịch sử:** Phần checklist mục 0 được viết khi backend chưa có Celery; nhiều mục đã hoàn thành.
 
 ---
 

@@ -72,7 +72,7 @@ celery_app.conf.update(
         },
         "snapshot-inventory-daily": {
             "task": "dashboard.snapshot_inventory_daily",
-            "schedule": crontab(hour=11, minute=59),
+            "schedule": crontab(hour=23, minute=0),
         },
     },
 )
