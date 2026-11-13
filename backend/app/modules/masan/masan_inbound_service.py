@@ -425,13 +425,9 @@ def _meta_value(meta: dict[str, Any], key: str, default: Any = "") -> Any:
     return value
 
 
-def _format_inbound_datetime(order: InboundOrder, meta: dict[str, Any]) -> str:
-    raw = _meta_value(meta, "inbound_datetime", default=None)
-    if raw:
-        return str(raw)
-    if order.created_at:
-        return format_vietnam(order.created_at, "%d/%m/%Y\n%H:%M")
-    return ""
+def _format_inbound_datetime(order: InboundOrder) -> str:
+    """Display when the order was imported into the system, in Vietnam time."""
+    return format_vietnam(order.created_at, "%Y-%m-%d %H:%M:%S")
 
 
 def _format_inbound_report_datetime(dt) -> str:
@@ -482,7 +478,7 @@ def _build_export_row(
     locator = detail.to_location.location_name if detail.to_location else ""
 
     return [
-        _format_inbound_datetime(order, meta),
+        _format_inbound_datetime(order),
         _meta_value(meta, "vehicle_no"),
         _meta_value(meta, "from_warehouse"),
         _meta_value(meta, "to_warehouse", default=warehouse_name),

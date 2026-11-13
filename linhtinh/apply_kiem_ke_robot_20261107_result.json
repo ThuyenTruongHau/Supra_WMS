@@ -1,0 +1,730 @@
+{
+  "outbound_deleted": null,
+  "applied": [
+    {
+      "location_name": "G009",
+      "location_id": 3364,
+      "action": "update",
+      "stock_id": 575,
+      "before": {
+        "item_id": 2159,
+        "sku": "02XX00205",
+        "quantity": 48.0,
+        "lot": "091026",
+        "is_active": true
+      },
+      "after": {
+        "stock_id": 575,
+        "item_id": 2159,
+        "sku": "02XX00205",
+        "quantity": 28.0,
+        "lot": "091026",
+        "is_active": true
+      },
+      "deactivated_stock_ids": [
+        58
+      ]
+    },
+    {
+      "location_name": "G012",
+      "location_id": 3244,
+      "action": "update",
+      "stock_id": 1140,
+      "before": {
+        "item_id": 2049,
+        "sku": "02XX00282",
+        "quantity": 70.0,
+        "lot": "261026",
+        "is_active": true
+      },
+      "after": {
+        "stock_id": 1140,
+        "item_id": 2049,
+        "sku": "02XX00282",
+        "quantity": 27.0,
+        "lot": "261026",
+        "is_active": true
+      },
+      "deactivated_stock_ids": [
+        60
+      ]
+    },
+    {
+      "location_name": "G029",
+      "location_id": 3096,
+      "action": "update",
+      "stock_id": 927,
+      "before": {
+        "item_id": 45409,
+        "sku": "02XX00224",
+        "quantity": 78.0,
+        "lot": "201026",
+        "is_active": true
+      },
+      "after": {
+        "stock_id": 927,
+        "item_id": 45409,
+        "sku": "02XX00224",
+        "quantity": 63.0,
+        "lot": "201026",
+        "is_active": true
+      },
+      "deactivated_stock_ids": [
+        76
+      ]
+    },
+    {
+      "location_name": "G037",
+      "location_id": 3214,
+      "action": "update",
+      "stock_id": 870,
+      "before": {
+        "item_id": 58636,
+        "sku": "02XX00332",
+        "quantity": 198.0,
+        "lot": "161026",
+        "is_active": true
+      },
+      "after": {
+        "stock_id": 870,
+        "item_id": 30731,
+        "sku": "02XX00322",
+        "quantity": 198.0,
+        "lot": "161026",
+        "is_active": true
+      },
+      "deactivated_stock_ids": [
+        142
+      ]
+    },
+    {
+      "location_name": "G038",
+      "location_id": 3199,
+      "action": "update",
+      "stock_id": 872,
+      "before": {
+        "item_id": 58636,
+        "sku": "02XX00332",
+        "quantity": 198.0,
+        "lot": "161026",
+        "is_active": true
+      },
+      "after": {
+        "stock_id": 872,
+        "item_id": 30731,
+        "sku": "02XX00322",
+        "quantity": 198.0,
+        "lot": "161026",
+        "is_active": true
+      },
+      "deactivated_stock_ids": [
+        143
+      ]
+    },
+    {
+      "location_name": "G039",
+      "location_id": 3165,
+      "action": "update",
+      "stock_id": 1110,
+      "before": {
+        "item_id": 22839,
+        "sku": "02XX00167",
+        "quantity": 34.0,
+        "lot": "301026",
+        "is_active": true
+      },
+      "after": {
+        "stock_id": 1110,
+        "item_id": 22839,
+        "sku": "02XX00167",
+        "quantity": 17.0,
+        "lot": "301026",
+        "is_active": true
+      },
+      "deactivated_stock_ids": [
+        144
+      ]
+    },
+    {
+      "location_name": "G046",
+      "location_id": 3334,
+      "action": "update",
+      "stock_id": 1040,
+      "before": {
+        "item_id": 58638,
+        "sku": "08PL00002",
+        "quantity": 90.0,
+        "lot": "211026",
+        "is_active": true
+      },
+      "after": {
+        "stock_id": 1040,
+        "item_id": 58638,
+        "sku": "08PL00002",
+        "quantity": 8.0,
+        "lot": "211026",
+        "is_active": true
+      },
+      "deactivated_stock_ids": [
+        151
+      ]
+    },
+    {
+      "location_name": "G074",
+      "location_id": 3202,
+      "action": "update",
+      "stock_id": 1109,
+      "before": {
+        "item_id": 22839,
+        "sku": "02XX00167",
+        "quantity": 114.0,
+        "lot": "301026",
+        "is_active": true
+      },
+      "after": {
+        "stock_id": 1109,
+        "item_id": 30372,
+        "sku": "02XX00090",
+        "quantity": 153.0,
+        "lot": "271026",
+        "is_active": true
+      },
+      "deactivated_stock_ids": []
+    },
+    {
+      "location_name": "G080",
+      "location_id": 3405,
+      "action": "update",
+      "stock_id": 1054,
+      "before": {
+        "item_id": 29548,
+        "sku": "02XX00132",
+        "quantity": 40.0,
+        "lot": "241026",
+        "is_active": true
+      },
+      "after": {
+        "stock_id": 1054,
+        "item_id": 29548,
+        "sku": "02XX00132",
+        "quantity": 34.0,
+        "lot": "241026",
+        "is_active": true
+      },
+      "deactivated_stock_ids": []
+    },
+    {
+      "location_name": "G086",
+      "location_id": 3203,
+      "action": "update",
+      "stock_id": 814,
+      "before": {
+        "item_id": 45407,
+        "sku": "02XX00226",
+        "quantity": 78.0,
+        "lot": "121026",
+        "is_active": true
+      },
+      "after": {
+        "stock_id": 814,
+        "item_id": 45407,
+        "sku": "02XX00226",
+        "quantity": 34.0,
+        "lot": "121026",
+        "is_active": true
+      },
+      "deactivated_stock_ids": []
+    },
+    {
+      "location_name": "G090",
+      "location_id": 3067,
+      "action": "update",
+      "stock_id": 781,
+      "before": {
+        "item_id": 31444,
+        "sku": "02XX00244",
+        "quantity": 21.0,
+        "lot": "131026",
+        "is_active": true
+      },
+      "after": {
+        "stock_id": 781,
+        "item_id": 31444,
+        "sku": "02XX00244",
+        "quantity": 9.0,
+        "lot": "131026",
+        "is_active": true
+      },
+      "deactivated_stock_ids": []
+    },
+    {
+      "location_name": "G095",
+      "location_id": 3255,
+      "action": "update",
+      "stock_id": 1133,
+      "before": {
+        "item_id": 58641,
+        "sku": "02XX00333",
+        "quantity": 72.0,
+        "lot": "281026",
+        "is_active": true
+      },
+      "after": {
+        "stock_id": 1133,
+        "item_id": 58641,
+        "sku": "02XX00333",
+        "quantity": 42.0,
+        "lot": "281026",
+        "is_active": true
+      },
+      "deactivated_stock_ids": []
+    },
+    {
+      "location_name": "G136",
+      "location_id": 3138,
+      "action": "update",
+      "stock_id": 934,
+      "before": {
+        "item_id": 29080,
+        "sku": "02XX00116",
+        "quantity": 153.0,
+        "lot": "201026",
+        "is_active": true
+      },
+      "after": {
+        "stock_id": 934,
+        "item_id": 29080,
+        "sku": "02XX00116",
+        "quantity": 127.0,
+        "lot": "201026",
+        "is_active": true
+      },
+      "deactivated_stock_ids": []
+    },
+    {
+      "location_name": "G201",
+      "location_id": 3274,
+      "action": "update",
+      "stock_id": 621,
+      "before": {
+        "item_id": 29401,
+        "sku": "02XX00196",
+        "quantity": 88.0,
+        "lot": "101026",
+        "is_active": true
+      },
+      "after": {
+        "stock_id": 621,
+        "item_id": 29401,
+        "sku": "02XX00196",
+        "quantity": 28.0,
+        "lot": "101026",
+        "is_active": true
+      },
+      "deactivated_stock_ids": []
+    },
+    {
+      "location_name": "G211",
+      "location_id": 3413,
+      "action": "update",
+      "stock_id": 1015,
+      "before": {
+        "item_id": 30372,
+        "sku": "02XX00090",
+        "quantity": 63.0,
+        "lot": "241026",
+        "is_active": true
+      },
+      "after": {
+        "stock_id": 1015,
+        "item_id": 30372,
+        "sku": "02XX00090",
+        "quantity": 58.0,
+        "lot": "241026",
+        "is_active": true
+      },
+      "deactivated_stock_ids": [
+        296
+      ]
+    },
+    {
+      "location_name": "G219",
+      "location_id": 3143,
+      "action": "update",
+      "stock_id": 602,
+      "before": {
+        "item_id": 45408,
+        "sku": "02XX00225",
+        "quantity": 78.0,
+        "lot": "081026",
+        "is_active": true
+      },
+      "after": {
+        "stock_id": 602,
+        "item_id": 45408,
+        "sku": "02XX00225",
+        "quantity": 66.0,
+        "lot": "081026",
+        "is_active": true
+      },
+      "deactivated_stock_ids": []
+    },
+    {
+      "location_name": "G227",
+      "location_id": 3278,
+      "action": "update",
+      "stock_id": 1051,
+      "before": {
+        "item_id": 58637,
+        "sku": "08PL00001",
+        "quantity": 90.0,
+        "lot": "241026",
+        "is_active": true
+      },
+      "after": {
+        "stock_id": 1051,
+        "item_id": 58637,
+        "sku": "08PL00001",
+        "quantity": 57.0,
+        "lot": "241026",
+        "is_active": true
+      },
+      "deactivated_stock_ids": []
+    },
+    {
+      "location_name": "G278",
+      "location_id": 3181,
+      "action": "update",
+      "stock_id": 462,
+      "before": {
+        "item_id": 23172,
+        "sku": "02XX00215",
+        "quantity": 85.0,
+        "lot": "041026",
+        "is_active": true
+      },
+      "after": {
+        "stock_id": 462,
+        "item_id": 23172,
+        "sku": "02XX00215",
+        "quantity": 23.0,
+        "lot": "071026",
+        "is_active": true
+      },
+      "deactivated_stock_ids": []
+    },
+    {
+      "location_name": "G298",
+      "location_id": 3318,
+      "action": "update",
+      "stock_id": 1056,
+      "before": {
+        "item_id": 58640,
+        "sku": "08PL00004",
+        "quantity": 90.0,
+        "lot": "221026",
+        "is_active": true
+      },
+      "after": {
+        "stock_id": 1056,
+        "item_id": 58640,
+        "sku": "08PL00004",
+        "quantity": 85.0,
+        "lot": "221026",
+        "is_active": true
+      },
+      "deactivated_stock_ids": []
+    },
+    {
+      "location_name": "G318",
+      "location_id": 3048,
+      "action": "update",
+      "stock_id": 695,
+      "before": {
+        "item_id": 23134,
+        "sku": "02XX00252",
+        "quantity": 65.0,
+        "lot": "091026",
+        "is_active": true
+      },
+      "after": {
+        "stock_id": 695,
+        "item_id": 23134,
+        "sku": "02XX00252",
+        "quantity": 62.0,
+        "lot": "091026",
+        "is_active": true
+      },
+      "deactivated_stock_ids": []
+    },
+    {
+      "location_name": "G321",
+      "location_id": 3353,
+      "action": "update",
+      "stock_id": 682,
+      "before": {
+        "item_id": 1239,
+        "sku": "02XX00321",
+        "quantity": 36.0,
+        "lot": "091026",
+        "is_active": true
+      },
+      "after": {
+        "stock_id": 682,
+        "item_id": 1239,
+        "sku": "02XX00321",
+        "quantity": 27.0,
+        "lot": "091026",
+        "is_active": true
+      },
+      "deactivated_stock_ids": []
+    },
+    {
+      "location_name": "G329",
+      "location_id": 3083,
+      "action": "update",
+      "stock_id": 967,
+      "before": {
+        "item_id": 45405,
+        "sku": "02XX00228",
+        "quantity": 78.0,
+        "lot": "211026",
+        "is_active": true
+      },
+      "after": {
+        "stock_id": 967,
+        "item_id": 45405,
+        "sku": "02XX00228",
+        "quantity": 25.0,
+        "lot": "211026",
+        "is_active": true
+      },
+      "deactivated_stock_ids": []
+    },
+    {
+      "location_name": "G335",
+      "location_id": 3286,
+      "action": "update",
+      "stock_id": 1158,
+      "before": {
+        "item_id": 45409,
+        "sku": "02XX00224",
+        "quantity": 70.0,
+        "lot": "281026",
+        "is_active": true
+      },
+      "after": {
+        "stock_id": 1158,
+        "item_id": 45409,
+        "sku": "02XX00224",
+        "quantity": 80.0,
+        "lot": "271026",
+        "is_active": true
+      },
+      "deactivated_stock_ids": []
+    },
+    {
+      "location_name": "G337",
+      "location_id": 3235,
+      "action": "update",
+      "stock_id": 1083,
+      "before": {
+        "item_id": 2049,
+        "sku": "02XX00282",
+        "quantity": 0.0,
+        "lot": "281026",
+        "is_active": false
+      },
+      "after": {
+        "stock_id": 1083,
+        "item_id": 2049,
+        "sku": "02XX00282",
+        "quantity": 70.0,
+        "lot": "281026",
+        "is_active": true
+      },
+      "deactivated_stock_ids": []
+    },
+    {
+      "location_name": "G353",
+      "location_id": 3085,
+      "action": "update",
+      "stock_id": 854,
+      "before": {
+        "item_id": 45410,
+        "sku": "02XX00223",
+        "quantity": 78.0,
+        "lot": "131026",
+        "is_active": true
+      },
+      "after": {
+        "stock_id": 854,
+        "item_id": 45410,
+        "sku": "02XX00223",
+        "quantity": 48.0,
+        "lot": "131026",
+        "is_active": true
+      },
+      "deactivated_stock_ids": []
+    },
+    {
+      "location_name": "G361",
+      "location_id": 3237,
+      "action": "update",
+      "stock_id": 723,
+      "before": {
+        "item_id": 2158,
+        "sku": "02XX00203",
+        "quantity": 11.0,
+        "lot": "091026",
+        "is_active": true
+      },
+      "after": {
+        "stock_id": 723,
+        "item_id": 2158,
+        "sku": "02XX00203",
+        "quantity": 10.0,
+        "lot": "091026",
+        "is_active": true
+      },
+      "deactivated_stock_ids": []
+    },
+    {
+      "location_name": "G363",
+      "location_id": 3154,
+      "action": "update",
+      "stock_id": 876,
+      "before": {
+        "item_id": 58636,
+        "sku": "02XX00332",
+        "quantity": 198.0,
+        "lot": "161026",
+        "is_active": true
+      },
+      "after": {
+        "stock_id": 876,
+        "item_id": 30731,
+        "sku": "02XX00322",
+        "quantity": 198.0,
+        "lot": "161026",
+        "is_active": true
+      },
+      "deactivated_stock_ids": []
+    },
+    {
+      "location_name": "G364",
+      "location_id": 3120,
+      "action": "update",
+      "stock_id": 1047,
+      "before": {
+        "item_id": 58639,
+        "sku": "08PL00003",
+        "quantity": 20.0,
+        "lot": "201026",
+        "is_active": true
+      },
+      "after": {
+        "stock_id": 1047,
+        "item_id": 58639,
+        "sku": "08PL00003",
+        "quantity": 13.0,
+        "lot": "201026",
+        "is_active": true
+      },
+      "deactivated_stock_ids": [
+        276
+      ]
+    },
+    {
+      "location_name": "G396",
+      "location_id": 3304,
+      "action": "update",
+      "stock_id": 722,
+      "before": {
+        "item_id": 2158,
+        "sku": "02XX00203",
+        "quantity": 70.0,
+        "lot": "091026",
+        "is_active": true
+      },
+      "after": {
+        "stock_id": 722,
+        "item_id": 2158,
+        "sku": "02XX00203",
+        "quantity": 51.0,
+        "lot": "091026",
+        "is_active": true
+      },
+      "deactivated_stock_ids": []
+    },
+    {
+      "location_name": "G402",
+      "location_id": 3055,
+      "action": "update",
+      "stock_id": 817,
+      "before": {
+        "item_id": 30731,
+        "sku": "02XX00322",
+        "quantity": 198.0,
+        "lot": "151026",
+        "is_active": true
+      },
+      "after": {
+        "stock_id": 817,
+        "item_id": 30731,
+        "sku": "02XX00322",
+        "quantity": 63.0,
+        "lot": "151026",
+        "is_active": true
+      },
+      "deactivated_stock_ids": []
+    },
+    {
+      "location_name": "G410",
+      "location_id": 3192,
+      "action": "update",
+      "stock_id": 324,
+      "before": {
+        "item_id": 31219,
+        "sku": "02XX00214",
+        "quantity": 40.0,
+        "lot": "290926",
+        "is_active": true
+      },
+      "after": {
+        "stock_id": 324,
+        "item_id": 31219,
+        "sku": "02XX00214",
+        "quantity": 35.0,
+        "lot": "290926",
+        "is_active": true
+      },
+      "deactivated_stock_ids": []
+    },
+    {
+      "location_name": "G420",
+      "location_id": 3306,
+      "action": "update",
+      "stock_id": 974,
+      "before": {
+        "item_id": 23133,
+        "sku": "02XX00253",
+        "quantity": 36.0,
+        "lot": "211026",
+        "is_active": true
+      },
+      "after": {
+        "stock_id": 974,
+        "item_id": 23133,
+        "sku": "02XX00253",
+        "quantity": 25.0,
+        "lot": "211026",
+        "is_active": true
+      },
+      "deactivated_stock_ids": [
+        314
+      ]
+    }
+  ],
+  "remaining_mismatches": 0
+}

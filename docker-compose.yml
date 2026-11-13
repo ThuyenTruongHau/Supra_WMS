@@ -1,137 +1,157 @@
+name: supra-wms
+
+x-app: &app
+  image: supra-wms-backend:local
+  env_file:
+    - ./backend/.env
+  environment:
+    DATABASE_URL: postgresql://${POSTGRES_USER:-wms}:${POSTGRES_PASSWORD:?Run scripts/docker/Prepare-WmsDocker.ps1 first}@db:5432/${POSTGRES_DB:-masan_wms}
+    REDIS_URL: redis://redis:6379/0
+    CELERY_BROKER_URL: redis://redis:6379/1
+    CELERY_BROKER_RESULT_URL: redis://redis:6379/2
+    DEBUG: "false"
+    TZ: Asia/Ho_Chi_Minh
+  volumes:
+    - ${WMS_LOG_DIR:-./backend/logs}:/app/logs
+    - ./backend/app/static/file_import_item:/app/app/static/file_import_item
+    - ./backend/app/static/warehouse_maps:/app/app/static/warehouse_maps
+    - ./backend/storage:/app/storage
+  restart: unless-stopped
+  stop_grace_period: 5m
+  logging: &logging
+    driver: json-file
+    options:
+      max-size: "10m"
+      max-file: "3"
+
 services:
   db:
-    image: postgres:16-alpine
-    container_name: wms-db
+    image: postgres:18-alpine
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: thado123
-      POSTGRES_DB: WMS_db
+      POSTGRES_USER: ${POSTGRES_USER:-wms}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Run scripts/docker/Prepare-WmsDocker.ps1 first}
+      POSTGRES_DB: ${POSTGRES_DB:-masan_wms}
+      TZ: Asia/Ho_Chi_Minh
     ports:
-      - "5432:5432"
+      - "127.0.0.1:${POSTGRES_ADMIN_PORT:-15432}:5432"
+    # PostgreSQL 18 stores PGDATA under /var/lib/postgresql/18/docker.
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres18_data:/var/lib/postgresql
     restart: unless-stopped
+    stop_grace_period: 1m
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d WMS_db"]
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
       interval: 5s
       timeout: 5s
-      retries: 5
+      retries: 30
+      start_period: 20s
+    logging: *logging
 
   redis:
-    image: redis:7-alpine
-    container_name: redis-wms
-    ports:
-      - "6379:6379"
+    image: redis:7.4-alpine
+    command: ["redis-server", "--appendonly", "yes", "--appendfsync", "everysec"]
     volumes:
       - redis_data:/data
-    command: redis-server --appendonly yes
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    logging: *logging
 
   backend:
+    <<: *app
     build:
       context: ./backend
-      dockerfile: Dockerfile
-    image: wms-backend:latest
-    container_name: wms-backend
     ports:
-      - "8001:8000"
-    env_file:
-      - ./backend/.env
-    volumes:
-      - ./backend/logs:/app/logs
-      - ./backend/app/static/file_import_item:/app/app/static/file_import_item
+      - "${BACKEND_BIND_IP:-0.0.0.0}:${BACKEND_PORT:-8001}:8000"
     depends_on:
       db:
         condition: service_healthy
       redis:
-        condition: service_started
-    restart: unless-stopped
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
 
   celery-worker-logic:
-    image: wms-backend:latest
-    container_name: wms-celery-logic
-    command: >
-      celery -A app.core.celery_app.celery_app worker
-      -Q logic
-      --loglevel=INFO
-      --concurrency=4
-      --prefetch-multiplier=1
-      --max-tasks-per-child=200
-      -n logic@%h
-    env_file:
-      - ./backend/.env
-    environment:
-      CELERY_BROKER_URL: redis://redis:6379/1
-      CELERY_BROKER_RESULT_URL: redis://redis:6379/2
-    volumes:
-      - ./backend/logs:/app/logs
-      - ./backend/app/static/file_import_item:/app/app/static/file_import_item
+    <<: *app
+    command: ["celery", "-A", "app.core.celery_app.celery_app", "worker", "-Q", "logic", "--loglevel=INFO", "--concurrency=4", "--prefetch-multiplier=1", "--max-tasks-per-child=200", "-n", "logic@%h"]
+    healthcheck:
+      test: ["CMD-SHELL", "celery -A app.core.celery_app.celery_app inspect ping --destination logic@$$HOSTNAME --timeout=5"]
+      interval: 30s
+      timeout: 10s
+      retries: 4
+      start_period: 30s
     depends_on:
-      redis:
-        condition: service_started
       backend:
-        condition: service_started
-    restart: unless-stopped
+        condition: service_healthy
 
   celery-worker-status:
-    image: wms-backend:latest
-    container_name: wms-celery-status
-    command: >
-      celery -A app.core.celery_app.celery_app worker
-      -Q status
-      --loglevel=INFO
-      --concurrency=2
-      --prefetch-multiplier=1
-      --max-tasks-per-child=500
-      -n status@%h
-    env_file:
-      - ./backend/.env
-    environment:
-      CELERY_BROKER_URL: redis://redis:6379/1
-      CELERY_BROKER_RESULT_URL: redis://redis:6379/2
-    volumes:
-      - ./backend/logs:/app/logs
+    <<: *app
+    command: ["celery", "-A", "app.core.celery_app.celery_app", "worker", "-Q", "status", "--loglevel=INFO", "--concurrency=2", "--prefetch-multiplier=1", "--max-tasks-per-child=500", "-n", "status@%h"]
+    healthcheck:
+      test: ["CMD-SHELL", "celery -A app.core.celery_app.celery_app inspect ping --destination status@$$HOSTNAME --timeout=5"]
+      interval: 30s
+      timeout: 10s
+      retries: 4
+      start_period: 30s
     depends_on:
-      redis:
-        condition: service_started
       backend:
-        condition: service_started
-    restart: unless-stopped
+        condition: service_healthy
 
   celery-beat:
-    image: wms-backend:latest
-    container_name: wms-celery-beat
-    command: >
-      celery -A app.core.celery_app.celery_app beat
-      --loglevel=INFO
-      --schedule=/tmp/celerybeat-schedule
-    env_file:
-      - ./backend/.env
-    environment:
-      CELERY_BROKER_URL: redis://redis:6379/1
-      CELERY_BROKER_RESULT_URL: redis://redis:6379/2
+    <<: *app
+    command: ["celery", "-A", "app.core.celery_app.celery_app", "beat", "--loglevel=INFO", "--schedule=/var/lib/celery/celerybeat-schedule"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import os; os.kill(1, 0); p='/var/lib/celery/celerybeat-schedule'; assert any(os.path.isfile(p+s) for s in ('', '.db', '.dat', '.dir'))"]
+      interval: 30s
+      timeout: 5s
+      retries: 4
+      start_period: 30s
     volumes:
-      - ./backend/logs:/app/logs
+      - ${WMS_LOG_DIR:-./backend/logs}:/app/logs
+      - celery_beat_data:/var/lib/celery
     depends_on:
-      redis:
-        condition: service_started
-    restart: unless-stopped
-    deploy:
-      replicas: 1
+      backend:
+        condition: service_healthy
+      celery-worker-logic:
+        condition: service_healthy
+      celery-worker-status:
+        condition: service_healthy
 
   frontend:
+    image: supra-wms-frontend:local
     build:
       context: ./frontend
-      dockerfile: Dockerfile
       args:
-        VITE_API_URL: http://192.168.50.200:8001
-    container_name: wms-frontend
+        VITE_API_URL: ""
+    environment:
+      SITE_HOST: ${SITE_HOST:-192.168.50.200}
+      ORCHESTRATOR_HOST: ${ORCHESTRATOR_HOST:-host.docker.internal}
+      ORCHESTRATOR_PORT: ${ORCHESTRATOR_PORT:-6868}
     ports:
-      - "5173:80"
+      - "${FRONTEND_BIND_IP:-0.0.0.0}:${FRONTEND_PORT:-5173}:443"
+    volumes:
+      - frontend_tls:/etc/nginx/tls
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-check-certificate", "--quiet", "--spider", "https://127.0.0.1/"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    logging: *logging
 
 volumes:
-  postgres_data:
+  postgres18_data:
   redis_data:
+  celery_beat_data:
+  frontend_tls:

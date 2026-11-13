@@ -1,0 +1,3951 @@
+{
+  "warehouse_id": 1,
+  "input_sha256": "4499fc30c13d695fcf93faa5fe8a957824cc8d9b84ef298bad0b0dbddf787828",
+  "snapshot_sha256": "1c97e7133705083ec51e2719a7574164aff161ccac49f6c4401c0696bed0721f",
+  "summary": {
+    "locations": 420,
+    "input_total": 17381,
+    "actions": {
+      "unchanged": 322,
+      "clear": 79,
+      "update": 19
+    },
+    "manual_locations": []
+  },
+  "plan": [
+    {
+      "location_name": "G001",
+      "location_id": 3033,
+      "before_quantity": "306.000",
+      "actual_quantity": 306,
+      "stock_ids": [
+        980
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G002",
+      "location_id": 3195,
+      "before_quantity": "21.000",
+      "actual_quantity": 21,
+      "stock_ids": [
+        1104
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G003",
+      "location_id": 3161,
+      "before_quantity": "306.000",
+      "actual_quantity": 306,
+      "stock_ids": [
+        981
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G004",
+      "location_id": 3127,
+      "before_quantity": "78.000",
+      "actual_quantity": 78,
+      "stock_ids": [
+        1164
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G005",
+      "location_id": 3093,
+      "before_quantity": "36.000",
+      "actual_quantity": 36,
+      "stock_ids": [
+        1168
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G006",
+      "location_id": 3059,
+      "before_quantity": "42.000",
+      "actual_quantity": 42,
+      "stock_ids": [
+        1171
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G007",
+      "location_id": 3432,
+      "before_quantity": "60.000",
+      "actual_quantity": 0,
+      "stock_ids": [
+        1209
+      ],
+      "action": "clear"
+    },
+    {
+      "location_name": "G008",
+      "location_id": 3398,
+      "before_quantity": "42.000",
+      "actual_quantity": 42,
+      "stock_ids": [
+        1030
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G009",
+      "location_id": 3364,
+      "before_quantity": "28.000",
+      "actual_quantity": 0,
+      "stock_ids": [
+        575
+      ],
+      "action": "clear"
+    },
+    {
+      "location_name": "G010",
+      "location_id": 3330,
+      "before_quantity": "78.000",
+      "actual_quantity": 78,
+      "stock_ids": [
+        1186
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G011",
+      "location_id": 3521,
+      "before_quantity": "90.000",
+      "actual_quantity": 0,
+      "stock_ids": [
+        1041
+      ],
+      "action": "clear"
+    },
+    {
+      "location_name": "G012",
+      "location_id": 3244,
+      "before_quantity": "27.000",
+      "actual_quantity": 0,
+      "stock_ids": [
+        1140
+      ],
+      "action": "clear"
+    },
+    {
+      "location_name": "G013",
+      "location_id": 3211,
+      "before_quantity": "78.000",
+      "actual_quantity": 78,
+      "stock_ids": [
+        1202
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G014",
+      "location_id": 3196,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G015",
+      "location_id": 3162,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G016",
+      "location_id": 3128,
+      "before_quantity": "69.000",
+      "actual_quantity": 0,
+      "stock_ids": [
+        1050
+      ],
+      "action": "clear"
+    },
+    {
+      "location_name": "G017",
+      "location_id": 3094,
+      "before_quantity": "32.000",
+      "actual_quantity": 0,
+      "stock_ids": [
+        823
+      ],
+      "action": "clear"
+    },
+    {
+      "location_name": "G018",
+      "location_id": 3060,
+      "before_quantity": "153.000",
+      "actual_quantity": 153,
+      "stock_ids": [
+        1141
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G019",
+      "location_id": 3433,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G020",
+      "location_id": 3399,
+      "before_quantity": "198.000",
+      "actual_quantity": 0,
+      "stock_ids": [
+        880
+      ],
+      "action": "clear"
+    },
+    {
+      "location_name": "G021",
+      "location_id": 3365,
+      "before_quantity": "28.000",
+      "actual_quantity": 0,
+      "stock_ids": [
+        795
+      ],
+      "action": "clear"
+    },
+    {
+      "location_name": "G022",
+      "location_id": 3331,
+      "before_quantity": "70.000",
+      "actual_quantity": 53,
+      "stock_ids": [
+        882
+      ],
+      "action": "update"
+    },
+    {
+      "location_name": "G023",
+      "location_id": 3520,
+      "before_quantity": "153.000",
+      "actual_quantity": 153,
+      "stock_ids": [
+        1127
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G024",
+      "location_id": 3243,
+      "before_quantity": "153.000",
+      "actual_quantity": 153,
+      "stock_ids": [
+        1128
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G025",
+      "location_id": 3213,
+      "before_quantity": "78.000",
+      "actual_quantity": 78,
+      "stock_ids": [
+        1129
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G026",
+      "location_id": 3198,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G027",
+      "location_id": 3164,
+      "before_quantity": "108.000",
+      "actual_quantity": 0,
+      "stock_ids": [
+        895
+      ],
+      "action": "clear"
+    },
+    {
+      "location_name": "G028",
+      "location_id": 3130,
+      "before_quantity": "108.000",
+      "actual_quantity": 4,
+      "stock_ids": [
+        901
+      ],
+      "action": "update"
+    },
+    {
+      "location_name": "G029",
+      "location_id": 3096,
+      "before_quantity": "63.000",
+      "actual_quantity": 63,
+      "stock_ids": [
+        927
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G030",
+      "location_id": 3062,
+      "before_quantity": "198.000",
+      "actual_quantity": 198,
+      "stock_ids": [
+        931
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G031",
+      "location_id": 3435,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G032",
+      "location_id": 3401,
+      "before_quantity": "60.000",
+      "actual_quantity": 0,
+      "stock_ids": [
+        942
+      ],
+      "action": "clear"
+    },
+    {
+      "location_name": "G033",
+      "location_id": 3367,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G034",
+      "location_id": 3333,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G035",
+      "location_id": 3519,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G036",
+      "location_id": 3247,
+      "before_quantity": "117.000",
+      "actual_quantity": 115,
+      "stock_ids": [
+        1101
+      ],
+      "action": "update"
+    },
+    {
+      "location_name": "G037",
+      "location_id": 3214,
+      "before_quantity": "198.000",
+      "actual_quantity": 0,
+      "stock_ids": [
+        870
+      ],
+      "action": "clear"
+    },
+    {
+      "location_name": "G038",
+      "location_id": 3199,
+      "before_quantity": "198.000",
+      "actual_quantity": 95,
+      "stock_ids": [
+        872
+      ],
+      "action": "update"
+    },
+    {
+      "location_name": "G039",
+      "location_id": 3165,
+      "before_quantity": "17.000",
+      "actual_quantity": 10,
+      "stock_ids": [
+        1110
+      ],
+      "action": "update"
+    },
+    {
+      "location_name": "G040",
+      "location_id": 3131,
+      "before_quantity": "78.000",
+      "actual_quantity": 78,
+      "stock_ids": [
+        1167
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G041",
+      "location_id": 3097,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G042",
+      "location_id": 3063,
+      "before_quantity": "78.000",
+      "actual_quantity": 0,
+      "stock_ids": [
+        1208
+      ],
+      "action": "clear"
+    },
+    {
+      "location_name": "G043",
+      "location_id": 3436,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G044",
+      "location_id": 3402,
+      "before_quantity": "42.000",
+      "actual_quantity": 42,
+      "stock_ids": [
+        914
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G045",
+      "location_id": 3368,
+      "before_quantity": "78.000",
+      "actual_quantity": 78,
+      "stock_ids": [
+        1191
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G046",
+      "location_id": 3334,
+      "before_quantity": "8.000",
+      "actual_quantity": 0,
+      "stock_ids": [
+        1040
+      ],
+      "action": "clear"
+    },
+    {
+      "location_name": "G047",
+      "location_id": 3518,
+      "before_quantity": "78.000",
+      "actual_quantity": 78,
+      "stock_ids": [
+        1194
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G048",
+      "location_id": 3248,
+      "before_quantity": "77.000",
+      "actual_quantity": 77,
+      "stock_ids": [
+        1201
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G049",
+      "location_id": 3215,
+      "before_quantity": "78.000",
+      "actual_quantity": 0,
+      "stock_ids": [
+        794
+      ],
+      "action": "clear"
+    },
+    {
+      "location_name": "G050",
+      "location_id": 3200,
+      "before_quantity": "78.000",
+      "actual_quantity": 0,
+      "stock_ids": [
+        809
+      ],
+      "action": "clear"
+    },
+    {
+      "location_name": "G051",
+      "location_id": 3166,
+      "before_quantity": "90.000",
+      "actual_quantity": 0,
+      "stock_ids": [
+        1049
+      ],
+      "action": "clear"
+    },
+    {
+      "location_name": "G052",
+      "location_id": 3132,
+      "before_quantity": "198.000",
+      "actual_quantity": 0,
+      "stock_ids": [
+        822
+      ],
+      "action": "clear"
+    },
+    {
+      "location_name": "G053",
+      "location_id": 3098,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G054",
+      "location_id": 3064,
+      "before_quantity": "78.000",
+      "actual_quantity": 0,
+      "stock_ids": [
+        776
+      ],
+      "action": "clear"
+    },
+    {
+      "location_name": "G055",
+      "location_id": 3437,
+      "before_quantity": "78.000",
+      "actual_quantity": 78,
+      "stock_ids": [
+        1142
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G056",
+      "location_id": 3403,
+      "before_quantity": "78.000",
+      "actual_quantity": 78,
+      "stock_ids": [
+        1143
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G057",
+      "location_id": 3369,
+      "before_quantity": "13.000",
+      "actual_quantity": 13,
+      "stock_ids": [
+        829
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G058",
+      "location_id": 3335,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G059",
+      "location_id": 3517,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G060",
+      "location_id": 3249,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G061",
+      "location_id": 3216,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G062",
+      "location_id": 3201,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G063",
+      "location_id": 3167,
+      "before_quantity": "108.000",
+      "actual_quantity": 108,
+      "stock_ids": [
+        900
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G064",
+      "location_id": 3133,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G065",
+      "location_id": 3099,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G066",
+      "location_id": 3065,
+      "before_quantity": "11.000",
+      "actual_quantity": 0,
+      "stock_ids": [
+        936
+      ],
+      "action": "clear"
+    },
+    {
+      "location_name": "G067",
+      "location_id": 3438,
+      "before_quantity": "198.000",
+      "actual_quantity": 198,
+      "stock_ids": [
+        941
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G068",
+      "location_id": 3404,
+      "before_quantity": "78.000",
+      "actual_quantity": 78,
+      "stock_ids": [
+        959
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G069",
+      "location_id": 3370,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G070",
+      "location_id": 3336,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G071",
+      "location_id": 3250,
+      "before_quantity": "79.000",
+      "actual_quantity": 79,
+      "stock_ids": [
+        982
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G072",
+      "location_id": 3251,
+      "before_quantity": "212.000",
+      "actual_quantity": 212,
+      "stock_ids": [
+        983
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G073",
+      "location_id": 3217,
+      "before_quantity": "306.000",
+      "actual_quantity": 306,
+      "stock_ids": [
+        984
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G074",
+      "location_id": 3202,
+      "before_quantity": "153.000",
+      "actual_quantity": 153,
+      "stock_ids": [
+        1109
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G075",
+      "location_id": 3168,
+      "before_quantity": "306.000",
+      "actual_quantity": 306,
+      "stock_ids": [
+        985
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G076",
+      "location_id": 3134,
+      "before_quantity": "306.000",
+      "actual_quantity": 306,
+      "stock_ids": [
+        986
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G077",
+      "location_id": 3100,
+      "before_quantity": "59.000",
+      "actual_quantity": 0,
+      "stock_ids": [
+        1027
+      ],
+      "action": "clear"
+    },
+    {
+      "location_name": "G078",
+      "location_id": 3066,
+      "before_quantity": "153.000",
+      "actual_quantity": 153,
+      "stock_ids": [
+        1144
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G079",
+      "location_id": 3439,
+      "before_quantity": "2.000",
+      "actual_quantity": 2,
+      "stock_ids": [
+        1180
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G080",
+      "location_id": 3405,
+      "before_quantity": "34.000",
+      "actual_quantity": 0,
+      "stock_ids": [
+        1054
+      ],
+      "action": "clear"
+    },
+    {
+      "location_name": "G081",
+      "location_id": 3371,
+      "before_quantity": "42.000",
+      "actual_quantity": 42,
+      "stock_ids": [
+        1039
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G082",
+      "location_id": 3337,
+      "before_quantity": "77.000",
+      "actual_quantity": 6,
+      "stock_ids": [
+        1045
+      ],
+      "action": "update"
+    },
+    {
+      "location_name": "G083",
+      "location_id": 3253,
+      "before_quantity": "3.000",
+      "actual_quantity": 0,
+      "stock_ids": [
+        1200
+      ],
+      "action": "clear"
+    },
+    {
+      "location_name": "G084",
+      "location_id": 3252,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G085",
+      "location_id": 3218,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G086",
+      "location_id": 3203,
+      "before_quantity": "34.000",
+      "actual_quantity": 0,
+      "stock_ids": [
+        814
+      ],
+      "action": "clear"
+    },
+    {
+      "location_name": "G087",
+      "location_id": 3169,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G088",
+      "location_id": 3135,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G089",
+      "location_id": 3101,
+      "before_quantity": "78.000",
+      "actual_quantity": 0,
+      "stock_ids": [
+        775
+      ],
+      "action": "clear"
+    },
+    {
+      "location_name": "G090",
+      "location_id": 3067,
+      "before_quantity": "9.000",
+      "actual_quantity": 0,
+      "stock_ids": [
+        781
+      ],
+      "action": "clear"
+    },
+    {
+      "location_name": "G091",
+      "location_id": 3440,
+      "before_quantity": "78.000",
+      "actual_quantity": 78,
+      "stock_ids": [
+        1145
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G092",
+      "location_id": 3406,
+      "before_quantity": "1.000",
+      "actual_quantity": 1,
+      "stock_ids": [
+        1130
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G093",
+      "location_id": 3372,
+      "before_quantity": "2.000",
+      "actual_quantity": 2,
+      "stock_ids": [
+        1131
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G094",
+      "location_id": 3338,
+      "before_quantity": "20.000",
+      "actual_quantity": 20,
+      "stock_ids": [
+        1132
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G095",
+      "location_id": 3255,
+      "before_quantity": "42.000",
+      "actual_quantity": 0,
+      "stock_ids": [
+        1133
+      ],
+      "action": "clear"
+    },
+    {
+      "location_name": "G096",
+      "location_id": 3254,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G097",
+      "location_id": 3219,
+      "before_quantity": "108.000",
+      "actual_quantity": 108,
+      "stock_ids": [
+        893
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G098",
+      "location_id": 3204,
+      "before_quantity": "108.000",
+      "actual_quantity": 108,
+      "stock_ids": [
+        899
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G099",
+      "location_id": 3170,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G100",
+      "location_id": 3136,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G101",
+      "location_id": 3102,
+      "before_quantity": "153.000",
+      "actual_quantity": 0,
+      "stock_ids": [
+        935
+      ],
+      "action": "clear"
+    },
+    {
+      "location_name": "G102",
+      "location_id": 3068,
+      "before_quantity": "198.000",
+      "actual_quantity": 198,
+      "stock_ids": [
+        940
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G103",
+      "location_id": 3441,
+      "before_quantity": "78.000",
+      "actual_quantity": 77,
+      "stock_ids": [
+        958
+      ],
+      "action": "update"
+    },
+    {
+      "location_name": "G104",
+      "location_id": 3407,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G105",
+      "location_id": 3373,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G106",
+      "location_id": 3339,
+      "before_quantity": "7.000",
+      "actual_quantity": 0,
+      "stock_ids": [
+        852
+      ],
+      "action": "clear"
+    },
+    {
+      "location_name": "G107",
+      "location_id": 3256,
+      "before_quantity": "306.000",
+      "actual_quantity": 306,
+      "stock_ids": [
+        987
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G108",
+      "location_id": 3257,
+      "before_quantity": "13.000",
+      "actual_quantity": 13,
+      "stock_ids": [
+        988
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G109",
+      "location_id": 3220,
+      "before_quantity": "78.000",
+      "actual_quantity": 78,
+      "stock_ids": [
+        1108
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G110",
+      "location_id": 3205,
+      "before_quantity": "78.000",
+      "actual_quantity": 78,
+      "stock_ids": [
+        1166
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G111",
+      "location_id": 3171,
+      "before_quantity": "40.000",
+      "actual_quantity": 40,
+      "stock_ids": [
+        1024
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G112",
+      "location_id": 3137,
+      "before_quantity": "15.000",
+      "actual_quantity": 0,
+      "stock_ids": [
+        555
+      ],
+      "action": "clear"
+    },
+    {
+      "location_name": "G113",
+      "location_id": 3103,
+      "before_quantity": "153.000",
+      "actual_quantity": 0,
+      "stock_ids": [
+        1029
+      ],
+      "action": "clear"
+    },
+    {
+      "location_name": "G114",
+      "location_id": 3069,
+      "before_quantity": "108.000",
+      "actual_quantity": 108,
+      "stock_ids": [
+        1179
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G115",
+      "location_id": 3442,
+      "before_quantity": "78.000",
+      "actual_quantity": 78,
+      "stock_ids": [
+        1184
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G116",
+      "location_id": 3408,
+      "before_quantity": "78.000",
+      "actual_quantity": 78,
+      "stock_ids": [
+        1146
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G117",
+      "location_id": 3374,
+      "before_quantity": "19.000",
+      "actual_quantity": 19,
+      "stock_ids": [
+        1044
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G118",
+      "location_id": 3340,
+      "before_quantity": "75.000",
+      "actual_quantity": 75,
+      "stock_ids": [
+        1199
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G119",
+      "location_id": 3259,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G120",
+      "location_id": 3258,
+      "before_quantity": "42.000",
+      "actual_quantity": 42,
+      "stock_ids": [
+        807
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G121",
+      "location_id": 3212,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G122",
+      "location_id": 3197,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G123",
+      "location_id": 3163,
+      "before_quantity": "108.000",
+      "actual_quantity": 108,
+      "stock_ids": [
+        969
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G124",
+      "location_id": 3129,
+      "before_quantity": "78.000",
+      "actual_quantity": 0,
+      "stock_ids": [
+        774
+      ],
+      "action": "clear"
+    },
+    {
+      "location_name": "G125",
+      "location_id": 3095,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G126",
+      "location_id": 3061,
+      "before_quantity": "78.000",
+      "actual_quantity": 0,
+      "stock_ids": [
+        786
+      ],
+      "action": "clear"
+    },
+    {
+      "location_name": "G127",
+      "location_id": 3434,
+      "before_quantity": "78.000",
+      "actual_quantity": 78,
+      "stock_ids": [
+        1147
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G128",
+      "location_id": 3400,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G129",
+      "location_id": 3366,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G130",
+      "location_id": 3332,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G131",
+      "location_id": 3242,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G132",
+      "location_id": 3260,
+      "before_quantity": "70.000",
+      "actual_quantity": 70,
+      "stock_ids": [
+        892
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G133",
+      "location_id": 3221,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G134",
+      "location_id": 3206,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G135",
+      "location_id": 3172,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G136",
+      "location_id": 3138,
+      "before_quantity": "127.000",
+      "actual_quantity": 56,
+      "stock_ids": [
+        934
+      ],
+      "action": "update"
+    },
+    {
+      "location_name": "G137",
+      "location_id": 3104,
+      "before_quantity": "78.000",
+      "actual_quantity": 78,
+      "stock_ids": [
+        939
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G138",
+      "location_id": 3070,
+      "before_quantity": "55.000",
+      "actual_quantity": 55,
+      "stock_ids": [
+        944
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G139",
+      "location_id": 3443,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G140",
+      "location_id": 3409,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G141",
+      "location_id": 3375,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G142",
+      "location_id": 3341,
+      "before_quantity": "78.000",
+      "actual_quantity": 0,
+      "stock_ids": [
+        853
+      ],
+      "action": "clear"
+    },
+    {
+      "location_name": "G143",
+      "location_id": 3262,
+      "before_quantity": "60.000",
+      "actual_quantity": 60,
+      "stock_ids": [
+        1007
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G144",
+      "location_id": 3261,
+      "before_quantity": "153.000",
+      "actual_quantity": 0,
+      "stock_ids": [
+        1016
+      ],
+      "action": "clear"
+    },
+    {
+      "location_name": "G145",
+      "location_id": 3222,
+      "before_quantity": "78.000",
+      "actual_quantity": 78,
+      "stock_ids": [
+        1021
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G146",
+      "location_id": 3207,
+      "before_quantity": "87.000",
+      "actual_quantity": 87,
+      "stock_ids": [
+        913
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G147",
+      "location_id": 3173,
+      "before_quantity": "40.000",
+      "actual_quantity": 40,
+      "stock_ids": [
+        1172
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G148",
+      "location_id": 3139,
+      "before_quantity": "42.000",
+      "actual_quantity": 42,
+      "stock_ids": [
+        1175
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G149",
+      "location_id": 3105,
+      "before_quantity": "60.000",
+      "actual_quantity": 60,
+      "stock_ids": [
+        1033
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G150",
+      "location_id": 3071,
+      "before_quantity": "42.000",
+      "actual_quantity": 42,
+      "stock_ids": [
+        1183
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G151",
+      "location_id": 3444,
+      "before_quantity": "22.000",
+      "actual_quantity": 22,
+      "stock_ids": [
+        660
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G152",
+      "location_id": 3410,
+      "before_quantity": "108.000",
+      "actual_quantity": 108,
+      "stock_ids": [
+        1193
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G153",
+      "location_id": 3376,
+      "before_quantity": "70.000",
+      "actual_quantity": 70,
+      "stock_ids": [
+        1148
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G154",
+      "location_id": 3342,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G155",
+      "location_id": 3263,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G156",
+      "location_id": 3264,
+      "before_quantity": "36.000",
+      "actual_quantity": 36,
+      "stock_ids": [
+        641
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G157",
+      "location_id": 3223,
+      "before_quantity": "153.000",
+      "actual_quantity": 153,
+      "stock_ids": [
+        1149
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G158",
+      "location_id": 3208,
+      "before_quantity": "71.000",
+      "actual_quantity": 71,
+      "stock_ids": [
+        643
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G159",
+      "location_id": 3174,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G160",
+      "location_id": 3140,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G161",
+      "location_id": 3106,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G162",
+      "location_id": 3072,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G163",
+      "location_id": 3445,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G164",
+      "location_id": 3411,
+      "before_quantity": "108.000",
+      "actual_quantity": 108,
+      "stock_ids": [
+        883
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G165",
+      "location_id": 3377,
+      "before_quantity": "198.000",
+      "actual_quantity": 198,
+      "stock_ids": [
+        884
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G166",
+      "location_id": 3343,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G167",
+      "location_id": 3266,
+      "before_quantity": "42.000",
+      "actual_quantity": 42,
+      "stock_ids": [
+        652
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G168",
+      "location_id": 3265,
+      "before_quantity": "42.000",
+      "actual_quantity": 42,
+      "stock_ids": [
+        653
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G169",
+      "location_id": 3209,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G170",
+      "location_id": 3193,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G171",
+      "location_id": 3159,
+      "before_quantity": "42.000",
+      "actual_quantity": 42,
+      "stock_ids": [
+        656
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G172",
+      "location_id": 3125,
+      "before_quantity": "78.000",
+      "actual_quantity": 78,
+      "stock_ids": [
+        938
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G173",
+      "location_id": 3091,
+      "before_quantity": "42.000",
+      "actual_quantity": 42,
+      "stock_ids": [
+        658
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G174",
+      "location_id": 3057,
+      "before_quantity": "42.000",
+      "actual_quantity": 42,
+      "stock_ids": [
+        659
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G175",
+      "location_id": 3430,
+      "before_quantity": "108.000",
+      "actual_quantity": 108,
+      "stock_ids": [
+        975
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G176",
+      "location_id": 3396,
+      "before_quantity": "42.000",
+      "actual_quantity": 42,
+      "stock_ids": [
+        1009
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G177",
+      "location_id": 3362,
+      "before_quantity": "42.000",
+      "actual_quantity": 42,
+      "stock_ids": [
+        1010
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G178",
+      "location_id": 3272,
+      "before_quantity": "60.000",
+      "actual_quantity": 60,
+      "stock_ids": [
+        1006
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G179",
+      "location_id": 3267,
+      "before_quantity": "40.000",
+      "actual_quantity": 0,
+      "stock_ids": [
+        699
+      ],
+      "action": "clear"
+    },
+    {
+      "location_name": "G180",
+      "location_id": 3268,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G181",
+      "location_id": 3210,
+      "before_quantity": "75.000",
+      "actual_quantity": 0,
+      "stock_ids": [
+        1204
+      ],
+      "action": "clear"
+    },
+    {
+      "location_name": "G182",
+      "location_id": 3194,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G183",
+      "location_id": 3160,
+      "before_quantity": "60.000",
+      "actual_quantity": 60,
+      "stock_ids": [
+        1174
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G184",
+      "location_id": 3126,
+      "before_quantity": "108.000",
+      "actual_quantity": 108,
+      "stock_ids": [
+        1178
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G185",
+      "location_id": 3092,
+      "before_quantity": "42.000",
+      "actual_quantity": 42,
+      "stock_ids": [
+        1182
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G186",
+      "location_id": 3058,
+      "before_quantity": "153.000",
+      "actual_quantity": 153,
+      "stock_ids": [
+        1150
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G187",
+      "location_id": 3431,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G188",
+      "location_id": 3397,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G189",
+      "location_id": 3363,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G190",
+      "location_id": 3329,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G191",
+      "location_id": 3516,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G192",
+      "location_id": 3269,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G193",
+      "location_id": 3032,
+      "before_quantity": "90.000",
+      "actual_quantity": 0,
+      "stock_ids": [
+        1053
+      ],
+      "action": "clear"
+    },
+    {
+      "location_name": "G194",
+      "location_id": 3038,
+      "before_quantity": "78.000",
+      "actual_quantity": 71,
+      "stock_ids": [
+        773
+      ],
+      "action": "update"
+    },
+    {
+      "location_name": "G195",
+      "location_id": 3037,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G196",
+      "location_id": 3036,
+      "before_quantity": "78.000",
+      "actual_quantity": 78,
+      "stock_ids": [
+        785
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G197",
+      "location_id": 3035,
+      "before_quantity": "78.000",
+      "actual_quantity": 78,
+      "stock_ids": [
+        791
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G198",
+      "location_id": 3034,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G199",
+      "location_id": 3276,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G200",
+      "location_id": 3275,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G201",
+      "location_id": 3274,
+      "before_quantity": "28.000",
+      "actual_quantity": 0,
+      "stock_ids": [
+        621
+      ],
+      "action": "clear"
+    },
+    {
+      "location_name": "G202",
+      "location_id": 3273,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G203",
+      "location_id": 3271,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G204",
+      "location_id": 3270,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G205",
+      "location_id": 3225,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G206",
+      "location_id": 3176,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G207",
+      "location_id": 3142,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G208",
+      "location_id": 3108,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G209",
+      "location_id": 3074,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G210",
+      "location_id": 3040,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G211",
+      "location_id": 3413,
+      "before_quantity": "58.000",
+      "actual_quantity": 0,
+      "stock_ids": [
+        1015
+      ],
+      "action": "clear"
+    },
+    {
+      "location_name": "G212",
+      "location_id": 3379,
+      "before_quantity": "39.000",
+      "actual_quantity": 37,
+      "stock_ids": [
+        1011
+      ],
+      "action": "update"
+    },
+    {
+      "location_name": "G213",
+      "location_id": 3345,
+      "before_quantity": "78.000",
+      "actual_quantity": 78,
+      "stock_ids": [
+        1012
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G214",
+      "location_id": 3312,
+      "before_quantity": "60.000",
+      "actual_quantity": 0,
+      "stock_ids": [
+        1008
+      ],
+      "action": "clear"
+    },
+    {
+      "location_name": "G215",
+      "location_id": 3277,
+      "before_quantity": "78.000",
+      "actual_quantity": 23,
+      "stock_ids": [
+        1020
+      ],
+      "action": "update"
+    },
+    {
+      "location_name": "G216",
+      "location_id": 3307,
+      "before_quantity": "5.000",
+      "actual_quantity": 0,
+      "stock_ids": [
+        600
+      ],
+      "action": "clear"
+    },
+    {
+      "location_name": "G217",
+      "location_id": 3226,
+      "before_quantity": "78.000",
+      "actual_quantity": 0,
+      "stock_ids": [
+        601
+      ],
+      "action": "clear"
+    },
+    {
+      "location_name": "G218",
+      "location_id": 3177,
+      "before_quantity": "60.000",
+      "actual_quantity": 0,
+      "stock_ids": [
+        1028
+      ],
+      "action": "clear"
+    },
+    {
+      "location_name": "G219",
+      "location_id": 3143,
+      "before_quantity": "66.000",
+      "actual_quantity": 0,
+      "stock_ids": [
+        602
+      ],
+      "action": "clear"
+    },
+    {
+      "location_name": "G220",
+      "location_id": 3109,
+      "before_quantity": "78.000",
+      "actual_quantity": 0,
+      "stock_ids": [
+        603
+      ],
+      "action": "clear"
+    },
+    {
+      "location_name": "G221",
+      "location_id": 3075,
+      "before_quantity": "8.000",
+      "actual_quantity": 0,
+      "stock_ids": [
+        1188
+      ],
+      "action": "clear"
+    },
+    {
+      "location_name": "G222",
+      "location_id": 3041,
+      "before_quantity": "108.000",
+      "actual_quantity": 108,
+      "stock_ids": [
+        1192
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G223",
+      "location_id": 3414,
+      "before_quantity": "117.000",
+      "actual_quantity": 117,
+      "stock_ids": [
+        1198
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G224",
+      "location_id": 3380,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G225",
+      "location_id": 3346,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G226",
+      "location_id": 3313,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G227",
+      "location_id": 3278,
+      "before_quantity": "57.000",
+      "actual_quantity": 0,
+      "stock_ids": [
+        1051
+      ],
+      "action": "clear"
+    },
+    {
+      "location_name": "G228",
+      "location_id": 3308,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G229",
+      "location_id": 3227,
+      "before_quantity": "16.000",
+      "actual_quantity": 0,
+      "stock_ids": [
+        772
+      ],
+      "action": "clear"
+    },
+    {
+      "location_name": "G230",
+      "location_id": 3178,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G231",
+      "location_id": 3144,
+      "before_quantity": "78.000",
+      "actual_quantity": 78,
+      "stock_ids": [
+        1114
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G232",
+      "location_id": 3110,
+      "before_quantity": "94.000",
+      "actual_quantity": 94,
+      "stock_ids": [
+        1115
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G233",
+      "location_id": 3076,
+      "before_quantity": "74.000",
+      "actual_quantity": 74,
+      "stock_ids": [
+        1116
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G234",
+      "location_id": 3042,
+      "before_quantity": "70.000",
+      "actual_quantity": 70,
+      "stock_ids": [
+        1117
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G235",
+      "location_id": 3415,
+      "before_quantity": "70.000",
+      "actual_quantity": 70,
+      "stock_ids": [
+        1118
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G236",
+      "location_id": 3381,
+      "before_quantity": "78.000",
+      "actual_quantity": 78,
+      "stock_ids": [
+        1119
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G237",
+      "location_id": 3347,
+      "before_quantity": "78.000",
+      "actual_quantity": 78,
+      "stock_ids": [
+        1120
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G238",
+      "location_id": 3314,
+      "before_quantity": "78.000",
+      "actual_quantity": 78,
+      "stock_ids": [
+        1121
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G239",
+      "location_id": 3279,
+      "before_quantity": "78.000",
+      "actual_quantity": 78,
+      "stock_ids": [
+        1122
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G240",
+      "location_id": 3309,
+      "before_quantity": "72.000",
+      "actual_quantity": 72,
+      "stock_ids": [
+        1123
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G241",
+      "location_id": 3228,
+      "before_quantity": "78.000",
+      "actual_quantity": 78,
+      "stock_ids": [
+        1124
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G242",
+      "location_id": 3179,
+      "before_quantity": "153.000",
+      "actual_quantity": 153,
+      "stock_ids": [
+        1125
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G243",
+      "location_id": 3145,
+      "before_quantity": "60.000",
+      "actual_quantity": 60,
+      "stock_ids": [
+        1126
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G244",
+      "location_id": 3111,
+      "before_quantity": "78.000",
+      "actual_quantity": 78,
+      "stock_ids": [
+        962
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G245",
+      "location_id": 3077,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G246",
+      "location_id": 3043,
+      "before_quantity": "95.000",
+      "actual_quantity": 95,
+      "stock_ids": [
+        1100
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G247",
+      "location_id": 3416,
+      "before_quantity": "60.000",
+      "actual_quantity": 60,
+      "stock_ids": [
+        1013
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G248",
+      "location_id": 3382,
+      "before_quantity": "126.000",
+      "actual_quantity": 126,
+      "stock_ids": [
+        1105
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G249",
+      "location_id": 3348,
+      "before_quantity": "153.000",
+      "actual_quantity": 153,
+      "stock_ids": [
+        1107
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G250",
+      "location_id": 3315,
+      "before_quantity": "6.000",
+      "actual_quantity": 6,
+      "stock_ids": [
+        499
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G251",
+      "location_id": 3280,
+      "before_quantity": "60.000",
+      "actual_quantity": 60,
+      "stock_ids": [
+        1023
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G252",
+      "location_id": 3310,
+      "before_quantity": "36.000",
+      "actual_quantity": 36,
+      "stock_ids": [
+        497
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G253",
+      "location_id": 3224,
+      "before_quantity": "36.000",
+      "actual_quantity": 36,
+      "stock_ids": [
+        496
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G254",
+      "location_id": 3175,
+      "before_quantity": "42.000",
+      "actual_quantity": 42,
+      "stock_ids": [
+        1177
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G255",
+      "location_id": 3141,
+      "before_quantity": "9.000",
+      "actual_quantity": 9,
+      "stock_ids": [
+        1181
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G256",
+      "location_id": 3107,
+      "before_quantity": "4.000",
+      "actual_quantity": 4,
+      "stock_ids": [
+        493
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G257",
+      "location_id": 3073,
+      "before_quantity": "77.000",
+      "actual_quantity": 77,
+      "stock_ids": [
+        1190
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G258",
+      "location_id": 3039,
+      "before_quantity": "5.000",
+      "actual_quantity": 0,
+      "stock_ids": [
+        1197
+      ],
+      "action": "clear"
+    },
+    {
+      "location_name": "G259",
+      "location_id": 3412,
+      "before_quantity": "87.000",
+      "actual_quantity": 87,
+      "stock_ids": [
+        878
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G260",
+      "location_id": 3378,
+      "before_quantity": "60.000",
+      "actual_quantity": 60,
+      "stock_ids": [
+        915
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G261",
+      "location_id": 3344,
+      "before_quantity": "28.000",
+      "actual_quantity": 0,
+      "stock_ids": [
+        1048
+      ],
+      "action": "clear"
+    },
+    {
+      "location_name": "G262",
+      "location_id": 3311,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G263",
+      "location_id": 3246,
+      "before_quantity": "57.000",
+      "actual_quantity": 0,
+      "stock_ids": [
+        949
+      ],
+      "action": "clear"
+    },
+    {
+      "location_name": "G264",
+      "location_id": 3245,
+      "before_quantity": "70.000",
+      "actual_quantity": 70,
+      "stock_ids": [
+        1151
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G265",
+      "location_id": 3229,
+      "before_quantity": "70.000",
+      "actual_quantity": 70,
+      "stock_ids": [
+        1152
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G266",
+      "location_id": 3180,
+      "before_quantity": "70.000",
+      "actual_quantity": 70,
+      "stock_ids": [
+        1153
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G267",
+      "location_id": 3146,
+      "before_quantity": "28.000",
+      "actual_quantity": 28,
+      "stock_ids": [
+        1154
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G268",
+      "location_id": 3112,
+      "before_quantity": "14.000",
+      "actual_quantity": 14,
+      "stock_ids": [
+        1134
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G269",
+      "location_id": 3078,
+      "before_quantity": "153.000",
+      "actual_quantity": 153,
+      "stock_ids": [
+        1135
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G270",
+      "location_id": 3044,
+      "before_quantity": "78.000",
+      "actual_quantity": 78,
+      "stock_ids": [
+        1136
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G271",
+      "location_id": 3417,
+      "before_quantity": "104.000",
+      "actual_quantity": 104,
+      "stock_ids": [
+        1137
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G272",
+      "location_id": 3383,
+      "before_quantity": "78.000",
+      "actual_quantity": 78,
+      "stock_ids": [
+        1138
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G273",
+      "location_id": 3349,
+      "before_quantity": "153.000",
+      "actual_quantity": 153,
+      "stock_ids": [
+        1139
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G274",
+      "location_id": 3316,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G275",
+      "location_id": 3281,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G276",
+      "location_id": 3294,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G277",
+      "location_id": 3230,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G278",
+      "location_id": 3181,
+      "before_quantity": "23.000",
+      "actual_quantity": 1,
+      "stock_ids": [
+        462
+      ],
+      "action": "update"
+    },
+    {
+      "location_name": "G279",
+      "location_id": 3147,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G280",
+      "location_id": 3113,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G281",
+      "location_id": 3079,
+      "before_quantity": "153.000",
+      "actual_quantity": 0,
+      "stock_ids": [
+        996
+      ],
+      "action": "clear"
+    },
+    {
+      "location_name": "G282",
+      "location_id": 3045,
+      "before_quantity": "153.000",
+      "actual_quantity": 153,
+      "stock_ids": [
+        1111
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G283",
+      "location_id": 3418,
+      "before_quantity": "78.000",
+      "actual_quantity": 78,
+      "stock_ids": [
+        1004
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G284",
+      "location_id": 3384,
+      "before_quantity": "153.000",
+      "actual_quantity": 153,
+      "stock_ids": [
+        1112
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G285",
+      "location_id": 3350,
+      "before_quantity": "22.000",
+      "actual_quantity": 0,
+      "stock_ids": [
+        1019
+      ],
+      "action": "clear"
+    },
+    {
+      "location_name": "G286",
+      "location_id": 3317,
+      "before_quantity": "60.000",
+      "actual_quantity": 60,
+      "stock_ids": [
+        1022
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G287",
+      "location_id": 3282,
+      "before_quantity": "153.000",
+      "actual_quantity": 153,
+      "stock_ids": [
+        1155
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G288",
+      "location_id": 3295,
+      "before_quantity": "153.000",
+      "actual_quantity": 153,
+      "stock_ids": [
+        1156
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G289",
+      "location_id": 3231,
+      "before_quantity": "60.000",
+      "actual_quantity": 0,
+      "stock_ids": [
+        1032
+      ],
+      "action": "clear"
+    },
+    {
+      "location_name": "G290",
+      "location_id": 3182,
+      "before_quantity": "78.000",
+      "actual_quantity": 78,
+      "stock_ids": [
+        1036
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G291",
+      "location_id": 3148,
+      "before_quantity": "153.000",
+      "actual_quantity": 25,
+      "stock_ids": [
+        1055
+      ],
+      "action": "update"
+    },
+    {
+      "location_name": "G292",
+      "location_id": 3114,
+      "before_quantity": "9.000",
+      "actual_quantity": 0,
+      "stock_ids": [
+        1043
+      ],
+      "action": "clear"
+    },
+    {
+      "location_name": "G293",
+      "location_id": 3080,
+      "before_quantity": "2.000",
+      "actual_quantity": 2,
+      "stock_ids": [
+        1196
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G294",
+      "location_id": 3046,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G295",
+      "location_id": 3419,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G296",
+      "location_id": 3385,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G297",
+      "location_id": 3351,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G298",
+      "location_id": 3318,
+      "before_quantity": "85.000",
+      "actual_quantity": 23,
+      "stock_ids": [
+        1056
+      ],
+      "action": "update"
+    },
+    {
+      "location_name": "G299",
+      "location_id": 3283,
+      "before_quantity": "44.000",
+      "actual_quantity": 44,
+      "stock_ids": [
+        771
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G300",
+      "location_id": 3296,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G301",
+      "location_id": 3232,
+      "before_quantity": "78.000",
+      "actual_quantity": 78,
+      "stock_ids": [
+        1157
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G302",
+      "location_id": 3183,
+      "before_quantity": "108.000",
+      "actual_quantity": 108,
+      "stock_ids": [
+        881
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G303",
+      "location_id": 3149,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G304",
+      "location_id": 3115,
+      "before_quantity": "42.000",
+      "actual_quantity": 42,
+      "stock_ids": [
+        919
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G305",
+      "location_id": 3081,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G306",
+      "location_id": 3047,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G307",
+      "location_id": 3420,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G308",
+      "location_id": 3386,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G309",
+      "location_id": 3352,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G310",
+      "location_id": 3319,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G311",
+      "location_id": 3284,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G312",
+      "location_id": 3297,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G313",
+      "location_id": 3233,
+      "before_quantity": "24.000",
+      "actual_quantity": 24,
+      "stock_ids": [
+        957
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G314",
+      "location_id": 3184,
+      "before_quantity": "35.000",
+      "actual_quantity": 0,
+      "stock_ids": [
+        684
+      ],
+      "action": "clear"
+    },
+    {
+      "location_name": "G315",
+      "location_id": 3150,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G316",
+      "location_id": 3116,
+      "before_quantity": "153.000",
+      "actual_quantity": 153,
+      "stock_ids": [
+        995
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G317",
+      "location_id": 3082,
+      "before_quantity": "36.000",
+      "actual_quantity": 0,
+      "stock_ids": [
+        683
+      ],
+      "action": "clear"
+    },
+    {
+      "location_name": "G318",
+      "location_id": 3048,
+      "before_quantity": "62.000",
+      "actual_quantity": 62,
+      "stock_ids": [
+        695
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G319",
+      "location_id": 3421,
+      "before_quantity": "81.000",
+      "actual_quantity": 32,
+      "stock_ids": [
+        911
+      ],
+      "action": "update"
+    },
+    {
+      "location_name": "G320",
+      "location_id": 3387,
+      "before_quantity": "25.000",
+      "actual_quantity": 25,
+      "stock_ids": [
+        1025
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G321",
+      "location_id": 3353,
+      "before_quantity": "27.000",
+      "actual_quantity": 0,
+      "stock_ids": [
+        682
+      ],
+      "action": "clear"
+    },
+    {
+      "location_name": "G322",
+      "location_id": 3320,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G323",
+      "location_id": 3285,
+      "before_quantity": "36.000",
+      "actual_quantity": 0,
+      "stock_ids": [
+        681
+      ],
+      "action": "clear"
+    },
+    {
+      "location_name": "G324",
+      "location_id": 3298,
+      "before_quantity": "60.000",
+      "actual_quantity": 0,
+      "stock_ids": [
+        1031
+      ],
+      "action": "clear"
+    },
+    {
+      "location_name": "G325",
+      "location_id": 3234,
+      "before_quantity": "78.000",
+      "actual_quantity": 78,
+      "stock_ids": [
+        1035
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G326",
+      "location_id": 3185,
+      "before_quantity": "78.000",
+      "actual_quantity": 78,
+      "stock_ids": [
+        1187
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G327",
+      "location_id": 3151,
+      "before_quantity": "77.000",
+      "actual_quantity": 77,
+      "stock_ids": [
+        1189
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G328",
+      "location_id": 3117,
+      "before_quantity": "108.000",
+      "actual_quantity": 108,
+      "stock_ids": [
+        1195
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G329",
+      "location_id": 3083,
+      "before_quantity": "25.000",
+      "actual_quantity": 0,
+      "stock_ids": [
+        967
+      ],
+      "action": "clear"
+    },
+    {
+      "location_name": "G330",
+      "location_id": 3049,
+      "before_quantity": "78.000",
+      "actual_quantity": 0,
+      "stock_ids": [
+        947
+      ],
+      "action": "clear"
+    },
+    {
+      "location_name": "G331",
+      "location_id": 3422,
+      "before_quantity": "237.000",
+      "actual_quantity": 0,
+      "stock_ids": [
+        407
+      ],
+      "action": "clear"
+    },
+    {
+      "location_name": "G332",
+      "location_id": 3388,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G333",
+      "location_id": 3354,
+      "before_quantity": "2.000",
+      "actual_quantity": 0,
+      "stock_ids": [
+        879
+      ],
+      "action": "clear"
+    },
+    {
+      "location_name": "G334",
+      "location_id": 3321,
+      "before_quantity": "15.000",
+      "actual_quantity": 0,
+      "stock_ids": [
+        405
+      ],
+      "action": "clear"
+    },
+    {
+      "location_name": "G335",
+      "location_id": 3286,
+      "before_quantity": "80.000",
+      "actual_quantity": 80,
+      "stock_ids": [
+        1158
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G336",
+      "location_id": 3299,
+      "before_quantity": "13.000",
+      "actual_quantity": 13,
+      "stock_ids": [
+        784
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G337",
+      "location_id": 3235,
+      "before_quantity": "70.000",
+      "actual_quantity": 70,
+      "stock_ids": [
+        1083
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G338",
+      "location_id": 3186,
+      "before_quantity": "36.000",
+      "actual_quantity": 0,
+      "stock_ids": [
+        680
+      ],
+      "action": "clear"
+    },
+    {
+      "location_name": "G339",
+      "location_id": 3152,
+      "before_quantity": "27.000",
+      "actual_quantity": 27,
+      "stock_ids": [
+        888
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G340",
+      "location_id": 3118,
+      "before_quantity": "12.000",
+      "actual_quantity": 12,
+      "stock_ids": [
+        920
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G341",
+      "location_id": 3084,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G342",
+      "location_id": 3050,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G343",
+      "location_id": 3423,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G344",
+      "location_id": 3389,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G345",
+      "location_id": 3355,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G346",
+      "location_id": 3322,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G347",
+      "location_id": 3287,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G348",
+      "location_id": 3300,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G349",
+      "location_id": 3236,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G350",
+      "location_id": 3187,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G351",
+      "location_id": 3153,
+      "before_quantity": "153.000",
+      "actual_quantity": 153,
+      "stock_ids": [
+        994
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G352",
+      "location_id": 3119,
+      "before_quantity": "153.000",
+      "actual_quantity": 153,
+      "stock_ids": [
+        1102
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G353",
+      "location_id": 3085,
+      "before_quantity": "48.000",
+      "actual_quantity": 0,
+      "stock_ids": [
+        854
+      ],
+      "action": "clear"
+    },
+    {
+      "location_name": "G354",
+      "location_id": 3051,
+      "before_quantity": "198.000",
+      "actual_quantity": 198,
+      "stock_ids": [
+        910
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G355",
+      "location_id": 3424,
+      "before_quantity": "60.000",
+      "actual_quantity": 54,
+      "stock_ids": [
+        1017
+      ],
+      "action": "update"
+    },
+    {
+      "location_name": "G356",
+      "location_id": 3390,
+      "before_quantity": "78.000",
+      "actual_quantity": 78,
+      "stock_ids": [
+        1170
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G357",
+      "location_id": 3356,
+      "before_quantity": "153.000",
+      "actual_quantity": 153,
+      "stock_ids": [
+        1026
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G358",
+      "location_id": 3323,
+      "before_quantity": "60.000",
+      "actual_quantity": 60,
+      "stock_ids": [
+        1173
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G359",
+      "location_id": 3288,
+      "before_quantity": "78.000",
+      "actual_quantity": 78,
+      "stock_ids": [
+        922
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G360",
+      "location_id": 3301,
+      "before_quantity": "34.000",
+      "actual_quantity": 0,
+      "stock_ids": [
+        862
+      ],
+      "action": "clear"
+    },
+    {
+      "location_name": "G361",
+      "location_id": 3237,
+      "before_quantity": "10.000",
+      "actual_quantity": 0,
+      "stock_ids": [
+        723
+      ],
+      "action": "clear"
+    },
+    {
+      "location_name": "G362",
+      "location_id": 3188,
+      "before_quantity": "7.000",
+      "actual_quantity": 0,
+      "stock_ids": [
+        1159
+      ],
+      "action": "clear"
+    },
+    {
+      "location_name": "G363",
+      "location_id": 3154,
+      "before_quantity": "198.000",
+      "actual_quantity": 198,
+      "stock_ids": [
+        876
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G364",
+      "location_id": 3120,
+      "before_quantity": "13.000",
+      "actual_quantity": 0,
+      "stock_ids": [
+        1047
+      ],
+      "action": "clear"
+    },
+    {
+      "location_name": "G365",
+      "location_id": 3086,
+      "before_quantity": "42.000",
+      "actual_quantity": 42,
+      "stock_ids": [
+        805
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G366",
+      "location_id": 3052,
+      "before_quantity": "198.000",
+      "actual_quantity": 198,
+      "stock_ids": [
+        916
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G367",
+      "location_id": 3425,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G368",
+      "location_id": 3391,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G369",
+      "location_id": 3357,
+      "before_quantity": "78.000",
+      "actual_quantity": 78,
+      "stock_ids": [
+        1160
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G370",
+      "location_id": 3324,
+      "before_quantity": "78.000",
+      "actual_quantity": 78,
+      "stock_ids": [
+        1161
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G371",
+      "location_id": 3289,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G372",
+      "location_id": 3302,
+      "before_quantity": "78.000",
+      "actual_quantity": 78,
+      "stock_ids": [
+        950
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G373",
+      "location_id": 3238,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G374",
+      "location_id": 3189,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G375",
+      "location_id": 3155,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G376",
+      "location_id": 3121,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G377",
+      "location_id": 3087,
+      "before_quantity": "40.000",
+      "actual_quantity": 10,
+      "stock_ids": [
+        890
+      ],
+      "action": "update"
+    },
+    {
+      "location_name": "G378",
+      "location_id": 3053,
+      "before_quantity": "108.000",
+      "actual_quantity": 108,
+      "stock_ids": [
+        896
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G379",
+      "location_id": 3426,
+      "before_quantity": "108.000",
+      "actual_quantity": 108,
+      "stock_ids": [
+        902
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G380",
+      "location_id": 3392,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G381",
+      "location_id": 3358,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G382",
+      "location_id": 3325,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G383",
+      "location_id": 3290,
+      "before_quantity": "78.000",
+      "actual_quantity": 78,
+      "stock_ids": [
+        943
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G384",
+      "location_id": 3303,
+      "before_quantity": "78.000",
+      "actual_quantity": 78,
+      "stock_ids": [
+        961
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G385",
+      "location_id": 3239,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G386",
+      "location_id": 3190,
+      "before_quantity": "153.000",
+      "actual_quantity": 153,
+      "stock_ids": [
+        1113
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G387",
+      "location_id": 3156,
+      "before_quantity": "59.000",
+      "actual_quantity": 59,
+      "stock_ids": [
+        1014
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G388",
+      "location_id": 3122,
+      "before_quantity": "78.000",
+      "actual_quantity": 78,
+      "stock_ids": [
+        1003
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G389",
+      "location_id": 3088,
+      "before_quantity": "78.000",
+      "actual_quantity": 0,
+      "stock_ids": [
+        855
+      ],
+      "action": "clear"
+    },
+    {
+      "location_name": "G390",
+      "location_id": 3054,
+      "before_quantity": "78.000",
+      "actual_quantity": 78,
+      "stock_ids": [
+        1165
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G391",
+      "location_id": 3427,
+      "before_quantity": "108.000",
+      "actual_quantity": 108,
+      "stock_ids": [
+        1169
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G392",
+      "location_id": 3393,
+      "before_quantity": "64.000",
+      "actual_quantity": 64,
+      "stock_ids": [
+        369
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G393",
+      "location_id": 3359,
+      "before_quantity": "45.000",
+      "actual_quantity": 45,
+      "stock_ids": [
+        368
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G394",
+      "location_id": 3326,
+      "before_quantity": "42.000",
+      "actual_quantity": 42,
+      "stock_ids": [
+        1176
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G395",
+      "location_id": 3291,
+      "before_quantity": "78.000",
+      "actual_quantity": 78,
+      "stock_ids": [
+        1034
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G396",
+      "location_id": 3304,
+      "before_quantity": "51.000",
+      "actual_quantity": 0,
+      "stock_ids": [
+        722
+      ],
+      "action": "clear"
+    },
+    {
+      "location_name": "G397",
+      "location_id": 3240,
+      "before_quantity": "90.000",
+      "actual_quantity": 0,
+      "stock_ids": [
+        1042
+      ],
+      "action": "clear"
+    },
+    {
+      "location_name": "G398",
+      "location_id": 3191,
+      "before_quantity": "35.000",
+      "actual_quantity": 0,
+      "stock_ids": [
+        1046
+      ],
+      "action": "clear"
+    },
+    {
+      "location_name": "G399",
+      "location_id": 3157,
+      "before_quantity": "36.000",
+      "actual_quantity": 35,
+      "stock_ids": [
+        736
+      ],
+      "action": "update"
+    },
+    {
+      "location_name": "G400",
+      "location_id": 3123,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G401",
+      "location_id": 3089,
+      "before_quantity": "43.000",
+      "actual_quantity": 43,
+      "stock_ids": [
+        811
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G402",
+      "location_id": 3055,
+      "before_quantity": "63.000",
+      "actual_quantity": 0,
+      "stock_ids": [
+        817
+      ],
+      "action": "clear"
+    },
+    {
+      "location_name": "G403",
+      "location_id": 3428,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G404",
+      "location_id": 3394,
+      "before_quantity": "153.000",
+      "actual_quantity": 153,
+      "stock_ids": [
+        1162
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G405",
+      "location_id": 3360,
+      "before_quantity": "78.000",
+      "actual_quantity": 78,
+      "stock_ids": [
+        1163
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G406",
+      "location_id": 3327,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G407",
+      "location_id": 3292,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G408",
+      "location_id": 3305,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G409",
+      "location_id": 3241,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G410",
+      "location_id": 3192,
+      "before_quantity": "35.000",
+      "actual_quantity": 0,
+      "stock_ids": [
+        324
+      ],
+      "action": "clear"
+    },
+    {
+      "location_name": "G411",
+      "location_id": 3158,
+      "before_quantity": "42.000",
+      "actual_quantity": 17,
+      "stock_ids": [
+        323
+      ],
+      "action": "update"
+    },
+    {
+      "location_name": "G412",
+      "location_id": 3124,
+      "before_quantity": "42.000",
+      "actual_quantity": 42,
+      "stock_ids": [
+        322
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G413",
+      "location_id": 3090,
+      "before_quantity": "78.000",
+      "actual_quantity": 78,
+      "stock_ids": [
+        953
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G414",
+      "location_id": 3056,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G415",
+      "location_id": 3429,
+      "before_quantity": "66.000",
+      "actual_quantity": 0,
+      "stock_ids": [
+        711
+      ],
+      "action": "clear"
+    },
+    {
+      "location_name": "G416",
+      "location_id": 3395,
+      "before_quantity": "198.000",
+      "actual_quantity": 198,
+      "stock_ids": [
+        932
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G417",
+      "location_id": 3361,
+      "before_quantity": "0",
+      "actual_quantity": 0,
+      "stock_ids": [],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G418",
+      "location_id": 3328,
+      "before_quantity": "78.000",
+      "actual_quantity": 78,
+      "stock_ids": [
+        956
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G419",
+      "location_id": 3293,
+      "before_quantity": "22.000",
+      "actual_quantity": 22,
+      "stock_ids": [
+        315
+      ],
+      "action": "unchanged"
+    },
+    {
+      "location_name": "G420",
+      "location_id": 3306,
+      "before_quantity": "25.000",
+      "actual_quantity": 0,
+      "stock_ids": [
+        974
+      ],
+      "action": "clear"
+    }
+  ]
+}

@@ -3,5 +3,15 @@ __pycache__
 *.pyc
 logs
 .env
+.env.*
 .recovery
 .git
+storage
+app/static/file_import_item
+app/static/warehouse_maps
+*.log
+*.dump
+*.rdb
+debug.log
+_agent_payload_out.json
+_api_preview.html

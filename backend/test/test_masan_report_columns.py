@@ -2,8 +2,11 @@
 
 import os
 import unittest
-from datetime import datetime
+from datetime import datetime, timezone
+from io import BytesIO
 from types import SimpleNamespace
+
+from openpyxl import load_workbook
 
 os.environ.update(
     DEBUG="false",
@@ -12,19 +15,48 @@ os.environ.update(
 )
 
 from app.modules.masan.masan_inbound_excel import INBOUND_REPORT_HEADERS
-from app.modules.masan.masan_inbound_service import _build_export_row, _format_report_distance_m
+from app.modules.masan.masan_inbound_service import (
+    _build_export_row,
+    _build_export_workbook,
+    _format_inbound_datetime,
+    _format_report_distance_m,
+)
 from app.modules.masan.masan_outbound_excel import OUTBOUND_REPORT_HEADERS
 from app.modules.masan.masan_outbound_service import _build_outbound_report_row
 
 
 class MasanReportColumnTests(unittest.TestCase):
+    def test_inbound_datetime_uses_order_creation_time_in_vietnam(self):
+        cases = (
+            (datetime(2026, 11, 10, 8, 30, 45), "2026-11-10 08:30:45"),
+            (datetime(2026, 11, 9, 18, 30, 45, tzinfo=timezone.utc), "2026-11-10 01:30:45"),
+            (None, ""),
+        )
+        for created_at, expected in cases:
+            with self.subTest(created_at=created_at):
+                self.assertEqual(
+                    _format_inbound_datetime(SimpleNamespace(created_at=created_at)),
+                    expected,
+                )
+
+    def test_inbound_workbook_displays_formatted_datetime(self):
+        values = [
+            [_format_inbound_datetime(SimpleNamespace(created_at=created_at))]
+            for created_at in (datetime(2026, 11, 9, 8, 30, 45), datetime(2026, 11, 10, 9, 15, 20))
+        ]
+        content = _build_export_workbook(values)
+        ws = load_workbook(BytesIO(content)).active
+        self.assertEqual(ws["A3"].value, "2026-11-09 08:30:45")
+        self.assertEqual(ws["A4"].value, "2026-11-10 09:15:20")
+        self.assertGreaterEqual(ws.column_dimensions["A"].width, 22)
+
     def test_inbound_row_matches_headers(self):
         order = SimpleNamespace(
             warehouse=SimpleNamespace(name="WH"),
-            created_at=None,
+            created_at=datetime(2026, 11, 10, 8, 30, 45),
         )
         detail = SimpleNamespace(
-            details={"vehicle_no": "51C"},
+            details={"vehicle_no": "51C", "inbound_datetime": "46335"},
             from_location=SimpleNamespace(location_name="VT01"),
             to_location=SimpleNamespace(location_name="G100"),
             device="R1",
@@ -45,6 +77,7 @@ class MasanReportColumnTests(unittest.TestCase):
         )
         row = _build_export_row(order, detail, allocation)
         self.assertEqual(len(row), len(INBOUND_REPORT_HEADERS))
+        self.assertEqual(row[0], "2026-11-10 08:30:45")
         self.assertEqual(row[14], "Nguyen A")
         self.assertEqual(row[15], 25.008)
         self.assertEqual(row[17], "28/10/2026\n14:40:15")

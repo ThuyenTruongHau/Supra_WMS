@@ -1,0 +1,2633 @@
+2026-11-12T15:41:52.450+07:00 - main - ERROR - WS pub/sub loop error, retry in 3s: Connection closed by server.
+Traceback (most recent call last):
+  File "C:\software_TDS\Supra_WMS\backend\app\socket\ws_manager.py", line 83, in _redis_pubsub_loop
+    message = await asyncio.to_thread(listen_once, pubsub, 1.0)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Thadosoft\AppData\Local\Programs\Python\Python312\Lib\asyncio\threads.py", line 25, in to_thread
+    return await loop.run_in_executor(None, func_call)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Thadosoft\AppData\Local\Programs\Python\Python312\Lib\concurrent\futures\thread.py", line 58, in run
+    result = self.fn(*self.args, **self.kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\app\socket\ws_manager.py", line 71, in listen_once
+    return pubsub.get_message(ignore_subscribe_messages=True, timeout=timeout)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 1029, in get_message
+    response = self.parse_response(block=(timeout is None), timeout=timeout)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 840, in parse_response
+    response = self._execute(conn, try_read)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 816, in _execute
+    return conn.retry.call_with_retry(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\retry.py", line 65, in call_with_retry
+    fail(error)
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 818, in <lambda>
+    lambda error: self._disconnect_raise_connect(conn, error),
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 805, in _disconnect_raise_connect
+    raise error
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\retry.py", line 62, in call_with_retry
+    return do()
+           ^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 817, in <lambda>
+    lambda: command(*args, **kwargs),
+            ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 834, in try_read
+    if not conn.can_read(timeout=timeout):
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 490, in can_read
+    return self._parser.can_read(timeout)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\base.py", line 128, in can_read
+    return self._buffer and self._buffer.can_read(timeout)
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 95, in can_read
+    return bool(self.unread_bytes()) or self._read_from_socket(
+                                        ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 68, in _read_from_socket
+    raise ConnectionError(SERVER_CLOSED_CONNECTION_ERROR)
+redis.exceptions.ConnectionError: Connection closed by server.
+2026-11-12T15:42:00.561+07:00 - main - ERROR - WS pub/sub loop error, retry in 3s: Timeout reading from socket
+Traceback (most recent call last):
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 65, in _read_from_socket
+    data = self._sock.recv(socket_read_size)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TimeoutError: timed out
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\software_TDS\Supra_WMS\backend\app\socket\ws_manager.py", line 76, in _redis_pubsub_loop
+    pubsub.psubscribe(warehouse_pattern, masan_pattern)
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 893, in psubscribe
+    ret_val = self.execute_command("PSUBSCRIBE", *new_patterns.keys())
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 761, in execute_command
+    self.connection = self.connection_pool.get_connection(
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 1074, in get_connection
+    connection.connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 289, in connect
+    self.on_connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 391, in on_connect
+    self.read_response()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 512, in read_response
+    response = self._parser.read_response(disable_decoding=disable_decoding)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 15, in read_response
+    result = self._read_response(disable_decoding=disable_decoding)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 25, in _read_response
+    raw = self._buffer.readline()
+          ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 115, in readline
+    self._read_from_socket()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 78, in _read_from_socket
+    raise TimeoutError("Timeout reading from socket")
+redis.exceptions.TimeoutError: Timeout reading from socket
+2026-11-12T15:42:08.589+07:00 - main - ERROR - WS pub/sub loop error, retry in 3s: Timeout reading from socket
+Traceback (most recent call last):
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 65, in _read_from_socket
+    data = self._sock.recv(socket_read_size)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TimeoutError: timed out
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\software_TDS\Supra_WMS\backend\app\socket\ws_manager.py", line 76, in _redis_pubsub_loop
+    pubsub.psubscribe(warehouse_pattern, masan_pattern)
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 893, in psubscribe
+    ret_val = self.execute_command("PSUBSCRIBE", *new_patterns.keys())
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 761, in execute_command
+    self.connection = self.connection_pool.get_connection(
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 1074, in get_connection
+    connection.connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 289, in connect
+    self.on_connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 391, in on_connect
+    self.read_response()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 512, in read_response
+    response = self._parser.read_response(disable_decoding=disable_decoding)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 15, in read_response
+    result = self._read_response(disable_decoding=disable_decoding)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 25, in _read_response
+    raw = self._buffer.readline()
+          ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 115, in readline
+    self._read_from_socket()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 78, in _read_from_socket
+    raise TimeoutError("Timeout reading from socket")
+redis.exceptions.TimeoutError: Timeout reading from socket
+2026-11-12T15:42:16.628+07:00 - main - ERROR - WS pub/sub loop error, retry in 3s: Timeout reading from socket
+Traceback (most recent call last):
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 65, in _read_from_socket
+    data = self._sock.recv(socket_read_size)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TimeoutError: timed out
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\software_TDS\Supra_WMS\backend\app\socket\ws_manager.py", line 76, in _redis_pubsub_loop
+    pubsub.psubscribe(warehouse_pattern, masan_pattern)
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 893, in psubscribe
+    ret_val = self.execute_command("PSUBSCRIBE", *new_patterns.keys())
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 761, in execute_command
+    self.connection = self.connection_pool.get_connection(
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 1074, in get_connection
+    connection.connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 289, in connect
+    self.on_connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 391, in on_connect
+    self.read_response()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 512, in read_response
+    response = self._parser.read_response(disable_decoding=disable_decoding)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 15, in read_response
+    result = self._read_response(disable_decoding=disable_decoding)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 25, in _read_response
+    raw = self._buffer.readline()
+          ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 115, in readline
+    self._read_from_socket()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 78, in _read_from_socket
+    raise TimeoutError("Timeout reading from socket")
+redis.exceptions.TimeoutError: Timeout reading from socket
+2026-11-12T15:42:24.648+07:00 - main - ERROR - WS pub/sub loop error, retry in 3s: Timeout reading from socket
+Traceback (most recent call last):
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 65, in _read_from_socket
+    data = self._sock.recv(socket_read_size)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TimeoutError: timed out
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\software_TDS\Supra_WMS\backend\app\socket\ws_manager.py", line 76, in _redis_pubsub_loop
+    pubsub.psubscribe(warehouse_pattern, masan_pattern)
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 893, in psubscribe
+    ret_val = self.execute_command("PSUBSCRIBE", *new_patterns.keys())
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 761, in execute_command
+    self.connection = self.connection_pool.get_connection(
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 1074, in get_connection
+    connection.connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 289, in connect
+    self.on_connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 391, in on_connect
+    self.read_response()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 512, in read_response
+    response = self._parser.read_response(disable_decoding=disable_decoding)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 15, in read_response
+    result = self._read_response(disable_decoding=disable_decoding)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 25, in _read_response
+    raw = self._buffer.readline()
+          ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 115, in readline
+    self._read_from_socket()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 78, in _read_from_socket
+    raise TimeoutError("Timeout reading from socket")
+redis.exceptions.TimeoutError: Timeout reading from socket
+2026-11-12T15:42:32.690+07:00 - main - ERROR - WS pub/sub loop error, retry in 3s: Timeout reading from socket
+Traceback (most recent call last):
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 65, in _read_from_socket
+    data = self._sock.recv(socket_read_size)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TimeoutError: timed out
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\software_TDS\Supra_WMS\backend\app\socket\ws_manager.py", line 76, in _redis_pubsub_loop
+    pubsub.psubscribe(warehouse_pattern, masan_pattern)
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 893, in psubscribe
+    ret_val = self.execute_command("PSUBSCRIBE", *new_patterns.keys())
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 761, in execute_command
+    self.connection = self.connection_pool.get_connection(
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 1074, in get_connection
+    connection.connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 289, in connect
+    self.on_connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 391, in on_connect
+    self.read_response()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 512, in read_response
+    response = self._parser.read_response(disable_decoding=disable_decoding)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 15, in read_response
+    result = self._read_response(disable_decoding=disable_decoding)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 25, in _read_response
+    raw = self._buffer.readline()
+          ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 115, in readline
+    self._read_from_socket()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 78, in _read_from_socket
+    raise TimeoutError("Timeout reading from socket")
+redis.exceptions.TimeoutError: Timeout reading from socket
+2026-11-12T15:42:40.697+07:00 - main - ERROR - WS pub/sub loop error, retry in 3s: Timeout reading from socket
+Traceback (most recent call last):
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 65, in _read_from_socket
+    data = self._sock.recv(socket_read_size)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TimeoutError: timed out
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\software_TDS\Supra_WMS\backend\app\socket\ws_manager.py", line 76, in _redis_pubsub_loop
+    pubsub.psubscribe(warehouse_pattern, masan_pattern)
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 893, in psubscribe
+    ret_val = self.execute_command("PSUBSCRIBE", *new_patterns.keys())
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 761, in execute_command
+    self.connection = self.connection_pool.get_connection(
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 1074, in get_connection
+    connection.connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 289, in connect
+    self.on_connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 391, in on_connect
+    self.read_response()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 512, in read_response
+    response = self._parser.read_response(disable_decoding=disable_decoding)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 15, in read_response
+    result = self._read_response(disable_decoding=disable_decoding)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 25, in _read_response
+    raw = self._buffer.readline()
+          ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 115, in readline
+    self._read_from_socket()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 78, in _read_from_socket
+    raise TimeoutError("Timeout reading from socket")
+redis.exceptions.TimeoutError: Timeout reading from socket
+2026-11-12T15:42:48.729+07:00 - main - ERROR - WS pub/sub loop error, retry in 3s: Timeout reading from socket
+Traceback (most recent call last):
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 65, in _read_from_socket
+    data = self._sock.recv(socket_read_size)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TimeoutError: timed out
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\software_TDS\Supra_WMS\backend\app\socket\ws_manager.py", line 76, in _redis_pubsub_loop
+    pubsub.psubscribe(warehouse_pattern, masan_pattern)
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 893, in psubscribe
+    ret_val = self.execute_command("PSUBSCRIBE", *new_patterns.keys())
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 761, in execute_command
+    self.connection = self.connection_pool.get_connection(
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 1074, in get_connection
+    connection.connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 289, in connect
+    self.on_connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 391, in on_connect
+    self.read_response()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 512, in read_response
+    response = self._parser.read_response(disable_decoding=disable_decoding)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 15, in read_response
+    result = self._read_response(disable_decoding=disable_decoding)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 25, in _read_response
+    raw = self._buffer.readline()
+          ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 115, in readline
+    self._read_from_socket()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 78, in _read_from_socket
+    raise TimeoutError("Timeout reading from socket")
+redis.exceptions.TimeoutError: Timeout reading from socket
+2026-11-12T15:42:56.748+07:00 - main - ERROR - WS pub/sub loop error, retry in 3s: Timeout reading from socket
+Traceback (most recent call last):
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 65, in _read_from_socket
+    data = self._sock.recv(socket_read_size)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TimeoutError: timed out
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\software_TDS\Supra_WMS\backend\app\socket\ws_manager.py", line 76, in _redis_pubsub_loop
+    pubsub.psubscribe(warehouse_pattern, masan_pattern)
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 893, in psubscribe
+    ret_val = self.execute_command("PSUBSCRIBE", *new_patterns.keys())
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 761, in execute_command
+    self.connection = self.connection_pool.get_connection(
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 1074, in get_connection
+    connection.connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 289, in connect
+    self.on_connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 391, in on_connect
+    self.read_response()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 512, in read_response
+    response = self._parser.read_response(disable_decoding=disable_decoding)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 15, in read_response
+    result = self._read_response(disable_decoding=disable_decoding)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 25, in _read_response
+    raw = self._buffer.readline()
+          ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 115, in readline
+    self._read_from_socket()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 78, in _read_from_socket
+    raise TimeoutError("Timeout reading from socket")
+redis.exceptions.TimeoutError: Timeout reading from socket
+2026-11-12T15:43:04.788+07:00 - main - ERROR - WS pub/sub loop error, retry in 3s: Timeout reading from socket
+Traceback (most recent call last):
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 65, in _read_from_socket
+    data = self._sock.recv(socket_read_size)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TimeoutError: timed out
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\software_TDS\Supra_WMS\backend\app\socket\ws_manager.py", line 76, in _redis_pubsub_loop
+    pubsub.psubscribe(warehouse_pattern, masan_pattern)
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 893, in psubscribe
+    ret_val = self.execute_command("PSUBSCRIBE", *new_patterns.keys())
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 761, in execute_command
+    self.connection = self.connection_pool.get_connection(
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 1074, in get_connection
+    connection.connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 289, in connect
+    self.on_connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 391, in on_connect
+    self.read_response()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 512, in read_response
+    response = self._parser.read_response(disable_decoding=disable_decoding)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 15, in read_response
+    result = self._read_response(disable_decoding=disable_decoding)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 25, in _read_response
+    raw = self._buffer.readline()
+          ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 115, in readline
+    self._read_from_socket()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 78, in _read_from_socket
+    raise TimeoutError("Timeout reading from socket")
+redis.exceptions.TimeoutError: Timeout reading from socket
+2026-11-12T15:43:12.820+07:00 - main - ERROR - WS pub/sub loop error, retry in 3s: Timeout reading from socket
+Traceback (most recent call last):
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 65, in _read_from_socket
+    data = self._sock.recv(socket_read_size)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TimeoutError: timed out
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\software_TDS\Supra_WMS\backend\app\socket\ws_manager.py", line 76, in _redis_pubsub_loop
+    pubsub.psubscribe(warehouse_pattern, masan_pattern)
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 893, in psubscribe
+    ret_val = self.execute_command("PSUBSCRIBE", *new_patterns.keys())
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 761, in execute_command
+    self.connection = self.connection_pool.get_connection(
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 1074, in get_connection
+    connection.connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 289, in connect
+    self.on_connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 391, in on_connect
+    self.read_response()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 512, in read_response
+    response = self._parser.read_response(disable_decoding=disable_decoding)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 15, in read_response
+    result = self._read_response(disable_decoding=disable_decoding)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 25, in _read_response
+    raw = self._buffer.readline()
+          ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 115, in readline
+    self._read_from_socket()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 78, in _read_from_socket
+    raise TimeoutError("Timeout reading from socket")
+redis.exceptions.TimeoutError: Timeout reading from socket
+2026-11-12T15:43:20.864+07:00 - main - ERROR - WS pub/sub loop error, retry in 3s: Timeout reading from socket
+Traceback (most recent call last):
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 65, in _read_from_socket
+    data = self._sock.recv(socket_read_size)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TimeoutError: timed out
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\software_TDS\Supra_WMS\backend\app\socket\ws_manager.py", line 76, in _redis_pubsub_loop
+    pubsub.psubscribe(warehouse_pattern, masan_pattern)
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 893, in psubscribe
+    ret_val = self.execute_command("PSUBSCRIBE", *new_patterns.keys())
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 761, in execute_command
+    self.connection = self.connection_pool.get_connection(
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 1074, in get_connection
+    connection.connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 289, in connect
+    self.on_connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 391, in on_connect
+    self.read_response()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 512, in read_response
+    response = self._parser.read_response(disable_decoding=disable_decoding)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 15, in read_response
+    result = self._read_response(disable_decoding=disable_decoding)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 25, in _read_response
+    raw = self._buffer.readline()
+          ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 115, in readline
+    self._read_from_socket()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 78, in _read_from_socket
+    raise TimeoutError("Timeout reading from socket")
+redis.exceptions.TimeoutError: Timeout reading from socket
+2026-11-12T15:43:28.870+07:00 - main - ERROR - WS pub/sub loop error, retry in 3s: Timeout reading from socket
+Traceback (most recent call last):
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 65, in _read_from_socket
+    data = self._sock.recv(socket_read_size)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TimeoutError: timed out
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\software_TDS\Supra_WMS\backend\app\socket\ws_manager.py", line 76, in _redis_pubsub_loop
+    pubsub.psubscribe(warehouse_pattern, masan_pattern)
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 893, in psubscribe
+    ret_val = self.execute_command("PSUBSCRIBE", *new_patterns.keys())
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 761, in execute_command
+    self.connection = self.connection_pool.get_connection(
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 1074, in get_connection
+    connection.connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 289, in connect
+    self.on_connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 391, in on_connect
+    self.read_response()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 512, in read_response
+    response = self._parser.read_response(disable_decoding=disable_decoding)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 15, in read_response
+    result = self._read_response(disable_decoding=disable_decoding)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 25, in _read_response
+    raw = self._buffer.readline()
+          ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 115, in readline
+    self._read_from_socket()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 78, in _read_from_socket
+    raise TimeoutError("Timeout reading from socket")
+redis.exceptions.TimeoutError: Timeout reading from socket
+2026-11-12T15:43:36.898+07:00 - main - ERROR - WS pub/sub loop error, retry in 3s: Timeout reading from socket
+Traceback (most recent call last):
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 65, in _read_from_socket
+    data = self._sock.recv(socket_read_size)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TimeoutError: timed out
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\software_TDS\Supra_WMS\backend\app\socket\ws_manager.py", line 76, in _redis_pubsub_loop
+    pubsub.psubscribe(warehouse_pattern, masan_pattern)
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 893, in psubscribe
+    ret_val = self.execute_command("PSUBSCRIBE", *new_patterns.keys())
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 761, in execute_command
+    self.connection = self.connection_pool.get_connection(
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 1074, in get_connection
+    connection.connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 289, in connect
+    self.on_connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 391, in on_connect
+    self.read_response()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 512, in read_response
+    response = self._parser.read_response(disable_decoding=disable_decoding)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 15, in read_response
+    result = self._read_response(disable_decoding=disable_decoding)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 25, in _read_response
+    raw = self._buffer.readline()
+          ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 115, in readline
+    self._read_from_socket()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 78, in _read_from_socket
+    raise TimeoutError("Timeout reading from socket")
+redis.exceptions.TimeoutError: Timeout reading from socket
+2026-11-12T15:43:44.932+07:00 - main - ERROR - WS pub/sub loop error, retry in 3s: Timeout reading from socket
+Traceback (most recent call last):
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 65, in _read_from_socket
+    data = self._sock.recv(socket_read_size)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TimeoutError: timed out
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\software_TDS\Supra_WMS\backend\app\socket\ws_manager.py", line 76, in _redis_pubsub_loop
+    pubsub.psubscribe(warehouse_pattern, masan_pattern)
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 893, in psubscribe
+    ret_val = self.execute_command("PSUBSCRIBE", *new_patterns.keys())
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 761, in execute_command
+    self.connection = self.connection_pool.get_connection(
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 1074, in get_connection
+    connection.connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 289, in connect
+    self.on_connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 391, in on_connect
+    self.read_response()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 512, in read_response
+    response = self._parser.read_response(disable_decoding=disable_decoding)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 15, in read_response
+    result = self._read_response(disable_decoding=disable_decoding)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 25, in _read_response
+    raw = self._buffer.readline()
+          ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 115, in readline
+    self._read_from_socket()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 78, in _read_from_socket
+    raise TimeoutError("Timeout reading from socket")
+redis.exceptions.TimeoutError: Timeout reading from socket
+2026-11-12T15:43:52.935+07:00 - main - ERROR - WS pub/sub loop error, retry in 3s: Timeout reading from socket
+Traceback (most recent call last):
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 65, in _read_from_socket
+    data = self._sock.recv(socket_read_size)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TimeoutError: timed out
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\software_TDS\Supra_WMS\backend\app\socket\ws_manager.py", line 76, in _redis_pubsub_loop
+    pubsub.psubscribe(warehouse_pattern, masan_pattern)
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 893, in psubscribe
+    ret_val = self.execute_command("PSUBSCRIBE", *new_patterns.keys())
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 761, in execute_command
+    self.connection = self.connection_pool.get_connection(
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 1074, in get_connection
+    connection.connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 289, in connect
+    self.on_connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 391, in on_connect
+    self.read_response()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 512, in read_response
+    response = self._parser.read_response(disable_decoding=disable_decoding)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 15, in read_response
+    result = self._read_response(disable_decoding=disable_decoding)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 25, in _read_response
+    raw = self._buffer.readline()
+          ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 115, in readline
+    self._read_from_socket()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 78, in _read_from_socket
+    raise TimeoutError("Timeout reading from socket")
+redis.exceptions.TimeoutError: Timeout reading from socket
+2026-11-12T15:43:57.621+07:00 - main - ERROR - WS pub/sub loop error, retry in 3s: Connection closed by server.
+Traceback (most recent call last):
+  File "C:\software_TDS\Supra_WMS\backend\app\socket\ws_manager.py", line 76, in _redis_pubsub_loop
+    pubsub.psubscribe(warehouse_pattern, masan_pattern)
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 893, in psubscribe
+    ret_val = self.execute_command("PSUBSCRIBE", *new_patterns.keys())
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 761, in execute_command
+    self.connection = self.connection_pool.get_connection(
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 1074, in get_connection
+    connection.connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 289, in connect
+    self.on_connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 391, in on_connect
+    self.read_response()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 512, in read_response
+    response = self._parser.read_response(disable_decoding=disable_decoding)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 15, in read_response
+    result = self._read_response(disable_decoding=disable_decoding)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 25, in _read_response
+    raw = self._buffer.readline()
+          ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 115, in readline
+    self._read_from_socket()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 68, in _read_from_socket
+    raise ConnectionError(SERVER_CLOSED_CONNECTION_ERROR)
+redis.exceptions.ConnectionError: Connection closed by server.
+2026-11-12T15:44:00.638+07:00 - main - ERROR - WS pub/sub loop error, retry in 3s: Connection closed by server.
+Traceback (most recent call last):
+  File "C:\software_TDS\Supra_WMS\backend\app\socket\ws_manager.py", line 76, in _redis_pubsub_loop
+    pubsub.psubscribe(warehouse_pattern, masan_pattern)
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 893, in psubscribe
+    ret_val = self.execute_command("PSUBSCRIBE", *new_patterns.keys())
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 761, in execute_command
+    self.connection = self.connection_pool.get_connection(
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 1074, in get_connection
+    connection.connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 289, in connect
+    self.on_connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 391, in on_connect
+    self.read_response()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 512, in read_response
+    response = self._parser.read_response(disable_decoding=disable_decoding)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 15, in read_response
+    result = self._read_response(disable_decoding=disable_decoding)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 25, in _read_response
+    raw = self._buffer.readline()
+          ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 115, in readline
+    self._read_from_socket()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 68, in _read_from_socket
+    raise ConnectionError(SERVER_CLOSED_CONNECTION_ERROR)
+redis.exceptions.ConnectionError: Connection closed by server.
+2026-11-12T15:44:03.670+07:00 - main - ERROR - WS pub/sub loop error, retry in 3s: Connection closed by server.
+Traceback (most recent call last):
+  File "C:\software_TDS\Supra_WMS\backend\app\socket\ws_manager.py", line 76, in _redis_pubsub_loop
+    pubsub.psubscribe(warehouse_pattern, masan_pattern)
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 893, in psubscribe
+    ret_val = self.execute_command("PSUBSCRIBE", *new_patterns.keys())
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 761, in execute_command
+    self.connection = self.connection_pool.get_connection(
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 1074, in get_connection
+    connection.connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 289, in connect
+    self.on_connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 391, in on_connect
+    self.read_response()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 512, in read_response
+    response = self._parser.read_response(disable_decoding=disable_decoding)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 15, in read_response
+    result = self._read_response(disable_decoding=disable_decoding)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 25, in _read_response
+    raw = self._buffer.readline()
+          ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 115, in readline
+    self._read_from_socket()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 68, in _read_from_socket
+    raise ConnectionError(SERVER_CLOSED_CONNECTION_ERROR)
+redis.exceptions.ConnectionError: Connection closed by server.
+2026-11-12T15:44:06.704+07:00 - main - ERROR - WS pub/sub loop error, retry in 3s: Connection closed by server.
+Traceback (most recent call last):
+  File "C:\software_TDS\Supra_WMS\backend\app\socket\ws_manager.py", line 76, in _redis_pubsub_loop
+    pubsub.psubscribe(warehouse_pattern, masan_pattern)
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 893, in psubscribe
+    ret_val = self.execute_command("PSUBSCRIBE", *new_patterns.keys())
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 761, in execute_command
+    self.connection = self.connection_pool.get_connection(
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 1074, in get_connection
+    connection.connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 289, in connect
+    self.on_connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 391, in on_connect
+    self.read_response()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 512, in read_response
+    response = self._parser.read_response(disable_decoding=disable_decoding)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 15, in read_response
+    result = self._read_response(disable_decoding=disable_decoding)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 25, in _read_response
+    raw = self._buffer.readline()
+          ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 115, in readline
+    self._read_from_socket()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 68, in _read_from_socket
+    raise ConnectionError(SERVER_CLOSED_CONNECTION_ERROR)
+redis.exceptions.ConnectionError: Connection closed by server.
+2026-11-12T15:44:09.734+07:00 - main - ERROR - WS pub/sub loop error, retry in 3s: Connection closed by server.
+Traceback (most recent call last):
+  File "C:\software_TDS\Supra_WMS\backend\app\socket\ws_manager.py", line 76, in _redis_pubsub_loop
+    pubsub.psubscribe(warehouse_pattern, masan_pattern)
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 893, in psubscribe
+    ret_val = self.execute_command("PSUBSCRIBE", *new_patterns.keys())
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 761, in execute_command
+    self.connection = self.connection_pool.get_connection(
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 1074, in get_connection
+    connection.connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 289, in connect
+    self.on_connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 391, in on_connect
+    self.read_response()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 512, in read_response
+    response = self._parser.read_response(disable_decoding=disable_decoding)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 15, in read_response
+    result = self._read_response(disable_decoding=disable_decoding)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 25, in _read_response
+    raw = self._buffer.readline()
+          ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 115, in readline
+    self._read_from_socket()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 68, in _read_from_socket
+    raise ConnectionError(SERVER_CLOSED_CONNECTION_ERROR)
+redis.exceptions.ConnectionError: Connection closed by server.
+2026-11-12T15:44:12.760+07:00 - main - ERROR - WS pub/sub loop error, retry in 3s: Connection closed by server.
+Traceback (most recent call last):
+  File "C:\software_TDS\Supra_WMS\backend\app\socket\ws_manager.py", line 76, in _redis_pubsub_loop
+    pubsub.psubscribe(warehouse_pattern, masan_pattern)
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 893, in psubscribe
+    ret_val = self.execute_command("PSUBSCRIBE", *new_patterns.keys())
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 761, in execute_command
+    self.connection = self.connection_pool.get_connection(
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 1074, in get_connection
+    connection.connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 289, in connect
+    self.on_connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 391, in on_connect
+    self.read_response()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 512, in read_response
+    response = self._parser.read_response(disable_decoding=disable_decoding)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 15, in read_response
+    result = self._read_response(disable_decoding=disable_decoding)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 25, in _read_response
+    raw = self._buffer.readline()
+          ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 115, in readline
+    self._read_from_socket()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 68, in _read_from_socket
+    raise ConnectionError(SERVER_CLOSED_CONNECTION_ERROR)
+redis.exceptions.ConnectionError: Connection closed by server.
+2026-11-12T15:44:15.781+07:00 - main - ERROR - WS pub/sub loop error, retry in 3s: Connection closed by server.
+Traceback (most recent call last):
+  File "C:\software_TDS\Supra_WMS\backend\app\socket\ws_manager.py", line 76, in _redis_pubsub_loop
+    pubsub.psubscribe(warehouse_pattern, masan_pattern)
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 893, in psubscribe
+    ret_val = self.execute_command("PSUBSCRIBE", *new_patterns.keys())
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 761, in execute_command
+    self.connection = self.connection_pool.get_connection(
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 1074, in get_connection
+    connection.connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 289, in connect
+    self.on_connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 391, in on_connect
+    self.read_response()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 512, in read_response
+    response = self._parser.read_response(disable_decoding=disable_decoding)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 15, in read_response
+    result = self._read_response(disable_decoding=disable_decoding)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 25, in _read_response
+    raw = self._buffer.readline()
+          ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 115, in readline
+    self._read_from_socket()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 68, in _read_from_socket
+    raise ConnectionError(SERVER_CLOSED_CONNECTION_ERROR)
+redis.exceptions.ConnectionError: Connection closed by server.
+2026-11-12T15:44:18.808+07:00 - main - ERROR - WS pub/sub loop error, retry in 3s: Connection closed by server.
+Traceback (most recent call last):
+  File "C:\software_TDS\Supra_WMS\backend\app\socket\ws_manager.py", line 76, in _redis_pubsub_loop
+    pubsub.psubscribe(warehouse_pattern, masan_pattern)
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 893, in psubscribe
+    ret_val = self.execute_command("PSUBSCRIBE", *new_patterns.keys())
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 761, in execute_command
+    self.connection = self.connection_pool.get_connection(
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 1074, in get_connection
+    connection.connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 289, in connect
+    self.on_connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 391, in on_connect
+    self.read_response()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 512, in read_response
+    response = self._parser.read_response(disable_decoding=disable_decoding)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 15, in read_response
+    result = self._read_response(disable_decoding=disable_decoding)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 25, in _read_response
+    raw = self._buffer.readline()
+          ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 115, in readline
+    self._read_from_socket()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 68, in _read_from_socket
+    raise ConnectionError(SERVER_CLOSED_CONNECTION_ERROR)
+redis.exceptions.ConnectionError: Connection closed by server.
+2026-11-12T15:44:21.842+07:00 - main - ERROR - WS pub/sub loop error, retry in 3s: Connection closed by server.
+Traceback (most recent call last):
+  File "C:\software_TDS\Supra_WMS\backend\app\socket\ws_manager.py", line 76, in _redis_pubsub_loop
+    pubsub.psubscribe(warehouse_pattern, masan_pattern)
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 893, in psubscribe
+    ret_val = self.execute_command("PSUBSCRIBE", *new_patterns.keys())
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 761, in execute_command
+    self.connection = self.connection_pool.get_connection(
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 1074, in get_connection
+    connection.connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 289, in connect
+    self.on_connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 391, in on_connect
+    self.read_response()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 512, in read_response
+    response = self._parser.read_response(disable_decoding=disable_decoding)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 15, in read_response
+    result = self._read_response(disable_decoding=disable_decoding)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 25, in _read_response
+    raw = self._buffer.readline()
+          ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 115, in readline
+    self._read_from_socket()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 68, in _read_from_socket
+    raise ConnectionError(SERVER_CLOSED_CONNECTION_ERROR)
+redis.exceptions.ConnectionError: Connection closed by server.
+2026-11-12T15:44:24.877+07:00 - main - ERROR - WS pub/sub loop error, retry in 3s: Connection closed by server.
+Traceback (most recent call last):
+  File "C:\software_TDS\Supra_WMS\backend\app\socket\ws_manager.py", line 76, in _redis_pubsub_loop
+    pubsub.psubscribe(warehouse_pattern, masan_pattern)
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 893, in psubscribe
+    ret_val = self.execute_command("PSUBSCRIBE", *new_patterns.keys())
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 761, in execute_command
+    self.connection = self.connection_pool.get_connection(
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 1074, in get_connection
+    connection.connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 289, in connect
+    self.on_connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 391, in on_connect
+    self.read_response()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 512, in read_response
+    response = self._parser.read_response(disable_decoding=disable_decoding)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 15, in read_response
+    result = self._read_response(disable_decoding=disable_decoding)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 25, in _read_response
+    raw = self._buffer.readline()
+          ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 115, in readline
+    self._read_from_socket()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 68, in _read_from_socket
+    raise ConnectionError(SERVER_CLOSED_CONNECTION_ERROR)
+redis.exceptions.ConnectionError: Connection closed by server.
+2026-11-12T15:44:27.897+07:00 - main - ERROR - WS pub/sub loop error, retry in 3s: Connection closed by server.
+Traceback (most recent call last):
+  File "C:\software_TDS\Supra_WMS\backend\app\socket\ws_manager.py", line 76, in _redis_pubsub_loop
+    pubsub.psubscribe(warehouse_pattern, masan_pattern)
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 893, in psubscribe
+    ret_val = self.execute_command("PSUBSCRIBE", *new_patterns.keys())
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 761, in execute_command
+    self.connection = self.connection_pool.get_connection(
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 1074, in get_connection
+    connection.connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 289, in connect
+    self.on_connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 391, in on_connect
+    self.read_response()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 512, in read_response
+    response = self._parser.read_response(disable_decoding=disable_decoding)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 15, in read_response
+    result = self._read_response(disable_decoding=disable_decoding)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 25, in _read_response
+    raw = self._buffer.readline()
+          ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 115, in readline
+    self._read_from_socket()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 68, in _read_from_socket
+    raise ConnectionError(SERVER_CLOSED_CONNECTION_ERROR)
+redis.exceptions.ConnectionError: Connection closed by server.
+2026-11-12T15:44:30.942+07:00 - main - ERROR - WS pub/sub loop error, retry in 3s: Connection closed by server.
+Traceback (most recent call last):
+  File "C:\software_TDS\Supra_WMS\backend\app\socket\ws_manager.py", line 76, in _redis_pubsub_loop
+    pubsub.psubscribe(warehouse_pattern, masan_pattern)
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 893, in psubscribe
+    ret_val = self.execute_command("PSUBSCRIBE", *new_patterns.keys())
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 761, in execute_command
+    self.connection = self.connection_pool.get_connection(
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 1074, in get_connection
+    connection.connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 289, in connect
+    self.on_connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 391, in on_connect
+    self.read_response()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 512, in read_response
+    response = self._parser.read_response(disable_decoding=disable_decoding)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 15, in read_response
+    result = self._read_response(disable_decoding=disable_decoding)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 25, in _read_response
+    raw = self._buffer.readline()
+          ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 115, in readline
+    self._read_from_socket()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 68, in _read_from_socket
+    raise ConnectionError(SERVER_CLOSED_CONNECTION_ERROR)
+redis.exceptions.ConnectionError: Connection closed by server.
+2026-11-12T15:44:33.968+07:00 - main - ERROR - WS pub/sub loop error, retry in 3s: Connection closed by server.
+Traceback (most recent call last):
+  File "C:\software_TDS\Supra_WMS\backend\app\socket\ws_manager.py", line 76, in _redis_pubsub_loop
+    pubsub.psubscribe(warehouse_pattern, masan_pattern)
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 893, in psubscribe
+    ret_val = self.execute_command("PSUBSCRIBE", *new_patterns.keys())
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 761, in execute_command
+    self.connection = self.connection_pool.get_connection(
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 1074, in get_connection
+    connection.connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 289, in connect
+    self.on_connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 391, in on_connect
+    self.read_response()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 512, in read_response
+    response = self._parser.read_response(disable_decoding=disable_decoding)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 15, in read_response
+    result = self._read_response(disable_decoding=disable_decoding)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 25, in _read_response
+    raw = self._buffer.readline()
+          ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 115, in readline
+    self._read_from_socket()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 68, in _read_from_socket
+    raise ConnectionError(SERVER_CLOSED_CONNECTION_ERROR)
+redis.exceptions.ConnectionError: Connection closed by server.
+2026-11-12T15:44:36.992+07:00 - main - ERROR - WS pub/sub loop error, retry in 3s: Connection closed by server.
+Traceback (most recent call last):
+  File "C:\software_TDS\Supra_WMS\backend\app\socket\ws_manager.py", line 76, in _redis_pubsub_loop
+    pubsub.psubscribe(warehouse_pattern, masan_pattern)
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 893, in psubscribe
+    ret_val = self.execute_command("PSUBSCRIBE", *new_patterns.keys())
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 761, in execute_command
+    self.connection = self.connection_pool.get_connection(
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 1074, in get_connection
+    connection.connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 289, in connect
+    self.on_connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 391, in on_connect
+    self.read_response()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 512, in read_response
+    response = self._parser.read_response(disable_decoding=disable_decoding)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 15, in read_response
+    result = self._read_response(disable_decoding=disable_decoding)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 25, in _read_response
+    raw = self._buffer.readline()
+          ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 115, in readline
+    self._read_from_socket()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 68, in _read_from_socket
+    raise ConnectionError(SERVER_CLOSED_CONNECTION_ERROR)
+redis.exceptions.ConnectionError: Connection closed by server.
+2026-11-12T15:44:40.034+07:00 - main - ERROR - WS pub/sub loop error, retry in 3s: Connection closed by server.
+Traceback (most recent call last):
+  File "C:\software_TDS\Supra_WMS\backend\app\socket\ws_manager.py", line 76, in _redis_pubsub_loop
+    pubsub.psubscribe(warehouse_pattern, masan_pattern)
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 893, in psubscribe
+    ret_val = self.execute_command("PSUBSCRIBE", *new_patterns.keys())
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 761, in execute_command
+    self.connection = self.connection_pool.get_connection(
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 1074, in get_connection
+    connection.connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 289, in connect
+    self.on_connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 391, in on_connect
+    self.read_response()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 512, in read_response
+    response = self._parser.read_response(disable_decoding=disable_decoding)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 15, in read_response
+    result = self._read_response(disable_decoding=disable_decoding)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 25, in _read_response
+    raw = self._buffer.readline()
+          ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 115, in readline
+    self._read_from_socket()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 68, in _read_from_socket
+    raise ConnectionError(SERVER_CLOSED_CONNECTION_ERROR)
+redis.exceptions.ConnectionError: Connection closed by server.
+2026-11-12T15:44:43.052+07:00 - main - ERROR - WS pub/sub loop error, retry in 3s: Connection closed by server.
+Traceback (most recent call last):
+  File "C:\software_TDS\Supra_WMS\backend\app\socket\ws_manager.py", line 76, in _redis_pubsub_loop
+    pubsub.psubscribe(warehouse_pattern, masan_pattern)
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 893, in psubscribe
+    ret_val = self.execute_command("PSUBSCRIBE", *new_patterns.keys())
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 761, in execute_command
+    self.connection = self.connection_pool.get_connection(
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 1074, in get_connection
+    connection.connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 289, in connect
+    self.on_connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 391, in on_connect
+    self.read_response()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 512, in read_response
+    response = self._parser.read_response(disable_decoding=disable_decoding)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 15, in read_response
+    result = self._read_response(disable_decoding=disable_decoding)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 25, in _read_response
+    raw = self._buffer.readline()
+          ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 115, in readline
+    self._read_from_socket()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 68, in _read_from_socket
+    raise ConnectionError(SERVER_CLOSED_CONNECTION_ERROR)
+redis.exceptions.ConnectionError: Connection closed by server.
+2026-11-12T15:44:46.079+07:00 - main - ERROR - WS pub/sub loop error, retry in 3s: Connection closed by server.
+Traceback (most recent call last):
+  File "C:\software_TDS\Supra_WMS\backend\app\socket\ws_manager.py", line 76, in _redis_pubsub_loop
+    pubsub.psubscribe(warehouse_pattern, masan_pattern)
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 893, in psubscribe
+    ret_val = self.execute_command("PSUBSCRIBE", *new_patterns.keys())
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 761, in execute_command
+    self.connection = self.connection_pool.get_connection(
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 1074, in get_connection
+    connection.connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 289, in connect
+    self.on_connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 391, in on_connect
+    self.read_response()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 512, in read_response
+    response = self._parser.read_response(disable_decoding=disable_decoding)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 15, in read_response
+    result = self._read_response(disable_decoding=disable_decoding)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 25, in _read_response
+    raw = self._buffer.readline()
+          ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 115, in readline
+    self._read_from_socket()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 68, in _read_from_socket
+    raise ConnectionError(SERVER_CLOSED_CONNECTION_ERROR)
+redis.exceptions.ConnectionError: Connection closed by server.
+2026-11-12T15:44:49.095+07:00 - main - ERROR - WS pub/sub loop error, retry in 3s: Connection closed by server.
+Traceback (most recent call last):
+  File "C:\software_TDS\Supra_WMS\backend\app\socket\ws_manager.py", line 76, in _redis_pubsub_loop
+    pubsub.psubscribe(warehouse_pattern, masan_pattern)
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 893, in psubscribe
+    ret_val = self.execute_command("PSUBSCRIBE", *new_patterns.keys())
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 761, in execute_command
+    self.connection = self.connection_pool.get_connection(
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 1074, in get_connection
+    connection.connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 289, in connect
+    self.on_connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 391, in on_connect
+    self.read_response()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 512, in read_response
+    response = self._parser.read_response(disable_decoding=disable_decoding)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 15, in read_response
+    result = self._read_response(disable_decoding=disable_decoding)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 25, in _read_response
+    raw = self._buffer.readline()
+          ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 115, in readline
+    self._read_from_socket()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 68, in _read_from_socket
+    raise ConnectionError(SERVER_CLOSED_CONNECTION_ERROR)
+redis.exceptions.ConnectionError: Connection closed by server.
+2026-11-12T15:44:52.118+07:00 - main - ERROR - WS pub/sub loop error, retry in 3s: Connection closed by server.
+Traceback (most recent call last):
+  File "C:\software_TDS\Supra_WMS\backend\app\socket\ws_manager.py", line 76, in _redis_pubsub_loop
+    pubsub.psubscribe(warehouse_pattern, masan_pattern)
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 893, in psubscribe
+    ret_val = self.execute_command("PSUBSCRIBE", *new_patterns.keys())
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 761, in execute_command
+    self.connection = self.connection_pool.get_connection(
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 1074, in get_connection
+    connection.connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 289, in connect
+    self.on_connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 391, in on_connect
+    self.read_response()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 512, in read_response
+    response = self._parser.read_response(disable_decoding=disable_decoding)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 15, in read_response
+    result = self._read_response(disable_decoding=disable_decoding)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 25, in _read_response
+    raw = self._buffer.readline()
+          ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 115, in readline
+    self._read_from_socket()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 68, in _read_from_socket
+    raise ConnectionError(SERVER_CLOSED_CONNECTION_ERROR)
+redis.exceptions.ConnectionError: Connection closed by server.
+2026-11-12T15:44:55.161+07:00 - main - ERROR - WS pub/sub loop error, retry in 3s: Connection closed by server.
+Traceback (most recent call last):
+  File "C:\software_TDS\Supra_WMS\backend\app\socket\ws_manager.py", line 76, in _redis_pubsub_loop
+    pubsub.psubscribe(warehouse_pattern, masan_pattern)
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 893, in psubscribe
+    ret_val = self.execute_command("PSUBSCRIBE", *new_patterns.keys())
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 761, in execute_command
+    self.connection = self.connection_pool.get_connection(
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 1074, in get_connection
+    connection.connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 289, in connect
+    self.on_connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 391, in on_connect
+    self.read_response()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 512, in read_response
+    response = self._parser.read_response(disable_decoding=disable_decoding)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 15, in read_response
+    result = self._read_response(disable_decoding=disable_decoding)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 25, in _read_response
+    raw = self._buffer.readline()
+          ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 115, in readline
+    self._read_from_socket()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 68, in _read_from_socket
+    raise ConnectionError(SERVER_CLOSED_CONNECTION_ERROR)
+redis.exceptions.ConnectionError: Connection closed by server.
+2026-11-12T15:44:58.171+07:00 - main - ERROR - WS pub/sub loop error, retry in 3s: Connection closed by server.
+Traceback (most recent call last):
+  File "C:\software_TDS\Supra_WMS\backend\app\socket\ws_manager.py", line 76, in _redis_pubsub_loop
+    pubsub.psubscribe(warehouse_pattern, masan_pattern)
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 893, in psubscribe
+    ret_val = self.execute_command("PSUBSCRIBE", *new_patterns.keys())
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 761, in execute_command
+    self.connection = self.connection_pool.get_connection(
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 1074, in get_connection
+    connection.connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 289, in connect
+    self.on_connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 391, in on_connect
+    self.read_response()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 512, in read_response
+    response = self._parser.read_response(disable_decoding=disable_decoding)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 15, in read_response
+    result = self._read_response(disable_decoding=disable_decoding)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 25, in _read_response
+    raw = self._buffer.readline()
+          ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 115, in readline
+    self._read_from_socket()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 68, in _read_from_socket
+    raise ConnectionError(SERVER_CLOSED_CONNECTION_ERROR)
+redis.exceptions.ConnectionError: Connection closed by server.
+2026-11-12T15:45:01.178+07:00 - main - ERROR - WS pub/sub loop error, retry in 3s: Connection closed by server.
+Traceback (most recent call last):
+  File "C:\software_TDS\Supra_WMS\backend\app\socket\ws_manager.py", line 76, in _redis_pubsub_loop
+    pubsub.psubscribe(warehouse_pattern, masan_pattern)
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 893, in psubscribe
+    ret_val = self.execute_command("PSUBSCRIBE", *new_patterns.keys())
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 761, in execute_command
+    self.connection = self.connection_pool.get_connection(
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 1074, in get_connection
+    connection.connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 289, in connect
+    self.on_connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 391, in on_connect
+    self.read_response()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 512, in read_response
+    response = self._parser.read_response(disable_decoding=disable_decoding)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 15, in read_response
+    result = self._read_response(disable_decoding=disable_decoding)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 25, in _read_response
+    raw = self._buffer.readline()
+          ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 115, in readline
+    self._read_from_socket()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 68, in _read_from_socket
+    raise ConnectionError(SERVER_CLOSED_CONNECTION_ERROR)
+redis.exceptions.ConnectionError: Connection closed by server.
+2026-11-12T15:45:04.197+07:00 - main - ERROR - WS pub/sub loop error, retry in 3s: Connection closed by server.
+Traceback (most recent call last):
+  File "C:\software_TDS\Supra_WMS\backend\app\socket\ws_manager.py", line 76, in _redis_pubsub_loop
+    pubsub.psubscribe(warehouse_pattern, masan_pattern)
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 893, in psubscribe
+    ret_val = self.execute_command("PSUBSCRIBE", *new_patterns.keys())
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 761, in execute_command
+    self.connection = self.connection_pool.get_connection(
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 1074, in get_connection
+    connection.connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 289, in connect
+    self.on_connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 391, in on_connect
+    self.read_response()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 512, in read_response
+    response = self._parser.read_response(disable_decoding=disable_decoding)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 15, in read_response
+    result = self._read_response(disable_decoding=disable_decoding)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 25, in _read_response
+    raw = self._buffer.readline()
+          ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 115, in readline
+    self._read_from_socket()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 68, in _read_from_socket
+    raise ConnectionError(SERVER_CLOSED_CONNECTION_ERROR)
+redis.exceptions.ConnectionError: Connection closed by server.
+2026-11-12T15:45:07.223+07:00 - main - ERROR - WS pub/sub loop error, retry in 3s: Connection closed by server.
+Traceback (most recent call last):
+  File "C:\software_TDS\Supra_WMS\backend\app\socket\ws_manager.py", line 76, in _redis_pubsub_loop
+    pubsub.psubscribe(warehouse_pattern, masan_pattern)
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 893, in psubscribe
+    ret_val = self.execute_command("PSUBSCRIBE", *new_patterns.keys())
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 761, in execute_command
+    self.connection = self.connection_pool.get_connection(
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 1074, in get_connection
+    connection.connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 289, in connect
+    self.on_connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 391, in on_connect
+    self.read_response()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 512, in read_response
+    response = self._parser.read_response(disable_decoding=disable_decoding)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 15, in read_response
+    result = self._read_response(disable_decoding=disable_decoding)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 25, in _read_response
+    raw = self._buffer.readline()
+          ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 115, in readline
+    self._read_from_socket()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 68, in _read_from_socket
+    raise ConnectionError(SERVER_CLOSED_CONNECTION_ERROR)
+redis.exceptions.ConnectionError: Connection closed by server.
+2026-11-12T15:45:10.230+07:00 - main - ERROR - WS pub/sub loop error, retry in 3s: Connection closed by server.
+Traceback (most recent call last):
+  File "C:\software_TDS\Supra_WMS\backend\app\socket\ws_manager.py", line 76, in _redis_pubsub_loop
+    pubsub.psubscribe(warehouse_pattern, masan_pattern)
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 893, in psubscribe
+    ret_val = self.execute_command("PSUBSCRIBE", *new_patterns.keys())
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 761, in execute_command
+    self.connection = self.connection_pool.get_connection(
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 1074, in get_connection
+    connection.connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 289, in connect
+    self.on_connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 391, in on_connect
+    self.read_response()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 512, in read_response
+    response = self._parser.read_response(disable_decoding=disable_decoding)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 15, in read_response
+    result = self._read_response(disable_decoding=disable_decoding)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 25, in _read_response
+    raw = self._buffer.readline()
+          ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 115, in readline
+    self._read_from_socket()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 68, in _read_from_socket
+    raise ConnectionError(SERVER_CLOSED_CONNECTION_ERROR)
+redis.exceptions.ConnectionError: Connection closed by server.
+2026-11-12T15:45:13.263+07:00 - main - ERROR - WS pub/sub loop error, retry in 3s: Connection closed by server.
+Traceback (most recent call last):
+  File "C:\software_TDS\Supra_WMS\backend\app\socket\ws_manager.py", line 76, in _redis_pubsub_loop
+    pubsub.psubscribe(warehouse_pattern, masan_pattern)
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 893, in psubscribe
+    ret_val = self.execute_command("PSUBSCRIBE", *new_patterns.keys())
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 761, in execute_command
+    self.connection = self.connection_pool.get_connection(
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 1074, in get_connection
+    connection.connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 289, in connect
+    self.on_connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 391, in on_connect
+    self.read_response()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 512, in read_response
+    response = self._parser.read_response(disable_decoding=disable_decoding)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 15, in read_response
+    result = self._read_response(disable_decoding=disable_decoding)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 25, in _read_response
+    raw = self._buffer.readline()
+          ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 115, in readline
+    self._read_from_socket()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 68, in _read_from_socket
+    raise ConnectionError(SERVER_CLOSED_CONNECTION_ERROR)
+redis.exceptions.ConnectionError: Connection closed by server.
+2026-11-12T15:45:16.289+07:00 - main - ERROR - WS pub/sub loop error, retry in 3s: Connection closed by server.
+Traceback (most recent call last):
+  File "C:\software_TDS\Supra_WMS\backend\app\socket\ws_manager.py", line 76, in _redis_pubsub_loop
+    pubsub.psubscribe(warehouse_pattern, masan_pattern)
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 893, in psubscribe
+    ret_val = self.execute_command("PSUBSCRIBE", *new_patterns.keys())
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 761, in execute_command
+    self.connection = self.connection_pool.get_connection(
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 1074, in get_connection
+    connection.connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 289, in connect
+    self.on_connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 391, in on_connect
+    self.read_response()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 512, in read_response
+    response = self._parser.read_response(disable_decoding=disable_decoding)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 15, in read_response
+    result = self._read_response(disable_decoding=disable_decoding)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 25, in _read_response
+    raw = self._buffer.readline()
+          ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 115, in readline
+    self._read_from_socket()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 68, in _read_from_socket
+    raise ConnectionError(SERVER_CLOSED_CONNECTION_ERROR)
+redis.exceptions.ConnectionError: Connection closed by server.
+2026-11-12T15:45:19.317+07:00 - main - ERROR - WS pub/sub loop error, retry in 3s: Connection closed by server.
+Traceback (most recent call last):
+  File "C:\software_TDS\Supra_WMS\backend\app\socket\ws_manager.py", line 76, in _redis_pubsub_loop
+    pubsub.psubscribe(warehouse_pattern, masan_pattern)
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 893, in psubscribe
+    ret_val = self.execute_command("PSUBSCRIBE", *new_patterns.keys())
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 761, in execute_command
+    self.connection = self.connection_pool.get_connection(
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 1074, in get_connection
+    connection.connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 289, in connect
+    self.on_connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 391, in on_connect
+    self.read_response()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 512, in read_response
+    response = self._parser.read_response(disable_decoding=disable_decoding)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 15, in read_response
+    result = self._read_response(disable_decoding=disable_decoding)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 25, in _read_response
+    raw = self._buffer.readline()
+          ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 115, in readline
+    self._read_from_socket()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 68, in _read_from_socket
+    raise ConnectionError(SERVER_CLOSED_CONNECTION_ERROR)
+redis.exceptions.ConnectionError: Connection closed by server.
+2026-11-12T15:45:22.320+07:00 - main - ERROR - WS pub/sub loop error, retry in 3s: Connection closed by server.
+Traceback (most recent call last):
+  File "C:\software_TDS\Supra_WMS\backend\app\socket\ws_manager.py", line 76, in _redis_pubsub_loop
+    pubsub.psubscribe(warehouse_pattern, masan_pattern)
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 893, in psubscribe
+    ret_val = self.execute_command("PSUBSCRIBE", *new_patterns.keys())
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 761, in execute_command
+    self.connection = self.connection_pool.get_connection(
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 1074, in get_connection
+    connection.connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 289, in connect
+    self.on_connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 391, in on_connect
+    self.read_response()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 512, in read_response
+    response = self._parser.read_response(disable_decoding=disable_decoding)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 15, in read_response
+    result = self._read_response(disable_decoding=disable_decoding)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 25, in _read_response
+    raw = self._buffer.readline()
+          ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 115, in readline
+    self._read_from_socket()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 68, in _read_from_socket
+    raise ConnectionError(SERVER_CLOSED_CONNECTION_ERROR)
+redis.exceptions.ConnectionError: Connection closed by server.
+2026-11-12T15:45:25.341+07:00 - main - ERROR - WS pub/sub loop error, retry in 3s: Connection closed by server.
+Traceback (most recent call last):
+  File "C:\software_TDS\Supra_WMS\backend\app\socket\ws_manager.py", line 76, in _redis_pubsub_loop
+    pubsub.psubscribe(warehouse_pattern, masan_pattern)
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 893, in psubscribe
+    ret_val = self.execute_command("PSUBSCRIBE", *new_patterns.keys())
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 761, in execute_command
+    self.connection = self.connection_pool.get_connection(
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 1074, in get_connection
+    connection.connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 289, in connect
+    self.on_connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 391, in on_connect
+    self.read_response()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 512, in read_response
+    response = self._parser.read_response(disable_decoding=disable_decoding)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 15, in read_response
+    result = self._read_response(disable_decoding=disable_decoding)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 25, in _read_response
+    raw = self._buffer.readline()
+          ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 115, in readline
+    self._read_from_socket()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 68, in _read_from_socket
+    raise ConnectionError(SERVER_CLOSED_CONNECTION_ERROR)
+redis.exceptions.ConnectionError: Connection closed by server.
+2026-11-12T15:45:28.366+07:00 - main - ERROR - WS pub/sub loop error, retry in 3s: Connection closed by server.
+Traceback (most recent call last):
+  File "C:\software_TDS\Supra_WMS\backend\app\socket\ws_manager.py", line 76, in _redis_pubsub_loop
+    pubsub.psubscribe(warehouse_pattern, masan_pattern)
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 893, in psubscribe
+    ret_val = self.execute_command("PSUBSCRIBE", *new_patterns.keys())
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 761, in execute_command
+    self.connection = self.connection_pool.get_connection(
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 1074, in get_connection
+    connection.connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 289, in connect
+    self.on_connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 391, in on_connect
+    self.read_response()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 512, in read_response
+    response = self._parser.read_response(disable_decoding=disable_decoding)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 15, in read_response
+    result = self._read_response(disable_decoding=disable_decoding)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 25, in _read_response
+    raw = self._buffer.readline()
+          ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 115, in readline
+    self._read_from_socket()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 68, in _read_from_socket
+    raise ConnectionError(SERVER_CLOSED_CONNECTION_ERROR)
+redis.exceptions.ConnectionError: Connection closed by server.
+2026-11-12T15:45:31.404+07:00 - main - ERROR - WS pub/sub loop error, retry in 3s: Connection closed by server.
+Traceback (most recent call last):
+  File "C:\software_TDS\Supra_WMS\backend\app\socket\ws_manager.py", line 76, in _redis_pubsub_loop
+    pubsub.psubscribe(warehouse_pattern, masan_pattern)
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 893, in psubscribe
+    ret_val = self.execute_command("PSUBSCRIBE", *new_patterns.keys())
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 761, in execute_command
+    self.connection = self.connection_pool.get_connection(
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 1074, in get_connection
+    connection.connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 289, in connect
+    self.on_connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 391, in on_connect
+    self.read_response()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 512, in read_response
+    response = self._parser.read_response(disable_decoding=disable_decoding)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 15, in read_response
+    result = self._read_response(disable_decoding=disable_decoding)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 25, in _read_response
+    raw = self._buffer.readline()
+          ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 115, in readline
+    self._read_from_socket()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 68, in _read_from_socket
+    raise ConnectionError(SERVER_CLOSED_CONNECTION_ERROR)
+redis.exceptions.ConnectionError: Connection closed by server.
+2026-11-12T15:45:34.432+07:00 - main - ERROR - WS pub/sub loop error, retry in 3s: Connection closed by server.
+Traceback (most recent call last):
+  File "C:\software_TDS\Supra_WMS\backend\app\socket\ws_manager.py", line 76, in _redis_pubsub_loop
+    pubsub.psubscribe(warehouse_pattern, masan_pattern)
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 893, in psubscribe
+    ret_val = self.execute_command("PSUBSCRIBE", *new_patterns.keys())
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 761, in execute_command
+    self.connection = self.connection_pool.get_connection(
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 1074, in get_connection
+    connection.connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 289, in connect
+    self.on_connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 391, in on_connect
+    self.read_response()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 512, in read_response
+    response = self._parser.read_response(disable_decoding=disable_decoding)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 15, in read_response
+    result = self._read_response(disable_decoding=disable_decoding)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 25, in _read_response
+    raw = self._buffer.readline()
+          ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 115, in readline
+    self._read_from_socket()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 68, in _read_from_socket
+    raise ConnectionError(SERVER_CLOSED_CONNECTION_ERROR)
+redis.exceptions.ConnectionError: Connection closed by server.
+2026-11-12T15:45:37.475+07:00 - main - ERROR - WS pub/sub loop error, retry in 3s: Connection closed by server.
+Traceback (most recent call last):
+  File "C:\software_TDS\Supra_WMS\backend\app\socket\ws_manager.py", line 76, in _redis_pubsub_loop
+    pubsub.psubscribe(warehouse_pattern, masan_pattern)
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 893, in psubscribe
+    ret_val = self.execute_command("PSUBSCRIBE", *new_patterns.keys())
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 761, in execute_command
+    self.connection = self.connection_pool.get_connection(
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 1074, in get_connection
+    connection.connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 289, in connect
+    self.on_connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 391, in on_connect
+    self.read_response()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 512, in read_response
+    response = self._parser.read_response(disable_decoding=disable_decoding)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 15, in read_response
+    result = self._read_response(disable_decoding=disable_decoding)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 25, in _read_response
+    raw = self._buffer.readline()
+          ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 115, in readline
+    self._read_from_socket()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 68, in _read_from_socket
+    raise ConnectionError(SERVER_CLOSED_CONNECTION_ERROR)
+redis.exceptions.ConnectionError: Connection closed by server.
+2026-11-12T15:45:40.485+07:00 - main - ERROR - WS pub/sub loop error, retry in 3s: Connection closed by server.
+Traceback (most recent call last):
+  File "C:\software_TDS\Supra_WMS\backend\app\socket\ws_manager.py", line 76, in _redis_pubsub_loop
+    pubsub.psubscribe(warehouse_pattern, masan_pattern)
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 893, in psubscribe
+    ret_val = self.execute_command("PSUBSCRIBE", *new_patterns.keys())
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 761, in execute_command
+    self.connection = self.connection_pool.get_connection(
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 1074, in get_connection
+    connection.connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 289, in connect
+    self.on_connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 391, in on_connect
+    self.read_response()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 512, in read_response
+    response = self._parser.read_response(disable_decoding=disable_decoding)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 15, in read_response
+    result = self._read_response(disable_decoding=disable_decoding)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 25, in _read_response
+    raw = self._buffer.readline()
+          ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 115, in readline
+    self._read_from_socket()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 68, in _read_from_socket
+    raise ConnectionError(SERVER_CLOSED_CONNECTION_ERROR)
+redis.exceptions.ConnectionError: Connection closed by server.
+2026-11-12T15:45:43.518+07:00 - main - ERROR - WS pub/sub loop error, retry in 3s: Connection closed by server.
+Traceback (most recent call last):
+  File "C:\software_TDS\Supra_WMS\backend\app\socket\ws_manager.py", line 76, in _redis_pubsub_loop
+    pubsub.psubscribe(warehouse_pattern, masan_pattern)
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 893, in psubscribe
+    ret_val = self.execute_command("PSUBSCRIBE", *new_patterns.keys())
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 761, in execute_command
+    self.connection = self.connection_pool.get_connection(
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 1074, in get_connection
+    connection.connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 289, in connect
+    self.on_connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 391, in on_connect
+    self.read_response()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 512, in read_response
+    response = self._parser.read_response(disable_decoding=disable_decoding)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 15, in read_response
+    result = self._read_response(disable_decoding=disable_decoding)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 25, in _read_response
+    raw = self._buffer.readline()
+          ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 115, in readline
+    self._read_from_socket()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 68, in _read_from_socket
+    raise ConnectionError(SERVER_CLOSED_CONNECTION_ERROR)
+redis.exceptions.ConnectionError: Connection closed by server.
+2026-11-12T15:45:46.509+07:00 - main - ERROR - WS pub/sub loop error, retry in 3s: Connection closed by server.
+Traceback (most recent call last):
+  File "C:\software_TDS\Supra_WMS\backend\app\socket\ws_manager.py", line 76, in _redis_pubsub_loop
+    pubsub.psubscribe(warehouse_pattern, masan_pattern)
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 893, in psubscribe
+    ret_val = self.execute_command("PSUBSCRIBE", *new_patterns.keys())
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 761, in execute_command
+    self.connection = self.connection_pool.get_connection(
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 1074, in get_connection
+    connection.connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 289, in connect
+    self.on_connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 391, in on_connect
+    self.read_response()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 512, in read_response
+    response = self._parser.read_response(disable_decoding=disable_decoding)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 15, in read_response
+    result = self._read_response(disable_decoding=disable_decoding)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 25, in _read_response
+    raw = self._buffer.readline()
+          ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 115, in readline
+    self._read_from_socket()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 68, in _read_from_socket
+    raise ConnectionError(SERVER_CLOSED_CONNECTION_ERROR)
+redis.exceptions.ConnectionError: Connection closed by server.
+2026-11-12T15:45:49.534+07:00 - main - ERROR - WS pub/sub loop error, retry in 3s: Connection closed by server.
+Traceback (most recent call last):
+  File "C:\software_TDS\Supra_WMS\backend\app\socket\ws_manager.py", line 76, in _redis_pubsub_loop
+    pubsub.psubscribe(warehouse_pattern, masan_pattern)
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 893, in psubscribe
+    ret_val = self.execute_command("PSUBSCRIBE", *new_patterns.keys())
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 761, in execute_command
+    self.connection = self.connection_pool.get_connection(
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 1074, in get_connection
+    connection.connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 289, in connect
+    self.on_connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 391, in on_connect
+    self.read_response()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 512, in read_response
+    response = self._parser.read_response(disable_decoding=disable_decoding)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 15, in read_response
+    result = self._read_response(disable_decoding=disable_decoding)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 25, in _read_response
+    raw = self._buffer.readline()
+          ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 115, in readline
+    self._read_from_socket()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 68, in _read_from_socket
+    raise ConnectionError(SERVER_CLOSED_CONNECTION_ERROR)
+redis.exceptions.ConnectionError: Connection closed by server.
+2026-11-12T15:45:52.547+07:00 - main - ERROR - WS pub/sub loop error, retry in 3s: Connection closed by server.
+Traceback (most recent call last):
+  File "C:\software_TDS\Supra_WMS\backend\app\socket\ws_manager.py", line 76, in _redis_pubsub_loop
+    pubsub.psubscribe(warehouse_pattern, masan_pattern)
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 893, in psubscribe
+    ret_val = self.execute_command("PSUBSCRIBE", *new_patterns.keys())
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 761, in execute_command
+    self.connection = self.connection_pool.get_connection(
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 1074, in get_connection
+    connection.connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 289, in connect
+    self.on_connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 391, in on_connect
+    self.read_response()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 512, in read_response
+    response = self._parser.read_response(disable_decoding=disable_decoding)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 15, in read_response
+    result = self._read_response(disable_decoding=disable_decoding)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 25, in _read_response
+    raw = self._buffer.readline()
+          ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 115, in readline
+    self._read_from_socket()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 68, in _read_from_socket
+    raise ConnectionError(SERVER_CLOSED_CONNECTION_ERROR)
+redis.exceptions.ConnectionError: Connection closed by server.
+2026-11-12T15:45:55.571+07:00 - main - ERROR - WS pub/sub loop error, retry in 3s: Connection closed by server.
+Traceback (most recent call last):
+  File "C:\software_TDS\Supra_WMS\backend\app\socket\ws_manager.py", line 76, in _redis_pubsub_loop
+    pubsub.psubscribe(warehouse_pattern, masan_pattern)
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 893, in psubscribe
+    ret_val = self.execute_command("PSUBSCRIBE", *new_patterns.keys())
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 761, in execute_command
+    self.connection = self.connection_pool.get_connection(
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 1074, in get_connection
+    connection.connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 289, in connect
+    self.on_connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 391, in on_connect
+    self.read_response()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 512, in read_response
+    response = self._parser.read_response(disable_decoding=disable_decoding)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 15, in read_response
+    result = self._read_response(disable_decoding=disable_decoding)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 25, in _read_response
+    raw = self._buffer.readline()
+          ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 115, in readline
+    self._read_from_socket()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 68, in _read_from_socket
+    raise ConnectionError(SERVER_CLOSED_CONNECTION_ERROR)
+redis.exceptions.ConnectionError: Connection closed by server.
+2026-11-12T15:45:58.607+07:00 - main - ERROR - WS pub/sub loop error, retry in 3s: Connection closed by server.
+Traceback (most recent call last):
+  File "C:\software_TDS\Supra_WMS\backend\app\socket\ws_manager.py", line 76, in _redis_pubsub_loop
+    pubsub.psubscribe(warehouse_pattern, masan_pattern)
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 893, in psubscribe
+    ret_val = self.execute_command("PSUBSCRIBE", *new_patterns.keys())
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 761, in execute_command
+    self.connection = self.connection_pool.get_connection(
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 1074, in get_connection
+    connection.connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 289, in connect
+    self.on_connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 391, in on_connect
+    self.read_response()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 512, in read_response
+    response = self._parser.read_response(disable_decoding=disable_decoding)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 15, in read_response
+    result = self._read_response(disable_decoding=disable_decoding)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 25, in _read_response
+    raw = self._buffer.readline()
+          ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 115, in readline
+    self._read_from_socket()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 68, in _read_from_socket
+    raise ConnectionError(SERVER_CLOSED_CONNECTION_ERROR)
+redis.exceptions.ConnectionError: Connection closed by server.
+2026-11-12T15:46:01.630+07:00 - main - ERROR - WS pub/sub loop error, retry in 3s: Connection closed by server.
+Traceback (most recent call last):
+  File "C:\software_TDS\Supra_WMS\backend\app\socket\ws_manager.py", line 76, in _redis_pubsub_loop
+    pubsub.psubscribe(warehouse_pattern, masan_pattern)
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 893, in psubscribe
+    ret_val = self.execute_command("PSUBSCRIBE", *new_patterns.keys())
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 761, in execute_command
+    self.connection = self.connection_pool.get_connection(
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 1074, in get_connection
+    connection.connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 289, in connect
+    self.on_connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 391, in on_connect
+    self.read_response()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 512, in read_response
+    response = self._parser.read_response(disable_decoding=disable_decoding)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 15, in read_response
+    result = self._read_response(disable_decoding=disable_decoding)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 25, in _read_response
+    raw = self._buffer.readline()
+          ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 115, in readline
+    self._read_from_socket()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 68, in _read_from_socket
+    raise ConnectionError(SERVER_CLOSED_CONNECTION_ERROR)
+redis.exceptions.ConnectionError: Connection closed by server.
+2026-11-12T15:46:04.648+07:00 - main - ERROR - WS pub/sub loop error, retry in 3s: Connection closed by server.
+Traceback (most recent call last):
+  File "C:\software_TDS\Supra_WMS\backend\app\socket\ws_manager.py", line 76, in _redis_pubsub_loop
+    pubsub.psubscribe(warehouse_pattern, masan_pattern)
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 893, in psubscribe
+    ret_val = self.execute_command("PSUBSCRIBE", *new_patterns.keys())
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 761, in execute_command
+    self.connection = self.connection_pool.get_connection(
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 1074, in get_connection
+    connection.connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 289, in connect
+    self.on_connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 391, in on_connect
+    self.read_response()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 512, in read_response
+    response = self._parser.read_response(disable_decoding=disable_decoding)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 15, in read_response
+    result = self._read_response(disable_decoding=disable_decoding)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 25, in _read_response
+    raw = self._buffer.readline()
+          ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 115, in readline
+    self._read_from_socket()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 68, in _read_from_socket
+    raise ConnectionError(SERVER_CLOSED_CONNECTION_ERROR)
+redis.exceptions.ConnectionError: Connection closed by server.
+2026-11-12T15:46:07.648+07:00 - main - ERROR - WS pub/sub loop error, retry in 3s: Connection closed by server.
+Traceback (most recent call last):
+  File "C:\software_TDS\Supra_WMS\backend\app\socket\ws_manager.py", line 76, in _redis_pubsub_loop
+    pubsub.psubscribe(warehouse_pattern, masan_pattern)
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 893, in psubscribe
+    ret_val = self.execute_command("PSUBSCRIBE", *new_patterns.keys())
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 761, in execute_command
+    self.connection = self.connection_pool.get_connection(
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 1074, in get_connection
+    connection.connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 289, in connect
+    self.on_connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 391, in on_connect
+    self.read_response()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 512, in read_response
+    response = self._parser.read_response(disable_decoding=disable_decoding)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 15, in read_response
+    result = self._read_response(disable_decoding=disable_decoding)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 25, in _read_response
+    raw = self._buffer.readline()
+          ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 115, in readline
+    self._read_from_socket()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 68, in _read_from_socket
+    raise ConnectionError(SERVER_CLOSED_CONNECTION_ERROR)
+redis.exceptions.ConnectionError: Connection closed by server.
+2026-11-12T15:46:10.677+07:00 - main - ERROR - WS pub/sub loop error, retry in 3s: Connection closed by server.
+Traceback (most recent call last):
+  File "C:\software_TDS\Supra_WMS\backend\app\socket\ws_manager.py", line 76, in _redis_pubsub_loop
+    pubsub.psubscribe(warehouse_pattern, masan_pattern)
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 893, in psubscribe
+    ret_val = self.execute_command("PSUBSCRIBE", *new_patterns.keys())
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 761, in execute_command
+    self.connection = self.connection_pool.get_connection(
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 1074, in get_connection
+    connection.connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 289, in connect
+    self.on_connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 391, in on_connect
+    self.read_response()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 512, in read_response
+    response = self._parser.read_response(disable_decoding=disable_decoding)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 15, in read_response
+    result = self._read_response(disable_decoding=disable_decoding)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 25, in _read_response
+    raw = self._buffer.readline()
+          ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 115, in readline
+    self._read_from_socket()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 68, in _read_from_socket
+    raise ConnectionError(SERVER_CLOSED_CONNECTION_ERROR)
+redis.exceptions.ConnectionError: Connection closed by server.
+2026-11-12T15:46:13.707+07:00 - main - ERROR - WS pub/sub loop error, retry in 3s: Connection closed by server.
+Traceback (most recent call last):
+  File "C:\software_TDS\Supra_WMS\backend\app\socket\ws_manager.py", line 76, in _redis_pubsub_loop
+    pubsub.psubscribe(warehouse_pattern, masan_pattern)
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 893, in psubscribe
+    ret_val = self.execute_command("PSUBSCRIBE", *new_patterns.keys())
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 761, in execute_command
+    self.connection = self.connection_pool.get_connection(
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 1074, in get_connection
+    connection.connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 289, in connect
+    self.on_connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 391, in on_connect
+    self.read_response()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 512, in read_response
+    response = self._parser.read_response(disable_decoding=disable_decoding)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 15, in read_response
+    result = self._read_response(disable_decoding=disable_decoding)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 25, in _read_response
+    raw = self._buffer.readline()
+          ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 115, in readline
+    self._read_from_socket()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 68, in _read_from_socket
+    raise ConnectionError(SERVER_CLOSED_CONNECTION_ERROR)
+redis.exceptions.ConnectionError: Connection closed by server.
+2026-11-12T15:46:16.729+07:00 - main - ERROR - WS pub/sub loop error, retry in 3s: Connection closed by server.
+Traceback (most recent call last):
+  File "C:\software_TDS\Supra_WMS\backend\app\socket\ws_manager.py", line 76, in _redis_pubsub_loop
+    pubsub.psubscribe(warehouse_pattern, masan_pattern)
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 893, in psubscribe
+    ret_val = self.execute_command("PSUBSCRIBE", *new_patterns.keys())
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 761, in execute_command
+    self.connection = self.connection_pool.get_connection(
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 1074, in get_connection
+    connection.connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 289, in connect
+    self.on_connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 391, in on_connect
+    self.read_response()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 512, in read_response
+    response = self._parser.read_response(disable_decoding=disable_decoding)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 15, in read_response
+    result = self._read_response(disable_decoding=disable_decoding)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 25, in _read_response
+    raw = self._buffer.readline()
+          ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 115, in readline
+    self._read_from_socket()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 68, in _read_from_socket
+    raise ConnectionError(SERVER_CLOSED_CONNECTION_ERROR)
+redis.exceptions.ConnectionError: Connection closed by server.
+2026-11-12T15:46:19.747+07:00 - main - ERROR - WS pub/sub loop error, retry in 3s: Connection closed by server.
+Traceback (most recent call last):
+  File "C:\software_TDS\Supra_WMS\backend\app\socket\ws_manager.py", line 76, in _redis_pubsub_loop
+    pubsub.psubscribe(warehouse_pattern, masan_pattern)
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 893, in psubscribe
+    ret_val = self.execute_command("PSUBSCRIBE", *new_patterns.keys())
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 761, in execute_command
+    self.connection = self.connection_pool.get_connection(
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 1074, in get_connection
+    connection.connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 289, in connect
+    self.on_connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 391, in on_connect
+    self.read_response()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 512, in read_response
+    response = self._parser.read_response(disable_decoding=disable_decoding)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 15, in read_response
+    result = self._read_response(disable_decoding=disable_decoding)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 25, in _read_response
+    raw = self._buffer.readline()
+          ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 115, in readline
+    self._read_from_socket()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 68, in _read_from_socket
+    raise ConnectionError(SERVER_CLOSED_CONNECTION_ERROR)
+redis.exceptions.ConnectionError: Connection closed by server.
+2026-11-12T15:46:22.774+07:00 - main - ERROR - WS pub/sub loop error, retry in 3s: Connection closed by server.
+Traceback (most recent call last):
+  File "C:\software_TDS\Supra_WMS\backend\app\socket\ws_manager.py", line 76, in _redis_pubsub_loop
+    pubsub.psubscribe(warehouse_pattern, masan_pattern)
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 893, in psubscribe
+    ret_val = self.execute_command("PSUBSCRIBE", *new_patterns.keys())
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 761, in execute_command
+    self.connection = self.connection_pool.get_connection(
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 1074, in get_connection
+    connection.connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 289, in connect
+    self.on_connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 391, in on_connect
+    self.read_response()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 512, in read_response
+    response = self._parser.read_response(disable_decoding=disable_decoding)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 15, in read_response
+    result = self._read_response(disable_decoding=disable_decoding)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 25, in _read_response
+    raw = self._buffer.readline()
+          ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 115, in readline
+    self._read_from_socket()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 68, in _read_from_socket
+    raise ConnectionError(SERVER_CLOSED_CONNECTION_ERROR)
+redis.exceptions.ConnectionError: Connection closed by server.
+2026-11-12T15:46:25.800+07:00 - main - ERROR - WS pub/sub loop error, retry in 3s: Connection closed by server.
+Traceback (most recent call last):
+  File "C:\software_TDS\Supra_WMS\backend\app\socket\ws_manager.py", line 76, in _redis_pubsub_loop
+    pubsub.psubscribe(warehouse_pattern, masan_pattern)
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 893, in psubscribe
+    ret_val = self.execute_command("PSUBSCRIBE", *new_patterns.keys())
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 761, in execute_command
+    self.connection = self.connection_pool.get_connection(
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 1074, in get_connection
+    connection.connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 289, in connect
+    self.on_connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 391, in on_connect
+    self.read_response()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 512, in read_response
+    response = self._parser.read_response(disable_decoding=disable_decoding)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 15, in read_response
+    result = self._read_response(disable_decoding=disable_decoding)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 25, in _read_response
+    raw = self._buffer.readline()
+          ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 115, in readline
+    self._read_from_socket()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 68, in _read_from_socket
+    raise ConnectionError(SERVER_CLOSED_CONNECTION_ERROR)
+redis.exceptions.ConnectionError: Connection closed by server.
+2026-11-12T15:46:28.812+07:00 - main - ERROR - WS pub/sub loop error, retry in 3s: Connection closed by server.
+Traceback (most recent call last):
+  File "C:\software_TDS\Supra_WMS\backend\app\socket\ws_manager.py", line 76, in _redis_pubsub_loop
+    pubsub.psubscribe(warehouse_pattern, masan_pattern)
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 893, in psubscribe
+    ret_val = self.execute_command("PSUBSCRIBE", *new_patterns.keys())
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 761, in execute_command
+    self.connection = self.connection_pool.get_connection(
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 1074, in get_connection
+    connection.connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 289, in connect
+    self.on_connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 391, in on_connect
+    self.read_response()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 512, in read_response
+    response = self._parser.read_response(disable_decoding=disable_decoding)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 15, in read_response
+    result = self._read_response(disable_decoding=disable_decoding)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 25, in _read_response
+    raw = self._buffer.readline()
+          ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 115, in readline
+    self._read_from_socket()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 68, in _read_from_socket
+    raise ConnectionError(SERVER_CLOSED_CONNECTION_ERROR)
+redis.exceptions.ConnectionError: Connection closed by server.
+2026-11-12T15:46:31.831+07:00 - main - ERROR - WS pub/sub loop error, retry in 3s: Connection closed by server.
+Traceback (most recent call last):
+  File "C:\software_TDS\Supra_WMS\backend\app\socket\ws_manager.py", line 76, in _redis_pubsub_loop
+    pubsub.psubscribe(warehouse_pattern, masan_pattern)
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 893, in psubscribe
+    ret_val = self.execute_command("PSUBSCRIBE", *new_patterns.keys())
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 761, in execute_command
+    self.connection = self.connection_pool.get_connection(
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 1074, in get_connection
+    connection.connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 289, in connect
+    self.on_connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 391, in on_connect
+    self.read_response()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 512, in read_response
+    response = self._parser.read_response(disable_decoding=disable_decoding)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 15, in read_response
+    result = self._read_response(disable_decoding=disable_decoding)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 25, in _read_response
+    raw = self._buffer.readline()
+          ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 115, in readline
+    self._read_from_socket()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 68, in _read_from_socket
+    raise ConnectionError(SERVER_CLOSED_CONNECTION_ERROR)
+redis.exceptions.ConnectionError: Connection closed by server.
+2026-11-12T15:46:34.827+07:00 - main - ERROR - WS pub/sub loop error, retry in 3s: Connection closed by server.
+Traceback (most recent call last):
+  File "C:\software_TDS\Supra_WMS\backend\app\socket\ws_manager.py", line 76, in _redis_pubsub_loop
+    pubsub.psubscribe(warehouse_pattern, masan_pattern)
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 893, in psubscribe
+    ret_val = self.execute_command("PSUBSCRIBE", *new_patterns.keys())
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 761, in execute_command
+    self.connection = self.connection_pool.get_connection(
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 1074, in get_connection
+    connection.connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 289, in connect
+    self.on_connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 391, in on_connect
+    self.read_response()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 512, in read_response
+    response = self._parser.read_response(disable_decoding=disable_decoding)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 15, in read_response
+    result = self._read_response(disable_decoding=disable_decoding)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 25, in _read_response
+    raw = self._buffer.readline()
+          ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 115, in readline
+    self._read_from_socket()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 68, in _read_from_socket
+    raise ConnectionError(SERVER_CLOSED_CONNECTION_ERROR)
+redis.exceptions.ConnectionError: Connection closed by server.
+2026-11-12T15:46:37.866+07:00 - main - ERROR - WS pub/sub loop error, retry in 3s: Connection closed by server.
+Traceback (most recent call last):
+  File "C:\software_TDS\Supra_WMS\backend\app\socket\ws_manager.py", line 76, in _redis_pubsub_loop
+    pubsub.psubscribe(warehouse_pattern, masan_pattern)
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 893, in psubscribe
+    ret_val = self.execute_command("PSUBSCRIBE", *new_patterns.keys())
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 761, in execute_command
+    self.connection = self.connection_pool.get_connection(
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 1074, in get_connection
+    connection.connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 289, in connect
+    self.on_connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 391, in on_connect
+    self.read_response()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 512, in read_response
+    response = self._parser.read_response(disable_decoding=disable_decoding)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 15, in read_response
+    result = self._read_response(disable_decoding=disable_decoding)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 25, in _read_response
+    raw = self._buffer.readline()
+          ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 115, in readline
+    self._read_from_socket()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 68, in _read_from_socket
+    raise ConnectionError(SERVER_CLOSED_CONNECTION_ERROR)
+redis.exceptions.ConnectionError: Connection closed by server.
+2026-11-12T15:46:40.895+07:00 - main - ERROR - WS pub/sub loop error, retry in 3s: Connection closed by server.
+Traceback (most recent call last):
+  File "C:\software_TDS\Supra_WMS\backend\app\socket\ws_manager.py", line 76, in _redis_pubsub_loop
+    pubsub.psubscribe(warehouse_pattern, masan_pattern)
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 893, in psubscribe
+    ret_val = self.execute_command("PSUBSCRIBE", *new_patterns.keys())
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 761, in execute_command
+    self.connection = self.connection_pool.get_connection(
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 1074, in get_connection
+    connection.connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 289, in connect
+    self.on_connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 391, in on_connect
+    self.read_response()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 512, in read_response
+    response = self._parser.read_response(disable_decoding=disable_decoding)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 15, in read_response
+    result = self._read_response(disable_decoding=disable_decoding)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 25, in _read_response
+    raw = self._buffer.readline()
+          ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 115, in readline
+    self._read_from_socket()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 68, in _read_from_socket
+    raise ConnectionError(SERVER_CLOSED_CONNECTION_ERROR)
+redis.exceptions.ConnectionError: Connection closed by server.
+2026-11-12T15:46:43.924+07:00 - main - ERROR - WS pub/sub loop error, retry in 3s: Connection closed by server.
+Traceback (most recent call last):
+  File "C:\software_TDS\Supra_WMS\backend\app\socket\ws_manager.py", line 76, in _redis_pubsub_loop
+    pubsub.psubscribe(warehouse_pattern, masan_pattern)
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 893, in psubscribe
+    ret_val = self.execute_command("PSUBSCRIBE", *new_patterns.keys())
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 761, in execute_command
+    self.connection = self.connection_pool.get_connection(
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 1074, in get_connection
+    connection.connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 289, in connect
+    self.on_connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 391, in on_connect
+    self.read_response()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 512, in read_response
+    response = self._parser.read_response(disable_decoding=disable_decoding)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 15, in read_response
+    result = self._read_response(disable_decoding=disable_decoding)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 25, in _read_response
+    raw = self._buffer.readline()
+          ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 115, in readline
+    self._read_from_socket()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 68, in _read_from_socket
+    raise ConnectionError(SERVER_CLOSED_CONNECTION_ERROR)
+redis.exceptions.ConnectionError: Connection closed by server.
+2026-11-12T15:46:46.931+07:00 - main - ERROR - WS pub/sub loop error, retry in 3s: Connection closed by server.
+Traceback (most recent call last):
+  File "C:\software_TDS\Supra_WMS\backend\app\socket\ws_manager.py", line 76, in _redis_pubsub_loop
+    pubsub.psubscribe(warehouse_pattern, masan_pattern)
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 893, in psubscribe
+    ret_val = self.execute_command("PSUBSCRIBE", *new_patterns.keys())
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 761, in execute_command
+    self.connection = self.connection_pool.get_connection(
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 1074, in get_connection
+    connection.connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 289, in connect
+    self.on_connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 391, in on_connect
+    self.read_response()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 512, in read_response
+    response = self._parser.read_response(disable_decoding=disable_decoding)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 15, in read_response
+    result = self._read_response(disable_decoding=disable_decoding)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 25, in _read_response
+    raw = self._buffer.readline()
+          ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 115, in readline
+    self._read_from_socket()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 68, in _read_from_socket
+    raise ConnectionError(SERVER_CLOSED_CONNECTION_ERROR)
+redis.exceptions.ConnectionError: Connection closed by server.
+2026-11-12T15:46:49.941+07:00 - main - ERROR - WS pub/sub loop error, retry in 3s: Connection closed by server.
+Traceback (most recent call last):
+  File "C:\software_TDS\Supra_WMS\backend\app\socket\ws_manager.py", line 76, in _redis_pubsub_loop
+    pubsub.psubscribe(warehouse_pattern, masan_pattern)
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 893, in psubscribe
+    ret_val = self.execute_command("PSUBSCRIBE", *new_patterns.keys())
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 761, in execute_command
+    self.connection = self.connection_pool.get_connection(
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 1074, in get_connection
+    connection.connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 289, in connect
+    self.on_connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 391, in on_connect
+    self.read_response()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 512, in read_response
+    response = self._parser.read_response(disable_decoding=disable_decoding)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 15, in read_response
+    result = self._read_response(disable_decoding=disable_decoding)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 25, in _read_response
+    raw = self._buffer.readline()
+          ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 115, in readline
+    self._read_from_socket()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 68, in _read_from_socket
+    raise ConnectionError(SERVER_CLOSED_CONNECTION_ERROR)
+redis.exceptions.ConnectionError: Connection closed by server.
+2026-11-12T15:46:52.946+07:00 - main - ERROR - WS pub/sub loop error, retry in 3s: Connection closed by server.
+Traceback (most recent call last):
+  File "C:\software_TDS\Supra_WMS\backend\app\socket\ws_manager.py", line 76, in _redis_pubsub_loop
+    pubsub.psubscribe(warehouse_pattern, masan_pattern)
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 893, in psubscribe
+    ret_val = self.execute_command("PSUBSCRIBE", *new_patterns.keys())
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 761, in execute_command
+    self.connection = self.connection_pool.get_connection(
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 1074, in get_connection
+    connection.connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 289, in connect
+    self.on_connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 391, in on_connect
+    self.read_response()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 512, in read_response
+    response = self._parser.read_response(disable_decoding=disable_decoding)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 15, in read_response
+    result = self._read_response(disable_decoding=disable_decoding)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 25, in _read_response
+    raw = self._buffer.readline()
+          ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 115, in readline
+    self._read_from_socket()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 68, in _read_from_socket
+    raise ConnectionError(SERVER_CLOSED_CONNECTION_ERROR)
+redis.exceptions.ConnectionError: Connection closed by server.
+2026-11-12T15:46:55.983+07:00 - main - ERROR - WS pub/sub loop error, retry in 3s: Connection closed by server.
+Traceback (most recent call last):
+  File "C:\software_TDS\Supra_WMS\backend\app\socket\ws_manager.py", line 76, in _redis_pubsub_loop
+    pubsub.psubscribe(warehouse_pattern, masan_pattern)
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 893, in psubscribe
+    ret_val = self.execute_command("PSUBSCRIBE", *new_patterns.keys())
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 761, in execute_command
+    self.connection = self.connection_pool.get_connection(
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 1074, in get_connection
+    connection.connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 289, in connect
+    self.on_connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 391, in on_connect
+    self.read_response()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 512, in read_response
+    response = self._parser.read_response(disable_decoding=disable_decoding)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 15, in read_response
+    result = self._read_response(disable_decoding=disable_decoding)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 25, in _read_response
+    raw = self._buffer.readline()
+          ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 115, in readline
+    self._read_from_socket()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 68, in _read_from_socket
+    raise ConnectionError(SERVER_CLOSED_CONNECTION_ERROR)
+redis.exceptions.ConnectionError: Connection closed by server.
+2026-11-12T15:46:59.004+07:00 - main - ERROR - WS pub/sub loop error, retry in 3s: Connection closed by server.
+Traceback (most recent call last):
+  File "C:\software_TDS\Supra_WMS\backend\app\socket\ws_manager.py", line 76, in _redis_pubsub_loop
+    pubsub.psubscribe(warehouse_pattern, masan_pattern)
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 893, in psubscribe
+    ret_val = self.execute_command("PSUBSCRIBE", *new_patterns.keys())
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 761, in execute_command
+    self.connection = self.connection_pool.get_connection(
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 1074, in get_connection
+    connection.connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 289, in connect
+    self.on_connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 391, in on_connect
+    self.read_response()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 512, in read_response
+    response = self._parser.read_response(disable_decoding=disable_decoding)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 15, in read_response
+    result = self._read_response(disable_decoding=disable_decoding)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 25, in _read_response
+    raw = self._buffer.readline()
+          ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 115, in readline
+    self._read_from_socket()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 68, in _read_from_socket
+    raise ConnectionError(SERVER_CLOSED_CONNECTION_ERROR)
+redis.exceptions.ConnectionError: Connection closed by server.
+2026-11-12T15:47:02.012+07:00 - main - ERROR - WS pub/sub loop error, retry in 3s: Connection closed by server.
+Traceback (most recent call last):
+  File "C:\software_TDS\Supra_WMS\backend\app\socket\ws_manager.py", line 76, in _redis_pubsub_loop
+    pubsub.psubscribe(warehouse_pattern, masan_pattern)
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 893, in psubscribe
+    ret_val = self.execute_command("PSUBSCRIBE", *new_patterns.keys())
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 761, in execute_command
+    self.connection = self.connection_pool.get_connection(
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 1074, in get_connection
+    connection.connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 289, in connect
+    self.on_connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 391, in on_connect
+    self.read_response()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 512, in read_response
+    response = self._parser.read_response(disable_decoding=disable_decoding)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 15, in read_response
+    result = self._read_response(disable_decoding=disable_decoding)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 25, in _read_response
+    raw = self._buffer.readline()
+          ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 115, in readline
+    self._read_from_socket()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 68, in _read_from_socket
+    raise ConnectionError(SERVER_CLOSED_CONNECTION_ERROR)
+redis.exceptions.ConnectionError: Connection closed by server.
+2026-11-12T15:47:05.027+07:00 - main - ERROR - WS pub/sub loop error, retry in 3s: Connection closed by server.
+Traceback (most recent call last):
+  File "C:\software_TDS\Supra_WMS\backend\app\socket\ws_manager.py", line 76, in _redis_pubsub_loop
+    pubsub.psubscribe(warehouse_pattern, masan_pattern)
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 893, in psubscribe
+    ret_val = self.execute_command("PSUBSCRIBE", *new_patterns.keys())
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 761, in execute_command
+    self.connection = self.connection_pool.get_connection(
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 1074, in get_connection
+    connection.connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 289, in connect
+    self.on_connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 391, in on_connect
+    self.read_response()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 512, in read_response
+    response = self._parser.read_response(disable_decoding=disable_decoding)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 15, in read_response
+    result = self._read_response(disable_decoding=disable_decoding)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 25, in _read_response
+    raw = self._buffer.readline()
+          ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 115, in readline
+    self._read_from_socket()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 68, in _read_from_socket
+    raise ConnectionError(SERVER_CLOSED_CONNECTION_ERROR)
+redis.exceptions.ConnectionError: Connection closed by server.
+2026-11-12T15:47:08.057+07:00 - main - ERROR - WS pub/sub loop error, retry in 3s: Connection closed by server.
+Traceback (most recent call last):
+  File "C:\software_TDS\Supra_WMS\backend\app\socket\ws_manager.py", line 76, in _redis_pubsub_loop
+    pubsub.psubscribe(warehouse_pattern, masan_pattern)
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 893, in psubscribe
+    ret_val = self.execute_command("PSUBSCRIBE", *new_patterns.keys())
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 761, in execute_command
+    self.connection = self.connection_pool.get_connection(
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 1074, in get_connection
+    connection.connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 289, in connect
+    self.on_connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 391, in on_connect
+    self.read_response()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 512, in read_response
+    response = self._parser.read_response(disable_decoding=disable_decoding)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 15, in read_response
+    result = self._read_response(disable_decoding=disable_decoding)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 25, in _read_response
+    raw = self._buffer.readline()
+          ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 115, in readline
+    self._read_from_socket()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 68, in _read_from_socket
+    raise ConnectionError(SERVER_CLOSED_CONNECTION_ERROR)
+redis.exceptions.ConnectionError: Connection closed by server.
+2026-11-12T15:47:11.071+07:00 - main - ERROR - WS pub/sub loop error, retry in 3s: Connection closed by server.
+Traceback (most recent call last):
+  File "C:\software_TDS\Supra_WMS\backend\app\socket\ws_manager.py", line 76, in _redis_pubsub_loop
+    pubsub.psubscribe(warehouse_pattern, masan_pattern)
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 893, in psubscribe
+    ret_val = self.execute_command("PSUBSCRIBE", *new_patterns.keys())
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 761, in execute_command
+    self.connection = self.connection_pool.get_connection(
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 1074, in get_connection
+    connection.connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 289, in connect
+    self.on_connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 391, in on_connect
+    self.read_response()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 512, in read_response
+    response = self._parser.read_response(disable_decoding=disable_decoding)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 15, in read_response
+    result = self._read_response(disable_decoding=disable_decoding)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 25, in _read_response
+    raw = self._buffer.readline()
+          ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 115, in readline
+    self._read_from_socket()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 68, in _read_from_socket
+    raise ConnectionError(SERVER_CLOSED_CONNECTION_ERROR)
+redis.exceptions.ConnectionError: Connection closed by server.
+2026-11-12T15:47:14.048+07:00 - main - ERROR - WS pub/sub loop error, retry in 3s: Connection closed by server.
+Traceback (most recent call last):
+  File "C:\software_TDS\Supra_WMS\backend\app\socket\ws_manager.py", line 76, in _redis_pubsub_loop
+    pubsub.psubscribe(warehouse_pattern, masan_pattern)
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 893, in psubscribe
+    ret_val = self.execute_command("PSUBSCRIBE", *new_patterns.keys())
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 761, in execute_command
+    self.connection = self.connection_pool.get_connection(
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 1074, in get_connection
+    connection.connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 289, in connect
+    self.on_connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 391, in on_connect
+    self.read_response()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 512, in read_response
+    response = self._parser.read_response(disable_decoding=disable_decoding)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 15, in read_response
+    result = self._read_response(disable_decoding=disable_decoding)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 25, in _read_response
+    raw = self._buffer.readline()
+          ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 115, in readline
+    self._read_from_socket()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 68, in _read_from_socket
+    raise ConnectionError(SERVER_CLOSED_CONNECTION_ERROR)
+redis.exceptions.ConnectionError: Connection closed by server.
+2026-11-12T15:47:17.061+07:00 - main - ERROR - WS pub/sub loop error, retry in 3s: Connection closed by server.
+Traceback (most recent call last):
+  File "C:\software_TDS\Supra_WMS\backend\app\socket\ws_manager.py", line 76, in _redis_pubsub_loop
+    pubsub.psubscribe(warehouse_pattern, masan_pattern)
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 893, in psubscribe
+    ret_val = self.execute_command("PSUBSCRIBE", *new_patterns.keys())
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\client.py", line 761, in execute_command
+    self.connection = self.connection_pool.get_connection(
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 1074, in get_connection
+    connection.connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 289, in connect
+    self.on_connect()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 391, in on_connect
+    self.read_response()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\connection.py", line 512, in read_response
+    response = self._parser.read_response(disable_decoding=disable_decoding)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 15, in read_response
+    result = self._read_response(disable_decoding=disable_decoding)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 25, in _read_response
+    raw = self._buffer.readline()
+          ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 115, in readline
+    self._read_from_socket()
+  File "C:\software_TDS\Supra_WMS\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 68, in _read_from_socket
+    raise ConnectionError(SERVER_CLOSED_CONNECTION_ERROR)
+redis.exceptions.ConnectionError: Connection closed by server.
+2026-11-12T15:47:19.803+07:00 - main - INFO - Stopping app
+2026-11-12T15:47:19.804+07:00 - main - INFO - Websocket manager stopped

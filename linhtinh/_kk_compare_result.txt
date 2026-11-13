@@ -1,0 +1,54 @@
+=== SO SANH KK 07.11.26 (sheet in kk) vs DB hien tai ===
+Quy tac DB: warehouse_id=1, item_stock is_active, qty>0, stock_level null/<=1
+Excel qty: cot Thuc te KK (col 13), neu trong thi SL ERP
+Match location_name: G01 -> G001 (zero-pad 3 so)
+
+Excel unique locations: 256
+Not in DB by location_name: 0
+Compared locations: 256
+Khop (cung sku+qty hoac ca hai trong): 224
+Trong -> co hang (file co, DB trong): 1
+Co hang -> trong (DB con, file trong): 0
+Cung ma, lech so luong: 27
+Doi ma hang: 4
+
+--- TRONG -> CO HANG (1) ---
+{'loc': 'G337', 'excel_sku': '02XX00282', 'excel_qty': 70.0, 'excel_lot': '281026'}
+
+--- CO HANG -> TRONG (0) ---
+
+--- LECH SO LUONG (27) ---
+{'loc': 'G009', 'sku': '02XX00205', 'excel_qty': 28.0, 'db_qty': 48.0, 'diff': -20.0, 'excel_lot': '091026', 'db_lots': '091026'}
+{'loc': 'G012', 'sku': '02XX00282', 'excel_qty': 27.0, 'db_qty': 70.0, 'diff': -43.0, 'excel_lot': '261026', 'db_lots': '261026'}
+{'loc': 'G029', 'sku': '02XX00224', 'excel_qty': 63.0, 'db_qty': 78.0, 'diff': -15.0, 'excel_lot': '201026', 'db_lots': '201026'}
+{'loc': 'G039', 'sku': '02XX00167', 'excel_qty': 17.0, 'db_qty': 34.0, 'diff': -17.0, 'excel_lot': '301026', 'db_lots': '301026'}
+{'loc': 'G046', 'sku': '08PL00002', 'excel_qty': 8.0, 'db_qty': 90.0, 'diff': -82.0, 'excel_lot': '211026', 'db_lots': '211026'}
+{'loc': 'G080', 'sku': '02XX00132', 'excel_qty': 34.0, 'db_qty': 40.0, 'diff': -6.0, 'excel_lot': '241026', 'db_lots': '241026'}
+{'loc': 'G086', 'sku': '02XX00226', 'excel_qty': 34.0, 'db_qty': 78.0, 'diff': -44.0, 'excel_lot': '121026', 'db_lots': '121026'}
+{'loc': 'G090', 'sku': '02XX00244', 'excel_qty': 9.0, 'db_qty': 21.0, 'diff': -12.0, 'excel_lot': '131026', 'db_lots': '131026'}
+{'loc': 'G095', 'sku': '02XX00333', 'excel_qty': 42.0, 'db_qty': 72.0, 'diff': -30.0, 'excel_lot': '281026', 'db_lots': '281026'}
+{'loc': 'G136', 'sku': '02XX00116', 'excel_qty': 127.0, 'db_qty': 153.0, 'diff': -26.0, 'excel_lot': '201026', 'db_lots': '201026'}
+{'loc': 'G201', 'sku': '02XX00196', 'excel_qty': 28.0, 'db_qty': 88.0, 'diff': -60.0, 'excel_lot': '101026', 'db_lots': '101026'}
+{'loc': 'G211', 'sku': '02XX00090', 'excel_qty': 58.0, 'db_qty': 63.0, 'diff': -5.0, 'excel_lot': '241026', 'db_lots': '241026'}
+{'loc': 'G219', 'sku': '02XX00225', 'excel_qty': 66.0, 'db_qty': 78.0, 'diff': -12.0, 'excel_lot': '081026', 'db_lots': '081026'}
+{'loc': 'G227', 'sku': '08PL00001', 'excel_qty': 57.0, 'db_qty': 90.0, 'diff': -33.0, 'excel_lot': '241026', 'db_lots': '241026'}
+{'loc': 'G278', 'sku': '02XX00215', 'excel_qty': 23.0, 'db_qty': 85.0, 'diff': -62.0, 'excel_lot': '071026', 'db_lots': '041026'}
+{'loc': 'G298', 'sku': '08PL00004', 'excel_qty': 85.0, 'db_qty': 90.0, 'diff': -5.0, 'excel_lot': '221026', 'db_lots': '221026'}
+{'loc': 'G318', 'sku': '02XX00252', 'excel_qty': 62.0, 'db_qty': 65.0, 'diff': -3.0, 'excel_lot': '091026', 'db_lots': '091026'}
+{'loc': 'G321', 'sku': '02XX00321', 'excel_qty': 27.0, 'db_qty': 36.0, 'diff': -9.0, 'excel_lot': '091026', 'db_lots': '091026'}
+{'loc': 'G329', 'sku': '02XX00228', 'excel_qty': 25.0, 'db_qty': 78.0, 'diff': -53.0, 'excel_lot': '211026', 'db_lots': '211026'}
+{'loc': 'G335', 'sku': '02XX00224', 'excel_qty': 80.0, 'db_qty': 70.0, 'diff': 10.0, 'excel_lot': '271026', 'db_lots': '281026'}
+{'loc': 'G353', 'sku': '02XX00223', 'excel_qty': 48.0, 'db_qty': 78.0, 'diff': -30.0, 'excel_lot': '131026', 'db_lots': '131026'}
+{'loc': 'G361', 'sku': '02XX00203', 'excel_qty': 10.0, 'db_qty': 11.0, 'diff': -1.0, 'excel_lot': '091026', 'db_lots': '091026'}
+{'loc': 'G364', 'sku': '08PL00003', 'excel_qty': 13.0, 'db_qty': 20.0, 'diff': -7.0, 'excel_lot': '201026', 'db_lots': '201026'}
+{'loc': 'G396', 'sku': '02XX00203', 'excel_qty': 51.0, 'db_qty': 70.0, 'diff': -19.0, 'excel_lot': '091026', 'db_lots': '091026'}
+{'loc': 'G402', 'sku': '02XX00322', 'excel_qty': 63.0, 'db_qty': 198.0, 'diff': -135.0, 'excel_lot': '151026', 'db_lots': '151026'}
+{'loc': 'G410', 'sku': '02XX00214', 'excel_qty': 35.0, 'db_qty': 40.0, 'diff': -5.0, 'excel_lot': '290926', 'db_lots': '290926'}
+{'loc': 'G420', 'sku': '02XX00253', 'excel_qty': 25.0, 'db_qty': 36.0, 'diff': -11.0, 'excel_lot': '211026', 'db_lots': '211026'}
+
+--- DOI MA HANG (4) ---
+{'loc': 'G037', 'excel_sku': '02XX00322', 'db_sku': '02XX00332', 'excel_qty': 198.0, 'db_qty': 198.0, 'excel_lot': '161026', 'db_lots': '161026'}
+{'loc': 'G038', 'excel_sku': '02XX00322', 'db_sku': '02XX00332', 'excel_qty': 198.0, 'db_qty': 198.0, 'excel_lot': '161026', 'db_lots': '161026'}
+{'loc': 'G074', 'excel_sku': '02XX00090', 'db_sku': '02XX00167', 'excel_qty': 153.0, 'db_qty': 114.0, 'excel_lot': '271026', 'db_lots': '301026'}
+{'loc': 'G363', 'excel_sku': '02XX00322', 'db_sku': '02XX00332', 'excel_qty': 198.0, 'db_qty': 198.0, 'excel_lot': '161026', 'db_lots': '161026'}
+

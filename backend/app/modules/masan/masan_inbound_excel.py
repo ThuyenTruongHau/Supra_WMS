@@ -47,7 +47,7 @@ HEADER_ROW = 2
 DATA_START_ROW = 3
 
 INBOUND_REPORT_COLUMN_WIDTHS: tuple[float, ...] = (
-    14.0,  # Ngày/ Giờ chi tiết
+    22.0,  # Ngày/ Giờ chi tiết (YYYY-MM-DD HH:mm:ss)
     12.0,  # Số xe
     30.0,  # Kho xuất
     30.0,  # Kho nhập

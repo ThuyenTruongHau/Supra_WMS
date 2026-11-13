@@ -17,6 +17,7 @@ Các docs cũ được giữ nguyên như dữ liệu lưu trữ và không đư
    và [tích hợp robot](PROJECT_DOCS/flows/robot.md).
 6. Xuất kho: [luồng backend](PROJECT_DOCS/flows/outbound.md) và
    [hướng dẫn thao tác frontend](PROJECT_DOCS/guides/outbound-fe.md).
+7. [Đóng gói Docker và tự chạy sau khi đăng nhập Windows](DOCS/docker-windows.md).
 
 ## Tra cứu source
 
